@@ -4,6 +4,16 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [v1.1.0] - 2025-04-23
+
+### Añadido
+- Detección automática de versión desde `manifest.json`.
+- Aviso de nueva versión disponible con botón para actualizar la app al instante.
+- Enlace desde la interfaz al `CHANGELOG.md` del repositorio.
+
+---
+
+
 ## [v1.0.0] - 2025-04-22
 
 ### Añadido
