@@ -1,12 +1,11 @@
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Paso 1: obtener la versión desde el manifest.json
   fetch('./manifest.json')
     .then(res => res.json())
     .then(manifest => {
       const currentVersion = manifest.version || 'desconocida';
 
-      // Mostrar en esquina inferior derecha
+      // Mostrar versión fija inferior derecha
       const versionDiv = document.createElement('div');
       versionDiv.id = 'version-info';
       versionDiv.style.position = 'fixed';
@@ -46,13 +45,32 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDiv.style.color = '#333';
             updateDiv.style.zIndex = '10000';
             updateDiv.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)';
-            updateDiv.style.cursor = 'pointer';
+            updateDiv.style.cursor = 'default';
             updateDiv.title = 'Haz clic para ver los cambios';
 
+            // Enlace al changelog
             updateDiv.addEventListener('click', () => {
               window.open('https://github.com/p92camcj/simulador-invocadores/blob/main/CHANGELOG.md', '_blank');
             });
 
+            // Botón para recargar
+            const reloadBtn = document.createElement('button');
+            reloadBtn.textContent = 'Actualizar ahora';
+            reloadBtn.style.marginLeft = '10px';
+            reloadBtn.style.padding = '4px 8px';
+            reloadBtn.style.fontSize = '12px';
+            reloadBtn.style.border = 'none';
+            reloadBtn.style.borderRadius = '4px';
+            reloadBtn.style.backgroundColor = '#6c4eb6';
+            reloadBtn.style.color = '#fff';
+            reloadBtn.style.cursor = 'pointer';
+
+            reloadBtn.addEventListener('click', (e) => {
+              e.stopPropagation(); // evitar que se dispare el enlace al changelog
+              window.location.reload(true);
+            });
+
+            updateDiv.appendChild(reloadBtn);
             document.body.appendChild(updateDiv);
           }
         });
