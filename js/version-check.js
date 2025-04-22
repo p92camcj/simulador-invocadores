@@ -1,16 +1,16 @@
 
 document.addEventListener('DOMContentLoaded', () => {
-  fetch('./manifest.json')
+  fetch('./version.json')
     .then(res => res.json())
-    .then(manifest => {
-      const currentVersion = manifest.version || 'desconocida';
+    .then(data => {
+      const currentVersion = data.version || 'desconocida';
 
-      // Mostrar versión fija inferior derecha
+      // Mostrar versión en esquina inferior izquierda
       const versionDiv = document.createElement('div');
       versionDiv.id = 'version-info';
       versionDiv.style.position = 'fixed';
       versionDiv.style.bottom = '5px';
-      versionDiv.style.right = '10px';
+      versionDiv.style.left = '10px';
       versionDiv.style.fontSize = '11px';
       versionDiv.style.color = '#666';
       versionDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
@@ -30,10 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Comparar con la última versión publicada en GitHub
       fetch('https://api.github.com/repos/p92camcj/simulador-invocadores/releases/latest')
         .then(response => response.json())
-        .then(data => {
-          if (data.tag_name && data.tag_name !== currentVersion) {
+        .then(release => {
+          if (release.tag_name && release.tag_name !== currentVersion) {
             const updateDiv = document.createElement('div');
-            updateDiv.textContent = `¡Nueva versión disponible: ${data.tag_name}!`;
+            updateDiv.textContent = `¡Nueva versión disponible: ${release.tag_name}!`;
             updateDiv.style.position = 'fixed';
             updateDiv.style.top = '10px';
             updateDiv.style.right = '10px';
@@ -48,12 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDiv.style.cursor = 'default';
             updateDiv.title = 'Haz clic para ver los cambios';
 
-            // Enlace al changelog
             updateDiv.addEventListener('click', () => {
               window.open('https://github.com/p92camcj/simulador-invocadores/blob/main/CHANGELOG.md', '_blank');
             });
 
-            // Botón para recargar
             const reloadBtn = document.createElement('button');
             reloadBtn.textContent = 'Actualizar ahora';
             reloadBtn.style.marginLeft = '10px';
@@ -66,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reloadBtn.style.cursor = 'pointer';
 
             reloadBtn.addEventListener('click', (e) => {
-              e.stopPropagation(); // evitar que se dispare el enlace al changelog
+              e.stopPropagation();
               window.location.reload(true);
             });
 
@@ -75,5 +73,5 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
     })
-    .catch(err => console.error('Error al leer el manifest:', err));
+    .catch(err => console.error('Error al leer version.json:', err));
 });
