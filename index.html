@@ -30,14 +30,16 @@
       </div>
     </div>
     <div id="ctrlPlay" class="section hidden">
-      <h3>Jugar carta</h3>
-      <label>Carta:<br /><select id="selCard"></select></label>
-      <label>Destino:<br /><select id="selDest"></select></label>
-      <div>
-        <button id="btnPlay" class="btn primary">Jugar</button>
-        <button id="btnPlayCancel" class="btn secondary">Cancelar</button>
-      </div>
+      <label for="selCard">Carta:</label>
+      <select id="selCard"></select>
+    
+      <label for="selDest">Destino:</label>
+      <select id="selDest"></select>
+    
+      <button id="btnPlay" class="btn primary">Jugar</button>
+      <button id="btnPlayCancel" class="btn secondary cancel">Cancelar</button>
     </div>
+    
     <div id="picker" class="section hidden">
       <h3 id="pickerTitle"></h3>
       <select id="pickerSelect"></select>
