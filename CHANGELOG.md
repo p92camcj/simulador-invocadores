@@ -4,6 +4,23 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [v1.2.0] - 2024-04-23
+
+### Añadido
+- Botón azul flotante "Jugar una carta" en la cabecera para abrir el panel de juego.
+- Comportamiento coherente del botón azul con la selección de carta (usa la misma lógica que clickar en una carta).
+- Botón "Jugar carta" visible solo cuando comienza la partida.
+- Panel flotante "Jugar carta" rediseñado: compacto, con botones alineados, y botón de cierre ("X").
+- Panel de juego ahora reutiliza lógica existente (`selectCard(0)`), evitando duplicación de código.
+
+### Corregido
+- Eliminado botón duplicado `btnEndTurn` en el HTML.
+- Corregido error en `setup.js` y `actions.js` por elementos no disponibles al cargar.
+- Se evita mostrar el botón azul antes de que comience el juego.
+- Ajustado comportamiento de `btnCtrlPlay` para evitar errores si no hay cartas en la mano.
+
+---
+
 ## [v1.1.0] - 2025-04-23
 
 ### Añadido
