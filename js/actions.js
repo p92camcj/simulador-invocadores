@@ -52,8 +52,9 @@ export function initActions(players, neutrals) {
         });
       }
     });
-
+    
     document.querySelector('#ctrlPlay').classList.remove('hidden');
+
   };
 
   // Cancelar juego de carta
@@ -175,4 +176,15 @@ export function initActions(players, neutrals) {
     nextTurn();
     window.played = false;
   };
+
+  // Hace que el botón "Jugar una carta" en la parte
+  // superor de la cabecera, funcione y abra la ventana para jugar carta
+  const btnCtrlPlay = document.getElementById("btnCtrlPlay");
+  if (btnCtrlPlay) {
+    btnCtrlPlay.addEventListener("click", () => {
+      window.selectCard(0);
+    });
+  }
+
+
 }

@@ -45,7 +45,8 @@ export function initSetup() {
     // Ocultar sección de setup y mostrar control de turno
     $('#setup').classList.add('hidden');
     $('#btnEndTurn').classList.remove('hidden');
-
+    if ($('#btnCtrlPlay')) $('#btnCtrlPlay').classList.remove('hidden');
+    
     // Iniciar la partida
     initGame();
   };
