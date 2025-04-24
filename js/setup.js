@@ -10,10 +10,14 @@ export function initSetup() {
   // Al pulsar 'Continuar', generar inputs según número de jugadoras (entre 2 y 4)
   $('#cfgNext').onclick = () => {
     const n = parseInt($('#numPlayers').value);
+    const errorEl = $('#numError');
+  
     if (isNaN(n) || n < 2 || n > 4) {
-      alert('El número de jugadoras debe estar entre 2 y 4.');
+      errorEl.textContent = 'El número de jugadoras debe estar entre 2 y 4.';
+      errorEl.classList.remove('hidden');
       return;
     }
+    
     const form = $('#nameForm');
     form.innerHTML = '';
     for (let i = 0; i < n; i++) {

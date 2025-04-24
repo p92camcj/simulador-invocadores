@@ -146,6 +146,13 @@ select {
   background-color: #c82333;
 }
 
+.error-msg {
+  color: red;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+
 
 /* Mejoras visuales específicas para móviles */
 @media (max-width: 768px) {
