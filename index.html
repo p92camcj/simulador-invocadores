@@ -18,10 +18,15 @@
 </head>
 <body>
   <div class="container">
+    <h1 id="mainTitle">Simulador «Invocadores»</h1>
+    <p id="mainSubtitle" style="text-align: center; margin-top: 0;">
+      Un juego diseñado por <a href="https://www.elmeepleazul.es" target="_blank" rel="noopener noreferrer">@elmeepleazul</a>
+    </p>
     <div class="header-bar">
       <button id="btnCtrlPlay" class="btn primary hidden">Jugar una carta</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
     </div>
+    
     <div id="setup" class="section">
       <h2>Configurar partida</h2>
       <label>Jugadoras (2‑4): <input id="numPlayers" type="number" min="2" max="4" value="2" /></label>
@@ -56,18 +61,18 @@
         <button id="pickerCancel" class="btn secondary">Cancelar</button>
       </div>
     </div>
-    <div id="info" class="section">
+    <div id="info" class="section hidden">
       <h2 id="lblTurn"></h2>
       <h3>Invocación: <span id="lblInv"></span></h3>
       <div id="invStatus" class="status"></div>
     </div>
-    <div class="section flex">
-      <div id="zoneActive" class="portal"></div>
-      <div id="zoneOthers" class="handbox"></div>
+    <div id="sectionflex" class="section flex hidden">
+      <div id="zoneActive" class="portal hidden"></div>
+      <div id="zoneOthers" class="handbox hidden"></div>
     </div>
     <div id="zoneNeutral" class="section hidden">
       <h3>Portales neutrales</h3>
-      <div id="neutralArea" class="flex"></div>
+      <div id="neutralArea" class="flex hidden"></div>
     </div>
   </div>
   <script type="module" src="js/index.js"></script>

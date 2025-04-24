@@ -49,6 +49,8 @@ window.deck = mazoFinal.map(name => ({ name }));
 
   // Iniciar primer turno
   nextTurn();
+
+ 
 }
 
 /**

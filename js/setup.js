@@ -17,7 +17,7 @@ export function initSetup() {
       errorEl.classList.remove('hidden');
       return;
     }
-    
+
     const form = $('#nameForm');
     form.innerHTML = '';
     for (let i = 0; i < n; i++) {
@@ -57,8 +57,17 @@ export function initSetup() {
 
     // Ocultar sección de setup y mostrar control de turno
     $('#setup').classList.add('hidden');
+    $('#info').classList.remove('hidden');
+    $('#zoneActive').classList.remove('hidden');
+    $('#zoneOthers').classList.remove('hidden');
     $('#btnEndTurn').classList.remove('hidden');
+    $('#info').classList.remove('hidden');
+    $('#sectionflex').classList.remove('hidden');
     if ($('#btnCtrlPlay')) $('#btnCtrlPlay').classList.remove('hidden');
+    $('#mainTitle')?.classList.add('hidden');
+    $('#mainSubtitle')?.classList.add('hidden');
+
+    
     
     // Iniciar la partida
     initGame();
