@@ -58,6 +58,7 @@ export function nextTurn() {
   window.played = false;
   const current = window.players[window.turn];
   alert('Turno de ' + current.name);
-  document.querySelector('#lblTurn').textContent = 'Turno de: ' + current.name;
+  document.querySelector('#lblTurn').textContent =
+  `Turno de: ${current.name} — Mazo: ${window.deck.length}`;
   render(window.players, window.neutrals, window.levelIdx);
 }
