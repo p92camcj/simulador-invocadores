@@ -20,8 +20,18 @@ export function initGame() {
     ...Array(8).fill('Pícaro'),
     ...Array(2).fill('Metamorfo')
   ];
-  shuffle(chars);
-  window.deck = chars.map(name => ({ name }));
+  // Separar metamorfos
+const metamorfos = chars.filter(c => c === 'Metamorfo');
+let sinMetamorfos = chars.filter(c => c !== 'Metamorfo');
+
+// Quitar 4 cartas aleatorias que no sean metamorfos
+shuffle(sinMetamorfos);
+const descartadas = sinMetamorfos.splice(0, 4);
+
+// Formar mazo final con metamorfos incluidos
+const mazoFinal = [...sinMetamorfos, ...metamorfos];
+shuffle(mazoFinal);
+window.deck = mazoFinal.map(name => ({ name }));
 
   // Reparto inicial: 1 visible y 1 oculta por jugadora
   window.players.forEach(p => {
