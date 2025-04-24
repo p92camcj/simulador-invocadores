@@ -4,6 +4,28 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [v1.3.0] - 2025-04-24
+
+### Añadido
+- Final de partida automático: la partida termina si se completa la invocación A o si una jugadora comienza su turno sin cartas.
+- Al finalizar la partida, se pregunta si se quiere volver a jugar. Si se elige que no, se bloquea la interfaz y se muestra un mensaje de cierre.
+- Indicador visual del número de cartas restantes en el mazo, mostrado junto al nombre del turno.
+- Asignación automática de nombres si no se introducen: Julio, Adrián, Javi, Isa.
+- Rediseño de la pantalla de configuración:
+  - Campo "número de jugadoras" más compacto y en línea con su etiqueta.
+  - Campos de nombres colocados horizontalmente, con anchura adaptada.
+  - Validación visual del número de jugadoras.
+- Nuevo título inicial "Simulador «Invocadores»" y subtítulo con enlace a [elmeepleazul.es](https://www.elmeepleazul.es).
+- Opción de reiniciar el juego sin recargar la página (flujo más suave tipo app).
+- Ocultación completa de la interfaz de juego (manos, portales, invocación) hasta que comience la partida.
+
+### Corregido
+- El mazo inicial ahora se construye correctamente: se descartan 4 cartas aleatorias (excluyendo metamorfos), se añaden los 2 metamorfos y luego se baraja.
+- Se evita que el juego continúe tras un final si el jugador elige no volver a jugar.
+
+
+---
+
 ## [v1.2.0] - 2024-04-23
 
 ### Añadido
