@@ -10,6 +10,8 @@ window.deck = [];
 window.levelIdx = 0;
 window.turn = 0;
 window.played = false;
+window.juegoTerminado = false;
+
 
 // Exponer constantes globales para legacy actions.js
 window.LEVELS = LEVELS;

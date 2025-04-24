@@ -64,6 +64,7 @@ export function initActions(players, neutrals) {
 
   // Jugar carta
   document.querySelector('#btnPlay').onclick = () => {
+    if (window.juegoTerminado) return;
     if (window.played) return;
     const pl = players[window.turn];
     const selCard = document.querySelector('#selCard');
@@ -105,6 +106,7 @@ export function initActions(players, neutrals) {
 
   // Botón terminar turno
   document.querySelector('#btnEndTurn').onclick = async () => {
+    if (window.juegoTerminado) return;
     if (!window.played) {
       alert('Juega una carta');
       return;
@@ -166,9 +168,12 @@ export function initActions(players, neutrals) {
           players[map.get('Maestro')[0]].gems += 3;
         }
         alert('Invocación ' + lvl + ' completa');
+
         neutrals.push([]);
         document.querySelector('#zoneNeutral').classList.remove('hidden');
         window.levelIdx++;
+        finalizarPartida('Se ha completado la invocación A. Fin de la partida.');
+        return;
       }
     }
 

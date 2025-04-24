@@ -11,18 +11,31 @@ export function initSetup() {
   $('#cfgNext').onclick = () => {
     const n = parseInt($('#numPlayers').value);
     const errorEl = $('#numError');
-  
+
     if (isNaN(n) || n < 2 || n > 4) {
       errorEl.textContent = 'El número de jugadoras debe estar entre 2 y 4.';
       errorEl.classList.remove('hidden');
       return;
     }
 
+    errorEl.classList.add('hidden');
     const form = $('#nameForm');
+
+    // Si ya hay los campos necesarios, no los volvemos a generar
+    if (form.children.length === n) {
+      $('#nameWrap').classList.remove('hidden');
+      return;
+    }
+
+    // Si hay que cambiar el número, regeneramos y conservamos lo que podamos
+    const valoresPrevios = Array.from(form.elements).map(input => input.value);
+
     form.innerHTML = '';
     for (let i = 0; i < n; i++) {
-      form.innerHTML += `<input name="p${i}" placeholder="Jugadora ${i+1}" required>`;
+      const nombre = valoresPrevios[i] || '';
+      form.innerHTML += `<input name="p${i}" placeholder="Jugadora ${i + 1}" value="${nombre}" required>`;
     }
+
     $('#nameWrap').classList.remove('hidden');
   };
 
