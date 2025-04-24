@@ -7,9 +7,13 @@ import { initGame } from './game.js';
  * Muestra el formulario de nombres y arranca el juego.
  */
 export function initSetup() {
-  // Al pulsar 'Continuar', generar inputs según número de jugadoras
+  // Al pulsar 'Continuar', generar inputs según número de jugadoras (entre 2 y 4)
   $('#cfgNext').onclick = () => {
     const n = parseInt($('#numPlayers').value);
+    if (isNaN(n) || n < 2 || n > 4) {
+      alert('El número de jugadoras debe estar entre 2 y 4.');
+      return;
+    }
     const form = $('#nameForm');
     form.innerHTML = '';
     for (let i = 0; i < n; i++) {
@@ -26,8 +30,13 @@ export function initSetup() {
     window.neutrals = [];
 
     // Leer nombres y crear objetos de jugador
+    const nombresPorDefecto = ['Julio', 'Adrián', 'Javi', 'Isa'];
+    let idx = 0;
+
     new FormData($('#nameForm')).forEach(name => {
-      window.players.push({ name, hand: [], portals: [], gems: 1 });
+      const nombre = name.trim() || nombresPorDefecto[idx] || `Jugadora ${idx + 1}`;
+      window.players.push({ name: nombre, hand: [], portals: [], gems: 1 });
+      idx++;
     });
 
     // Configurar portales según número de jugadoras
