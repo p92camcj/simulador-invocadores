@@ -47,7 +47,7 @@ export function initSetup() {
     window.neutrals = [];
 
     // Leer nombres y crear objetos de jugador
-    const nombresPorDefecto = ['Julio', 'Adrián', 'Javi', 'Isa'];
+    const nombresPorDefecto = ['Javi', 'Isa', 'Julio', 'Adrián'];
     let idx = 0;
 
     new FormData($('#nameForm')).forEach(name => {
