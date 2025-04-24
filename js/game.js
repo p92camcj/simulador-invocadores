@@ -29,7 +29,7 @@ let sinMetamorfos = chars.filter(c => c !== 'Metamorfo');
 
 // Quitar 4 cartas aleatorias que no sean metamorfos
 shuffle(sinMetamorfos);
-const descartadas = sinMetamorfos.splice(0, 38);
+const descartadas = sinMetamorfos.splice(0, 4);
 
 // Formar mazo final con metamorfos incluidos
 const mazoFinal = [...sinMetamorfos, ...metamorfos];
