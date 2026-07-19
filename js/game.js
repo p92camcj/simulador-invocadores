@@ -75,7 +75,7 @@ export function nextTurn() {
 }
 
 // Finaliza la partida y se pregunta si queremos una nueva partida
-function finalizarPartida(motivo) {
+export function finalizarPartida(motivo) {
   const jugarOtra = confirm(`${motivo}\n\n¿Quieres jugar otra vez?`);
   if (jugarOtra) {
     // Reset completo

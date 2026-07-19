@@ -1,5 +1,5 @@
 // actions.js
-import { nextTurn } from './game.js';
+import { nextTurn, finalizarPartida } from './game.js';
 import { render } from './render.js';
 import { applyAbility } from './abilities.js';
 import { draw, generarVis, mostrarCarta, gestionarMetamorfos } from './utils.js';
@@ -93,7 +93,7 @@ export function initActions(players, neutrals) {
     const personajesConHabilidad = ['Ocultista', 'Cronista', 'Cronomante', 'Estratega', 'Aprendiz', 'Metamorfo'];
     const tieneHabilidad = personajesConHabilidad.includes(card.name);
     if (!tieneHabilidad || !ask || confirm(`${players[ownerIdx].name}: ¿activar habilidad de ${card.name}?`)) {
-      applyAbility(card.name, ownerIdx, stack, players, neutrals, levelIdx);
+      applyAbility(card.name, ownerIdx, stack, players, neutrals, window.levelIdx);
     }
 
 
@@ -172,8 +172,11 @@ export function initActions(players, neutrals) {
         neutrals.push([]);
         document.querySelector('#zoneNeutral').classList.remove('hidden');
         window.levelIdx++;
-        finalizarPartida('Se ha completado la invocación A. Fin de la partida.');
-        return;
+        const esUltimaInvocacion = window.levelIdx >= window.LEVELS.length;
+        if (esUltimaInvocacion) {
+          finalizarPartida(`Se ha completado la invocación ${lvl}. Fin de la partida.`);
+          return;
+        }
       }
     }
 

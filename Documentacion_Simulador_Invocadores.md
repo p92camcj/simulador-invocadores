@@ -95,7 +95,9 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | Nombre          | Tipo      | Descripción                                                                                                     |
 |-----------------|-----------|-----------------------------------------------------------------------------------------------------------------|
 | `initGame()`    | `función` | - Construye el mazo `window.deck` con personajes. <br>- Reparte 1 carta visible + 1 oculta a cada jugador. <br>- Inicializa `window.levelIdx`, `window.turn`, `window.played`. <br>- Llama a `initActions()`. <br>- Inicia primer turno con `nextTurn()`. |
-| `nextTurn()`    | `función` | - `window.played = false`. <br>- Alerta “Turno de X”. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`.                                           |
+| `nextTurn()`    | `función` | - `window.played = false`. <br>- Si la jugadora activa no tiene cartas en mano, termina la partida vía `finalizarPartida()`. <br>- Alerta “Turno de X”. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`. |
+| `finalizarPartida(motivo)` | `función` | Pregunta si se quiere jugar otra partida. Si sí, llama a `resetJuego()`; si no, bloquea la interfaz con un mensaje de cierre. Llamada desde `game.js` (mano vacía) y desde `actions.js` (última invocación completada) — por eso debe permanecer `export`ada. |
+| `resetJuego()`  | `función` | Oculta la UI de juego, muestra la de configuración, limpia el estado global (`window.players`, `window.deck`, etc.) y vuelve a llamar a `initSetup()`. |
 
 ---
 

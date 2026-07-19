@@ -27,11 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.body.appendChild(versionDiv);
 
-      // Comparar con la última versión publicada en GitHub
+      // Comparar con la última versión publicada en GitHub.
+      // Solo se compara X.Y.Z (release), ignorando W (nº de commit), que
+      // cambia en cada push y no debe disparar el aviso de actualización.
+      const base = v => (v || '').replace(/^v/i, '').split('.').slice(0, 3).join('.');
+
       fetch('https://api.github.com/repos/p92camcj/simulador-invocadores/releases/latest')
         .then(response => response.json())
         .then(release => {
-          if (release.tag_name && release.tag_name !== currentVersion) {
+          if (release.tag_name && base(release.tag_name) !== base(currentVersion)) {
             const updateDiv = document.createElement('div');
             updateDiv.textContent = `¡Nueva versión disponible: ${release.tag_name}!`;
             updateDiv.style.position = 'fixed';
