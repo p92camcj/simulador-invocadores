@@ -4,6 +4,18 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.5.0.29] - 2026-07-20
+
+### Añadido
+- **Imágenes reales de cartas** en vez de emoji + texto, en todos los sitios donde se muestra una carta: mano de la jugadora activa, carta superior visible de cada Portal (propio, de otras jugadoras y central). Nuevo `assets/cards/` con 17 PNG (362×504): los 11 personajes con habilidad, Reena/Sora/Lumo, el reverso genérico de carta oculta, y el anverso/reverso de la carta de ayuda.
+- `cardImages` y `CARTA_OCULTA_IMG` en `js/utils.js`: mapeo nombre de personaje → ruta de imagen. Las cartas ocultas para quien mira siempre usan el reverso genérico, con `alt="Carta oculta"` (nunca el nombre real, para no filtrar información oculta a quien inspeccione el DOM).
+- `js/render.js`: nueva función interna `cartaImgHtml(name, visible)` sustituye los `mostrarCarta()`/"Carta Oculta" de mano y Portales por `<img>` reales. Los `<select>`/`picker()` de habilidades siguen usando texto (un `<select>` nativo no aloja imágenes de forma fiable).
+- `style.css`: `.card` ahora es un contenedor flex con `.card-label` + `.card-img`/`.card-empty`, manteniendo la proporción real de las cartas (362:504) sin deformarlas; ajuste de tamaño en la media query móvil existente (768px).
+- Botón "Ver ayuda" en la cabecera (visible en cualquier momento, no solo en partida) que abre un modal simple con `ayuda-anverso.png` y `ayuda-reverso.png` — la carta de ayuda física, referencia rápida de habilidades y secuencia de turno.
+- `service-worker.js`: añadidos los 17 assets nuevos a `urlsToCache` y subido `CACHE_NAME` a `invocadores-v1.5.0` para invalidar el caché de quienes ya tengan la PWA instalada (si no, seguirían viendo la versión sin imágenes).
+
+---
+
 ## [1.4.2.28] - 2026-07-20
 
 ### Corregido

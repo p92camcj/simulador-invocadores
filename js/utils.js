@@ -55,6 +55,29 @@ export const iconos = {
 };
 export const mostrarCarta = card => `${iconos[card.name] || ''} ${card.name}`;
 
+// ---------- Imágenes de cartas ----------
+// TODO: cuando el Metamorfo tenga disfraz persistente (ver
+// docs/MEJORAS_FUTURAS.md), mostrar la imagen del personaje imitado + una
+// insignia indicando que es en realidad un Metamorfo, en vez de usar
+// siempre metamorfo.png tal cual.
+export const cardImages = {
+  'Maestro': 'assets/cards/maestro.png',
+  'Clarividente': 'assets/cards/clarividente.png',
+  'Ocultista': 'assets/cards/ocultista.png',
+  'Cronomante': 'assets/cards/cronomante.png',
+  'Estratega': 'assets/cards/estratega.png',
+  'Cronista': 'assets/cards/cronista.png',
+  'Aprendiz': 'assets/cards/aprendiz.png',
+  'Centinela': 'assets/cards/centinela.png',
+  'Pícaro': 'assets/cards/picaro.png',
+  'Metamorfo': 'assets/cards/metamorfo.png',
+  'Entusiasta': 'assets/cards/entusiasta.png',
+  'Reena': 'assets/cards/reena.png',
+  'Sora': 'assets/cards/sora.png',
+  'Lumo': 'assets/cards/lumo.png',
+};
+export const CARTA_OCULTA_IMG = 'assets/cards/carta-oculta-reverso.png';
+
 // ---------- Utilidades DOM y lógica básica ----------
 export const $ = selector => document.querySelector(selector);
 

@@ -1,6 +1,17 @@
 // render.js
-import { mostrarCarta, actualizarVisibilidad, sumaGemas } from './utils.js';
+import { mostrarCarta, actualizarVisibilidad, sumaGemas, cardImages, CARTA_OCULTA_IMG } from './utils.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
+
+/**
+ * Devuelve el <img> de una carta. Si `visible` es false, siempre usa el
+ * reverso genérico (CARTA_OCULTA_IMG) y un alt sin el nombre real — no hay
+ * que filtrar en el DOM qué personaje es una carta oculta para quien mira.
+ */
+function cartaImgHtml(name, visible) {
+  const src = visible ? (cardImages[name] || CARTA_OCULTA_IMG) : CARTA_OCULTA_IMG;
+  const alt = visible ? name : 'Carta oculta';
+  return `<img src="${src}" alt="${alt}" class="card-img">`;
+}
 
 /**
  * Muestra un selector emergente para elegir una opción entre varias.
@@ -72,15 +83,18 @@ export function render(players, neutrals, levelIdx) {
   zoneActive.innerHTML = `<div class="section ${activeColor}">`;
   zoneActive.innerHTML += `<h3>${pl.name} (G ${sumaGemas(pl.gems)})</h3>`;
   pl.portals.forEach((stack, i) => {
-    const top = stack.length === 0 ? 'Vacío' : (stack.at(-1).vis?.public ? mostrarCarta(stack.at(-1)) : 'Carta Oculta');
-    zoneActive.innerHTML += `<div class="card">Portal ${i+1}: ${top} (${stack.length})</div>`;
+    const topCard = stack.at(-1);
+    const body = stack.length === 0
+      ? '<div class="card-empty">Vacío</div>'
+      : cartaImgHtml(topCard.name, topCard.vis?.public === true);
+    zoneActive.innerHTML += `<div class="card"><div class="card-label">Portal ${i+1} (${stack.length})</div>${body}</div>`;
   });
   zoneActive.innerHTML += '<h4>Mano</h4>';
   pl.hand.forEach((c, idx) => {
     const visible = c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente;
     zoneActive.innerHTML += `
       <div class="card" onclick="selectCard(${idx})">
-        ${visible ? mostrarCarta(c) : 'Carta Oculta'}
+        ${cartaImgHtml(c.name, visible)}
       </div>`;
   });
   zoneActive.innerHTML += `</div>`;
@@ -92,20 +106,26 @@ export function render(players, neutrals, levelIdx) {
     zoneOthers.innerHTML += `<div class="section ${colorClass}">`;
     zoneOthers.innerHTML += `<h4>${p.name} (G ${sumaGemas(p.gems)})</h4>`;
     p.portals.forEach((stack, j) => {
-      const top = stack.length === 0 ? 'Vacío' : (stack.at(-1).vis?.public ? mostrarCarta(stack.at(-1)) : 'Carta Oculta');
-      zoneOthers.innerHTML += `<div class="card">Portal ${j+1}: ${top} (${stack.length})</div>`;
+      const topCard = stack.at(-1);
+      const body = stack.length === 0
+        ? '<div class="card-empty">Vacío</div>'
+        : cartaImgHtml(topCard.name, topCard.vis?.public === true);
+      zoneOthers.innerHTML += `<div class="card"><div class="card-label">Portal ${j+1} (${stack.length})</div>${body}</div>`;
     });
     zoneOthers.innerHTML += '<h5>Cartas ocultas</h5>';
     p.hand.forEach(h => {
-      zoneOthers.innerHTML += `<div class="card">${h.vis?.others ? mostrarCarta(h) : "?"}</div>`;
+      zoneOthers.innerHTML += `<div class="card">${cartaImgHtml(h.name, h.vis?.others === true)}</div>`;
     });
     zoneOthers.innerHTML += `</div>`;
   });
 
   neutralArea.innerHTML = '';
   neutrals.forEach((stack, i) => {
-    const top = stack.length === 0 ? 'Vacío' : (stack.at(-1).vis?.public ? mostrarCarta(stack.at(-1)) : 'Carta Oculta');
-    neutralArea.innerHTML += `<div class="card">Neutral ${i+1}: ${top} (${stack.length})</div>`;
+    const topCard = stack.at(-1);
+    const body = stack.length === 0
+      ? '<div class="card-empty">Vacío</div>'
+      : cartaImgHtml(topCard.name, topCard.vis?.public === true);
+    neutralArea.innerHTML += `<div class="card"><div class="card-label">Neutral ${i+1} (${stack.length})</div>${body}</div>`;
   });
 
   const lvl = LEVELS[levelIdx] || '-';

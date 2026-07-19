@@ -26,6 +26,18 @@
       <button id="btnCtrlPlay" class="btn primary hidden">Jugar una carta</button>
       <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
+      <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">Ver ayuda</button>
+    </div>
+
+    <div id="helpModal" class="section hidden">
+      <div class="play-title">
+        <span>Carta de ayuda</span>
+        <button class="close-btn" onclick="document.getElementById('helpModal').classList.add('hidden')">✖</button>
+      </div>
+      <div class="help-cards">
+        <img src="assets/cards/ayuda-anverso.png" alt="Carta de ayuda, anverso: resumen de habilidades" class="help-card-img">
+        <img src="assets/cards/ayuda-reverso.png" alt="Carta de ayuda, reverso: secuencia de turno" class="help-card-img">
+      </div>
     </div>
 
     <div id="setup" class="section">

@@ -32,8 +32,10 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `INVOCATION_SETS` | `const`   | Mapea `introductorio\|normal\|floral` → nivel → `{ nombre, need, gemas }`. Sustituye al antiguo `COMBOS` genérico. |
 | `INVOCATION_ASTERISCO` | `const` | 4ª invocación de Modo Experto (`Madain`), definida pero **no conectada** a ningún flujo real todavía. |
 | `PERSONAJES_CON_HABILIDAD` | `const` | Personajes activables en Fase B (`Ocultista`, `Cronista`, `Cronomante`, `Estratega`, `Aprendiz`, `Metamorfo`). Única fuente para `opcionesActivarHabilidad()`. |
-| `iconos`          | `const`   | Mapa nombre→emoji para representar cartas (incluye Reena/Sora/Lumo).          |
-| `mostrarCarta(card)` | `función` | Devuelve la cadena `"<icono> <nombre>"` para mostrar en la UI.              |
+| `iconos`          | `const`   | Mapa nombre→emoji para representar cartas (incluye Reena/Sora/Lumo). Se usa en `selCard`/`picker()` (texto) y en el estado de invocación; ya no en mano/Portales, que usan `cardImages`. |
+| `mostrarCarta(card)` | `función` | Devuelve la cadena `"<icono> <nombre>"` para mostrar en la UI (selects/pickers y estado de invocación).              |
+| `cardImages`      | `const`   | Mapa nombre de personaje → ruta de imagen real (`assets/cards/*.png`), 14 personajes con habilidad + Reena/Sora/Lumo. El Metamorfo siempre usa `metamorfo.png` tal cual (no hay disfraz visual todavía, ver TODO en el propio archivo). |
+| `CARTA_OCULTA_IMG`| `const`   | Ruta del reverso genérico (`assets/cards/carta-oculta-reverso.png`) usado por `render.js` para cualquier carta oculta para quien mira, sin filtrar el nombre real en el `alt`. |
 | `$`               | `función` | Atajo para `document.querySelector(selector)`.                               |
 | `shuffle(array)`  | `función` | Mezcla un array _in place_ (algoritmo Fisher–Yates).                        |
 | `draw(player, visible)` | `función` | Robo de carta del mazo global (`window.deck`) a la mano de un jugador.      |
@@ -88,8 +90,8 @@ en vez de asumir su forma directamente.
 
 | Nombre     | Tipo      | Descripción                                                                                          |
 |------------|-----------|------------------------------------------------------------------------------------------------------|
-| `picker(title, options, cb)` | `función` | Muestra un modal `<div id="picker">` con un `<select>` y botones OK/Cancelar; invoca `cb(valor)` o cierra. |
-| `render(players, neutrals, levelIdx)` | `función` | Dibuja: <br>- Zona activa (jugadora actual, portales, mano, suma de Gemas vía `sumaGemas()`). <br>- Zona de otros jugadores (portales + sus cartas ocultas). <br>- Portales neutrales. <br>- Estado y componentes de la invocación activa, resuelta desde `INVOCATION_SETS[window.invocationSet][lvl]` (nombre y `need`). |
+| `picker(title, options, cb)` | `función` | Muestra un modal `<div id="picker">` con un `<select>` y botones OK/Cancelar; invoca `cb(valor)` o cierra. Las opciones siguen siendo texto (no imágenes) — un `<select>` nativo no aloja `<img>` de forma fiable. |
+| `render(players, neutrals, levelIdx)` | `función` | Dibuja: <br>- Zona activa (jugadora actual, portales, mano, suma de Gemas vía `sumaGemas()`). <br>- Zona de otros jugadores (portales + sus cartas ocultas). <br>- Portales neutrales. <br>- Estado y componentes de la invocación activa, resuelta desde `INVOCATION_SETS[window.invocationSet][lvl]` (nombre y `need`). <br>Mano y Portales (propios, ajenos y centrales) ya no muestran emoji/texto: usan la función interna `cartaImgHtml(name, visible)`, que renderiza un `<img>` con `cardImages[name]` si la carta es visible para quien mira, o siempre `CARTA_OCULTA_IMG` (con `alt="Carta oculta"`, sin el nombre real) si no lo es. |
 
 ---
 
