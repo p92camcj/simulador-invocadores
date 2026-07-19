@@ -13,7 +13,11 @@ export function initGame() {
   // Construir mazo de personajes — cantidades reales de "Modo normal" según
   // docs/reglamento/REGLAMENTO.md ("Preparación del mazo de personajes"): no
   // incluye Entusiasta (expansión aparte) ni Animales salvo que el set de
-  // invocación elegido los necesite (introductorio/floral).
+  // invocación elegido sea 'introductorio'. El set 'floral' NO es una
+  // tercera variante de mazo: reutiliza este mismo mazo de "Modo normal"
+  // (solo cambian nombre/combo de las cartas de invocación en
+  // INVOCATION_SETS.floral), porque sus personajes requeridos (Ocultista,
+  // Centinela, Maestro, Clarividente...) no existen en el mazo introductorio.
   const charsBase = [
     ...Array(2).fill('Maestro'),
     ...Array(2).fill('Clarividente'),
@@ -26,7 +30,7 @@ export function initGame() {
     ...Array(6).fill('Pícaro'),
     ...Array(2).fill('Metamorfo'),
   ];
-  const necesitaAnimales = window.invocationSet === 'introductorio' || window.invocationSet === 'floral';
+  const necesitaAnimales = window.invocationSet === 'introductorio';
   const chars = necesitaAnimales
     ? [...charsBase, ...Array(3).fill('Reena'), ...Array(3).fill('Sora'), ...Array(3).fill('Lumo')]
     : charsBase;

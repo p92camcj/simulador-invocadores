@@ -25,13 +25,18 @@ the version that shipped this):
   the optional expansion described in "Variantes y modos de juego", never
   shuffled in by default) and its passive ability (lose a Gem on a
   successful invocation). **Animales** (Reena, Sora, Lumo) *are* now in the
-  deck, but only when the `introductorio` or `floral` invocation set is
-  selected (see `game.js`) — matching the rulebook's own "Modo normal" deck
-  prep, which excludes Animales/Entusiasta. Note this means `game.js`'s deck
-  is deliberately **32 cards for the `normal` set** and **41 for
-  `introductorio`/`floral`**, not the 43-card full component count — the
-  43-card figure in "Componentes" is total physical cards across all modes,
-  not what goes in a single "Modo normal" deck.
+  deck, but only when the `introductorio` invocation set is selected (see
+  `game.js`). **Not** for `floral`: floral reuses the exact same "Modo
+  normal" deck as the `normal` set (32 cards) — it isn't a third deck
+  variant, it only renames/recombines the invocation cards
+  (`INVOCATION_SETS.floral`). Floral's required characters (Ocultista,
+  Centinela, Maestro, Clarividente, ...) don't even exist in the
+  introductorio deck, so grouping floral with introductorio for deck
+  purposes made its invocations uncompletable — a real bug that shipped in
+  `1.4.0.26` and was fixed in the very next version, see `CHANGELOG.md`.
+  So: `game.js`'s deck is **32 cards for `normal` and `floral`**, **41 for
+  `introductorio`** — not the 43-card full component count, which is total
+  physical cards across all modes, not what goes in a single deck.
 - Missing modes: Introductorio (as a full selectable deck-prep variant, not
   just its invocation set), Avanzado, Experto (with the central autómata),
   the 2v2 team variant, and the Entusiasta expansion.

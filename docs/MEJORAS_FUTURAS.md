@@ -32,8 +32,12 @@ Implementado en el mismo bloque de trabajo que separó la Fase B del turno
   "Modo normal" del reglamento (32 cartas: 2 Maestro, 2 Clarividente, 2
   Ocultista, 3 Cronomante, 3 Estratega, 4 Cronista, 4 Aprendiz, 4 Centinela,
   6 Pícaro, 2 Metamorfo), añadiendo los 9 Animales (3 Reena/Sora/Lumo) solo
-  cuando el set elegido es `introductorio` o `floral` — no siempre los 43
-  componentes físicos totales, ver la nota en `CLAUDE.md`. Entusiasta sigue
+  cuando el set elegido es `introductorio` — no siempre los 43 componentes
+  físicos totales, ver la nota en `CLAUDE.md`. El set `floral` reutiliza el
+  mismo mazo de 32 cartas que `normal` (no es una tercera variante de
+  mazo); una versión anterior de este cambio agrupaba mal `floral` con
+  `introductorio`, lo que hacía imposible completar sus invocaciones — bug
+  corregido en la versión siguiente, ver `CHANGELOG.md`. Entusiasta sigue
   sin entrar nunca en el mazo (es la expansión aparte).
 - **Maestro, bonus pasivo**: la comprobación ahora exige que Maestro sea
   requisito de la invocación **activa** (cualquier nivel, no solo `'A'`) y
@@ -70,8 +74,9 @@ no forma parte de la preparación normal del mazo), y su habilidad pasiva
 invocación con el Entusiasta bocarriba en un Portal) no existe en
 `js/abilities.js`. Los **Animales** (Reena, Sora, Lumo) ya están
 integrados — sin habilidad propia, que es fiel al reglamento ("no tienen
-ninguna habilidad") — y entran en el mazo cuando el set de invocación
-elegido los necesita (introductorio o floral, ver `js/game.js`).
+ninguna habilidad") — y entran en el mazo solo cuando el set de invocación
+elegido es `introductorio` (el único que los necesita; `floral` reutiliza
+el mazo normal sin Animales, ver `js/game.js`).
 
 ### Maestro: habilidad activa nueva
 
