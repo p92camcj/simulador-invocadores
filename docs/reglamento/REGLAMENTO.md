@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-19 14:40 (Europe/Madrid)
+> **Última actualización:** 2026-07-19 19:07 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -14,6 +14,16 @@
 >
 > ⚠️ **El simulador digital (`js/`) todavía no implementa todas estas reglas.**
 > Ver `CLAUDE.md` para el detalle de qué está desactualizado.
+>
+> ⚠️ **Punto ambiguo en el PDF fuente, pendiente de confirmar con el diseñador:**
+> en "Modo avanzado" el texto dice literalmente *"se extraen dos cartas al
+> azar que jugarán esta partida"*. Por coherencia con el resto del documento
+> (donde "extraer" cartas del mazo siempre significa apartarlas de la caja,
+> sin usarlas) y con la frase equivalente de Modo experto ("No se extraen
+> cartas en esta partida"), aquí se ha interpretado como *"que **no**
+> jugarán esta partida"* — es decir, se apartan 2 cartas al azar sin mirarlas,
+> igual que ya hacía la versión anterior del reglamento con 4 cartas. Si la
+> intención real era otra, corregir esta nota y el apartado correspondiente.
 
 ---
 
@@ -67,11 +77,16 @@ la historia.
   - 5 de invocación modo experto — valores 11, 12, 12, 12 y 13
   - 20 Gemas azules de valor 1 (Gemas unitarias)
 
-![64 cartas de personaje](img/03-cartas-personaje.jpg)
+![43 cartas de personaje](img/03-cartas-personaje.jpg)
 
-**64 cartas de personaje**: 2× Maestro, 3× Clarividente, 3× Ocultista, 4×
-Cronomante, 4× Estratega, 6× Cronista, 6× Aprendiz, 6× Centinela, 8× Pícaro,
-2× Metamorfo, 2× Entusiasta, 18× Animales (Reena, Sora, Lumo — 6 de cada).
+**43 cartas de personaje**: 2× Maestro, 2× Clarividente, 2× Ocultista, 3×
+Cronomante, 3× Estratega, 4× Cronista, 4× Aprendiz, 4× Centinela, 6× Pícaro,
+2× Metamorfo, 2× Entusiasta, 9× Animales (Reena, Sora, Lumo — 3 de cada).
+
+> **Cambio respecto a versiones anteriores:** el mazo de personajes se ha
+> reducido de 64 a 43 cartas (bajan las cantidades de Clarividente,
+> Ocultista, Cronomante, Estratega, Cronista, Aprendiz, Centinela, Pícaro y
+> Animales). Maestro, Metamorfo y Entusiasta mantienen su cantidad.
 
 ---
 
@@ -124,9 +139,13 @@ Personajes duplicados se pierden y, tras el reparto, siempre sobran Gemas.
   Cronomante. Se baraja y se deja junto a las cartas de invocación.
 - **Modo normal** (para jugadores que ya conocen las mecánicas): Pícaro,
   Centinela, Aprendiz, Cronista, Estratega, Cronomante, Ocultista,
-  Clarividente y Maestro. Se baraja, se sacan al azar 4 cartas sin mirarlas
-  (se dejan en la caja), se introducen los 2 Metamorfo, se vuelve a barajar
-  y se deja junto a las cartas de invocación.
+  Clarividente, Maestro y Metamorfo. Se baraja el mazo y se sacan al azar 2
+  cartas sin mirarlas, que se dejarán en la caja del juego.
+
+  > **Cambio respecto a versiones anteriores:** el Metamorfo ya forma parte
+  > del mazo base de "Modo normal" desde el principio (antes se barajaba
+  > aparte y se introducía después de descartar). También bajan de 4 a 2
+  > las cartas que se apartan al azar sin mirar, acorde al mazo más pequeño.
 
 ### 4. Reparto de cartas y Gemas a los jugadores
 
@@ -165,11 +184,13 @@ Cada jugador, en su turno, debe seguir estas fases:
 
 **B. Activar la habilidad de un personaje (opcional)**
 - Puedes activar la habilidad del Personaje visible en tu Portal.
-- O paga una Gema de valor 1 (puedes cambiar de valores superiores) para
-  activar la habilidad de un Personaje visible en un Portal central.
+- O paga una Gema azul de valor 1 (sí puedes cambiar Gemas de valores
+  superiores) para activar la habilidad de un Personaje visible en un
+  Portal central.
 - Si de una invocación realizada anteriormente obtuviste la Gema de menor
-  valor de esa invocación, puedes revelarla para hacer de forma gratuita la
-  habilidad de un personaje central.
+  valor de esa invocación (el valor va acompañado de un asterisco `*`),
+  puedes revelarla para hacer de forma gratuita la habilidad de un
+  personaje central.
 
 **C. Comprobar invocación**
 - Se revisa si se cumplen las condiciones de la invocación activa: están
@@ -247,10 +268,20 @@ adorables.
 
 ### Modo normal
 
-**Maestro** — Si el Maestro es requisito de la Invocación y no hay ningún
-Pícaro visible **en toda la mesa**, el jugador que lo tiene visible en su
-Portal gana tres Gemas de valor 1 adicionales, además de las de la
-Invocación.
+**Maestro** — Elige una de las cartas que veas en la mano de otro jugador
+para bajarla instantáneamente al Portal de ese mismo jugador seleccionado;
+a continuación, ese jugador roba una carta para reponer su mano. Además, si
+el Maestro es requisito de la Invocación y no hay ningún Pícaro visible **en
+toda la mesa**, el jugador que tiene visible al Maestro en su Portal gana
+tres Gemas de valor 1 adicionales, además de las de la Invocación.
+
+> **Cambio respecto a versiones anteriores:** el Maestro tenía únicamente el
+> bonus pasivo de las tres Gemas; ahora tiene además una habilidad activa
+> (mover una carta visible de la mano de otro jugador directamente a su
+> propio Portal). Nótese que "la carta que veas en la mano de otro jugador"
+> son las cartas que ese jugador tiene ocultas para sí mismo pero visibles
+> para el resto — es la única carta de la mano de otro jugador que se puede
+> ver. El propio jugador seleccionado repone mano robando del mazo.
 
 **Clarividente** — Mientras un jugador tenga a la Clarividente visible en su
 Portal, podrá ver ambas cartas de su mano (la visible y la que era oculta
@@ -273,13 +304,32 @@ boca abajo, de modo que solo puede haber una Centinela visible en mesa. Se
 puede jugar una carta sobre una Centinela visible.
 
 **Metamorfo** — Si el Metamorfo está visible en el Portal de un jugador,
-este en su turno puede pagar una Gema para que adopte la identidad del
-personaje (no animal) restante necesario para llevar a cabo la invocación
-activa. Esta transformación no le permite ejecutar la habilidad del
-personaje imitado, pero cuenta como dicho personaje a todos los efectos de
-la invocación, incluyendo el cumplimiento de la combinación requerida y el
-reparto de Gemas. Solo puede transformarse si su presencia hace posible
-completar la invocación.
+este en su turno puede pagar una Gema de valor 1 para que adopte la
+identidad de cualquier personaje (no animal). Toma una ficha con la cara del
+personaje en quien se transforma y la coloca encima de su carta. Esta
+transformación no le permite ejecutar la habilidad del personaje imitado,
+pero cuenta como dicho personaje a todos los efectos de la invocación,
+incluyendo el cumplimiento de la combinación requerida y el reparto de
+Gemas. La transformación se mantiene hasta que el Metamorfo sea tapado por
+otra carta, o vuelva a transformarse en otro personaje pagando de nuevo su
+coste.
+
+> **Cambios respecto a versiones anteriores:**
+> 1. Antes solo podía transformarse en el personaje concreto que faltase
+>    para completar la invocación activa ("Solo puede transformarse si su
+>    presencia hace posible completar la invocación"). Esa restricción
+>    **desaparece**: ahora puede transformarse en cualquier personaje que
+>    no sea animal, en cualquier momento de su turno, sin necesidad de que
+>    complete nada.
+> 2. Se aclara explícitamente que la transformación es persistente (no es
+>    un efecto de un solo uso): dura hasta que se tape la carta o se pague
+>    de nuevo el coste para transformarla en otra cosa.
+> 3. Detalle de componente físico: se usa una ficha con la cara del
+>    personaje imitado, colocada sobre la carta — relevante para cómo debe
+>    representarse visualmente en el simulador digital (superponer un
+>    icono/etiqueta sobre la carta transformada, y no solo cambiar su
+>    nombre internamente sin dejar rastro de que es "en realidad" un
+>    Metamorfo).
 
 > **Nota:** si el Metamorfo está en un Portal central costará 2 Gemas, una
 > por el coste de usar una habilidad de un Portal central y otra por la
@@ -353,17 +403,24 @@ comparte la victoria.
 
 ### Modo avanzado
 
-- Se juega con todas las cartas excepto: Entusiasta.
-- Se extraen los dos Metamorfos del mazo.
-- El resto del mazo se baraja y se eliminan del juego cuatro cartas al azar
-  (que se devuelven a la caja sin mirarlas).
-- Se reincorporan los dos Metamorfos al mazo y se vuelve a barajar.
+- Se juega con todas las cartas, incluidos los Animales, excepto el
+  Entusiasta.
+- Se baraja el mazo y se extraen dos cartas al azar (ver nota de ambigüedad
+  al principio de este documento: aquí se interpretan como cartas que
+  **no** se usan esta partida, igual que en el resto de modos).
+
+> **Cambio respecto a versiones anteriores:** antes se excluían expresamente
+> los dos Metamorfos, se descartaban 4 cartas al azar del resto del mazo y
+> luego se reincorporaban los Metamorfos. Ahora es un único paso: se baraja
+> todo el mazo (Metamorfos incluidos desde el principio) y se apartan 2
+> cartas al azar.
 
 ### Modo experto
 
 - Se juega con todas las cartas excepto: Entusiasta.
+- No se extraen cartas en esta partida.
 - Además de las tres invocaciones del set elegido, se añade la cuarta
-  invocación \* como invocación final.
+  invocación, llamada **"Asterisco"** `*`, como invocación final.
 - Esta invocación consta de Metamorfo y los tres Animales diferentes, y
   otorga Gemas de mayor puntuación (11, 12, 12, 12, 13). En esta invocación,
   el Metamorfo debe conservar su aspecto natural para llevar a cabo la
@@ -372,16 +429,23 @@ comparte la victoria.
   perder al resto, si consigue la mayor cantidad de Gemas.
 - Si en algún Portal central había algún personaje participante (y no
   repetido) al realizarse una invocación, el autómata gana las Gemas
-  correspondientes (las habilidades de Pícaro y Maestro también surten
-  efecto para el autómata).
+  correspondientes (las **habilidades pasivas** de obtención de Gemas de
+  Pícaro y Maestro también surten efecto para el autómata).
 - Al finalizar la partida, el jugador con MENOS puntuación PUEDE
   intercambiar todas sus Gemas por todas las del autómata.
 - Los Portales centrales, ahora del autómata, siguen teniendo el coste de
   una Gema unitaria para realizar la habilidad de uno de sus personajes.
 
+> **Cambio respecto a versiones anteriores:** se nombra formalmente la 4ª
+> invocación ("Asterisco"), se aclara que en este modo no se aparta ninguna
+> carta al preparar el mazo, y se precisa que solo las **habilidades
+> pasivas** de Pícaro y Maestro (el bonus de Gemas) surten efecto para el
+> autómata — no su nueva habilidad activa (el Maestro no tiene turno propio
+> en el que activarla).
+
 > **Nota:** este modo de juego hará que el jugador que vaya en desventaja
 > pueda ganar la partida si hace que el autómata gane más puntos que el
-> resto de jugadores durante la partida.
+> resto de jugadores durante la partida y luego le intercambia las Gemas.
 
 ---
 
@@ -426,8 +490,8 @@ Portal. En ese caso, la criatura invocada no otorga Gemas por ese personaje.
 Solo los personajes únicos visibles reciben la recompensa.
 
 **Metamorfo** — Personaje especial que puede adoptar la identidad de otro
-personaje pagando una Gema, solo para cumplir condiciones de invocación, y
-sin copiar la habilidad.
+personaje pagando una Gema, sin copiar la habilidad del personaje en que se
+transforma.
 
 **Norma de visibilidad** — Siempre que una carta cambie de mano (por
 ejemplo, con la habilidad del Aprendiz), se mantiene su orientación
@@ -476,10 +540,10 @@ personajes únicos visibles implicados en la invocación.
 
 **¿El Metamorfo puede copiar a cualquier personaje en cualquier momento?**
 No, solamente en el turno del jugador y siempre que esté visible en su
-Portal y este decida pagar una Gema. Solo puede transformarse si con ello se
-completa una invocación activa. No ejecuta la habilidad del personaje
-imitado, pero cuenta como tal para cumplir la invocación y recibir Gemas si
-corresponde.
+Portal y este decida pagar una Gema. Toma una ficha con la cara del
+personaje en quien se transforma y la coloca sobre su cara. No ejecuta la
+habilidad del personaje imitado, pero cuenta como tal para cumplir la
+invocación y recibir Gemas si corresponde.
 
 **¿Puedo pagar con Gemas que no sean de valor 1?**
 Sí, pero en ese caso antes debes mostrar el valor de la Gema de color (no

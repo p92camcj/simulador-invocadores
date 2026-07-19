@@ -17,7 +17,9 @@ around a table with each participant looking at the same shared screen
 **The code and the rulebook are not currently in sync.** `docs/reglamento/REGLAMENTO.md`
 is the source of truth for how the game is actually meant to be played today;
 `js/*.js` implements an older, simplified prototype of the rules. Known gaps
-as of the last audit (2026-07-19):
+as of the last audit (2026-07-19), updated after the 2026-07-19 rulebook
+revision (see the ">**Cambio respecto a versiones anteriores:**" blocks in
+the rulebook for exactly what changed there):
 
 - No selection of invocation **sets** (introductorio / normal / floral); the
   code hardcodes one generic combo per level (`COMBOS.C/B/A` in `utils.js`).
@@ -36,6 +38,21 @@ as of the last audit (2026-07-19):
   of the current combo, not whether any Pícaro is visible anywhere on the
   table) and is hardcoded to level `'A'` only.
 - No tiebreak logic or final scoreboard at game end.
+- The character deck quantities in `game.js` still match the **old 64-card**
+  version of the rulebook, not the current 43-card deck (2× Maestro, 2×
+  Clarividente, 2× Ocultista, 3× Cronomante, 3× Estratega, 4× Cronista, 4×
+  Aprendiz, 4× Centinela, 6× Pícaro, 2× Metamorfo, 2× Entusiasta, 9×
+  Animales).
+- Maestro is missing the rulebook's new **active** ability entirely (moving
+  a card another player can see — their hidden-to-self card — straight to
+  the Maestro's own Portal, then that player draws a replacement); only the
+  old passive three-gem bonus exists in code.
+- Metamorfo in `utils.js`/`abilities.js` still enforces the old restriction
+  ("only the character that completes the invocation") and reverts the
+  transformation instead of leaving it in place. The current rulebook drops
+  the restriction (transform into any non-animal character, any time on the
+  player's turn) and makes the transformation persistent until the Metamorfo
+  is covered by another card or transformed again.
 
 Do not assume any given piece of game logic is correct just because it's
 already in the code — check it against `docs/reglamento/REGLAMENTO.md`
