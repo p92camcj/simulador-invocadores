@@ -53,7 +53,9 @@ single-file-per-concern app, but it means **module-local variables of the
 same name (e.g. a bare `levelIdx`) do not exist unless explicitly imported —
 always reference `window.levelIdx` etc. outside of the module that owns
 the constant.** A previous bug (`ReferenceError` on every ability use) came
-from exactly this mistake — see `CHANGELOG.md` entry `1.3.1.23`.
+from exactly this mistake — see `CHANGELOG.md` entry `1.3.1.22`. A second
+instance of the same pattern (`window.picker` never actually assigned,
+called from `utils.js`) is tracked as unfixed in `docs/DEUDA_TECNICA.md`.
 
 - **`index.html`** — the single page/shell. Loads `style.css`, registers the
   service worker, and loads `js/index.js` as an ES module plus
@@ -97,7 +99,19 @@ from exactly this mistake — see `CHANGELOG.md` entry `1.3.1.23`.
 - **`Documentacion_Simulador_Invocadores.md`** — function-level reference
   for each `js/` module (what each export does). Update it when you add,
   rename, or remove an exported function/constant.
+- **`docs/DEUDA_TECNICA.md`** — known code-quality problems (bugs, latent
+  fragility, duplication, missing tests) as opposed to rulebook gaps.
+- **`docs/MEJORAS_FUTURAS.md`** — backlog of new scope: catching up with
+  the rulebook, the future networked-multiplayer direction, and UX ideas.
 - **`CHANGELOG.md`** — full version history.
+
+## Regla de prioridad: deuda técnica antes que alcance nuevo
+
+Los ítems de prioridad **alta o media** de `docs/DEUDA_TECNICA.md` van
+antes que cualquier bloque nuevo de `docs/MEJORAS_FUTURAS.md`, salvo que el
+propietario del proyecto indique explícitamente lo contrario para una
+tarea concreta. Ante la duda de qué atacar primero en una sesión sin
+instrucción específica, esta es la regla por defecto.
 
 ## Keep the rulebook and module docs in sync
 

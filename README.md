@@ -93,7 +93,11 @@ fuente de verdad de cómo se juega realmente hoy en día en mesa; el código
 en `js/` implementa una versión más simple y desfasada de esas reglas
 (faltan sets de invocación, la economía real de gemas, personajes y modos
 de juego enteros, entre otras cosas). El listado detallado y actualizado de
-qué falta por implementar vive en `CLAUDE.md`, no aquí.
+qué falta por implementar, como bloques de trabajo concretos, vive en
+**[`docs/MEJORAS_FUTURAS.md`](docs/MEJORAS_FUTURAS.md)** (y de forma
+resumida en `CLAUDE.md`). Los problemas de calidad de código (bugs,
+deuda técnica) en vez de reglas del juego están en
+**[`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md)**.
 
 ## Historial de cambios
 
