@@ -30,12 +30,35 @@ document.addEventListener('DOMContentLoaded', () => {
       // Comparar con la última versión publicada en GitHub.
       // Solo se compara X.Y.Z (release), ignorando W (nº de commit), que
       // cambia en cada push y no debe disparar el aviso de actualización.
-      const base = v => (v || '').replace(/^v/i, '').split('.').slice(0, 3).join('.');
+      // La comparación es numérica y direccional: el aviso solo debe verse
+      // si la Release es realmente MÁS NUEVA que version.json, no solo
+      // "distinta" (si el código ya va por delante de la última Release
+      // publicada, mostrar el aviso sería un falso positivo engañoso).
+      const parseVersion = v => {
+        const m = (v || '').trim().replace(/^v/i, '').match(/^(\d+)\.(\d+)\.(\d+)/);
+        if (!m) return null;
+        return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
+      };
+      const esVersionMayor = (a, b) => {
+        for (let i = 0; i < 3; i++) {
+          if (a[i] !== b[i]) return a[i] > b[i];
+        }
+        return false;
+      };
 
       fetch('https://api.github.com/repos/p92camcj/simulador-invocadores/releases/latest')
         .then(response => response.json())
         .then(release => {
-          if (release.tag_name && base(release.tag_name) !== base(currentVersion)) {
+          if (!release.tag_name) return;
+
+          const releaseVer = parseVersion(release.tag_name);
+          const actualVer = parseVersion(currentVersion);
+          if (!releaseVer || !actualVer) {
+            console.warn(`No se pudo comparar versiones: release="${release.tag_name}", actual="${currentVersion}"`);
+            return;
+          }
+
+          if (esVersionMayor(releaseVer, actualVer)) {
             const updateDiv = document.createElement('div');
             updateDiv.textContent = `¡Nueva versión disponible: ${release.tag_name}!`;
             updateDiv.style.position = 'fixed';

@@ -4,6 +4,14 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.4.2.28] - 2026-07-20
+
+### Corregido
+- `docs/DEUDA_TECNICA.md` ítem 2: el aviso "¡Nueva versión disponible!" (`js/version-check.js`) comparaba `X.Y.Z` por **desigualdad**, no por orden — si `version.json` ya iba por delante de la última Release publicada en GitHub (el caso real de este repo, sin release nueva desde `v1.2.0`), el banner aparecía igualmente señalando una versión en realidad más antigua. Ahora la comparación es numérica y direccional: parsea ambos lados a `[X, Y, Z]` y solo muestra el banner si la Release es estrictamente mayor que `version.json`. Si el tag de la Release no es parseable como `X.Y.Z`, no se muestra el banner y se deja un `console.warn` en vez de arriesgar un falso positivo.
+- Actualizado `README.md` (sección "El aviso de nueva versión disponible") para reflejar el comportamiento corregido, en vez de documentar el bug como "comportamiento esperado".
+
+---
+
 ## [1.4.1.27] - 2026-07-19
 
 ### Corregido

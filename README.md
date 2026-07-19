@@ -54,22 +54,20 @@ como PWA:
 En la esquina inferior izquierda siempre se ve el número de versión actual
 (leído de `version.json`, formato `X.Y.Z.W` — ver más abajo). Al cargar,
 `js/version-check.js` compara ese `X.Y.Z` contra el `X.Y.Z` del **tag de la
-última release publicada en GitHub** (vía la API pública de releases). Si
-son distintos, muestra un banner amarillo arriba a la derecha con un botón
-"Actualizar ahora".
+última release publicada en GitHub** (vía la API pública de releases). El
+banner amarillo "Actualizar ahora" solo aparece si la Release es
+**estrictamente más nueva** que `version.json` (comparación numérica
+`X.Y.Z`, no solo "son distintos") — si el código ya va por delante de la
+última Release, o coincide con ella, no se muestra nada.
 
 Puntos a tener en cuenta dentro de un año:
 
 - Esta comparación **no mira commits ni `main`, solo Releases de GitHub**.
-  Si no se ha publicado una release nueva, el banner sigue comparando
-  contra la última que exista, por antigua que sea.
-- La comparación solo detecta que los números **son distintos**, no cuál es
-  mayor. Es decir: si `version.json` está *por delante* de la última
-  release (como ocurre ahora mismo — código en `1.3.1.x` sin release nueva
-  publicada desde `v1.2.0`), el banner igualmente aparece, aunque en
-  realidad no haya nada más nuevo que instalar. No es un bug que haya que
-  arreglar a ciegas si vuelve a pasar: es el comportamiento esperado del
-  código tal y como está.
+  Si no se ha publicado una release nueva, el banner nunca aparece aunque
+  `main` tenga commits nuevos — eso es intencional, no un bug.
+- Si el tag de la última Release no tiene forma `X.Y.Z` (o `vX.Y.Z`), no se
+  muestra el banner (para evitar falsos positivos) y se deja un
+  `console.warn` en la consola del navegador.
 - El propio número de versión y el banner son clicables y abren
   `CHANGELOG.md` en GitHub.
 

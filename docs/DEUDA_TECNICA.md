@@ -46,32 +46,20 @@
 - **Cómo se resolvió**: corregido de paso al reescribir `render()` para el
   reparto real de Gemas (ambas ocurrencias usan ahora `window.turn`).
 
----
+### ~~2. `js/version-check.js` comparaba versiones por desigualdad, no por orden~~ (resuelto)
 
-## Prioridad Alta
-
-### 2. `js/version-check.js` compara versiones por desigualdad, no por orden
-
-- **Dónde**: `js/version-check.js`, función `base()` y la condición
-  `if (release.tag_name && base(release.tag_name) !== base(currentVersion))`.
-- **Descripción**: la comparación normaliza ambas versiones a `X.Y.Z` y
-  solo comprueba que **sean distintas**, no cuál es mayor. Detectado
-  durante la tarea del README y confirmado en la práctica: ahora mismo
-  `version.json` está en `1.3.2.x` y la última Release de GitHub sigue
-  siendo `v1.2.0` (no se ha cortado una release desde entonces), así que el
-  banner "¡Nueva versión disponible!" aparece señalando una versión que en
-  realidad es **más antigua** que la que se está ejecutando.
-- **Impacto real**: confunde al usuario (incluido el propio propietario) —
-  el aviso no significa "hay algo nuevo", solo significa "el número no
-  coincide exactamente con el de la última release", en cualquier
-  dirección. No rompe nada, pero la señal no es fiable.
-- **Corrección propuesta**: comparar como semver real en vez de
-  desigualdad de string — parsear `[X, Y, Z]` de ambos lados a números y
-  solo mostrar el banner si la release de GitHub es estrictamente mayor
-  que `version.json` (`release > actual`, no `release !== actual`).
-- **Prioridad**: **Alta** — cosmético pero engañoso de forma sistemática
-  mientras no se corte una nueva release; documentado también en el README
-  para que se entienda el porqué mientras no se arregla.
+- **Qué era**: la condición `base(release.tag_name) !== base(currentVersion)`
+  normalizaba ambas versiones a `X.Y.Z` y solo comprobaba que **fueran
+  distintas**, no cuál era mayor. En la práctica, si `version.json` ya iba
+  por delante de la última Release publicada en GitHub (justo lo que
+  pasaba), el banner "¡Nueva versión disponible!" aparecía señalando una
+  versión que en realidad era **más antigua**.
+- **Cómo se resolvió**: la comparación ahora parsea ambos lados a `[X, Y, Z]`
+  numérico (`parseVersion()`) y solo muestra el banner si la Release es
+  **estrictamente mayor** que `version.json` (`esVersionMayor()`), campo a
+  campo (X, luego Y, luego Z). Si `tag_name` no es parseable como `X.Y.Z`,
+  no se muestra el banner y se deja un `console.warn` en vez de arriesgar
+  un falso positivo.
 
 ---
 
@@ -242,7 +230,8 @@
   gestionado (visible solo en consola del navegador, nunca para la
   usuaria).
 - **Impacto real**: bajo — en el peor caso simplemente no aparece el
-  banner de actualización, que ya de por sí es poco fiable (ítem 2).
+  banner de actualización (su fiabilidad como comparación de versiones ya
+  se corrigió, ver "Resueltos" al principio de este documento).
 - **Corrección propuesta**: añadir `.catch()` simétrico al de la primera
   petición.
 - **Prioridad**: **Baja**.
