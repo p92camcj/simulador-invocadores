@@ -1,11 +1,16 @@
 // actions.js
 import { nextTurn, finalizarPartida } from './game.js';
-import { render } from './render.js';
+import { render, picker } from './render.js';
 import { applyAbility } from './abilities.js';
-import { draw, generarVis, mostrarCarta, gestionarMetamorfos } from './utils.js';
+import {
+  draw, generarVis, mostrarCarta,
+  opcionesActivarHabilidad, pagarActivacionPortalCentral,
+  construirPoolGemas
+} from './utils.js';
 
 /**
- * Inicializa los controladores de acciones (selección de cartas, jugar, fin de turno).
+ * Inicializa los controladores de acciones (selección de cartas, jugar, activar
+ * habilidad, fin de turno).
  * @param {Array} players - Array de jugadores.
  * @param {Array} neutrals - Array de portales neutrales.
  */
@@ -52,7 +57,7 @@ export function initActions(players, neutrals) {
         });
       }
     });
-    
+
     document.querySelector('#ctrlPlay').classList.remove('hidden');
 
   };
@@ -62,7 +67,8 @@ export function initActions(players, neutrals) {
     document.querySelector('#ctrlPlay').classList.add('hidden');
   };
 
-  // Jugar carta
+  // Jugar carta (Fase A). Ya no activa ninguna habilidad automáticamente:
+  // la activación de habilidad es una acción aparte, ver btnAbility más abajo.
   document.querySelector('#btnPlay').onclick = () => {
     if (window.juegoTerminado) return;
     if (window.played) return;
@@ -74,7 +80,6 @@ export function initActions(players, neutrals) {
       return;
     }
     const card = pl.hand.splice(cardIdx, 1)[0];
-
 
     const selDest = document.querySelector('#selDest').value;
     const [tp, a, b] = selDest.split(':');
@@ -88,24 +93,53 @@ export function initActions(players, neutrals) {
     window.played = true;
     document.querySelector('#ctrlPlay').classList.add('hidden');
 
-    const ownerIdx = tp === 'a' ? +a : window.turn;
-    const ask = tp === 'a';
-    const personajesConHabilidad = ['Ocultista', 'Cronista', 'Cronomante', 'Estratega', 'Aprendiz', 'Metamorfo'];
-    const tieneHabilidad = personajesConHabilidad.includes(card.name);
-    if (!tieneHabilidad || !ask || confirm(`${players[ownerIdx].name}: ¿activar habilidad de ${card.name}?`)) {
-      applyAbility(card.name, ownerIdx, stack, players, neutrals, window.levelIdx);
-    }
-
-
     render(players, neutrals, window.levelIdx);
     if (!pl.hasClariActivo) {
       pl.haTenidoClarividente = false;
     }
+  };
 
+  // Activar habilidad (Fase B, opcional, una vez por turno): la habilidad del
+  // personaje visible en uno de tus propios portales (gratis) o la de un
+  // personaje visible en un portal central (pagando, ver utils.js).
+  document.querySelector('#btnAbility').onclick = () => {
+    if (window.juegoTerminado) return;
+    if (!window.played) {
+      alert('Primero debes jugar una carta.');
+      return;
+    }
+    if (window.habilidadUsadaEsteTurno) {
+      alert('Ya has activado una habilidad este turno.');
+      return;
+    }
+
+    const opciones = opcionesActivarHabilidad(window.turn, players, neutrals);
+    if (!opciones.length) {
+      alert('No tienes ninguna habilidad activable ahora mismo.');
+      return;
+    }
+
+    picker('¿Qué habilidad quieres activar?', opciones, key => {
+      const [tipo, idxStr] = key.split(':');
+      const idx = parseInt(idxStr);
+      const stack = tipo === 'own' ? players[window.turn].portals[idx] : neutrals[idx];
+      const name = stack.at(-1).name;
+
+      if (tipo === 'central') {
+        const pagado = pagarActivacionPortalCentral(players[window.turn]);
+        if (!pagado) return;
+      }
+
+      window.habilidadUsadaEsteTurno = true;
+      const lvl = window.LEVELS[window.levelIdx];
+      const need = lvl ? window.INVOCATION_SETS[window.invocationSet][lvl].need : [];
+      applyAbility(name, window.turn, stack, players, neutrals, window.levelIdx, need);
+      render(players, neutrals, window.levelIdx);
+    });
   };
 
   // Botón terminar turno
-  document.querySelector('#btnEndTurn').onclick = async () => {
+  document.querySelector('#btnEndTurn').onclick = () => {
     if (window.juegoTerminado) return;
     if (!window.played) {
       alert('Juega una carta');
@@ -122,52 +156,58 @@ export function initActions(players, neutrals) {
     // Comprobación invocación
     const lvl = window.LEVELS[window.levelIdx];
     if (lvl) {
-      const need = window.COMBOS[lvl];
-      const transformacionesMetamorfos = await gestionarMetamorfos(players, neutrals, lvl, need);
+      const invocacion = window.INVOCATION_SETS[window.invocationSet][lvl];
+      const need = invocacion.need;
       const map = new Map();
-      const add = (idx, s, i, j) => {
+      const add = (idx, s) => {
         if (s.length && s.at(-1).vis?.public) {
-          const key = `${i}:${j}`;
-          const carta = s.at(-1);
-          const nombre = transformacionesMetamorfos.get(key) || carta.name;
+          const nombre = s.at(-1).name;
           if (need.includes(nombre)) {
             if (!map.has(nombre)) map.set(nombre, []);
             map.get(nombre).push(idx);
           }
         }
       };
-      
+
       players.forEach((player, playerIdx) => {
-        player.portals.forEach((stack, portalIdx) => {
-          add(playerIdx, stack, playerIdx, portalIdx);
-        });
+        player.portals.forEach(stack => add(playerIdx, stack));
       });
-      neutrals.forEach((st, j) => add(null, st, null, j));
+      neutrals.forEach(st => add(null, st));
       const allPortals = [
         ...players.flatMap(p => p.portals),
         ...neutrals
       ];
-        const puedeInvocar = allPortals.every(p => p.length && p.at(-1).vis?.public);
-        if (puedeInvocar && need.every(k => map.get(k))) {
+      const puedeInvocar = allPortals.every(p => p.length && p.at(-1).vis?.public);
+      if (puedeInvocar && need.every(k => map.get(k))) {
+        const pool = construirPoolGemas(invocacion.gemas);
         need.forEach(k => {
           const arr = map.get(k);
-          if (arr.length === 1 && arr[0] !== null) players[arr[0]].gems += window.REWARD[lvl];
+          if (arr.length === 1 && arr[0] !== null) {
+            const gema = pool.shift();
+            if (gema) players[arr[0]].gems.push({ valor: gema.valor, nivel: lvl, esAsterisco: gema.esAsterisco });
+          }
         });
-        // Habilidad Pícaro
+        // Habilidad Pícaro: siempre Gema unitaria (valor 1), independientemente
+        // de si el Pícaro era o no requisito de esta invocación.
         players.forEach(p => p.portals.forEach(st => {
           if (st.length && st.at(-1).name === 'Pícaro' && st.at(-1).vis?.public) {
-            p.gems++;
+            p.gems.push({ valor: 1, nivel: 'unitaria' });
             if (st.at(-1).vis) {
               st.at(-1).vis.public = false;
             }
-            
           }
         }));
-        // Maestro extra
-        if (lvl === 'A' && map.get('Maestro') && map.get('Maestro').length === 1 && !map.has('Pícaro')) {
-          players[map.get('Maestro')[0]].gems += 3;
+        // Maestro: bonus pasivo de 3 Gemas unitarias si es requisito de la
+        // invocación (en cualquier nivel, no solo 'A') y no hay ningún Pícaro
+        // visible en ninguna parte de la mesa (no solo fuera del combo actual).
+        const hayPicaroVisible = allPortals.some(
+          st => st.length && st.at(-1).name === 'Pícaro' && st.at(-1).vis?.public
+        );
+        if (need.includes('Maestro') && map.get('Maestro')?.length === 1 && map.get('Maestro')[0] !== null && !hayPicaroVisible) {
+          const beneficiario = players[map.get('Maestro')[0]];
+          beneficiario.gems.push({ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' });
         }
-        alert('Invocación ' + lvl + ' completa');
+        alert(`Invocación ${lvl} (${invocacion.nombre}) completa`);
 
         neutrals.push([]);
         document.querySelector('#zoneNeutral').classList.remove('hidden');

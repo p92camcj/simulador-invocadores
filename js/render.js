@@ -1,10 +1,10 @@
 // render.js
-import { mostrarCarta, actualizarVisibilidad  } from './utils.js';
-import { LEVELS, COMBOS, actualizarClarividente } from './utils.js';
+import { mostrarCarta, actualizarVisibilidad, sumaGemas } from './utils.js';
+import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 
 /**
  * Muestra un selector emergente para elegir una opción entre varias.
- * 
+ *
  * Cada opción puede tener:
  * - val: valor devuelto al seleccionar
  * - lbl: texto visible
@@ -15,7 +15,7 @@ import { LEVELS, COMBOS, actualizarClarividente } from './utils.js';
  *   { val: "0:0", lbl: "Jugador A P1" },
  *   { val: "n:0", lbl: "🚫 Neutral 1", disabled: true }
  * ], valor => { ... });
- * 
+ *
  * @param {string} title - Título del picker
  * @param {Array<{val: string, lbl: string, disabled?: boolean}>} options - Lista de opciones
  * @param {Function} cb - Función callback que recibe el valor seleccionado
@@ -68,9 +68,9 @@ export function render(players, neutrals, levelIdx) {
   const invStatus = document.querySelector('#invStatus');
 
   const pl = players[window.turn];
-  const activeColor = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][turn % 4];
+  const activeColor = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][window.turn % 4];
   zoneActive.innerHTML = `<div class="section ${activeColor}">`;
-  zoneActive.innerHTML += `<h3>${pl.name} (G ${pl.gems})</h3>`;
+  zoneActive.innerHTML += `<h3>${pl.name} (G ${sumaGemas(pl.gems)})</h3>`;
   pl.portals.forEach((stack, i) => {
     const top = stack.length === 0 ? 'Vacío' : (stack.at(-1).vis?.public ? mostrarCarta(stack.at(-1)) : 'Carta Oculta');
     zoneActive.innerHTML += `<div class="card">Portal ${i+1}: ${top} (${stack.length})</div>`;
@@ -87,10 +87,10 @@ export function render(players, neutrals, levelIdx) {
 
   zoneOthers.innerHTML = '';
   players.forEach((p, i) => {
-    if (i === turn) return;
+    if (i === window.turn) return;
     const colorClass = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][i % 4];
     zoneOthers.innerHTML += `<div class="section ${colorClass}">`;
-    zoneOthers.innerHTML += `<h4>${p.name} (G ${p.gems})</h4>`;
+    zoneOthers.innerHTML += `<h4>${p.name} (G ${sumaGemas(p.gems)})</h4>`;
     p.portals.forEach((stack, j) => {
       const top = stack.length === 0 ? 'Vacío' : (stack.at(-1).vis?.public ? mostrarCarta(stack.at(-1)) : 'Carta Oculta');
       zoneOthers.innerHTML += `<div class="card">Portal ${j+1}: ${top} (${stack.length})</div>`;
@@ -114,14 +114,16 @@ export function render(players, neutrals, levelIdx) {
     invStatus.innerHTML = '';
     return;
   }
-  const need = COMBOS[lvl];
+  const invocacion = INVOCATION_SETS[window.invocationSet][lvl];
+  const need = invocacion.need;
+  lblInv.textContent = `${lvl} — ${invocacion.nombre}`;
   const cnt = {};
   need.forEach(n => cnt[n] = 0);
   players.forEach(p => p.portals.forEach(stack => {
-    if (stack.length && stack.at(-1).vis?.public) cnt[stack.at(-1).name]++;
+    if (stack.length && stack.at(-1).vis?.public && cnt[stack.at(-1).name] !== undefined) cnt[stack.at(-1).name]++;
   }));
   neutrals.forEach(stack => {
-    if (stack.length && stack.at(-1).vis?.public) cnt[stack.at(-1).name]++;
+    if (stack.length && stack.at(-1).vis?.public && cnt[stack.at(-1).name] !== undefined) cnt[stack.at(-1).name]++;
   });
   invStatus.innerHTML = need.map(n => {
     const cls = cnt[n] === 0 ? 'missing' : cnt[n] === 1 ? 'present' : 'duplicate';

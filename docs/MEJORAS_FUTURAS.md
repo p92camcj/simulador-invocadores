@@ -12,6 +12,37 @@
 
 ---
 
+## Resuelto recientemente (2026-07-19)
+
+Implementado en el mismo bloque de trabajo que separó la Fase B del turno
+(activar habilidad ya no depende de jugar carta — ver `CLAUDE.md`,
+"Architecture"):
+
+- **Economía real de Gemas**: `player.gems` pasó de número plano a array de
+  `{ valor, nivel, esAsterisco? }`; el reparto tras invocación roba de un
+  pool real de 5 Gemas por invocación (`construirPoolGemas` en
+  `js/utils.js`), y activar la habilidad de un Portal central cuesta 1 Gema
+  unitaria (con cambio automático de una Gema de mayor valor si hace
+  falta) o, gratis, revelando una Gema de asterisco ya ganada
+  (`pagarActivacionPortalCentral`).
+- **Sets de invocación con nombre**: `INVOCATION_SETS.introductorio/normal/floral`
+  en `js/utils.js` sustituyen al `COMBOS` genérico; se elige uno en la
+  pantalla de configuración (`#selInvocationSet` en `index.html`).
+- **Cantidades del mazo**: `game.js` ahora usa las cantidades reales de
+  "Modo normal" del reglamento (32 cartas: 2 Maestro, 2 Clarividente, 2
+  Ocultista, 3 Cronomante, 3 Estratega, 4 Cronista, 4 Aprendiz, 4 Centinela,
+  6 Pícaro, 2 Metamorfo), añadiendo los 9 Animales (3 Reena/Sora/Lumo) solo
+  cuando el set elegido es `introductorio` o `floral` — no siempre los 43
+  componentes físicos totales, ver la nota en `CLAUDE.md`. Entusiasta sigue
+  sin entrar nunca en el mazo (es la expansión aparte).
+- **Maestro, bonus pasivo**: la comprobación ahora exige que Maestro sea
+  requisito de la invocación **activa** (cualquier nivel, no solo `'A'`) y
+  que no haya ningún Pícaro visible **en cualquier parte de la mesa** (no
+  solo fuera del combo). La habilidad activa nueva del Maestro sigue sin
+  implementar (ver más abajo).
+
+---
+
 ## Ponerse al día con el reglamento actual
 
 Estos bloques ya estaban descritos como prosa en la sección "⚠️ Read this
@@ -29,53 +60,36 @@ número de jugadoras a 2-4 (`index.html`, input `numPlayers`), sin
 contemplar la partida de 5. Implica revisar tanto `setup.js` como el límite
 del formulario.
 
-### Economía real de gemas
+### Personajes que faltan: Entusiasta
 
-Sustituir el número plano `REWARD = { C:1, B:2, A:3 }` (`js/utils.js`) por
-el sistema real de gemas del reglamento: robo de una gema de valor
-aleatorio por invocación completada, y la economía de "Gema unitaria"
-(pagar una gema de valor 1, o la de menor valor ya ganada, para usar la
-habilidad de un Portal central). Toca el modelo de datos de `player.gems`
-(hoy un número simple) para pasar a representar gemas individuales con
-valor.
+Falta por implementar el personaje **Entusiasta** por completo: la carta ni
+siquiera entra en el mazo hoy (es la expansión aparte descrita en
+"Variantes y modos de juego" — se baraja aparte justo antes de empezar,
+no forma parte de la preparación normal del mazo), y su habilidad pasiva
+(perder una Gema de valor 1 o superior cuando se completa cualquier
+invocación con el Entusiasta bocarriba en un Portal) no existe en
+`js/abilities.js`. Los **Animales** (Reena, Sora, Lumo) ya están
+integrados — sin habilidad propia, que es fiel al reglamento ("no tienen
+ninguna habilidad") — y entran en el mazo cuando el set de invocación
+elegido los necesita (introductorio o floral, ver `js/game.js`).
 
-### Sets de invocación con nombre (introductorio / normal / floral)
+### Maestro: habilidad activa nueva
 
-Hoy `COMBOS.C/B/A` en `js/utils.js` es un único combo genérico por nivel.
-El reglamento define varios sets de invocación con nombre propio entre los
-que elegir al preparar la partida, no uno fijo.
-
-### Personajes que faltan: Entusiasta y Animales
-
-Faltan por implementar el personaje **Entusiasta** y los **Animales**
-(Reena, Sora, Lumo) — habilidades, cartas y su integración en
-`js/abilities.js`, `js/game.js` (mazo) y `js/utils.js` (`iconos`, combos
-que los incluyan). Al añadirlos, tener en cuenta el ítem 8 de
-`DEUDA_TECNICA.md` (roster de personajes duplicado entre `abilities.js` y
-`actions.js`) para no repetir el mismo error de sincronización manual con
-un personaje nuevo.
-
-### Maestro: bonus pasivo y habilidad activa nueva
-
-`js/actions.js` comprueba si Pícaro forma parte del combo actual
-(`!map.has('Pícaro')`) y solo lo hace para el nivel `'A'`. Según el
-reglamento debería comprobar si hay algún Pícaro **visible en cualquier
-parte de la mesa**, y aplicarse en el nivel que corresponda, no solo en
-`'A'`.
-
-Además, desde la revisión del reglamento de 2026-07-19 el Maestro tiene una
-**habilidad activa** que hoy no existe en absoluto en el código: elegir una
-carta que se vea en la mano de otra jugadora (la que esa jugadora tiene
-oculta para sí misma pero visible para el resto) y bajarla directamente al
-propio Portal del Maestro; la jugadora afectada repone mano robando del
-mazo. Esto es trabajo nuevo en `js/abilities.js` (nuevo `case 'Maestro'`) y
-`js/actions.js` (añadir `'Maestro'` a la lista de personajes con habilidad
-activable), no solo una corrección del bonus pasivo existente.
+El bonus pasivo del Maestro (3 Gemas unitarias si es requisito de la
+invocación activa y no hay ningún Pícaro visible en la mesa) ya está
+corregido. Falta por completo la **habilidad activa** que añadió la
+revisión del reglamento de 2026-07-19: elegir una carta que se vea en la
+mano de otra jugadora (la que esa jugadora tiene oculta para sí misma pero
+visible para el resto) y bajarla directamente al propio Portal del
+Maestro; la jugadora afectada repone mano robando del mazo. Esto es
+trabajo nuevo en `js/abilities.js` (nuevo `case 'Maestro'`) y en
+`PERSONAJES_CON_HABILIDAD` (`js/utils.js`, añadir `'Maestro'` a la lista
+de personajes con habilidad activable en Fase B).
 
 ### Metamorfo: quitar restricción y hacer persistente la transformación
 
-Desde la revisión del reglamento de 2026-07-19, el Metamorfo (`js/utils.js`
-y `js/abilities.js`) debe actualizarse en dos aspectos: (1) ya no puede
+Desde la revisión del reglamento de 2026-07-19, el Metamorfo (`js/abilities.js`,
+`case 'Metamorfo'`) debe actualizarse en dos aspectos: (1) ya no puede
 transformarse solo en "el personaje concreto que falta para completar la
 invocación activa" — ahora puede transformarse en cualquier personaje que
 no sea animal, en cualquier momento de su turno; (2) la transformación debe
@@ -84,16 +98,11 @@ para transformarla en otra cosa, en vez de revertir como hoy. También habría
 que representar visualmente que la carta transformada "es en realidad" un
 Metamorfo (el reglamento usa una ficha superpuesta con la cara del
 personaje imitado), no solo cambiar el nombre internamente sin dejar
-rastro.
-
-### Cantidades del mazo de personajes desactualizadas (43 vs. 64 cartas)
-
-El array `chars` de `initGame()` en `js/game.js` todavía refleja la versión
-anterior del mazo (64 cartas). El reglamento actual especifica 43 cartas:
-2× Maestro, 2× Clarividente, 2× Ocultista, 3× Cronomante, 3× Estratega, 4×
-Cronista, 4× Aprendiz, 4× Centinela, 6× Pícaro, 2× Metamorfo, 2×
-Entusiasta, 9× Animales (3 de cada). Bajan las cantidades de casi todos los
-personajes salvo Maestro, Metamorfo y Entusiasta, que se mantienen igual.
+rastro. El coste en Gemas ya usa el modelo real (`gastarGemaUnitaria` en
+`js/utils.js`) y, si el Metamorfo está en un Portal central, se suma al
+coste normal de activar un Portal central (2 Gemas en total, ver
+`docs/reglamento/REGLAMENTO.md`) — eso ya funciona; lo pendiente es solo la
+restricción y la persistencia de la transformación en sí.
 
 ### Marcador final y desempate
 
@@ -104,10 +113,17 @@ empates según las reglas.
 
 ### Modos Introductorio, Avanzado y Experto
 
-Solo existe (una versión simplificada de) el modo normal. Faltan el modo
-Introductorio, el modo Avanzado y el modo Experto (este último con el
-autómata central que menciona el reglamento) — cada uno como variante
-seleccionable antes de empezar, no como modos separados de código.
+Solo existe la preparación de mazo de "Modo normal" (ya al día con el
+reglamento: sin Entusiasta/Animales salvo que el set de invocación los
+requiera, Metamorfo incluido desde el principio, 2 cartas apartadas al
+azar). Faltan el modo Introductorio como variante de preparación de mazo
+completa (hoy solo existe su set de invocación, no su lista de personajes
+propia: Reena, Sora, Lumo, Pícaro, Aprendiz, Cronista, Estratega y
+Cronomante), el modo Avanzado y el modo Experto (este último con el
+autómata central y la 4ª invocación "Asterisco"/Madain, ya definida como
+`INVOCATION_ASTERISCO` en `js/utils.js` pero sin conectar a ningún flujo)
+— cada uno como variante seleccionable antes de empezar, no como modos
+separados de código.
 
 ### Variante 2 contra 2
 

@@ -17,42 +17,43 @@ around a table with each participant looking at the same shared screen
 **The code and the rulebook are not currently in sync.** `docs/reglamento/REGLAMENTO.md`
 is the source of truth for how the game is actually meant to be played today;
 `js/*.js` implements an older, simplified prototype of the rules. Known gaps
-as of the last audit (2026-07-19), updated after the 2026-07-19 rulebook
-revision (see the ">**Cambio respecto a versiones anteriores:**" blocks in
-the rulebook for exactly what changed there):
+as of the last audit (2026-07-19), updated after implementing turn-sequence
+Fase B and the real Gem economy (also 2026-07-19 — see `CHANGELOG.md` for
+the version that shipped this):
 
-- No selection of invocation **sets** (introductorio / normal / floral); the
-  code hardcodes one generic combo per level (`COMBOS.C/B/A` in `utils.js`).
-- Gem rewards are a flat number per level (`REWARD = { C:1, B:2, A:3 }`)
-  instead of drawing a real, randomly-assigned gem of the values described
-  in the rulebook's Components/Secuencia de juego sections. There is no
-  "Gema unitaria" economy (paying a value-1 gem, or a previously-earned
-  lowest-value gem, to use a central Portal's ability).
-- Missing characters entirely: **Entusiasta**, **Animales** (Reena, Sora,
-  Lumo).
-- Missing modes: Introductorio, Avanzado, Experto (with the central
-  autómata), the 2v2 team variant, and the Entusiasta expansion.
+- Missing characters entirely: **Entusiasta** (not in the deck at all — it's
+  the optional expansion described in "Variantes y modos de juego", never
+  shuffled in by default) and its passive ability (lose a Gem on a
+  successful invocation). **Animales** (Reena, Sora, Lumo) *are* now in the
+  deck, but only when the `introductorio` or `floral` invocation set is
+  selected (see `game.js`) — matching the rulebook's own "Modo normal" deck
+  prep, which excludes Animales/Entusiasta. Note this means `game.js`'s deck
+  is deliberately **32 cards for the `normal` set** and **41 for
+  `introductorio`/`floral`**, not the 43-card full component count — the
+  43-card figure in "Componentes" is total physical cards across all modes,
+  not what goes in a single "Modo normal" deck.
+- Missing modes: Introductorio (as a full selectable deck-prep variant, not
+  just its invocation set), Avanzado, Experto (with the central autómata),
+  the 2v2 team variant, and the Entusiasta expansion.
 - Portal distribution by player count doesn't match the rulebook's table for
-  3/4/5 players (see `setup.js`).
-- Maestro's bonus condition checks the wrong thing (whether Pícaro is part
-  of the current combo, not whether any Pícaro is visible anywhere on the
-  table) and is hardcoded to level `'A'` only.
+  3/4/5 players (see `setup.js`), and the setup form still caps player count
+  at 2-4 (no 5-player option).
 - No tiebreak logic or final scoreboard at game end.
-- The character deck quantities in `game.js` still match the **old 64-card**
-  version of the rulebook, not the current 43-card deck (2× Maestro, 2×
-  Clarividente, 2× Ocultista, 3× Cronomante, 3× Estratega, 4× Cronista, 4×
-  Aprendiz, 4× Centinela, 6× Pícaro, 2× Metamorfo, 2× Entusiasta, 9×
-  Animales).
 - Maestro is missing the rulebook's new **active** ability entirely (moving
   a card another player can see — their hidden-to-self card — straight to
-  the Maestro's own Portal, then that player draws a replacement); only the
-  old passive three-gem bonus exists in code.
-- Metamorfo in `utils.js`/`abilities.js` still enforces the old restriction
-  ("only the character that completes the invocation") and reverts the
-  transformation instead of leaving it in place. The current rulebook drops
-  the restriction (transform into any non-animal character, any time on the
-  player's turn) and makes the transformation persistent until the Metamorfo
-  is covered by another card or transformed again.
+  the Maestro's own Portal, then that player draws a replacement). The
+  passive three-Gem bonus exists and its condition bug is fixed (see
+  CHANGELOG), but the active ability is separate, unimplemented work.
+- Metamorfo in `abilities.js` still enforces the old restriction ("only the
+  character that completes the invocation") and reverts the transformation
+  instead of leaving it in place. The current rulebook drops the restriction
+  (transform into any non-animal character, any time on the player's turn)
+  and makes the transformation persistent until the Metamorfo is covered by
+  another card or transformed again. Its Gem cost now uses the real Gem
+  array model (see below), but the transformation rule itself is unchanged.
+- Modo Experto's 4th invocation ("Asterisco"/Madain, 4 characters incl.
+  Metamorfo + all 3 Animales) is defined as `INVOCATION_ASTERISCO` in
+  `utils.js` but deliberately **not** wired into any real game flow yet.
 
 Do not assume any given piece of game logic is correct just because it's
 already in the code — check it against `docs/reglamento/REGLAMENTO.md`
@@ -64,42 +65,69 @@ rulebook text itself changes, the rulebook doc in the same commit.
 No backend, no database — all state lives in memory in the browser tab as
 plain JS objects hung off `window` (`window.players`, `window.neutrals`,
 `window.deck`, `window.levelIdx`, `window.turn`, `window.played`,
-`window.LEVELS`, `window.COMBOS`, `window.REWARD`). Refreshing the page
-loses the game. This global-state pattern is deliberate for a small
-single-file-per-concern app, but it means **module-local variables of the
-same name (e.g. a bare `levelIdx`) do not exist unless explicitly imported —
-always reference `window.levelIdx` etc. outside of the module that owns
-the constant.** A previous bug (`ReferenceError` on every ability use) came
-from exactly this mistake — see `CHANGELOG.md` entry `1.3.1.22`. A second
-instance of the same pattern (`window.picker` never actually assigned,
-called from `utils.js`) is tracked as unfixed in `docs/DEUDA_TECNICA.md`.
+`window.habilidadUsadaEsteTurno`, `window.invocationSet`, `window.LEVELS`,
+`window.INVOCATION_SETS`). Refreshing the page loses the game. This
+global-state pattern is deliberate for a small single-file-per-concern app,
+but it means **module-local variables of the same name (e.g. a bare
+`levelIdx`) do not exist unless explicitly imported — always reference
+`window.levelIdx` etc. outside of the module that owns the constant.** A
+previous bug (`ReferenceError` on every ability use) came from exactly this
+mistake — see `CHANGELOG.md` entry `1.3.1.22`. A second instance
+(`window.picker`, never actually assigned, called from the now-removed
+`gestionarMetamorfos()` in `utils.js`) was fixed by deleting that function
+entirely — Metamorfo activation is now unified into the same Fase B flow as
+every other ability (see below), so the broken call site no longer exists.
+
+Turn sequence is split into two independent, explicit steps (Fase A / Fase
+B in the rulebook's "Secuencia del turno"): playing a card
+(`#btnPlay`/`btnCtrlPlay` in `actions.js`) never auto-triggers an ability
+anymore. Activating an ability is a separate action (`#btnAbility`) the
+active player may use **at most once per turn**, on either the top card of
+one of their own Portals (free) or a central/neutral Portal (costs 1 unit
+Gem, or free by revealing a previously-earned asterisk Gem) —
+`window.habilidadUsadaEsteTurno` tracks the once-per-turn limit and is reset
+in `nextTurn()`.
 
 - **`index.html`** — the single page/shell. Loads `style.css`, registers the
   service worker, and loads `js/index.js` as an ES module plus
   `js/pwa-install.js` and `js/version-check.js` as plain scripts.
 - **`js/index.js`** — entry point. Initializes the global `window.*` state,
-  exposes `LEVELS`/`COMBOS`/`REWARD` on `window`, and calls `initSetup()` on
+  exposes `LEVELS`/`INVOCATION_SETS` on `window`, and calls `initSetup()` on
   `DOMContentLoaded`.
-- **`js/setup.js`** — the player-count/name-entry screen. Builds
-  `window.players` / `window.neutrals` (Portal distribution by player
-  count lives here — see the gap noted above) and calls `initGame()`.
-- **`js/game.js`** — builds the character deck (`initGame`), turn
-  advancement and the "no cards left" end condition (`nextTurn`), and
-  end-of-game handling (`finalizarPartida`, `resetJuego`). `finalizarPartida`
-  must stay `export`ed — it's called from `actions.js`.
+- **`js/setup.js`** — the player-count/name-entry/invocation-set screen.
+  Builds `window.players` / `window.neutrals` (Portal distribution by
+  player count lives here — see the gap noted above), reads
+  `window.invocationSet` from `#selInvocationSet`, gives each player their
+  starting 3 unit Gems, and calls `initGame()`.
+- **`js/game.js`** — builds the character deck (`initGame`, sized and
+  composed per `window.invocationSet`, see the gap above), turn advancement
+  and the "no cards left" end condition (`nextTurn`), and end-of-game
+  handling (`finalizarPartida`, `resetJuego`). `finalizarPartida` must stay
+  `export`ed — it's called from `actions.js`.
 - **`js/actions.js`** — wires up the UI controls: card selection, playing a
-  card onto a Portal, ability confirmation, and the "end turn" button, which
-  also runs the invocation-success check and gem distribution.
-- **`js/abilities.js`** — `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx)`,
+  card onto a Portal (Fase A only, no ability side-effect), the "Activar
+  habilidad" button (Fase B: picks a source Portal, charges the central-Portal
+  Gem cost if applicable, then calls `applyAbility`), and the "end turn"
+  button, which also runs the invocation-success check and the real Gem
+  distribution (drawing from `INVOCATION_SETS[...].gemas` via
+  `construirPoolGemas`).
+- **`js/abilities.js`** — `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need)`,
   one `switch` case per character ability (Ocultista, Centinela, Cronista,
-  Cronomante, Estratega, Aprendiz, Metamorfo). Always call this with
-  `window.levelIdx` explicitly from outside the module.
+  Cronomante, Estratega, Aprendiz, Metamorfo). `need` is the active
+  invocation's required-character array (only used by Metamorfo); pass it
+  explicitly from the caller, don't recompute it here from globals. Always
+  call this with `window.levelIdx` explicitly from outside the module.
 - **`js/render.js`** — pure-ish DOM rendering (`render()`) and the generic
   `picker()` modal used by several abilities. Does not own game state.
-- **`js/utils.js`** — constants (`LEVELS`, `COMBOS`, `REWARD`, `iconos`) and
-  stateless helpers (`shuffle`, `draw`, visibility helpers, Metamorfo
-  negotiation flow). This is where the rulebook gaps above are most visible
-  — start here when bringing a rule up to date.
+- **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,
+  `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`, `iconos`) and
+  stateless helpers (`shuffle`, `draw`, visibility helpers, the Gem-economy
+  helpers `sumaGemas`/`gastarGemaUnitaria`/`gastarGemaAsterisco`/
+  `pagarActivacionPortalCentral`/`construirPoolGemas`). This is where the
+  rulebook gaps above are most visible — start here when bringing a rule up
+  to date. `player.gems` is an array of `{ valor, nivel, esAsterisco? }`
+  objects, not a plain number — see the Gem-economy helpers for how to
+  read/spend it.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current

@@ -10,31 +10,32 @@ import { $ } from './utils.js';
  * Inicia la partida: prepara el mazo, reparte cartas, y lanza el primer turno.
  */
 export function initGame() {
-  // Construir mazo de personajes
-  const chars = [
+  // Construir mazo de personajes — cantidades reales de "Modo normal" según
+  // docs/reglamento/REGLAMENTO.md ("Preparación del mazo de personajes"): no
+  // incluye Entusiasta (expansión aparte) ni Animales salvo que el set de
+  // invocación elegido los necesite (introductorio/floral).
+  const charsBase = [
     ...Array(2).fill('Maestro'),
-    ...Array(3).fill('Clarividente'),
-    ...Array(3).fill('Ocultista'),
-    ...Array(4).fill('Cronomante'),
-    ...Array(4).fill('Estratega'),
+    ...Array(2).fill('Clarividente'),
+    ...Array(2).fill('Ocultista'),
+    ...Array(3).fill('Cronomante'),
+    ...Array(3).fill('Estratega'),
+    ...Array(4).fill('Cronista'),
     ...Array(4).fill('Aprendiz'),
-    ...Array(6).fill('Cronista'),
-    ...Array(6).fill('Centinela'),
-    ...Array(8).fill('Pícaro'),
-    ...Array(2).fill('Metamorfo')
+    ...Array(4).fill('Centinela'),
+    ...Array(6).fill('Pícaro'),
+    ...Array(2).fill('Metamorfo'),
   ];
-  // Separar metamorfos
-const metamorfos = chars.filter(c => c === 'Metamorfo');
-let sinMetamorfos = chars.filter(c => c !== 'Metamorfo');
+  const necesitaAnimales = window.invocationSet === 'introductorio' || window.invocationSet === 'floral';
+  const chars = necesitaAnimales
+    ? [...charsBase, ...Array(3).fill('Reena'), ...Array(3).fill('Sora'), ...Array(3).fill('Lumo')]
+    : charsBase;
 
-// Quitar 4 cartas aleatorias que no sean metamorfos
-shuffle(sinMetamorfos);
-const descartadas = sinMetamorfos.splice(0, 4);
-
-// Formar mazo final con metamorfos incluidos
-const mazoFinal = [...sinMetamorfos, ...metamorfos];
-shuffle(mazoFinal);
-window.deck = mazoFinal.map(name => ({ name }));
+  // El Metamorfo ya forma parte del mazo desde el principio (no se baraja
+  // aparte). Se saca al azar 2 cartas sin mirarlas y se dejan en la caja.
+  shuffle(chars);
+  const descartadas = chars.splice(0, 2);
+  window.deck = chars.map(name => ({ name }));
 
   // Reparto inicial: 1 visible y 1 oculta por jugadora
   window.players.forEach(p => {
@@ -46,6 +47,7 @@ window.deck = mazoFinal.map(name => ({ name }));
   window.levelIdx = 0;
   window.turn = 0;
   window.played = false;
+  window.habilidadUsadaEsteTurno = false;
 
   // Configurar controladores de acciones
   initActions(window.players, window.neutrals);
@@ -61,6 +63,7 @@ window.deck = mazoFinal.map(name => ({ name }));
  */
 export function nextTurn() {
   window.played = false;
+  window.habilidadUsadaEsteTurno = false;
   const current = window.players[window.turn];
   //Se comprueba si hay condición de fin de partida, sin cartas en mano
   if (current.hand.length === 0) {
@@ -107,6 +110,7 @@ export function resetJuego() {
   $('#setup')?.classList.remove('hidden');
   $('#btnEndTurn')?.classList.add('hidden');
   $('#btnCtrlPlay')?.classList.add('hidden');
+  $('#btnAbility')?.classList.add('hidden');
 
   // Mostrar título y subtítulo
   $('#mainTitle')?.classList.remove('hidden');
@@ -119,6 +123,7 @@ export function resetJuego() {
   window.levelIdx = 0;
   window.turn = 0;
   window.played = false;
+  window.habilidadUsadaEsteTurno = false;
   window.juegoTerminado = false;
 
   // Volver al menú inicial

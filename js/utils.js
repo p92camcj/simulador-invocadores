@@ -1,12 +1,41 @@
 // utils.js
 // ---------- Constantes generales ----------
 export const LEVELS = ['C', 'B', 'A'];
-export const COMBOS = {
-  C: ['Pícaro', 'Centinela', 'Aprendiz'],
-  B: ['Cronomante', 'Cronista', 'Estratega'],
-  A: ['Maestro', 'Clarividente', 'Ocultista'],
+
+// Sets de invocación con nombre (ver docs/reglamento/REGLAMENTO.md, "Preparación" > "Invocaciones").
+// Cada nivel indica el nombre de la criatura, los personajes requeridos y los
+// 5 valores de Gema asociados (el valor más bajo es siempre la Gema "asterisco").
+export const INVOCATION_SETS = {
+  introductorio: {
+    C: { nombre: 'Cilast', need: ['Reena', 'Pícaro', 'Sora'], gemas: [2, 3, 3, 3, 4] },
+    B: { nombre: 'Burnio', need: ['Aprendiz', 'Cronista', 'Lumo'], gemas: [5, 6, 6, 6, 7] },
+    A: { nombre: 'Aspir', need: ['Cronomante', 'Estratega', 'Sora'], gemas: [8, 9, 9, 9, 10] },
+  },
+  normal: {
+    C: { nombre: 'Cirelia', need: ['Aprendiz', 'Pícaro', 'Centinela'], gemas: [2, 3, 3, 3, 4] },
+    B: { nombre: 'Baelorith', need: ['Estratega', 'Cronomante', 'Cronista'], gemas: [5, 6, 6, 6, 7] },
+    A: { nombre: 'Aelgorth', need: ['Clarividente', 'Maestro', 'Ocultista'], gemas: [8, 9, 9, 9, 10] },
+  },
+  floral: {
+    C: { nombre: 'Caisis', need: ['Cronista', 'Ocultista', 'Centinela'], gemas: [2, 3, 3, 3, 4] },
+    B: { nombre: 'Brose', need: ['Aprendiz', 'Maestro', 'Estratega'], gemas: [5, 6, 6, 6, 7] },
+    A: { nombre: 'Aures', need: ['Pícaro', 'Clarividente', 'Cronomante'], gemas: [8, 9, 9, 9, 10] },
+  },
 };
-export const REWARD = { C: 1, B: 2, A: 3 };
+
+// Cuarta invocación de Modo Experto ("Asterisco"). Se deja preparada pero
+// todavía NO está conectada a ningún flujo de juego real (eso es el bloque
+// de Modo Experto, aparte) — ver docs/MEJORAS_FUTURAS.md.
+export const INVOCATION_ASTERISCO = {
+  nombre: 'Madain',
+  need: ['Reena', 'Metamorfo', 'Sora', 'Lumo'],
+  gemas: [11, 12, 12, 12, 13],
+};
+
+// Personajes cuya habilidad se activa manualmente en la Fase B del turno
+// (ver docs/reglamento/REGLAMENTO.md, "Secuencia del turno"). Centinela y
+// Clarividente quedan fuera a propósito: sus efectos son pasivos/automáticos.
+export const PERSONAJES_CON_HABILIDAD = ['Ocultista', 'Cronista', 'Cronomante', 'Estratega', 'Aprendiz', 'Metamorfo'];
 
 // ---------- Iconos de personajes ----------
 export const iconos = {
@@ -19,7 +48,10 @@ export const iconos = {
   'Clarividente': '🔮',
   'Maestro': '🧙‍♂️',
   'Ocultista': '🙈',
-  'Metamorfo': '🌈'
+  'Metamorfo': '🌈',
+  'Reena': '🐿️',
+  'Sora': '🦋',
+  'Lumo': '🐦'
 };
 export const mostrarCarta = card => `${iconos[card.name] || ''} ${card.name}`;
 
@@ -70,7 +102,7 @@ export function stackFrom(key, players, neutrals) {
 /**
  * Genera una lista de portales disponibles con su estado (habilitado o deshabilitado).
  * Se usa normalmente con picker() para mostrar opciones bloqueadas con 🚫.
- * 
+ *
  * @param {Array} players - Lista de jugadoras
  * @param {Array} neutrals - Lista de portales neutrales
  * @param {Function} esInvalido - Función que recibe un stack y devuelve true si debe estar deshabilitado
@@ -85,6 +117,117 @@ export function portalesConEstado(players, neutrals, esInvalido) {
       disabled: esInvalido(st)
     };
   });
+}
+
+/**
+ * Construye las opciones de la Fase B (activar habilidad): los portales
+ * PROPIOS del jugador activo (gratis) y los portales centrales/neutrales
+ * (con coste de 1 Gema unitaria), filtrando solo los que tienen visible en
+ * su cima un personaje con habilidad activable.
+ *
+ * @param {number} playerIdx - Índice del jugador activo
+ * @param {Array} players - Lista de jugadoras
+ * @param {Array} neutrals - Lista de portales neutrales
+ * @returns {Array<{ val: string, lbl: string }>} val: 'own:<idx>' | 'central:<idx>'
+ */
+export function opcionesActivarHabilidad(playerIdx, players, neutrals) {
+  const opciones = [];
+  players[playerIdx].portals.forEach((stack, idx) => {
+    const top = stack.at(-1);
+    if (top && top.vis?.public && PERSONAJES_CON_HABILIDAD.includes(top.name)) {
+      opciones.push({ val: `own:${idx}`, lbl: `Tu portal ${idx + 1}: ${mostrarCarta(top)} (gratis)` });
+    }
+  });
+  neutrals.forEach((stack, idx) => {
+    const top = stack.at(-1);
+    if (top && top.vis?.public && PERSONAJES_CON_HABILIDAD.includes(top.name)) {
+      opciones.push({ val: `central:${idx}`, lbl: `Neutral ${idx + 1}: ${mostrarCarta(top)} (cuesta 1 Gema)` });
+    }
+  });
+  return opciones;
+}
+
+// ---------- Economía de Gemas ----------
+// player.gems es un array de { valor: number, nivel: 'C'|'B'|'A'|'experto'|'unitaria', esAsterisco?: boolean }
+
+export function sumaGemas(gems) {
+  return gems.reduce((acc, g) => acc + (g.valor || 0), 0);
+}
+
+export function tieneGemaAsterisco(player) {
+  return player.gems.some(g => g.esAsterisco);
+}
+
+/** Revela y descarta la Gema de asterisco del jugador. Devuelve true si había alguna. */
+export function gastarGemaAsterisco(player) {
+  const idx = player.gems.findIndex(g => g.esAsterisco);
+  if (idx === -1) return false;
+  player.gems.splice(idx, 1);
+  return true;
+}
+
+/**
+ * Gasta una Gema unitaria (valor 1). Si el jugador no tiene ninguna suelta,
+ * cambia su Gema de menor valor por N Gemas unitarias (N = valor de la Gema
+ * cambiada) y ya paga una de ellas en el propio cambio, dejando N-1 sueltas.
+ * Devuelve false solo si el jugador no tiene ninguna Gema con la que pagar.
+ */
+export function gastarGemaUnitaria(player) {
+  const idxUnitaria = player.gems.findIndex(g => g.valor === 1);
+  if (idxUnitaria !== -1) {
+    player.gems.splice(idxUnitaria, 1);
+    return true;
+  }
+  if (player.gems.length === 0) return false;
+
+  let menorIdx = 0;
+  player.gems.forEach((g, i) => {
+    if (g.valor < player.gems[menorIdx].valor) menorIdx = i;
+  });
+  const gemaCambiada = player.gems.splice(menorIdx, 1)[0];
+  const nuevasUnitarias = Array.from({ length: gemaCambiada.valor - 1 }, () => ({ valor: 1, nivel: 'unitaria' }));
+  player.gems.push(...nuevasUnitarias);
+  return true;
+}
+
+/**
+ * Cobra el coste de activar la habilidad de un personaje visible en un
+ * Portal central: gratis si el jugador revela una Gema de asterisco
+ * (se descarta), o 1 Gema unitaria en caso contrario.
+ * Devuelve false (y no cobra nada) si el jugador no puede pagar.
+ */
+export function pagarActivacionPortalCentral(player) {
+  if (tieneGemaAsterisco(player)) {
+    const usarAsterisco = confirm(
+      `${player.name}: tienes una Gema de asterisco. ¿Revelarla para activar la habilidad gratis? (Cancelar para pagar 1 Gema unitaria)`
+    );
+    if (usarAsterisco) return gastarGemaAsterisco(player);
+  }
+  if (player.gems.length === 0) {
+    alert(`${player.name} no tiene Gemas con las que pagar la activación.`);
+    return false;
+  }
+  return gastarGemaUnitaria(player);
+}
+
+/**
+ * Construye el pool de 5 Gemas de una invocación a partir de sus valores,
+ * marcando la de menor valor como Gema de asterisco, y lo mezcla para que
+ * el reparto posterior (pool.shift()) equivalga a un robo al azar.
+ *
+ * @param {number[]} valores - Los 5 valores de Gema de la invocación
+ * @returns {Array<{ valor: number, esAsterisco: boolean }>}
+ */
+export function construirPoolGemas(valores) {
+  const minVal = Math.min(...valores);
+  let marcada = false;
+  const pool = valores.map(v => {
+    const esAsterisco = !marcada && v === minVal;
+    if (esAsterisco) marcada = true;
+    return { valor: v, esAsterisco };
+  });
+  shuffle(pool);
+  return pool;
 }
 
 
@@ -170,57 +313,3 @@ export function actualizarVisibilidad(players) {
     }
   });
 }
-
-
-/**
- * Permite a los jugadores con un Metamorfo visible y en el top
- * decidir si quieren transformarlo temporalmente para alterar una invocación.
- * 
- * @param {Array} players - Jugadoras actuales
- * @param {Array} neutrals - Portales neutrales
- * @param {string} lvl - Letra de la invocación actual (A, B, C)
- * @param {Array} need - Array con los nombres de personajes necesarios
- * @returns {Map} - Mapa de transformaciones temporales: 'jugador:portal' -> personaje elegido
- */
-export async function gestionarMetamorfos(players, neutrals, lvl, need) {
-  const transformaciones = new Map();
-
-  const portalesConMetamorfo = [];
-
-  // Buscar todos los metamorfos visibles en el top de portales
-  players.forEach((player, i) => {
-    player.portals.forEach((stack, j) => {
-      const top = stack.at(-1);
-      if (top && top.name === 'Metamorfo' && top.vis?.public && player.gems > 0) {
-        portalesConMetamorfo.push({ player, i, j, stack, top });
-      }
-    });
-  });
-
-  // Si no hay metamorfos disponibles, devolver vacío
-  if (portalesConMetamorfo.length === 0) return transformaciones;
-
-  for (const { player, i, j, stack, top } of portalesConMetamorfo) {
-    const confirmar = confirm(`🌀 ${player.name}, ¿quieres activar tu Metamorfo del portal ${j + 1}?`);
-
-    if (!confirmar) continue;
-
-    const opciones = need.map(p => ({ val: p, lbl: `Transformarse en ${p}` }));
-
-    const elegido = await new Promise(resolve => {
-      window.picker('¿En qué personaje quieres transformarlo?', opciones, v => resolve(v));
-    });
-
-    if (player.gems <= 0) {
-      alert(`${player.name} no tiene suficientes gemas.`);
-      continue;
-    }
-
-    // Restar gema y registrar transformación
-    player.gems--;
-    transformaciones.set(`${i}:${j}`, elegido);
-  }
-
-  return transformaciones;
-}
-

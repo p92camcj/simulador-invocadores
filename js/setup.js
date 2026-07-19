@@ -45,14 +45,17 @@ export function initSetup() {
     // Inicializar arrays globales
     window.players = [];
     window.neutrals = [];
+    window.invocationSet = $('#selInvocationSet')?.value || 'normal';
 
     // Leer nombres y crear objetos de jugador
     const nombresPorDefecto = ['Javi', 'Isa', 'Julio', 'Adrián'];
     let idx = 0;
 
+    // Cada jugador recibe 3 Gemas de valor 1 (azules) en la preparación.
     new FormData($('#nameForm')).forEach(name => {
       const nombre = name.trim() || nombresPorDefecto[idx] || `Jugadora ${idx + 1}`;
-      window.players.push({ name: nombre, hand: [], portals: [], gems: 1 });
+      const gemasIniciales = Array.from({ length: 3 }, () => ({ valor: 1, nivel: 'unitaria' }));
+      window.players.push({ name: nombre, hand: [], portals: [], gems: gemasIniciales });
       idx++;
     });
 
@@ -77,6 +80,7 @@ export function initSetup() {
     $('#info').classList.remove('hidden');
     $('#sectionflex').classList.remove('hidden');
     if ($('#btnCtrlPlay')) $('#btnCtrlPlay').classList.remove('hidden');
+    if ($('#btnAbility')) $('#btnAbility').classList.remove('hidden');
     $('#mainTitle')?.classList.add('hidden');
     $('#mainSubtitle')?.classList.add('hidden');
 

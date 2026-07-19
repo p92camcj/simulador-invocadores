@@ -29,9 +29,10 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | Nombre            | Tipo      | Descripción                                                                 |
 |-------------------|-----------|-----------------------------------------------------------------------------|
 | `LEVELS`          | `const`   | Niveles de invocación: `['C','B','A']`.                                      |
-| `COMBOS`          | `const`   | Mapea nivel → combinación de personajes requeridos.                         |
-| `REWARD`          | `const`   | Gemas que da cada nivel: `{ C:1, B:2, A:3 }`.                                |
-| `iconos`          | `const`   | Mapa nombre→emoji para representar cartas.                                   |
+| `INVOCATION_SETS` | `const`   | Mapea `introductorio\|normal\|floral` → nivel → `{ nombre, need, gemas }`. Sustituye al antiguo `COMBOS` genérico. |
+| `INVOCATION_ASTERISCO` | `const` | 4ª invocación de Modo Experto (`Madain`), definida pero **no conectada** a ningún flujo real todavía. |
+| `PERSONAJES_CON_HABILIDAD` | `const` | Personajes activables en Fase B (`Ocultista`, `Cronista`, `Cronomante`, `Estratega`, `Aprendiz`, `Metamorfo`). Única fuente para `opcionesActivarHabilidad()`. |
+| `iconos`          | `const`   | Mapa nombre→emoji para representar cartas (incluye Reena/Sora/Lumo).          |
 | `mostrarCarta(card)` | `función` | Devuelve la cadena `"<icono> <nombre>"` para mostrar en la UI.              |
 | `$`               | `función` | Atajo para `document.querySelector(selector)`.                               |
 | `shuffle(array)`  | `función` | Mezcla un array _in place_ (algoritmo Fisher–Yates).                        |
@@ -39,6 +40,22 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `hasClari(player)`| `función` | `true` si el jugador tiene una **Clarividente** visible en alguno de sus portales. |
 | `listPortals(players, neutrals)` | `función` | Devuelve array de `{val, lbl}` para poblar selectores de portales (propios, ajenos, neutrales). |
 | `stackFrom(key, players, neutrals)` | `función` | Dada clave `"i:j"` o `"n:k"`, devuelve la pila de cartas (portal) correspondiente. |
+| `portalesConEstado(players, neutrals, esInvalido)` | `función` | Como `listPortals()` pero añade `disabled` según `esInvalido(stack)` — usado por `picker()` para bloquear opciones. |
+| `opcionesActivarHabilidad(playerIdx, players, neutrals)` | `función` | Fase B: opciones activables para `players[playerIdx]` — sus propios portales (`own:<idx>`, gratis) y los centrales/neutrales (`central:<idx>`, con coste). |
+| `sumaGemas(gems)` | `función` | Suma los `valor` de un array de Gemas — para mostrar el total en `render()`. |
+| `tieneGemaAsterisco(player)` | `función` | `true` si el jugador tiene alguna Gema con `esAsterisco: true`. |
+| `gastarGemaAsterisco(player)` | `función` | Revela y descarta la Gema de asterisco del jugador; `false` si no tenía ninguna. |
+| `gastarGemaUnitaria(player)` | `función` | Gasta 1 Gema de valor 1; si no tiene ninguna suelta, cambia su Gema de menor valor por Gemas unitarias. `false` solo si no tiene ninguna Gema. |
+| `pagarActivacionPortalCentral(player)` | `función` | Cobra el coste de activar la habilidad de un Portal central: gratis con Gema de asterisco, o 1 Gema unitaria. `false` si no pudo pagar. |
+| `construirPoolGemas(valores)` | `función` | Construye y mezcla el pool de 5 Gemas de una invocación, marcando la de menor valor como `esAsterisco`. |
+| `generarVis(destino, opciones)` | `función` | Genera el objeto de visibilidad de una carta según su origen y destino. |
+| `actualizarClarividente(players)` | `función` | Actualiza `hasClariActivo`/`haTenidoClarividente` de cada jugador. |
+| `actualizarVisibilidad(players)` | `función` | Ajusta la visibilidad de las manos según los flags de Clarividente. |
+
+**Modelo de datos de Gemas**: `player.gems` es un array de
+`{ valor: number, nivel: 'C'|'B'|'A'|'experto'|'unitaria', esAsterisco?: boolean }`,
+no un número plano. Usar siempre los helpers de arriba para leerlo/gastarlo
+en vez de asumir su forma directamente.
 
 ---
 
@@ -49,7 +66,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 
 | Nombre             | Tipo      | Descripción                                                                                                                   |
 |--------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------|
-| `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx)` | `función` | Aplica la habilidad de `name` al portal `stack` propiedad de `players[ownerIdx]`, con acceso a `players`, `neutrals` y `levelIdx`. Incluye casos para: Ocultista, Centinela, Cronista, Cronomante, Estratega, Aprendiz y Metamorfo. |
+| `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [])` | `función` | Aplica la habilidad de `name` al portal `stack` propiedad de `players[ownerIdx]`, con acceso a `players`, `neutrals` y `levelIdx`. `need` es el array de personajes requeridos por la invocación activa (solo lo usa Metamorfo) — pásalo explícitamente desde quien llame, no lo recalcules dentro del módulo. Incluye casos para: Ocultista, Centinela, Cronista, Cronomante, Estratega, Aprendiz y Metamorfo. |
 
 ---
 
@@ -60,7 +77,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 
 | Nombre       | Tipo      | Descripción                                                                                       |
 |--------------|-----------|---------------------------------------------------------------------------------------------------|
-| `initSetup()`| `función` | - Configura `#cfgNext.onclick` para generar inputs de nombres según número de jugadoras. <br>- Configura `#btnStart.onclick` para leer nombres, inicializar `window.players` y `window.neutrals`, ocultar la UI de setup y llamar a `initGame()`. |
+| `initSetup()`| `función` | - Configura `#cfgNext.onclick` para generar inputs de nombres según número de jugadoras. <br>- Configura `#btnStart.onclick` para leer nombres y `#selInvocationSet` (`window.invocationSet`), inicializar `window.players` (cada uno con 3 Gemas unitarias iniciales) y `window.neutrals`, mostrar `#btnAbility`, ocultar la UI de setup y llamar a `initGame()`. |
 
 ---
 
@@ -72,18 +89,18 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | Nombre     | Tipo      | Descripción                                                                                          |
 |------------|-----------|------------------------------------------------------------------------------------------------------|
 | `picker(title, options, cb)` | `función` | Muestra un modal `<div id="picker">` con un `<select>` y botones OK/Cancelar; invoca `cb(valor)` o cierra. |
-| `render(players, neutrals, levelIdx)` | `función` | Dibuja: <br>- Zona activa (jugadora actual, portales, mano). <br>- Zona de otros jugadores (portales + sus cartas ocultas). <br>- Portales neutrales. <br>- Estado y componentes de la invocación actual. |
+| `render(players, neutrals, levelIdx)` | `función` | Dibuja: <br>- Zona activa (jugadora actual, portales, mano, suma de Gemas vía `sumaGemas()`). <br>- Zona de otros jugadores (portales + sus cartas ocultas). <br>- Portales neutrales. <br>- Estado y componentes de la invocación activa, resuelta desde `INVOCATION_SETS[window.invocationSet][lvl]` (nombre y `need`). |
 
 ---
 
 ## js/actions.js
-**Propósito:** Gestiona la **interacción** de la UI: selección de cartas, botones de juego y fin de turno.
+**Propósito:** Gestiona la **interacción** de la UI: selección de cartas, jugar carta (Fase A), activar habilidad (Fase B) y fin de turno.
 
 ### Exportaciones
 
 | Nombre              | Tipo      | Descripción                                                                                                                                        |
 |---------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `initActions(players, neutrals)` | `función` | - Define `window.selectCard(i)` para poblar selectores y mostrar el panel de juego. <br>- `#btnPlayCancel.onclick`: oculta el panel. <br>- `#btnPlay.onclick`: juega carta, pregunta por habilidad, aplica `applyAbility` y refresca `render()`. <br>- `#btnEndTurn.onclick`: valida jugada, reparte robo si <2 cartas, comprueba invocación, reparte gemas, añade portal neutral, avanza turno y refresca. |
+| `initActions(players, neutrals)` | `función` | - Define `window.selectCard(i)` para poblar selectores y mostrar el panel de juego. <br>- `#btnPlayCancel.onclick`: oculta el panel. <br>- `#btnPlay.onclick`: juega carta (Fase A) y refresca `render()` — **ya no** activa ninguna habilidad automáticamente. <br>- `#btnAbility.onclick`: Fase B, una vez por turno; construye opciones con `opcionesActivarHabilidad()`, cobra el coste con `pagarActivacionPortalCentral()` si la fuente es un Portal central, marca `window.habilidadUsadaEsteTurno` y llama a `applyAbility()`. <br>- `#btnEndTurn.onclick`: valida jugada, reparte robo si <2 cartas, comprueba invocación contra `INVOCATION_SETS[window.invocationSet][lvl]`, reparte Gemas reales (`construirPoolGemas` + bonus de Pícaro/Maestro), añade portal neutral, avanza turno y refresca. |
 
 ---
 
@@ -94,8 +111,8 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 
 | Nombre          | Tipo      | Descripción                                                                                                     |
 |-----------------|-----------|-----------------------------------------------------------------------------------------------------------------|
-| `initGame()`    | `función` | - Construye el mazo `window.deck` con personajes. <br>- Reparte 1 carta visible + 1 oculta a cada jugador. <br>- Inicializa `window.levelIdx`, `window.turn`, `window.played`. <br>- Llama a `initActions()`. <br>- Inicia primer turno con `nextTurn()`. |
-| `nextTurn()`    | `función` | - `window.played = false`. <br>- Si la jugadora activa no tiene cartas en mano, termina la partida vía `finalizarPartida()`. <br>- Alerta “Turno de X”. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`. |
+| `initGame()`    | `función` | - Construye el mazo `window.deck` con las cantidades reales de "Modo normal" (32 cartas), añadiendo los 9 Animales si `window.invocationSet` es `introductorio` o `floral` (41 cartas); baraja y aparta 2 al azar sin mirar. <br>- Reparte 1 carta visible + 1 oculta a cada jugador. <br>- Inicializa `window.levelIdx`, `window.turn`, `window.played`, `window.habilidadUsadaEsteTurno`. <br>- Llama a `initActions()`. <br>- Inicia primer turno con `nextTurn()`. |
+| `nextTurn()`    | `función` | - `window.played = false`, `window.habilidadUsadaEsteTurno = false`. <br>- Si la jugadora activa no tiene cartas en mano, termina la partida vía `finalizarPartida()`. <br>- Alerta “Turno de X”. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`. |
 | `finalizarPartida(motivo)` | `función` | Pregunta si se quiere jugar otra partida. Si sí, llama a `resetJuego()`; si no, bloquea la interfaz con un mensaje de cierre. Llamada desde `game.js` (mano vacía) y desde `actions.js` (última invocación completada) — por eso debe permanecer `export`ada. |
 | `resetJuego()`  | `función` | Oculta la UI de juego, muestra la de configuración, limpia el estado global (`window.players`, `window.deck`, etc.) y vuelve a llamar a `initSetup()`. |
 
@@ -108,7 +125,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 
 ```js
 import { initSetup } from './setup.js';
-import { LEVELS, COMBOS, REWARD } from './utils.js';
+import { LEVELS, INVOCATION_SETS } from './utils.js';
 
 // Estado global
 window.players = [];
@@ -117,11 +134,12 @@ window.deck = [];
 window.levelIdx = 0;
 window.turn = 0;
 window.played = false;
+window.habilidadUsadaEsteTurno = false;
+window.invocationSet = 'normal';
 
 // Exponer constantes
 window.LEVELS = LEVELS;
-window.COMBOS = COMBOS;
-window.REWARD = REWARD;
+window.INVOCATION_SETS = INVOCATION_SETS;
 
 // Arrancar UI
 document.addEventListener('DOMContentLoaded', () => {
@@ -133,8 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 **Flujo de carga**  
 1. Carga de `index.js` como módulo.  
-2. Llamada a `initSetup()`: muestra form de configuración.  
+2. Llamada a `initSetup()`: muestra form de configuración (jugadoras, nombres, set de invocación).  
 3. Pulsar **Continuar** y **Iniciar** reúne datos y llama a `initGame()`.  
-4. `initGame()` reparte cartas y llama a `nextTurn()`.  
-5. Cada turno: selección de cartas, aplicación de habilidades, comprobación de invocaciones, robo y cambio de turno.
+4. `initGame()` construye el mazo según el set elegido, reparte cartas y llama a `nextTurn()`.  
+5. Cada turno: Fase A (jugar carta, obligatoria), Fase B opcional (activar como mucho una habilidad, propia gratis o central pagando), comprobación de invocaciones y reparto real de Gemas, robo y cambio de turno.
 

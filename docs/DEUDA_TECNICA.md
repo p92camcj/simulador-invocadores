@@ -18,37 +18,37 @@
 
 ---
 
+## Resueltos
+
+### ~~1. `window.picker` no existe — el Metamorfo rompe el fin de turno~~ (resuelto)
+
+- **Qué era**: `gestionarMetamorfos()` en `js/utils.js` llamaba a
+  `window.picker(...)`, que nunca se asignaba en ningún archivo del
+  proyecto (`picker()` solo existía como export de módulo ES en
+  `js/render.js`), causando un `TypeError` no capturado dentro del handler
+  de "Terminar turno" en cuanto una jugadora aceptaba transformar su
+  Metamorfo.
+- **Cómo se resolvió**: al implementar la Fase B independiente de la
+  secuencia de turno (activar habilidad como acción propia, una vez por
+  turno, solo para la jugadora activa — ver `CLAUDE.md`), se eliminó por
+  completo `gestionarMetamorfos()` y el mecanismo ad-hoc de fin de turno que
+  dejaba a *cualquier* jugadora con un Metamorfo visible transformarlo. El
+  Metamorfo ahora se activa exactamente igual que Ocultista/Cronista/etc.,
+  a través de `applyAbility()` desde `js/actions.js`, usando el `picker()`
+  importado correctamente de `render.js`. El bug desaparece porque la
+  función rota ya no existe.
+
+### ~~3. `js/render.js` usaba la variable global `turn` sin el prefijo `window.`~~ (resuelto)
+
+- **Qué era**: en `render()`, dos líneas usaban la variable bare `turn` en
+  vez de `window.turn`, funcionando solo porque `window.turn` ya estaba
+  inicializado como global antes de la primera llamada a `render()`.
+- **Cómo se resolvió**: corregido de paso al reescribir `render()` para el
+  reparto real de Gemas (ambas ocurrencias usan ahora `window.turn`).
+
+---
+
 ## Prioridad Alta
-
-### 1. `window.picker` no existe — el Metamorfo rompe el fin de turno
-
-- **Dónde**: `js/utils.js`, función `gestionarMetamorfos()`, línea con
-  `window.picker('¿En qué personaje quieres transformarlo?', opciones, v => resolve(v));`.
-- **Descripción**: `picker()` se define y se exporta como binding normal de
-  módulo ES en `js/render.js` (`export function picker(...)`), y solo se
-  importa por nombre en `js/abilities.js`
-  (`import { picker, render } from './render.js';`). **Nunca se asigna a
-  `window.picker` en ningún archivo del proyecto** (se comprobó con grep en
-  todo `js/*.js` e `index.html`). `js/utils.js` no importa `picker` de
-  `render.js` en absoluto.
-- **Impacto real**: cuando una jugadora tiene un Metamorfo visible en el
-  top de un portal y gemas > 0, y pulsa "Terminar turno", `gestionarMetamorfos()`
-  le pregunta con `confirm()` si quiere activarlo. Si responde que sí, la
-  siguiente línea ejecuta `window.picker(...)`, que es `undefined` →
-  `TypeError: window.picker is not a function`. Esto ocurre **dentro** del
-  handler `async` del botón "Terminar turno", antes de que se compruebe la
-  invocación o se avance el turno, dejando la partida en un estado
-  inconsistente (turno no avanzado, excepción no capturada). Es el mismo
-  tipo de bug que los tres `ReferenceError` ya corregidos (ver
-  `CHANGELOG.md` `1.3.1.22`), pero no se detectó en aquella auditoría.
-- **Corrección propuesta**: en `js/utils.js`, importar `picker` de
-  `./render.js` (`import { picker } from './render.js';`) y usar `picker(...)`
-  en vez de `window.picker(...)`. Cuidado con la dependencia circular
-  potencial: `render.js` no importa nada de `utils.js` actualmente para
-  `picker`, así que el import directo debería ser seguro, pero conviene
-  revisarlo al tocarlo.
-- **Prioridad**: **Alta** — rompe una habilidad de personaje jugable, con
-  una excepción no capturada en pleno flujo de turno.
 
 ### 2. `js/version-check.js` compara versiones por desigualdad, no por orden
 
@@ -77,35 +77,13 @@
 
 ## Prioridad Media
 
-### 3. `js/render.js` usa la variable global `turn` sin el prefijo `window.`
+### 4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en al menos 5 sitios
 
-- **Dónde**: `js/render.js`, función `render()`, líneas con
-  `['player-red', ...][turn % 4]` y `if (i === turn) return;`.
-- **Descripción**: en la misma función, la línea anterior sí usa
-  `players[window.turn]` correctamente, pero estas dos usan la variable
-  bare `turn`. Funciona *hoy* porque `window.turn` ya está inicializado
-  como global por `index.js` antes de que `render()` se ejecute nunca, y en
-  el navegador las propiedades de `window` son legibles como identificador
-  global aunque el módulo esté en modo estricto — pero es exactamente el
-  mismo patrón de fragilidad que causó el `ReferenceError` de `levelIdx` ya
-  corregido (ver `CLAUDE.md`, sección Architecture). Si `render()` se
-  llamara alguna vez antes de que `window.turn` exista (tests, SSR,
-  refactor futuro que retrase la inicialización), lanzaría
-  `ReferenceError: turn is not defined`.
-- **Impacto real**: ninguno observado hoy, pero es deuda latente e
-  inconsistente dentro de la misma función.
-- **Corrección propuesta**: cambiar ambas ocurrencias a `window.turn`,
-  igual que la línea de al lado.
-- **Prioridad**: **Media** — no rompe nada ahora mismo, pero es el mismo
-  patrón que ya causó un bug real; barato de arreglar.
-
-### 4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en al menos 6 sitios
-
-- **Dónde**: `js/utils.js` (`gestionarMetamorfos`), `js/actions.js` (el
-  bloque de comprobación de invocación en el handler de "Terminar turno",
-  dos veces: una para construir `map` y otra para `allPortals`),
-  `js/render.js` (tres veces: zona activa, zona de otras jugadoras y zona
-  neutral), y `js/abilities.js` (caso `Centinela`, caso `Metamorfo`).
+- **Dónde**: `js/actions.js` (el bloque de comprobación de invocación en el
+  handler de "Terminar turno", dos veces: una para construir `map` y otra
+  para `allPortals`), `js/render.js` (tres veces: zona activa, zona de
+  otras jugadoras y zona neutral), y `js/abilities.js` (caso `Centinela`,
+  caso `Metamorfo`).
 - **Descripción**: el proyecto ya tiene `listPortals()`, `stackFrom()` y
   `portalesConEstado()` en `js/utils.js` pensados exactamente para
   centralizar "recorre todos los portales de jugadoras + neutrales", pero
@@ -157,10 +135,11 @@
 - **Descripción**: toda la lógica de reglas (combos de invocación,
   habilidades, visibilidad de cartas, condición de fin de partida) depende
   de jugar manualmente una partida completa para detectar regresiones. Los
-  tres `ReferenceError` corregidos en `1.3.1.22`, y el `window.picker`
-  roto de este mismo documento (ítem 1), son exactamente el tipo de bug
-  que un test unitario simple sobre `applyAbility()` o `gestionarMetamorfos()`
-  habría detectado sin necesidad de jugar una partida entera.
+  tres `ReferenceError` corregidos en `1.3.1.22`, y el `window.picker` roto
+  que existió hasta que se eliminó `gestionarMetamorfos()` (ver
+  "Resueltos" al principio de este documento), son exactamente el tipo de
+  bug que un test unitario simple sobre `applyAbility()` habría detectado
+  sin necesidad de jugar una partida entera.
 - **Impacto real**: alto coste acumulado de "no se sabe si algo se rompió
   hasta que se juega", especialmente según crece el alcance (modos nuevos,
   personajes nuevos — ver `MEJORAS_FUTURAS.md`).
@@ -172,7 +151,7 @@
   build) es una decisión de mayor calado que merece discutirse aparte, no
   asumirse aquí.
 - **Prioridad**: **Media** — no es un bug puntual, es la causa raíz de que
-  los bugs de los ítems 1 y 3 pasaran desapercibidos.
+  esos bugs pasaran desapercibidos.
 
 ---
 
@@ -194,27 +173,28 @@
 - **Corrección propuesta**: envolver cada `case` en `{ }`.
 - **Prioridad**: **Baja**.
 
-### 8. Nombres de personaje como strings mágicos repetidos sin roster centralizado
+### 8. Nombres de personaje como strings mágicos repetidos sin roster centralizado (parcialmente mitigado)
 
-- **Dónde**: `js/utils.js` (claves de `iconos`, `COMBOS`), `js/game.js`
-  (array `chars` en `initGame()`), `js/abilities.js` (cada `case` del
-  `switch`), `js/actions.js` (array `personajesConHabilidad`).
+- **Dónde**: `js/utils.js` (claves de `iconos`, `INVOCATION_SETS`),
+  `js/game.js` (array `chars`/`charsBase` en `initGame()`),
+  `js/abilities.js` (cada `case` del `switch`).
 - **Descripción**: la lista de "qué personajes tienen habilidad activable"
-  vive por duplicado — una vez como los `case` reales de `abilities.js`, y
-  otra vez como el array literal `personajesConHabilidad` en `actions.js`
-  (`['Ocultista', 'Cronista', 'Cronomante', 'Estratega', 'Aprendiz', 'Metamorfo']`).
-  No hay ninguna relación estructural entre ambos: añadir un `case` nuevo
-  en `abilities.js` sin acordarse de añadir el nombre también en
-  `actions.js` significa que la habilidad nunca se ofrece a activar (el
-  `confirm()` de activación nunca se dispara), en silencio.
-  `iconos` en `utils.js` sí sirve como roster de nombres válidos, pero no
-  se usa para validar ni derivar la otra lista.
-- **Impacto real**: bajo hoy (las dos listas están sincronizadas
-  actualmente), pero es una trampa exacta para cuando se añadan Entusiasta
-  y Animales (ver `MEJORAS_FUTURAS.md`).
-- **Corrección propuesta**: derivar `personajesConHabilidad` de los
+  vivía por duplicado — los `case` reales de `abilities.js` y, aparte, un
+  array literal repetido en `actions.js`. Esa duplicación concreta ya se
+  resolvió: ahora existe `PERSONAJES_CON_HABILIDAD` en `js/utils.js` como
+  única fuente, usada tanto por `opcionesActivarHabilidad()` (Fase B) como
+  por cualquier otro sitio que necesite la lista. Lo que **sigue** sin
+  resolver es que ese array sigue siendo mantenido a mano — no se deriva
+  automáticamente de los `case` reales de `abilities.js` — así que añadir
+  un `case` nuevo sin añadir el nombre a `PERSONAJES_CON_HABILIDAD` seguiría
+  siendo un fallo silencioso (la habilidad nunca aparecería como activable
+  en el picker de Fase B).
+- **Impacto real**: bajo hoy (una sola lista manual en vez de dos, pero
+  sigue siendo manual), y sigue siendo relevante para cuando el Maestro
+  tenga su habilidad activa (ver `MEJORAS_FUTURAS.md`).
+- **Corrección propuesta**: derivar `PERSONAJES_CON_HABILIDAD` de los
   `case` reales de `abilities.js` (p. ej. exportando un `Set` o array desde
-  ese módulo) en vez de mantener una copia manual en `actions.js`.
+  ese módulo) en vez de mantener una copia manual en `utils.js`.
 - **Prioridad**: **Baja**.
 
 ### 9. `hasClari()` en `utils.js` es código muerto
@@ -233,10 +213,10 @@
 ### 10. `alert()` / `confirm()` bloqueantes para todo el flujo de juego
 
 - **Dónde**: repartido por `js/actions.js`, `js/game.js`, `js/utils.js`
-  (`gestionarMetamorfos`) y `js/abilities.js` — 11 llamadas a `alert()`/
-  `confirm()` en total (cambio de turno, activar habilidad, activar
-  Metamorfo, invocación completa, fin de partida, validaciones de
-  formulario).
+  (pago de Gemas en `pagarActivacionPortalCentral`) y `js/abilities.js` —
+  varias llamadas a `alert()`/`confirm()` en total (cambio de turno,
+  activar habilidad, pagar coste de Portal central, invocación completa,
+  fin de partida, validaciones de formulario).
 - **Descripción**: cada aviso de turno, cada confirmación de habilidad y
   el mensaje de fin de partida usan diálogos nativos del navegador, que
   bloquean el hilo de JS y no dejan rastro visual de lo ocurrido una vez
