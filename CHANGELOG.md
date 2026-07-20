@@ -4,6 +4,18 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.12.1.48] - 2026-07-20
+
+### Añadido
+- **Nuevo `docs/AUDITORIA_REGLAS.md`**: informe de auditoría cruzando `docs/reglamento/REGLAMENTO.md` contra el estado real de `js/*.js`. Cubre modos de juego pendientes (Introductorio como variante de mazo propia — roster real de 29 cartas, no las 41 que produce hoy el set `introductorio`; Avanzado; Experto) con estimación de tamaño S/M/L, personajes incompletos (Entusiasta, Maestro activo), final de partida (sin marcador ni desempate), y un análisis dedicado de conflictos entre habilidades (protección de Centinela, estado de Cronomante entre turnos, identidad del Metamorfo transformado al moverse entre manos/Portales, Clarividente + intercambio de Aprendiz), con tabla resumen de prioridades.
+
+### Corregido (documentación, no código)
+- **Hallazgo de la auditoría**: `case 'Ocultista'` puede revelar una Centinela que el auto-giro había ocultado, sin volver a disparar ese auto-giro — permite dos Centinelas visibles a la vez. Documentado con reproducción completa en `docs/AUDITORIA_REGLAS.md` (sección 3.1) y como ítem nuevo en `docs/DEUDA_TECNICA.md` (ítem 12); **no se corrige en esta tarea**, queda pendiente para una ronda futura.
+- `docs/DEUDA_TECNICA.md` ítem 4 actualizado: la duplicación de "recorrer todos los Portales" en `js/render.js` (antes 3 bloques separados) se redujo al unificar el tablero en `renderBoardGrid()`.
+- `docs/MEJORAS_FUTURAS.md` y `CLAUDE.md` actualizados con los tamaños S/M/L y la prioridad (marcador final: Alta) que confirma la auditoría.
+
+---
+
 ## [1.12.0.47] - 2026-07-20
 
 ### Añadido

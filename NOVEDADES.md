@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.12.1.48 - 2026-07-20
+
+- Cambio interno, sin novedades visibles para quien juega: se ha escrito
+  un informe detallado repasando qué partes del reglamento todavía no
+  están implementadas, para planificar mejor las próximas novedades.
+
 ## 1.12.0.47 - 2026-07-20
 
 - Ha vuelto el panel con listas desplegables para jugar carta: ahora puedes

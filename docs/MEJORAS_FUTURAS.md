@@ -93,7 +93,11 @@ invocación con el Entusiasta bocarriba en un Portal) no existe en
 integrados — sin habilidad propia, que es fiel al reglamento ("no tienen
 ninguna habilidad") — y entran en el mazo solo cuando el set de invocación
 elegido es `introductorio` (el único que los necesita; `floral` reutiliza
-el mazo normal sin Animales, ver `js/game.js`).
+el mazo normal sin Animales, ver `js/game.js`). Tamaño **S–M**: necesita
+un toggle nuevo en la configuración (la expansión es opt-in), añadirlo al
+mazo condicionalmente, y la penalización pasiva reutilizando
+`gastarGemaUnitaria()` (`js/utils.js`) para el "toma el cambio" — ver
+`docs/AUDITORIA_REGLAS.md`, sección 2.1.
 
 ### Maestro: habilidad activa nueva
 
@@ -106,7 +110,10 @@ visible para el resto) y bajarla directamente al propio Portal del
 Maestro; la jugadora afectada repone mano robando del mazo. Esto es
 trabajo nuevo en `js/abilities.js` (nuevo `case 'Maestro'`) y en
 `PERSONAJES_CON_HABILIDAD` (`js/utils.js`, añadir `'Maestro'` a la lista
-de personajes con habilidad activable en Fase B).
+de personajes con habilidad activable en Fase B). Tamaño **S** (patrón ya
+establecido, similar a Cronista) — selecciona una carta de una mano
+ajena, no un Portal, así que no encaja con el clic-en-grid de
+`pickerPortal()` (igual que Aprendiz), se queda con el `picker()` normal.
 
 ### Metamorfo: representación visual de la transformación
 
@@ -152,7 +159,12 @@ por si se decide ajustar la duración de ese periodo de gracia en el futuro.
 No existe ninguna pantalla de resultados ni lógica de desempate al acabar
 la partida — `finalizarPartida()` (`js/game.js`) hoy solo pregunta si se
 quiere jugar otra vez, sin mostrar gemas finales por jugadora ni resolver
-empates según las reglas.
+empates según las reglas. **Prioridad Alta** (bloquea la variante 2vs2 de
+abajo y es literalmente cómo se decide quién gana la partida) — ver
+`docs/AUDITORIA_REGLAS.md`, sección 4, para el detalle de qué falta
+exactamente y una estimación de tamaño (M: el cálculo en sí es sencillo
+con los datos ya existentes en `player.gems`, la pieza grande es sustituir
+`alert()`/`confirm()` por una pantalla de resultados real).
 
 ### Modos Introductorio, Avanzado y Experto
 
@@ -162,17 +174,27 @@ requiera, Metamorfo incluido desde el principio, 2 cartas apartadas al
 azar). Faltan el modo Introductorio como variante de preparación de mazo
 completa (hoy solo existe su set de invocación, no su lista de personajes
 propia: Reena, Sora, Lumo, Pícaro, Aprendiz, Cronista, Estratega y
-Cronomante), el modo Avanzado y el modo Experto (este último con el
-autómata central y la 4ª invocación "Asterisco"/Madain, ya definida como
-`INVOCATION_ASTERISCO` en `js/utils.js` pero sin conectar a ningún flujo)
-— cada uno como variante seleccionable antes de empezar, no como modos
-separados de código.
+Cronomante — roster real de **29 cartas**, no las 41 que produce hoy el
+código al elegir el set `introductorio`, ver `docs/AUDITORIA_REGLAS.md`
+sección 1.1 para el cálculo exacto), el modo Avanzado (tamaño S–M: su
+composición de 41 cartas coincide, por casualidad, con lo que el código
+ya produce hoy para `introductorio` — es más renombrar/reutilizar que
+construir desde cero) y el modo Experto (tamaño L: autómata central sin
+mano ni turno propio, 4ª invocación "Asterisco"/Madain ya definida como
+`INVOCATION_ASTERISCO` en `js/utils.js` pero sin conectar a ningún flujo,
+restricción de Metamorfo en forma natural, intercambio de Gemas al
+final) — cada uno como variante seleccionable antes de empezar, no como
+modos separados de código.
 
 ### Variante 2 contra 2
 
-Falta la variante de equipos 2vs2 descrita en el reglamento — probablemente
-implica repensar cómo se agrupan `window.players` en equipos para el
-recuento de victoria/gemas, no solo la UI de selección.
+Falta la variante de equipos 2vs2 descrita en el reglamento. Más pequeña
+de lo que parece (tamaño S–M, ver `docs/AUDITORIA_REGLAS.md` sección 1.4):
+el reglamento no cambia el orden de turnos (lo resuelve la disposición
+física en la mesa), así que solo hace falta etiquetar jugadoras por
+equipo en la configuración y sumar Gemas por equipo en el marcador final
+— por eso está bloqueada por el bloque anterior (no hay marcador del que
+sumar).
 
 ---
 

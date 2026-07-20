@@ -39,8 +39,25 @@ the version that shipped this):
   physical cards across all modes, not what goes in a single deck.
 - Missing modes: Introductorio (as a full selectable deck-prep variant, not
   just its invocation set), Avanzado, Experto (with the central autómata),
-  the 2v2 team variant, and the Entusiasta expansion.
-- No tiebreak logic or final scoreboard at game end.
+  the 2v2 team variant, and the Entusiasta expansion. Note: today's
+  `introductorio` invocation-set deck (32 base + 9 Animales = 41 cards) is
+  actually closer in size/composition to what real **Avanzado** mode
+  should be — real **Introductorio** mode has its own much smaller roster
+  (Reena/Sora/Lumo/Pícaro/Aprendiz/Cronista/Estratega/Cronomante only, **29
+  cards**, no cards set aside) that doesn't exist in code yet. See
+  `docs/AUDITORIA_REGLAS.md` §1 for the exact numbers and per-mode size
+  estimates (S/M/L).
+- No tiebreak logic or final scoreboard at game end — this is the
+  highest-priority gap of the ones tracked in `docs/MEJORAS_FUTURAS.md`,
+  since it also blocks the 2v2 variant (team score needs a scoreboard to
+  sum into) and it's literally how the game decides a winner.
+- **Known bug, not yet fixed**: `case 'Ocultista'` in `abilities.js` can
+  reveal a Centinela that the auto-hide (`ocultarOtrasCentinelas`, Fase A)
+  had turned face-down, without re-triggering that auto-hide — reachable
+  sequence ending with two simultaneously-visible Centinelas. Full repro
+  in `docs/AUDITORIA_REGLAS.md` §3.1 and `docs/DEUDA_TECNICA.md` item 12.
+  Don't assume this is fixed just because Centinela protection is
+  otherwise consistently applied everywhere else (verified, §3.2).
 - Maestro is missing the rulebook's new **active** ability entirely (moving
   a card another player can see — their hidden-to-self card — straight to
   the Maestro's own Portal, then that player draws a replacement). The
@@ -175,6 +192,14 @@ in `nextTurn()`.
   fragility, duplication, missing tests) as opposed to rulebook gaps.
 - **`docs/MEJORAS_FUTURAS.md`** — backlog of new scope: catching up with
   the rulebook, the future networked-multiplayer direction, and UX ideas.
+- **`docs/AUDITORIA_REGLAS.md`** — point-in-time audit (2026-07-20)
+  cross-referencing the rulebook against the real code, with size
+  estimates (S/M/L) per missing mode/character and a deep dive into
+  ability-interaction edge cases (Centinela protection, Cronomante state
+  across turn/game boundaries, Metamorfo identity surviving being moved by
+  other abilities, Clarividente + Aprendiz). Where it disagrees with a
+  summary above, trust the audit — it was produced by reading the actual
+  code, this summary is prose that can drift.
 - **`CHANGELOG.md`** — full version history.
 
 ## Regla de prioridad: deuda técnica antes que alcance nuevo

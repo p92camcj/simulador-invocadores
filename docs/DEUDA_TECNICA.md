@@ -13,8 +13,12 @@
 > "Regla de prioridad: deuda técnica antes que alcance nuevo" en
 > `CLAUDE.md`.
 >
-> Auditoría realizada el 2026-07-19 leyendo `js/*.js` completo con ojo
-> crítico de calidad de código (no solo lo ya anotado en `CLAUDE.md`).
+> Auditoría inicial realizada el 2026-07-19 leyendo `js/*.js` completo con
+> ojo crítico de calidad de código (no solo lo ya anotado en `CLAUDE.md`).
+> Ítems 12 y 13 añadidos el 2026-07-20 desde
+> [`docs/AUDITORIA_REGLAS.md`](AUDITORIA_REGLAS.md), que cruza el
+> reglamento contra el código con foco en interacciones entre
+> habilidades — el detalle largo de ambos vive ahí, no aquí.
 
 ---
 
@@ -65,13 +69,55 @@
 
 ## Prioridad Media
 
-### 4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en al menos 5 sitios
+### 12. Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro — dos Centinelas visibles a la vez
+
+- **Dónde**: `js/abilities.js`, `case 'Ocultista'`.
+- **Descripción**: detectado en `docs/AUDITORIA_REGLAS.md` (sección 3.1,
+  con la secuencia de reproducción completa). Resumen: cuando el auto-giro
+  (`ocultarOtrasCentinelas()`, disparado al jugar una segunda Centinela)
+  oculta una Centinela que estaba visible, esa carta queda como Centinela
+  oculta en el top de su Portal. `esCentinelaVisible()` y
+  `estaProtegidoParaActivar()` solo bloquean Centinelas **visibles**, así
+  que Ocultista puede elegir ese Portal y alternarla de vuelta a visible
+  sin que nada vuelva a disparar `ocultarOtrasCentinelas()` — resultado:
+  dos Centinelas visibles a la vez, violando "solo puede haber una
+  Centinela visible en mesa".
+- **Impacto real**: alcanzable en una partida real (Modo normal tiene 4
+  Centinelas en el mazo); rompe la protección de Portales de forma
+  duradera hasta que se juegue una Centinela nueva.
+- **Corrección propuesta**: en `case 'Ocultista'`, tras alternar
+  `carta.vis.public`, si `carta.name === 'Centinela' && carta.vis.public`,
+  llamar también a `ocultarOtrasCentinelas(st, players, neutrals)`.
+- **Prioridad**: **Media**.
+
+### 13. `window.cronomanteOnComplete` no se resetea junto a `cronomantePortalInvestigado`
+
+- **Dónde**: `js/game.js` (`initGame()`, `nextTurn()`, `resetJuego()`).
+- **Descripción**: detectado en `docs/AUDITORIA_REGLAS.md` (sección 3.4).
+  `window.cronomantePortalInvestigado` sí se resetea a `null` en los 3
+  puntos de entrada relevantes; el callback guardado en paralelo
+  `window.cronomanteOnComplete` no. Es inofensivo hoy porque solo se lee
+  dentro de la rama `if (window.cronomantePortalInvestigado)`, que sí
+  queda correctamente cerrada — pero es una referencia obsoleta que
+  convendría limpiar para no depender de ese acoplamiento implícito.
+- **Impacto real**: ninguno hoy, solo higiene de estado.
+- **Corrección propuesta**: añadir `window.cronomanteOnComplete = null;`
+  junto a los 3 resets existentes de `cronomantePortalInvestigado`.
+- **Prioridad**: **Baja** (documentado aquí como Media por agruparse con
+  el resto de esta sección, pero el impacto real es de prioridad Baja).
+
+### 4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en varios sitios
 
 - **Dónde**: `js/actions.js` (el bloque de comprobación de invocación en el
   handler de "Terminar turno", dos veces: una para construir `map` y otra
-  para `allPortals`), `js/render.js` (tres veces: zona activa, zona de
-  otras jugadoras y zona neutral), y `js/abilities.js` (caso `Centinela`,
-  caso `Metamorfo`).
+  para `allPortals`), y `js/abilities.js` (caso `Centinela` —
+  `ocultarOtrasCentinelas()` — y caso `Metamorfo`).
+- **Actualización 2026-07-20**: la duplicación en `js/render.js` (antes
+  "zona activa, zona de otras jugadoras y zona neutral" por separado) se
+  redujo de forma significativa al unificar el tablero en
+  `renderBoardGrid()` (un único bucle sobre `players` + un bloque aparte
+  para `neutrals`, en vez de 3 bloques independientes) — no queda como
+  ítem pendiente para ese archivo.
 - **Descripción**: el proyecto ya tiene `listPortals()`, `stackFrom()` y
   `portalesConEstado()` en `js/utils.js` pensados exactamente para
   centralizar "recorre todos los portales de jugadoras + neutrales", pero
@@ -79,10 +125,10 @@
   repite manualmente `players.forEach(p => p.portals.forEach(...))` seguido
   de `neutrals.forEach(...)`, con pequeñas variaciones cada vez.
 - **Impacto real**: cualquier cambio en cómo se representan los portales
-  (p. ej. al implementar el reparto correcto por nº de jugadoras, o el modo
-  Avanzado con autómata central) obliga a tocar la misma lógica de
-  recorrido en 6+ sitios en vez de uno, con riesgo real de que alguno se
-  quede desactualizado.
+  (p. ej. al implementar el modo Avanzado/Experto con autómata central,
+  ver `docs/AUDITORIA_REGLAS.md`) obliga a tocar la misma lógica de
+  recorrido en varios sitios en vez de uno, con riesgo real de que alguno
+  se quede desactualizado.
 - **Corrección propuesta**: añadir un helper único en `utils.js` (p. ej.
   `todosLosPortales(players, neutrals)` devolviendo `{stack, playerIdx, portalIdx}[]`)
   y usarlo en los 6 sitios en vez de repetir el doble `forEach`.
