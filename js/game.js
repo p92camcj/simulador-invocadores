@@ -105,6 +105,7 @@ export function finalizarPartida(motivo) {
 export function resetJuego() {
   // Ocultar zonas de juego
   $('#info')?.classList.add('hidden');
+  $('#boardNeutrals')?.classList.add('hidden');
   $('#boardGrid')?.classList.add('hidden');
   $('#btnPlayCancel')?.classList.add('hidden');
   $('#ctrlPlay')?.classList.add('hidden');

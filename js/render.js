@@ -168,11 +168,40 @@ function portalCardHtml(stack, label, destKeyJugar, keyObjetivo) {
 }
 
 /**
+ * Fila de Portales centrales/neutrales: a lo ancho de todo el contenedor,
+ * POR ENCIMA del grid de columnas de jugadoras (Tarea 2, revisión) — nunca
+ * mezclada entre las columnas de jugadoras, para que no pase desapercibida
+ * como zona compartida. Oculta por completo cuando no hay Portales
+ * centrales en esta partida (4-5 jugadoras pueden dar 1 o 0, ver
+ * `js/setup.js`), en vez de dejar un hueco vacío.
+ */
+function renderBoardNeutrals(neutrals) {
+  const el = document.querySelector('#boardNeutrals');
+  if (!el) return;
+
+  if (!neutrals.length) {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    return;
+  }
+
+  el.classList.remove('hidden');
+  let html = '<h4>Portales centrales</h4><div class="board-portals">';
+  neutrals.forEach((stack, i) => {
+    html += portalCardHtml(stack, `Neutral ${i + 1}`, `n:${i}`, `n:${i}`);
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+/**
  * Tablero único e interactivo: una columna por jugadora (orden fijo por
- * índice, no se reordena según el turno) más una columna final de
- * Portales centrales si los hay. Sustituye a las antiguas zonas separadas
- * zoneActive/zoneOthers/neutralArea — visibilidad real en todo momento
- * (nada de "vista de depuración" con todo visible):
+ * índice, no se reordena según el turno). Los Portales centrales se
+ * pintan aparte, en `renderBoardNeutrals()` (fila propia por encima de
+ * este grid, ver Tarea 2) — este grid ya no incluye una columna para
+ * ellos. Sustituye a las antiguas zonas separadas zoneActive/zoneOthers/
+ * neutralArea — visibilidad real en todo momento (nada de "vista de
+ * depuración" con todo visible):
  * - Portales: visibles según `vis?.public` de la carta superior, igual
  *   para cualquier columna (no depende de quién es la activa).
  * - Mano de la jugadora ACTIVA (`window.turn`): según
@@ -185,6 +214,8 @@ function portalCardHtml(stack, label, destKeyJugar, keyObjetivo) {
  * se atenúa (`.turno-inactivo`), sin perder su color de identidad fijo.
  */
 function renderBoardGrid(players, neutrals) {
+  renderBoardNeutrals(neutrals);
+
   const grid = document.querySelector('#boardGrid');
   if (!grid) return;
 
@@ -194,8 +225,7 @@ function renderBoardGrid(players, neutrals) {
   // siquiera el mínimo de 240px por columna cabe (pantallas estrechas o
   // muchas jugadoras a la vez) — mismo criterio para cualquier ancho, sin
   // rama de código separada para escritorio/móvil.
-  const totalCols = players.length + (neutrals.length ? 1 : 0);
-  grid.style.gridTemplateColumns = `repeat(${totalCols}, minmax(240px, 1fr))`;
+  grid.style.gridTemplateColumns = `repeat(${players.length}, minmax(240px, 1fr))`;
 
   let html = '';
   players.forEach((p, i) => {
@@ -244,14 +274,6 @@ function renderBoardGrid(players, neutrals) {
 
     html += '</div>'; // .board-col
   });
-
-  if (neutrals.length) {
-    html += '<div class="board-col section"><h4>Neutrales</h4><div class="board-portals">';
-    neutrals.forEach((stack, i) => {
-      html += portalCardHtml(stack, `Neutral ${i + 1}`, `n:${i}`, `n:${i}`);
-    });
-    html += '</div></div>';
-  }
 
   grid.innerHTML = html;
 }

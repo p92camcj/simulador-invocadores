@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.12.3.49] - 2026-07-20
+
+### Corregido
+- **Portales centrales en fila propia, no como columna del grid**: `renderBoardGrid()` (`js/render.js`) pintaba los Portales centrales como una columna final más dentro del mismo grid de N columnas de jugadoras, fácil de pasar por alto entre las demás. Ahora `renderBoardNeutrals()` (nueva función interna) los pinta aparte, en `#boardNeutrals` (`index.html`), una fila a lo ancho de todo el contenedor por encima del grid de jugadoras, con fondo y borde propios y el título "Portales centrales" — `renderBoardGrid()` ya solo genera columnas de jugadoras (`grid-template-columns: repeat(nºJugadoras, minmax(240px, 1fr))`, sin el `+1` que antes sumaba por los neutrales). Cuando la partida no tiene Portales centrales (5 jugadoras), la fila se oculta por completo en vez de dejar un hueco vacío. `js/setup.js` y `js/game.js` muestran/ocultan `#boardNeutrals` junto con `#boardGrid` en los mismos puntos donde ya lo hacían para este último.
+
+---
+
 ## [1.12.2.48] - 2026-07-20
 
 ### Corregido

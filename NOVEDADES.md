@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.12.3.49 - 2026-07-20
+
+- Los Portales centrales ahora se ven en su propia franja, arriba del
+  todo, en vez de mezclados entre las columnas de las jugadoras — así es
+  más difícil que se te pasen por alto. Si en tu partida no hay ningún
+  Portal central (con 5 jugadoras), esa franja no aparece.
+
 ## 1.12.2.48 - 2026-07-20
 
 - El tablero ya no obliga a hacer scroll horizontal cuando la pantalla

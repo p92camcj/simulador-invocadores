@@ -255,8 +255,36 @@ select {
   font-size: 0.92rem;
 }
 
-/* Tablero único (Tarea C, revisión): una columna por jugadora + Portales
-   centrales, siempre con la visibilidad real de la partida.
+/* Fila de Portales centrales/neutrales (Tarea 2): a lo ancho de todo el
+   contenedor, por encima del grid de columnas de jugadoras de abajo —
+   nunca mezclada entre ellas, para que no pase desapercibida como zona
+   compartida. Fondo propio para diferenciarla; oculta por completo
+   (`.hidden`) cuando la partida no tiene Portales centrales (ver
+   renderBoardNeutrals() en render.js). */
+.board-neutrals {
+  margin: 14px 0;
+  padding: 10px;
+  background: #eef2ff;
+  border: 1px dashed var(--prim);
+  border-radius: 6px;
+}
+.board-neutrals h4 {
+  margin: 0 0 6px;
+  color: #333;
+}
+.board-neutrals .board-portals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.board-neutrals .board-portals .card {
+  margin: 0;
+}
+
+/* Tablero único (Tarea C, revisión): una columna por jugadora, siempre
+   con la visibilidad real de la partida (los Portales centrales van
+   aparte, en `.board-neutrals` de arriba — ver Tarea 2).
    `grid-template-columns` se fija desde JS (renderBoardGrid() en
    render.js) como `repeat(N, minmax(240px, 1fr))`: cada columna crece
    para llenar el ancho disponible cuando cabe, y el scroll horizontal de

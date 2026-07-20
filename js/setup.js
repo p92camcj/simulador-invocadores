@@ -82,6 +82,7 @@ export function initSetup() {
     // Ocultar sección de setup y mostrar control de turno
     $('#setup').classList.add('hidden');
     $('#info').classList.remove('hidden');
+    $('#boardNeutrals').classList.remove('hidden');
     $('#boardGrid').classList.remove('hidden');
     $('#btnEndTurn').classList.remove('hidden');
     if ($('#btnCtrlPlay')) $('#btnCtrlPlay').classList.remove('hidden');
