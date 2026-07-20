@@ -51,13 +51,15 @@ the version that shipped this):
   highest-priority gap of the ones tracked in `docs/MEJORAS_FUTURAS.md`,
   since it also blocks the 2v2 variant (team score needs a scoreboard to
   sum into) and it's literally how the game decides a winner.
-- **Known bug, not yet fixed**: `case 'Ocultista'` in `abilities.js` can
-  reveal a Centinela that the auto-hide (`ocultarOtrasCentinelas`, Fase A)
-  had turned face-down, without re-triggering that auto-hide — reachable
-  sequence ending with two simultaneously-visible Centinelas. Full repro
-  in `docs/AUDITORIA_REGLAS.md` §3.1 and `docs/DEUDA_TECNICA.md` item 12.
-  Don't assume this is fixed just because Centinela protection is
-  otherwise consistently applied everywhere else (verified, §3.2).
+- **Fixed 2026-07-21**: `case 'Ocultista'` in `abilities.js` used to be able
+  to reveal a Centinela that the auto-hide (`ocultarOtrasCentinelas`, Fase
+  A) had turned face-down, without re-triggering that auto-hide —
+  reachable sequence ending with two simultaneously-visible Centinelas.
+  Now fixed: after toggling visibility, if the revealed card's real
+  identity (`.name`, not appearance — see the Metamorfo note below) is
+  `'Centinela'`, it calls `ocultarOtrasCentinelas()` too. Full repro and
+  resolution note in `docs/AUDITORIA_REGLAS.md` §3.1 and
+  `docs/DEUDA_TECNICA.md` (moved to "Resueltos").
 - Maestro is missing the rulebook's new **active** ability entirely (moving
   a card another player can see — their hidden-to-self card — straight to
   the Maestro's own Portal, then that player draws a replacement). The

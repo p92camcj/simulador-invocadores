@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.12.4.53] - 2026-07-21
+
+### Corregido
+- **Ocultista ya no puede dejar dos Centinelas visibles a la vez (`DEUDA_TECNICA.md` ítem 12)**: en `case 'Ocultista'` (`js/abilities.js`), tras alternar la visibilidad de la carta superior de un Portal, si la carta recién revelada es una Centinela real, ahora se llama también a `ocultarOtrasCentinelas()` — la misma función que ya se dispara en Fase A al jugar una Centinela nueva. Antes, una Centinela que el auto-giro había ocultado podía volver a hacerse visible vía Ocultista sin re-disparar ese auto-giro, dejando dos Centinelas visibles en mesa hasta que se jugara una Centinela nueva. Repro completo en `docs/AUDITORIA_REGLAS.md` §3.1.
+
+---
+
 ## [1.12.3.49] - 2026-07-20
 
 ### Corregido

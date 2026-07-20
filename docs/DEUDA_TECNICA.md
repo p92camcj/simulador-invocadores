@@ -29,6 +29,22 @@
 
 ## Resueltos
 
+### ~~12. Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro — dos Centinelas visibles a la vez~~ (resuelto)
+
+- **Qué era**: en `case 'Ocultista'` (`js/abilities.js`), tras alternar
+  `carta.vis.public`, no se comprobaba si la carta recién revelada era una
+  Centinela real. Una Centinela ocultada por el auto-giro
+  (`ocultarOtrasCentinelas()`, al aparecer una segunda Centinela) podía
+  volver a hacerse visible vía Ocultista sin que nada re-disparase ese
+  auto-giro, permitiendo dos Centinelas visibles a la vez en mesa. Repro
+  completo en `docs/AUDITORIA_REGLAS.md` §3.1.
+- **Cómo se resolvió**: `case 'Ocultista'` ahora comprueba, tras alternar la
+  visibilidad, si `carta.name === 'Centinela' && carta.vis.public` (identidad
+  real, no apariencia de Metamorfo) y, si es así, llama también a
+  `ocultarOtrasCentinelas(st, players, neutrals)` — la misma función que ya
+  usa Fase A al jugar una Centinela nueva.
+- **Prioridad**: era **Alta**.
+
 ### ~~1. `window.picker` no existe — el Metamorfo rompe el fin de turno~~ (resuelto)
 
 - **Qué era**: `gestionarMetamorfos()` en `js/utils.js` llamaba a
@@ -75,6 +91,9 @@
 ## Prioridad Alta
 
 ### 14. Metamorfo transformado se trata como el personaje real en protecciones/restricciones/bonus — falta separar identidad de apariencia
+
+> **Nota:** este ítem sigue pendiente. Ver la sección "Resueltos" más arriba
+> para el ítem 12, un bug distinto en el mismo archivo (`js/abilities.js`).
 
 - **Dónde**: `js/abilities.js`, `case 'Metamorfo'` (la mutación en sí,
   `stack.at(-1).name = v`), y todo sitio que compare `.name` contra un

@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.12.4.53 - 2026-07-21
+
+- Arreglado un fallo de reglas: en ciertas situaciones era posible dejar dos
+  Centinelas visibles en mesa a la vez usando la habilidad de la Ocultista.
+  Ahora, si la Ocultista revela una Centinela, las demás Centinelas se
+  ocultan automáticamente, como debe ser: solo puede haber una Centinela
+  visible en cada momento.
+
 ## 1.12.3.49 - 2026-07-20
 
 - Los Portales centrales ahora se ven en su propia franja, arriba del

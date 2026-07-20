@@ -86,6 +86,16 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         const st = stackFrom(key, players, neutrals);
         const carta = st.at(-1);
         carta.vis.public = !carta.vis.public;
+        // Corrección DEUDA_TECNICA.md ítem 12: si lo que acaba de revelarse
+        // es una Centinela REAL (identidad, no apariencia de Metamorfo — ver
+        // case 'Metamorfo' más abajo), hay que re-disparar el auto-giro. Sin
+        // esto, una Centinela que el auto-giro había ocultado podía volver a
+        // quedar visible sin ocultar a las demás, permitiendo dos Centinelas
+        // visibles a la vez (REGLAMENTO.md: "solo puede haber una Centinela
+        // visible en mesa").
+        if (carta.name === 'Centinela' && carta.vis.public) {
+          ocultarOtrasCentinelas(st, players, neutrals);
+        }
         onComplete();
       });
       break;

@@ -1,6 +1,6 @@
 # Auditoría de reglas — reglamento vs. código real
 
-> **Última actualización:** 2026-07-21 01:15 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 01:31 (Europe/Madrid)
 >
 > Informe de auditoría, no una tarea de código. Cruza
 > [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) contra el
@@ -226,14 +226,14 @@ Centinela que ya NO está a la vista (porque el propio auto-giro la tapó).
   comprobar si `carta.name === 'Centinela' && carta.vis.public` y, si es
   así, llamar también a `ocultarOtrasCentinelas(st, players, neutrals)`
   (ya `export`ada desde el mismo archivo).
-- **Prioridad**: **Alta** — requiere una secuencia específica de 3
+- **Prioridad**: era **Alta** — requiere una secuencia específica de 3
   acciones de al menos dos jugadoras distintas, pero es completamente
-  alcanzable sin trucos ni estados imposibles. Subida de Media a Alta:
-  confirmado por el dueño del proyecto como corrección obligatoria para la
-  próxima ronda de código, regla vigente: solo puede haber una Centinela
-  visible en mesa, la última que se descubrió o jugó.
-- Añadido también a `docs/DEUDA_TECNICA.md` como ítem nuevo (ver el
-  propio documento) para que no se pierda fuera de este informe.
+  alcanzable sin trucos ni estados imposibles.
+- **Actualización 2026-07-21 — resuelto**: `case 'Ocultista'`
+  (`js/abilities.js`) ahora llama a `ocultarOtrasCentinelas(st, players,
+  neutrals)` justo después de alternar la visibilidad, si la carta recién
+  revelada es una Centinela real (`carta.name === 'Centinela'`). Ver
+  `docs/DEUDA_TECNICA.md` ítem 12 (movido a "Resueltos").
 
 ### 3.2 Centinela + Ocultista/Cronista/Cronomante/Estratega/Aprendiz — protección uniforme (verificado, sin hueco)
 
@@ -438,7 +438,7 @@ la sección 1.
 | Fase A/B independientes, economía de Gemas | ✅ Implementado | — |
 | Protección de Centinela (Ocultista/Cronista/Cronomante/Estratega/Aprendiz) | ✅ Implementado | — |
 | Auto-giro al aparecer una 2ª Centinela (Fase A) | ✅ Implementado | — |
-| **Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro (bug, sección 3.1)** — confirmado por el dueño del proyecto como corrección obligatoria para la próxima ronda de código, regla vigente: solo puede haber una Centinela visible en mesa, la última que se descubrió o jugó | 🔴 Bug | **Alta** |
+| Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro (bug, sección 3.1) | ✅ Corregido | — |
 | Metamorfo: transformación libre y persistente | ✅ Implementado | — |
 | **Metamorfo: apariencia sin efectos + disfraz visual** (bug de reglas, no solo cosmético — ver [`DEUDA_TECNICA.md` ítem 14](DEUDA_TECNICA.md) y [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md), "Metamorfo: representación visual de la transformación") | ❌ Pendiente | **Alta** |
 | Clarividente: mano completa oculta al resto | ✅ Implementado (decisión de mesa) | — |
