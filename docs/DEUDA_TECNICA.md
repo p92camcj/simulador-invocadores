@@ -122,10 +122,6 @@
 - **Prioridad**: **Alta** — bug de reglas confirmado por el dueño del
   proyecto, no una decisión de diseño abierta.
 
----
-
-## Prioridad Media
-
 ### 12. Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro — dos Centinelas visibles a la vez
 
 - **Dónde**: `js/abilities.js`, `case 'Ocultista'`.
@@ -145,7 +141,14 @@
 - **Corrección propuesta**: en `case 'Ocultista'`, tras alternar
   `carta.vis.public`, si `carta.name === 'Centinela' && carta.vis.public`,
   llamar también a `ocultarOtrasCentinelas(st, players, neutrals)`.
-- **Prioridad**: **Media**.
+- **Prioridad**: **Alta**. Subida de Media a Alta: confirmado por el
+  dueño del proyecto como corrección obligatoria para la próxima ronda de
+  código, regla vigente: solo puede haber una Centinela visible en mesa,
+  la última que se descubrió o jugó.
+
+---
+
+## Prioridad Media
 
 ### 13. `window.cronomanteOnComplete` no se resetea junto a `cronomantePortalInvestigado`
 
