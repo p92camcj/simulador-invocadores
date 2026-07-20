@@ -1,7 +1,7 @@
 // actions.js
 import { nextTurn, finalizarPartida } from './game.js';
 import { render, picker } from './render.js';
-import { applyAbility } from './abilities.js';
+import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
 import {
   draw, generarVis, mostrarCarta,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
@@ -100,6 +100,11 @@ export function initActions(players, neutrals) {
         ? neutrals[+a]
         : players[+a].portals[+b];
     stack.push({ name: card.name, vis: generarVis('portal', {}) });
+    // Efecto pasivo/automático de Centinela (REGLAMENTO.md: "solo puede
+    // haber una Centinela visible en mesa"), no requiere Fase B.
+    if (card.name === 'Centinela') {
+      ocultarOtrasCentinelas(stack, players, neutrals);
+    }
 
     window.played = true;
     document.querySelector('#ctrlPlay').classList.add('hidden');

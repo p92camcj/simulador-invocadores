@@ -112,21 +112,30 @@ in `nextTurn()`.
   handling (`finalizarPartida`, `resetJuego`). `finalizarPartida` must stay
   `export`ed — it's called from `actions.js`.
 - **`js/actions.js`** — wires up the UI controls: card selection, playing a
-  card onto a Portal (Fase A only, no ability side-effect), the "Activar
+  card onto a Portal (Fase A only — the one exception is Centinela's
+  passive auto-hide effect, see below, which fires right here as a direct
+  side effect of `stack.push(...)`, not as an ability), the "Activar
   habilidad" button (Fase B: picks a source Portal, charges the central-Portal
   Gem cost if applicable, then calls `applyAbility`), and the "end turn"
   button, which also runs the invocation-success check and the real Gem
   distribution (drawing from `INVOCATION_SETS[...].gemas` via
   `construirPoolGemas`).
 - **`js/abilities.js`** — `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need)`,
-  one `switch` case per character ability (Ocultista, Centinela, Cronista,
-  Cronomante, Estratega, Aprendiz, Metamorfo). `need` is the active
-  invocation's required-character array; pass it explicitly from the
-  caller, don't recompute it here from globals. It's currently unused by
-  every case (Metamorfo dropped its use of it — see the rulebook-sync note
-  above) but stays in the signature for Modo Experto's future Asterisco
-  invocation. Always call this with `window.levelIdx` explicitly from
-  outside the module.
+  one `switch` case per character ability activated via Fase B (Ocultista,
+  Cronista, Cronomante, Estratega, Aprendiz, Metamorfo — exactly
+  `PERSONAJES_CON_HABILIDAD` in `utils.js`). Centinela and Clarividente are
+  deliberately **not** cases here: both are passive/automatic, so there's
+  no reachable `case 'Centinela'`/`case 'Clarividente'` in this `switch` —
+  don't add one back. Centinela's actual logic lives in the exported
+  `ocultarOtrasCentinelas(stackJugada, players, neutrals)` (also in this
+  file), called directly from `actions.js` right after `stack.push(...)` in
+  Fase A, every time the played card is a Centinela — not through
+  `applyAbility()`. `need` is the active invocation's required-character
+  array; pass it explicitly from the caller, don't recompute it here from
+  globals. It's currently unused by every case (Metamorfo dropped its use
+  of it — see the rulebook-sync note above) but stays in the signature for
+  Modo Experto's future Asterisco invocation. Always call this with
+  `window.levelIdx` explicitly from outside the module.
 - **`js/render.js`** — pure-ish DOM rendering (`render()`) and the generic
   `picker()` modal used by several abilities. Does not own game state.
 - **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,

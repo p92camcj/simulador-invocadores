@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.8.1.41 - 2026-07-20
+
+- Corregido: podían llegar a estar visibles varias Centinelas a la vez en
+  la mesa. Ahora, al jugar una Centinela, cualquier otra que estuviera
+  visible se gira automáticamente boca abajo, como debe ser.
+
 ## 1.8.0.40 - 2026-07-20
 
 - Nuevo: al pulsar el número de versión (esquina inferior izquierda) o el

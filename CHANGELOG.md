@@ -4,6 +4,15 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.8.1.41] - 2026-07-20
+
+### Corregido
+- **El auto-giro de otras Centinelas visibles nunca se disparaba: `case 'Centinela'` en `js/abilities.js` era código muerto.** Centinela está fuera de `PERSONAJES_CON_HABILIDAD` (`utils.js`) a propósito — su efecto es pasivo — así que ese `case` nunca se alcanzaba vía Fase B (`opcionesActivarHabilidad()` nunca lo ofrece como opción). Como tampoco había ningún otro disparador, podían coexistir varias Centinelas visibles en mesa a la vez, contra `docs/reglamento/REGLAMENTO.md` ("solo puede haber una Centinela visible en mesa").
+- Extraída la lógica a `ocultarOtrasCentinelas(stackJugada, players, neutrals)`, exportada desde `js/abilities.js`, y enganchada directamente en `js/actions.js` (Fase A), justo después de `stack.push(...)` al jugar una carta: si la carta jugada es una Centinela, oculta cualquier otra Centinela visible en cualquier Portal de cualquier jugadora o central. El `case 'Centinela'` muerto se elimina de `applyAbility()` (queda un comentario explicando por qué no debe volver a añadirse).
+- Verificado programáticamente: jugar una Centinela con otra ya visible en el Portal de otra jugadora la oculta automáticamente, sin necesidad de activar ninguna habilidad manualmente.
+
+---
+
 ## [1.8.0.40] - 2026-07-20
 
 ### Añadido

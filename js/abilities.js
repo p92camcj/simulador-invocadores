@@ -28,6 +28,30 @@ function jugadorProtegidoContraAprendiz(jugadorIdx, players, actingPlayerIdx) {
 }
 
 /**
+ * Oculta cualquier otra Centinela visible en el top de cualquier Portal
+ * (de cualquier jugadora o central) que no sea `stackJugada` — según
+ * REGLAMENTO.md, "Centinela": "solo puede haber una Centinela visible en
+ * mesa". Se llama desde Fase A (al jugar la carta, en actions.js), no
+ * desde applyAbility(): Centinela está fuera de PERSONAJES_CON_HABILIDAD
+ * porque su efecto es pasivo/automático, se dispara sola al aparecer, no
+ * mediante "Activar habilidad".
+ */
+export function ocultarOtrasCentinelas(stackJugada, players, neutrals) {
+  players.forEach(p =>
+    p.portals.forEach(st => {
+      if (st !== stackJugada && st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public) {
+        st.at(-1).vis.public = false;
+      }
+    })
+  );
+  neutrals.forEach(st => {
+    if (st !== stackJugada && st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public) {
+      st.at(-1).vis.public = false;
+    }
+  });
+}
+
+/**
  * Aplica la habilidad de `name` al portal `stack`, propiedad de `players[ownerIdx]`.
  * `need` es el array de personajes requeridos por la invocación activa (según
  * el set de invocación elegido, ver INVOCATION_SETS en utils.js) — solo lo
@@ -62,29 +86,12 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
       break;
     }
 
-    case 'Centinela':
-      // Ocultar cualquier otra Centinela visible en top de cualquier portal
-      players.forEach((p, i) =>
-        p.portals.forEach((st, j) => {
-          if (
-            st !== stack && // evitar modificar el portal donde se ha jugado
-            st.length &&
-            st.at(-1).name === 'Centinela' &&
-            st.at(-1).vis?.public
-          ) {
-            st.at(-1).vis.public = false;
-          }
-        })
-      );
-
-      neutrals.forEach(st => {
-        if (st !== stack && st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public) {
-          st.at(-1).vis.public = false;
-        }
-      });
-
-      // No se toca la carta recién jugada (ya estará en el top y visible por defecto)
-      break;
+    // No hay case 'Centinela' aquí a propósito: es inalcanzable, Centinela
+    // no está en PERSONAJES_CON_HABILIDAD (utils.js) así que nunca llega a
+    // applyAbility() vía Fase B. La lógica real de "ocultar otras
+    // Centinelas visibles" vive en ocultarOtrasCentinelas() (más arriba en
+    // este archivo) y se dispara automáticamente en Fase A, justo al jugar
+    // la carta (ver actions.js) — no como una habilidad activable.
 
     case 'Cronista': {
       const opcionesCronista = portalesConEstado(players, neutrals, (st, val) =>
