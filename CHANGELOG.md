@@ -4,6 +4,14 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.8.0.40] - 2026-07-20
+
+### Añadido
+- **Modal de "Novedades" in-page**, abierto al pulsar el número de versión (`#version-info`) o el aviso "¡Nueva versión disponible!" — antes ambos abrían `CHANGELOG.md` en GitHub en pestaña nueva; ahora ninguno lo hace, los dos abren el mismo modal sin salir de la app. `js/version-check.js`: fetch perezoso de `NOVEDADES.md` (solo en el primer clic, cacheado en una variable de módulo para clics siguientes), parser de Markdown propio sin librerías externas (reconoce `## `, `- ` con continuación multilínea, `**negrita**` y `---`), y modal construido dinámicamente (overlay + caja con scroll interno) usando nuevas clases `.modal-overlay`/`.modal-box`/`.modal-content` en `style.css`, coherentes con la convención visual ya usada por `.section`/`.play-title`/`.close-btn`.
+- Nuevo `NOVEDADES.md` en la raíz: una entrada por cada versión de `CHANGELOG.md`, en lenguaje sin jerga de programación para quien juega y usa la app. **Nueva norma en `CLAUDE.md`**: a partir de ahora, cualquier tarea que añada una entrada a `CHANGELOG.md` debe añadir también la entrada equivalente a `NOVEDADES.md` en el mismo commit.
+
+---
+
 ## [1.7.2.39] - 2026-07-20
 
 ### Corregido

@@ -1,4 +1,131 @@
 
+// Caché del texto de NOVEDADES.md: se rellena en el primer clic sobre el
+// número de versión o el aviso de actualización, y se reutiliza en clics
+// siguientes para no repetir el fetch.
+let novedadesCache = null;
+let novedadesModalEls = null;
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function aplicarNegrita(str) {
+  return escapeHtml(str).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+/**
+ * Parser de Markdown mínimo, sin librerías externas: solo reconoce lo que
+ * usa NOVEDADES.md realmente — '## ' como cabecera de versión, '- ' como
+ * item de lista (con continuación en líneas siguientes sin ese prefijo,
+ * por el ajuste de línea del propio archivo), '**texto**' como negrita, y
+ * '---' como separador ignorado.
+ */
+function parseNovedadesMarkdown(text) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let currentList = null;
+
+  lines.forEach(raw => {
+    const line = raw.trim();
+    if (line.startsWith('## ')) {
+      currentList = null;
+      blocks.push({ type: 'h3', text: line.slice(3).trim() });
+    } else if (line.startsWith('# ')) {
+      currentList = null; // título de nivel superior, ya cubierto por el título del modal
+    } else if (line === '---') {
+      currentList = null;
+    } else if (line.startsWith('- ')) {
+      if (!currentList) {
+        currentList = { type: 'ul', items: [] };
+        blocks.push(currentList);
+      }
+      currentList.items.push(line.slice(2).trim());
+    } else if (line === '') {
+      // línea en blanco entre bloques, no requiere acción
+    } else if (currentList && currentList.items.length) {
+      // continuación de un item de lista partido en varias líneas
+      currentList.items[currentList.items.length - 1] += ' ' + line;
+    } else {
+      const last = blocks[blocks.length - 1];
+      if (last && last.type === 'p') {
+        last.text += ' ' + line;
+      } else {
+        blocks.push({ type: 'p', text: line });
+      }
+    }
+  });
+
+  return blocks.map(b => {
+    if (b.type === 'h3') return `<h3 class="novedades-version">${aplicarNegrita(b.text)}</h3>`;
+    if (b.type === 'p') return `<p>${aplicarNegrita(b.text)}</p>`;
+    if (b.type === 'ul') return `<ul>${b.items.map(i => `<li>${aplicarNegrita(i)}</li>`).join('')}</ul>`;
+    return '';
+  }).join('');
+}
+
+function crearModalNovedades() {
+  const overlay = document.createElement('div');
+  overlay.id = 'novedadesOverlay';
+  overlay.className = 'modal-overlay hidden';
+
+  const modal = document.createElement('div');
+  modal.id = 'novedadesModal';
+  modal.className = 'section modal-box';
+
+  const title = document.createElement('div');
+  title.className = 'play-title';
+  const titleSpan = document.createElement('span');
+  titleSpan.textContent = 'Novedades';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'close-btn';
+  closeBtn.textContent = '✖';
+  closeBtn.addEventListener('click', () => overlay.classList.add('hidden'));
+  title.appendChild(titleSpan);
+  title.appendChild(closeBtn);
+
+  const content = document.createElement('div');
+  content.id = 'novedadesContent';
+  content.className = 'modal-content';
+
+  modal.appendChild(title);
+  modal.appendChild(content);
+  overlay.appendChild(modal);
+
+  // Clic fuera de la caja (sobre el overlay) también cierra el modal.
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+
+  document.body.appendChild(overlay);
+  return { overlay, content };
+}
+
+/**
+ * Abre el modal de novedades. Fetch perezoso de NOVEDADES.md: solo la
+ * primera vez que se abre, para no gastar una petición si nadie lo mira.
+ */
+function abrirNovedades() {
+  if (!novedadesModalEls) novedadesModalEls = crearModalNovedades();
+  novedadesModalEls.overlay.classList.remove('hidden');
+
+  if (novedadesCache !== null) {
+    novedadesModalEls.content.innerHTML = parseNovedadesMarkdown(novedadesCache);
+    return;
+  }
+
+  novedadesModalEls.content.textContent = 'Cargando novedades…';
+  fetch('./NOVEDADES.md')
+    .then(res => res.text())
+    .then(text => {
+      novedadesCache = text;
+      novedadesModalEls.content.innerHTML = parseNovedadesMarkdown(text);
+    })
+    .catch(err => {
+      console.error('Error al leer NOVEDADES.md:', err);
+      novedadesModalEls.content.textContent = 'No se pudieron cargar las novedades.';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   fetch('./version.json')
     .then(res => res.json())
@@ -18,12 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
       versionDiv.style.borderRadius = '4px';
       versionDiv.style.zIndex = '9999';
       versionDiv.style.cursor = 'pointer';
-      versionDiv.title = 'Ver historial de cambios';
+      versionDiv.title = 'Ver novedades';
       versionDiv.textContent = currentVersion;
 
-      versionDiv.addEventListener('click', () => {
-        window.open('https://github.com/p92camcj/simulador-invocadores/blob/main/CHANGELOG.md', '_blank');
-      });
+      versionDiv.addEventListener('click', abrirNovedades);
 
       document.body.appendChild(versionDiv);
 
@@ -73,11 +198,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDiv.style.zIndex = '10000';
             updateDiv.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)';
             updateDiv.style.cursor = 'default';
-            updateDiv.title = 'Haz clic para ver los cambios';
+            updateDiv.title = 'Haz clic para ver las novedades';
 
-            updateDiv.addEventListener('click', () => {
-              window.open('https://github.com/p92camcj/simulador-invocadores/blob/main/CHANGELOG.md', '_blank');
-            });
+            updateDiv.addEventListener('click', abrirNovedades);
 
             const reloadBtn = document.createElement('button');
             reloadBtn.textContent = 'Actualizar ahora';

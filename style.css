@@ -198,6 +198,54 @@ select {
 
 
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-box {
+  background: #fff;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  margin: 0;
+}
+.modal-content {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.modal-content h3.novedades-version {
+  text-align: left;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: #333;
+}
+.modal-content h3.novedades-version:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.modal-content ul {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+.modal-content li {
+  margin: 4px 0;
+  font-size: 0.92rem;
+}
+.modal-content p {
+  font-size: 0.92rem;
+}
+
 /* Mejoras visuales específicas para móviles */
 @media (max-width: 768px) {
 
@@ -351,6 +399,10 @@ select {
 
   h2, h3 {
     font-size: 1rem;
+  }
+
+  .modal-box {
+    max-height: 90vh;
   }
 }
 

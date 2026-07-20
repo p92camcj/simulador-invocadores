@@ -216,7 +216,19 @@ under `js/`, `index.html`, `style.css`, `manifest.json`, or
    yourself.
 2. Add a new entry to `CHANGELOG.md` at the repo root with that version, the
    date, and what changed.
-3. If you cut a GitHub Release for a milestone, tag it `vX.Y.Z` (no `W` —
+3. **Also add the equivalent entry to `NOVEDADES.md`, in the same commit.**
+   `NOVEDADES.md` is the in-app "what's new" modal shown when a player
+   clicks the version number or the update banner (`js/version-check.js`,
+   `abrirNovedades()`) — it must stay in sync with `CHANGELOG.md` the same
+   way the rulebook and `Documentacion_Simulador_Invocadores.md` must stay
+   in sync with the code (see "Keep the rulebook and module docs in sync"
+   above). Same header format (`## X.Y.Z.W - YYYY-MM-DD` followed by short
+   bullets), but written for a player, not a programmer: **no file names,
+   function names, or code jargon** — synthesize what changed and why it
+   matters to someone playing, don't translate the technical changelog
+   entry line by line, and don't invent changes that aren't in the real
+   `CHANGELOG.md` entry.
+4. If you cut a GitHub Release for a milestone, tag it `vX.Y.Z` (no `W` —
    releases are compared against `version.json` ignoring `W`, see
    `js/version-check.js`).
 
