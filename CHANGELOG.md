@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.6.0.36] - 2026-07-20
+
+### Añadido
+- **El selector de Portal destino al jugar una carta ahora muestra qué hay en su top.** `js/actions.js`, `window.selectCard`: cada opción de `#selDest` (tus Portales, los neutrales y los de otras jugadoras) añade entre paréntesis 'Vacío', el nombre del personaje si la carta superior es pública, o 'Carta Oculta' si no — mismo criterio de visibilidad que ya usaba `render.js`. Ejemplo: "Tu portal 1 (Vacío)", "Neutral 2 (Carta Oculta)", "Ana P1 (🛡️ Centinela)".
+
+---
+
 ## [1.5.5.35] - 2026-07-20
 
 ### Corregido

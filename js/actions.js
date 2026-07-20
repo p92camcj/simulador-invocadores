@@ -9,6 +9,17 @@ import {
 } from './utils.js';
 
 /**
+ * Etiqueta entre paréntesis de lo que hay en el top de un Portal, con el
+ * mismo criterio de visibilidad que usa render.js: 'Vacío' si no tiene
+ * cartas, el nombre si la carta superior es pública, 'Carta Oculta' si no.
+ */
+function topLabel(stack) {
+  if (!stack.length) return 'Vacío';
+  const top = stack.at(-1);
+  return top.vis?.public ? mostrarCarta(top) : 'Carta Oculta';
+}
+
+/**
  * Inicializa los controladores de acciones (selección de cartas, jugar, activar
  * habilidad, fin de turno).
  * @param {Array} players - Array de jugadores.
@@ -35,24 +46,24 @@ export function initActions(players, neutrals) {
 
     const selDest = document.querySelector('#selDest');
     selDest.innerHTML = '';
-    pl.portals.forEach((_, j) => {
+    pl.portals.forEach((stack, j) => {
       const opt = document.createElement('option');
       opt.value = `p:${j}`;
-      opt.textContent = `Tu portal ${j+1}`;
+      opt.textContent = `Tu portal ${j+1} (${topLabel(stack)})`;
       selDest.appendChild(opt);
     });
-    neutrals.forEach((_, j) => {
+    neutrals.forEach((stack, j) => {
       const opt = document.createElement('option');
       opt.value = `n:${j}`;
-      opt.textContent = `Neutral ${j+1}`;
+      opt.textContent = `Neutral ${j+1} (${topLabel(stack)})`;
       selDest.appendChild(opt);
     });
     players.forEach((p, pi) => {
       if (pi !== window.turn) {
-        p.portals.forEach((_, pj) => {
+        p.portals.forEach((stack, pj) => {
           const opt = document.createElement('option');
           opt.value = `a:${pi}:${pj}`;
-          opt.textContent = `${p.name} P${pj+1}`;
+          opt.textContent = `${p.name} P${pj+1} (${topLabel(stack)})`;
           selDest.appendChild(opt);
         });
       }
