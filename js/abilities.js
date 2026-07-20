@@ -64,7 +64,12 @@ export function ocultarOtrasCentinelas(stackJugada, players, neutrals) {
  * Aprendiz, Metamorfo tienen uno o más pasos que se pueden cancelar a
  * medias), `onComplete` no se llama y no debe haber ocurrido ningún efecto
  * observable (ni gasto de Gemas, ni marcar la habilidad como usada — eso lo
- * decide quien llama, dentro de `onComplete`).
+ * decide quien llama, dentro de `onComplete`). Cronomante es la única
+ * excepción MATIZADA a este patrón: cancelar su segundo picker sigue sin
+ * llamar a `onComplete()` (no cuesta nada, no marca la habilidad como
+ * usada), pero dado que la "investigación" del Portal elegido ya ocurrió,
+ * ese compromiso se fija en `window.cronomantePortalInvestigado` y
+ * sobrevive al cancel — ver el comentario del propio `case 'Cronomante'`.
  */
 export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [], onComplete = () => {}) {
   const owner = players[ownerIdx];
@@ -120,40 +125,61 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
     }
 
     case 'Cronomante': {
-      const opcionesCrono = portalesConEstado(players, neutrals, (st, val) =>
-        estaProtegidoParaActivar(val, st, players, ownerIdx) || st.length <= 1
-      );
-
-      picker('Elige un portal para manipular', opcionesCrono, key => {
+      // Excepción MATIZADA al patrón general de "cancelar nunca cuesta"
+      // (ver la nota de `onComplete` en la cabecera de `applyAbility`):
+      // examinar la pila de un Portal (REGLAMENTO.md, "Cronomante") es la
+      // única "mirada" que da la habilidad por turno, así que una vez
+      // elegido el Portal en el PRIMER picker, ese compromiso se fija en
+      // `window.cronomantePortalInvestigado` y sobrevive aunque se cancele
+      // el SEGUNDO picker — no se puede reintentar con un Portal distinto.
+      // Pero cancelar el segundo picker, a diferencia de la versión
+      // anterior de esta regla, NO llama a `onComplete()`: no cuesta nada,
+      // no marca la habilidad como usada, y "Activar habilidad" se puede
+      // volver a pulsar para completarla más tarde, llevando directo a
+      // este mismo Portal ya fijado (ver `#btnAbility.onclick` en
+      // `actions.js`, que salta el picker de nivel superior mientras
+      // `window.cronomantePortalInvestigado` tenga valor). Solo se limpia
+      // ese estado cuando la jugadora selecciona de verdad una carta en
+      // este segundo picker (aunque sea la que ya está en el top).
+      const completarConPortalInvestigado = key => {
         const st = stackFrom(key, players, neutrals);
         const opcionesCarta = st.map((carta, idx) => ({
           val: idx,
           lbl: carta.vis?.public ? mostrarCarta(carta) : 'Carta Oculta'
         }));
 
-        // EXCEPCIÓN deliberada al patrón general de "cancelar nunca cuesta"
-        // (ver la nota de `onComplete` en la cabecera de `applyAbility`): la
-        // "investigación" de Cronomante (examinar la pila del Portal
-        // elegido, ver REGLAMENTO.md) ya ocurrió al abrir ESTE picker,
-        // independientemente de si después se reordena algo o no. Cancelar
-        // aquí no debe permitir volver a "Activar habilidad" y examinar un
-        // Portal DISTINTO gratis en el mismo turno, así que se llama a
-        // onComplete() igualmente (queda marcada como usada) pero sin mover
-        // ninguna carta. NO "corregir" esto para que cancelar sea gratis
-        // como en el resto de habilidades — es intencional. El PRIMER
-        // picker (elegir qué Portal investigar) sí sigue el patrón general:
-        // cancelarlo no cuesta nada, porque ahí todavía no se ha examinado
-        // ningún Portal.
         picker(
           '¿Qué carta quieres subir al top?',
           opcionesCarta,
           idx => {
             const seleccionada = st.splice(idx, 1)[0];
             st.push(seleccionada);
+            window.cronomantePortalInvestigado = null;
             onComplete();
           },
-          () => onComplete()
+          () => {
+            // Cancelar aquí no cuesta nada ni marca la habilidad como
+            // usada, pero `cronomantePortalInvestigado` NO se limpia — el
+            // compromiso de Portal ya investigado sigue en pie.
+          }
         );
+      };
+
+      if (window.cronomantePortalInvestigado) {
+        completarConPortalInvestigado(window.cronomantePortalInvestigado);
+        break;
+      }
+
+      const opcionesCrono = portalesConEstado(players, neutrals, (st, val) =>
+        estaProtegidoParaActivar(val, st, players, ownerIdx) || st.length <= 1
+      );
+
+      // El PRIMER picker (elegir qué Portal investigar) sigue el patrón
+      // general sin cambios: cancelarlo no cuesta nada ni fija ningún
+      // estado, porque ahí todavía no se ha examinado ningún Portal.
+      picker('Elige un portal para manipular', opcionesCrono, key => {
+        window.cronomantePortalInvestigado = key;
+        completarConPortalInvestigado(key);
       });
       break;
     }

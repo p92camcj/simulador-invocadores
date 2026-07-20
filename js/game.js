@@ -49,6 +49,7 @@ export function initGame() {
   window.habilidadUsadaEsteTurno = false;
   window.debugViewActive = false;
   window.selectedCardIdx = null;
+  window.cronomantePortalInvestigado = null;
 
   // Configurar controladores de acciones
   initActions(window.players, window.neutrals);
@@ -66,6 +67,7 @@ export function nextTurn() {
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
   window.selectedCardIdx = null;
+  window.cronomantePortalInvestigado = null;
   const current = window.players[window.turn];
   //Se comprueba si hay condición de fin de partida, sin cartas en mano
   if (current.hand.length === 0) {
@@ -129,6 +131,7 @@ export function resetJuego() {
   window.habilidadUsadaEsteTurno = false;
   window.debugViewActive = false;
   window.selectedCardIdx = null;
+  window.cronomantePortalInvestigado = null;
   window.juegoTerminado = false;
 
   // Volver al menú inicial

@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.10.1.45 - 2026-07-20
+
+- Ajustado el comportamiento de Cronomante al cancelar por accidente el
+  paso de "qué carta subir arriba del todo": ahora se puede reintentar sin
+  penalización, pero siempre sobre el mismo Portal que ya se había mirado
+  — no se puede usar el cancelar para espiar Portales distintos gratis.
+
 ## 1.10.0.44 - 2026-07-20
 
 - Jugar una carta es ahora más directo: toca la carta de tu mano y luego

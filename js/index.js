@@ -13,6 +13,7 @@ window.played = false;
 window.habilidadUsadaEsteTurno = false;
 window.debugViewActive = false;
 window.selectedCardIdx = null;
+window.cronomantePortalInvestigado = null;
 window.juegoTerminado = false;
 window.invocationSet = 'normal';
 

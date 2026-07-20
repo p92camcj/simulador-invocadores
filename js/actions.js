@@ -110,6 +110,19 @@ export function initActions(players, neutrals) {
       return;
     }
 
+    const lvl = window.LEVELS[window.levelIdx];
+    const need = lvl ? window.INVOCATION_SETS[window.invocationSet][lvl].need : [];
+
+    // Si hay una investigación de Cronomante pendiente este turno (se
+    // canceló el segundo picker sin querer), no se puede elegir otra
+    // habilidad distinta desde el picker de nivel superior: se salta
+    // directo a completarla, con el mismo Portal ya fijado
+    // (window.cronomantePortalInvestigado, ver abilities.js).
+    if (window.cronomantePortalInvestigado) {
+      applyAbility('Cronomante', window.turn, null, players, neutrals, window.levelIdx, need, window.cronomanteOnComplete);
+      return;
+    }
+
     const opciones = opcionesActivarHabilidad(window.turn, players, neutrals);
     if (!opciones.length) {
       alert('No tienes ninguna habilidad activable ahora mismo.');
@@ -136,8 +149,14 @@ export function initActions(players, neutrals) {
         render(players, neutrals, window.levelIdx);
       };
 
-      const lvl = window.LEVELS[window.levelIdx];
-      const need = lvl ? window.INVOCATION_SETS[window.invocationSet][lvl].need : [];
+      // Guardado aparte para que, si la jugadora cancela el segundo picker
+      // de Cronomante y vuelve a pulsar "Activar habilidad" más tarde, se
+      // pueda completar la MISMA activación (con el mismo coste pendiente
+      // de cobrar) sin reabrir este picker de nivel superior.
+      if (name === 'Cronomante') {
+        window.cronomanteOnComplete = onComplete;
+      }
+
       applyAbility(name, window.turn, stack, players, neutrals, window.levelIdx, need, onComplete);
     });
   };

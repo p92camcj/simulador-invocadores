@@ -4,6 +4,14 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.10.1.45] - 2026-07-20
+
+### Cambiado
+- **Cronomante: cancelar el segundo picker ("qué carta subir al top") ya no cuesta nada, pero ahora permite reintentar SIN poder elegir un Portal distinto al ya investigado.** Cambia a propósito el comportamiento de `1.7.2.39` (indicación explícita del dueño del proyecto): antes, cancelar ese segundo paso consumía la habilidad sin más (marcaba `habilidadUsadaEsteTurno` y cobraba si aplicaba, sin mover ninguna carta). Ahora cancelar no cuesta nada ni marca la habilidad como usada, pero el Portal ya investigado (`window.cronomantePortalInvestigado`, nuevo estado de turno reseteado en `nextTurn()`) queda fijado: "Activar habilidad" sigue disponible y lleva DIRECTO al segundo picker de ese mismo Portal, saltando el picker de nivel superior — no se puede investigar otro Portal gratis. Solo se cobra el coste y se marca la habilidad como usada cuando la jugadora selecciona de verdad una carta (aunque sea la que ya está en el top).
+- `js/actions.js` guarda el `onComplete` de la activación en `window.cronomanteOnComplete` cuando la habilidad es Cronomante, para poder completarla más tarde con el mismo coste pendiente (Portal central) sin reabrir el picker de nivel superior.
+
+---
+
 ## [1.10.0.44] - 2026-07-20
 
 ### Añadido
