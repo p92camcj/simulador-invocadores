@@ -45,7 +45,8 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `stackFrom(key, players, neutrals)` | `función` | Dada clave `"i:j"` o `"n:k"`, devuelve la pila de cartas (portal) correspondiente. |
 | `portalesConEstado(players, neutrals, esInvalido)` | `función` | Como `listPortals()` pero añade `disabled` según `esInvalido(stack)` — usado por `picker()` para bloquear opciones. |
 | `opcionesActivarHabilidad(playerIdx, players, neutrals)` | `función` | Fase B: opciones activables para `players[playerIdx]` — sus propios portales (`own:<idx>`, gratis) y los centrales/neutrales (`central:<idx>`, con coste). |
-| `sumaGemas(gems)` | `función` | Suma los `valor` de un array de Gemas — para mostrar el total en `render()`. |
+| `sumaGemas(gems)` | `función` | Suma los `valor` de un array de Gemas — solo se muestra a la propia dueña en `render()` (secreto de Gemas). |
+| `contarGemasPorNivel(gems)` | `función` | Devuelve `{nivel: cantidad}` sin revelar valores reales — usado en `render()` para el desglose de las jugadoras que no son la activa. |
 | `tieneGemaAsterisco(player)` | `función` | `true` si el jugador tiene alguna Gema con `esAsterisco: true`. |
 | `gastarGemaAsterisco(player)` | `función` | Revela y descarta la Gema de asterisco del jugador; `false` si no tenía ninguna. |
 | `gastarGemaUnitaria(player)` | `función` | Gasta 1 Gema de valor 1; si no tiene ninguna suelta, cambia su Gema de menor valor por Gemas unitarias. `false` solo si no tiene ninguna Gema. |

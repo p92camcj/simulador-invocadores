@@ -189,6 +189,20 @@ export function sumaGemas(gems) {
   return gems.reduce((acc, g) => acc + (g.valor || 0), 0);
 }
 
+/**
+ * Cuenta las Gemas de un jugador por nivel/color de invocación (p. ej.
+ * `{ C: 2, B: 1, unitaria: 3 }`), sin revelar el valor real de cada Gema —
+ * a diferencia de `sumaGemas()`, apto para mostrar a jugadoras que no son
+ * la dueña (ver REGLAMENTO.md: las Gemas se roban al azar y en secreto,
+ * solo se muestran bocarriba al final de la partida).
+ */
+export function contarGemasPorNivel(gems) {
+  return gems.reduce((acc, g) => {
+    acc[g.nivel] = (acc[g.nivel] || 0) + 1;
+    return acc;
+  }, {});
+}
+
 export function tieneGemaAsterisco(player) {
   return player.gems.some(g => g.esAsterisco);
 }

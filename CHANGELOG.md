@@ -4,6 +4,17 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.7.0.37] - 2026-07-20
+
+### Corregido
+- **`render()` mostraba el total real de puntos de Gemas de TODAS las jugadoras, incluidas las rivales.** Según `docs/reglamento/REGLAMENTO.md`, las Gemas se roban al azar y en secreto, y solo se muestran bocarriba al final de la partida — mostrar la suma exacta de puntos de las demás en todo momento era una fuga de información que no debía existir.
+
+### Añadido
+- Nueva `contarGemasPorNivel(gems)` en `js/utils.js`: devuelve `{nivel: cantidad}` sin revelar valores reales. `render.js` la usa para el desglose de cada jugadora que no es la activa (p. ej. "C×2, B×1, unitaria×3"), sin total de puntos.
+- Para la jugadora activa se mantiene y se amplía el desglose: además del total (`sumaGemas`), ahora se ve el detalle agrupado por nivel y valor real de cada Gema (p. ej. "C×1 (v.3 c/u), unitaria×2 (v.1 c/u)").
+
+---
+
 ## [1.6.0.36] - 2026-07-20
 
 ### Añadido

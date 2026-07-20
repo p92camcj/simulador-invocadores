@@ -1,5 +1,5 @@
 // render.js
-import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG } from './utils.js';
+import { mostrarCarta, sumaGemas, contarGemasPorNivel, cardImages, CARTA_OCULTA_IMG } from './utils.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 
 /**
@@ -11,6 +11,37 @@ function cartaImgHtml(name, visible) {
   const src = visible ? (cardImages[name] || CARTA_OCULTA_IMG) : CARTA_OCULTA_IMG;
   const alt = visible ? name : 'Carta oculta';
   return `<img src="${src}" alt="${alt}" class="card-img">`;
+}
+
+/**
+ * Desglose completo (valor real de cada Gema) para la jugadora activa —
+ * es la única que puede verlo, ver REGLAMENTO.md sobre secreto de Gemas.
+ */
+function desgloseGemasPropio(gems) {
+  if (!gems.length) return 'sin Gemas';
+  const grupos = new Map();
+  gems.forEach(g => {
+    const key = `${g.nivel}:${g.valor}`;
+    grupos.set(key, (grupos.get(key) || 0) + 1);
+  });
+  return [...grupos.entries()]
+    .map(([key, n]) => {
+      const [nivel, valor] = key.split(':');
+      return `${nivel}×${n} (v.${valor} c/u)`;
+    })
+    .join(', ');
+}
+
+/**
+ * Recuento por nivel sin valores reales — para el resto de jugadoras, que
+ * no deben poder ver los puntos exactos de las demás (fuga de información,
+ * ver REGLAMENTO.md sobre secreto de Gemas).
+ */
+function desgloseGemasAjeno(gems) {
+  const cnt = contarGemasPorNivel(gems);
+  const entries = Object.entries(cnt);
+  if (!entries.length) return 'sin Gemas';
+  return entries.map(([nivel, n]) => `${nivel}×${n}`).join(', ');
 }
 
 /**
@@ -93,7 +124,7 @@ export function render(players, neutrals, levelIdx) {
   const pl = players[window.turn];
   const activeColor = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][window.turn % 4];
   zoneActive.innerHTML = `<div class="section ${activeColor}">`;
-  zoneActive.innerHTML += `<h3>${pl.name} (G ${sumaGemas(pl.gems)})</h3>`;
+  zoneActive.innerHTML += `<h3>${pl.name} (G ${sumaGemas(pl.gems)} total — ${desgloseGemasPropio(pl.gems)})</h3>`;
   pl.portals.forEach((stack, i) => {
     const topCard = stack.at(-1);
     const body = stack.length === 0
@@ -116,7 +147,7 @@ export function render(players, neutrals, levelIdx) {
     if (i === window.turn) return;
     const colorClass = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][i % 4];
     zoneOthers.innerHTML += `<div class="section ${colorClass}">`;
-    zoneOthers.innerHTML += `<h4>${p.name} (G ${sumaGemas(p.gems)})</h4>`;
+    zoneOthers.innerHTML += `<h4>${p.name} (${desgloseGemasAjeno(p.gems)})</h4>`;
     p.portals.forEach((stack, j) => {
       const topCard = stack.at(-1);
       const body = stack.length === 0
