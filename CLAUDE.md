@@ -136,8 +136,15 @@ in `nextTurn()`.
   of it — see the rulebook-sync note above) but stays in the signature for
   Modo Experto's future Asterisco invocation. Always call this with
   `window.levelIdx` explicitly from outside the module.
-- **`js/render.js`** — pure-ish DOM rendering (`render()`) and the generic
-  `picker()` modal used by several abilities. Does not own game state.
+- **`js/render.js`** — pure-ish DOM rendering (`render()`, which draws the
+  single interactive board grid into `#boardGrid` — one column per player
+  in fixed index order plus a final "Neutrales" column, always with real
+  visibility rules, never an "everything visible" mode) and the generic
+  `picker()` modal used by several abilities, plus `pickerPortal()` (same
+  modal, but also lets the matching Portal in the grid itself be clicked as
+  an alternative — used by the ability cases that target a Portal:
+  Ocultista, Cronista, Cronomante's first picker, Estratega's both
+  pickers). Does not own game state.
 - **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,
   `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`,
   `PERSONAJES_NO_ANIMALES`, `iconos`) and

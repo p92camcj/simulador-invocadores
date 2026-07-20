@@ -3,10 +3,21 @@ import { nextTurn, finalizarPartida } from './game.js';
 import { render, picker } from './render.js';
 import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
 import {
-  draw, generarVis,
+  draw, generarVis, mostrarCarta,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
   construirPoolGemas
 } from './utils.js';
+
+/**
+ * Etiqueta entre paréntesis de lo que hay en el top de un Portal, con el
+ * mismo criterio de visibilidad que usa render.js: 'Vacío' si no tiene
+ * cartas, el nombre si la carta superior es pública, 'Carta Oculta' si no.
+ */
+function topLabel(stack) {
+  if (!stack.length) return 'Vacío';
+  const top = stack.at(-1);
+  return top.vis?.public ? mostrarCarta(top) : 'Carta Oculta';
+}
 
 /**
  * Inicializa los controladores de acciones (selección de cartas, jugar, activar
@@ -17,8 +28,12 @@ import {
 export function initActions(players, neutrals) {
   // Jugar carta (Fase A) sobre `destKey` (mismo formato que antes poblaba
   // el `<select>` de destino: 'p:<idx>' | 'n:<idx>' | 'a:<pi>:<pj>'), usando
-  // la carta actualmente seleccionada (window.selectedCardIdx). No activa
-  // ninguna habilidad automáticamente — eso es Fase B, ver btnAbility.
+  // la carta actualmente seleccionada (window.selectedCardIdx). Comparten
+  // esta MISMA función y este MISMO estado los tres métodos de juego
+  // (selector con <select>, clic directo, drag&drop) — ninguno duplica
+  // validación ni puede dejar a los otros dos en un estado inconsistente.
+  // No activa ninguna habilidad automáticamente — eso es Fase B, ver
+  // btnAbility.
   function jugarCartaSeleccionadaEn(destKey) {
     if (window.juegoTerminado) return;
     if (window.played) return;
@@ -89,11 +104,101 @@ export function initActions(players, neutrals) {
     jugarCartaSeleccionadaEn(destKey);
   };
 
-  // Cancelar la selección de carta actual (visible solo mientras hay una
-  // carta elegida, ver render.js).
-  document.querySelector('#btnPlayCancel').onclick = () => {
+  // Tercer método (coexiste con clic y drag&drop): panel con dos <select>
+  // + botón "Jugar", igual que antes de introducir el clic directo. Al
+  // abrirlo, si ya había una carta elegida por clic (window.selectedCardIdx),
+  // el <select> de carta la preselecciona — comparten el mismo estado, no
+  // hay dos selecciones independientes que puedan desincronizarse.
+  function abrirPanelJugarCarta() {
+    if (window.played) {
+      alert('Ya jugaste');
+      return;
+    }
+    const pl = players[window.turn];
+    const selCard = document.querySelector('#selCard');
+    selCard.innerHTML = '';
+    pl.hand.forEach((c, idx) => {
+      const visible = c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente;
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = visible ? mostrarCarta(c) : '?';
+      if (idx === (window.selectedCardIdx ?? 0)) opt.selected = true;
+      selCard.appendChild(opt);
+    });
+
+    const selDest = document.querySelector('#selDest');
+    selDest.innerHTML = '';
+    pl.portals.forEach((stack, j) => {
+      const opt = document.createElement('option');
+      opt.value = `p:${j}`;
+      opt.textContent = `Tu portal ${j + 1} (${topLabel(stack)})`;
+      selDest.appendChild(opt);
+    });
+    neutrals.forEach((stack, j) => {
+      const opt = document.createElement('option');
+      opt.value = `n:${j}`;
+      opt.textContent = `Neutral ${j + 1} (${topLabel(stack)})`;
+      selDest.appendChild(opt);
+    });
+    players.forEach((p, pi) => {
+      if (pi !== window.turn) {
+        p.portals.forEach((stack, pj) => {
+          const opt = document.createElement('option');
+          opt.value = `a:${pi}:${pj}`;
+          opt.textContent = `${p.name} P${pj + 1} (${topLabel(stack)})`;
+          selDest.appendChild(opt);
+        });
+      }
+    });
+
+    document.querySelector('#ctrlPlay').classList.remove('hidden');
+  }
+
+  document.querySelector('#btnCtrlPlay').onclick = abrirPanelJugarCarta;
+
+  document.querySelector('#btnPlay').onclick = () => {
+    const selCard = document.querySelector('#selCard');
+    const cardIdx = parseInt(selCard.value, 10);
+    if (isNaN(cardIdx) || !players[window.turn].hand[cardIdx]) {
+      alert('Debes seleccionar una carta válida antes de jugar.');
+      return;
+    }
+    const destKey = document.querySelector('#selDest').value;
+    document.querySelector('#ctrlPlay').classList.add('hidden');
+    window.selectedCardIdx = cardIdx;
+    jugarCartaSeleccionadaEn(destKey);
+  };
+
+  document.querySelector('#ctrlPlayCancel').onclick = () => {
+    document.querySelector('#ctrlPlay').classList.add('hidden');
     window.selectedCardIdx = null;
     render(players, neutrals, window.levelIdx);
+  };
+
+  // Cancelar la selección de carta actual (visible solo mientras hay una
+  // carta elegida, ver render.js) — también cierra el panel de <select>
+  // por si se había abierto, para no dejar ambos métodos en estados
+  // distintos.
+  document.querySelector('#btnPlayCancel').onclick = () => {
+    window.selectedCardIdx = null;
+    document.querySelector('#ctrlPlay')?.classList.add('hidden');
+    render(players, neutrals, window.levelIdx);
+  };
+
+  // Clic directo en el grid sobre el Portal objetivo de una habilidad en
+  // curso (Ocultista/Cronista/Estratega/1er picker de Cronomante) — coexiste
+  // con el modal picker() de siempre, mismo criterio que jugar carta.
+  // window.pickerObjetivoPortal lo fija pickerPortal() (render.js) mientras
+  // ese picker esté abierto; los Portales NO válidos (opcion.disabled) no
+  // responden al clic.
+  window.selectPortalObjetivo = key => {
+    const estado = window.pickerObjetivoPortal;
+    if (!estado) return;
+    const opcion = estado.opciones.find(o => o.val === key);
+    if (!opcion || opcion.disabled) return;
+    window.pickerObjetivoPortal = null;
+    document.querySelector('#picker')?.classList.add('hidden');
+    estado.cb(key);
   };
 
   // Activar habilidad (Fase B, opcional, una vez por turno): la habilidad del

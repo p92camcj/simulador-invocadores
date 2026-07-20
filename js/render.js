@@ -108,19 +108,63 @@ export function picker(title, options, cb, onCancel) {
 }
 
 /**
- * Construye el HTML de un Portal (propio, central o de otra jugadora) en
- * modo "jugar carta": clicable/soltable con `portalPlayAttrs`, y con la
- * clase `.target-portal` mientras haya una carta de mano seleccionada
- * (`window.selectedCardIdx`) — el clic no hace nada si no hay selección.
+ * Como picker(), pero además habilita clicar directamente los Portales
+ * válidos del tablero como alternativa al modal — mismo criterio que jugar
+ * carta: ambos métodos de selección coexisten, ninguno sustituye al otro.
+ * `opciones` debe tener el formato de `portalesConEstado()` (utils.js):
+ * val = "playerIdx:portalIdx" o "n:idx", con `disabled` ya calculado por la
+ * regla real de la habilidad (incluida la protección de Centinela). El
+ * clic en el tablero y el OK del modal convergen en la MISMA `cb`, así que
+ * no hay validación duplicada.
  */
-function portalCardJugarHtml(stack, label, destKey) {
+export function pickerPortal(title, opciones, cb, onCancel) {
+  window.pickerObjetivoPortal = { opciones, cb };
+  render(window.players, window.neutrals, window.levelIdx);
+  picker(title, opciones, val => {
+    window.pickerObjetivoPortal = null;
+    cb(val);
+  }, () => {
+    window.pickerObjetivoPortal = null;
+    render(window.players, window.neutrals, window.levelIdx);
+    onCancel?.();
+  });
+}
+
+/**
+ * Construye el HTML de un Portal (propio, central o de otra jugadora).
+ * `keyObjetivo` es su clave en formato `portalesConEstado()`
+ * ("playerIdx:portalIdx" o "n:idx"). Dos modos, mutuamente excluyentes
+ * (una activación de habilidad solo puede empezar con Fase A ya resuelta,
+ * así que nunca coincide con una carta de mano todavía seleccionada):
+ * - Con `window.pickerObjetivoPortal` activo (Tarea D: selección de
+ *   objetivo de habilidad en curso): si este Portal es una opción válida,
+ *   clicable vía `window.selectPortalObjetivo`, resaltado con
+ *   `.target-portal`; si no es válida (`disabled`), NO responde al clic,
+ *   se atenúa (`.target-portal-disabled`) y su etiqueta se marca con 🚫 —
+ *   mismo criterio visual que usa `picker()` en el `<select>`.
+ * - Si no, modo normal "jugar carta": clicable/soltable con
+ *   `portalPlayAttrs(destKeyJugar)`, resaltado con `.target-portal`
+ *   mientras haya una carta de mano seleccionada (el clic no hace nada
+ *   sin selección).
+ */
+function portalCardHtml(stack, label, destKeyJugar, keyObjetivo) {
   const topCard = stack.at(-1);
   const body = stack.length === 0
     ? '<div class="card-empty">Vacío</div>'
     : cartaImgHtml(topCard.name, topCard.vis?.public === true);
+
+  const objetivo = window.pickerObjetivoPortal;
+  if (objetivo) {
+    const opcion = objetivo.opciones.find(o => o.val === keyObjetivo);
+    if (!opcion || opcion.disabled) {
+      return `<div class="card target-portal-disabled"><div class="card-label">🚫 ${label} (${stack.length})</div>${body}</div>`;
+    }
+    return `<div class="card target-portal" onclick="window.selectPortalObjetivo('${keyObjetivo}')"><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
+  }
+
   const haySeleccion = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
   const targetClass = haySeleccion ? ' target-portal' : '';
-  return `<div class="card${targetClass}" ${portalPlayAttrs(destKey)}><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
+  return `<div class="card${targetClass}" ${portalPlayAttrs(destKeyJugar)}><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
 }
 
 /**
@@ -161,8 +205,8 @@ function renderBoardGrid(players, neutrals) {
 
     html += '<div class="board-portals">';
     p.portals.forEach((stack, j) => {
-      const destKey = esActiva ? `p:${j}` : `a:${i}:${j}`;
-      html += portalCardJugarHtml(stack, `Portal ${j + 1}`, destKey);
+      const destKeyJugar = esActiva ? `p:${j}` : `a:${i}:${j}`;
+      html += portalCardHtml(stack, `Portal ${j + 1}`, destKeyJugar, `${i}:${j}`);
     });
     html += '</div>';
 
@@ -198,7 +242,7 @@ function renderBoardGrid(players, neutrals) {
   if (neutrals.length) {
     html += '<div class="board-col section"><h4>Neutrales</h4><div class="board-portals">';
     neutrals.forEach((stack, i) => {
-      html += portalCardJugarHtml(stack, `Neutral ${i + 1}`, `n:${i}`);
+      html += portalCardHtml(stack, `Neutral ${i + 1}`, `n:${i}`, `n:${i}`);
     });
     html += '</div></div>';
   }

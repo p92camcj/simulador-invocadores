@@ -3,7 +3,7 @@ import {
   stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria,
   PERSONAJES_NO_ANIMALES, jugadoraProtegidaPorCentinela, estaProtegidoParaActivar
 } from './utils.js';
-import { picker } from './render.js';
+import { picker, pickerPortal } from './render.js';
 
 /**
  * ¿Su propia carta superior es una Centinela visible? Restricción propia
@@ -82,7 +82,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         st.length === 0
       );
 
-      picker('¿Qué portal quieres alterar?', opciones, key => {
+      pickerPortal('¿Qué portal quieres alterar?', opciones, key => {
         const st = stackFrom(key, players, neutrals);
         const carta = st.at(-1);
         carta.vis.public = !carta.vis.public;
@@ -103,7 +103,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         estaProtegidoParaActivar(val, st, players, ownerIdx) || st.length === 0
       );
 
-      picker('Portal objetivo', opcionesCronista, key => {
+      pickerPortal('Portal objetivo', opcionesCronista, key => {
         const st = stackFrom(key, players, neutrals);
         const carta = st.pop();
         // La orientación en mano no depende de cómo estaba la carta en el
@@ -176,8 +176,12 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
 
       // El PRIMER picker (elegir qué Portal investigar) sigue el patrón
       // general sin cambios: cancelarlo no cuesta nada ni fija ningún
-      // estado, porque ahí todavía no se ha examinado ningún Portal.
-      picker('Elige un portal para manipular', opcionesCrono, key => {
+      // estado, porque ahí todavía no se ha examinado ningún Portal. Es el
+      // único paso de Cronomante con representación de "Portal" clicable
+      // en el tablero (pickerPortal) — el segundo paso elige una carta
+      // dentro de la pila ya fijada, no un Portal, y se queda con el
+      // picker() normal de más arriba.
+      pickerPortal('Elige un portal para manipular', opcionesCrono, key => {
         window.cronomantePortalInvestigado = key;
         completarConPortalInvestigado(key);
       });
@@ -189,8 +193,8 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         estaProtegidoParaActivar(val, st, players, ownerIdx)
       );
 
-      picker('1er portal', portalesValidos, first => {
-        picker(
+      pickerPortal('1er portal', portalesValidos, first => {
+        pickerPortal(
           '2º portal',
           portalesValidos.filter(o => o.val !== first),
           second => {

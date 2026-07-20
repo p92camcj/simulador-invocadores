@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.12.0.47 - 2026-07-20
+
+- Ha vuelto el panel con listas desplegables para jugar carta: ahora puedes
+  elegir cómo jugar cada vez (panel, tocar directamente, o arrastrar),
+  como prefieras en cada turno.
+- Al activar una habilidad que apunta a un Portal (Ocultista, Cronista,
+  Cronomante, Estratega), ahora también puedes tocar directamente el
+  Portal en el tablero en vez de usar solo la lista desplegable. Los
+  Portales que no se pueden elegir (por ejemplo, protegidos por Centinela)
+  se ven apagados y no responden al toque.
+
 ## 1.11.0.46 - 2026-07-20
 
 - Nuevo diseño del tablero: ahora todas las jugadoras se ven a la vez en

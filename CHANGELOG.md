@@ -4,6 +4,14 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.12.0.47] - 2026-07-20
+
+### Añadido
+- **Se restaura el panel con `<select>` (`#ctrlPlay`, botón "Jugar una carta") eliminado en una tarea anterior: los TRES métodos de jugar carta (panel, clic directo, drag&drop) coexisten siempre, sin ningún ajuste para elegir uno.** Los tres comparten el mismo estado (`window.selectedCardIdx`) y la misma función interna `jugarCartaSeleccionadaEn()` en `js/actions.js` — ninguno duplica validación ni puede dejar a los otros dos en un estado inconsistente (abrir el panel preselecciona la carta ya elegida por clic; cancelar desde cualquiera de los dos limpia la selección en ambos).
+- **El bloqueo de "acción no permitida" se extiende a la selección de OBJETIVO de habilidad, cuando ese objetivo es un Portal**: Ocultista, Cronista, el primer picker de Cronomante (elegir Portal a investigar) y los dos pickers de Estratega. Nueva `pickerPortal()` en `js/render.js` — mismo modal `picker()` de siempre, pero además habilita clicar directamente el Portal válido en el tablero como alternativa (`window.pickerObjetivoPortal`, consumido por `renderBoardGrid()` y `window.selectPortalObjetivo` en `actions.js`); los Portales NO válidos (mismo cálculo real de cada habilidad, incluida la protección de Centinela) se ven atenuados, con 🚫 en la etiqueta, y no responden al clic. El segundo picker de Cronomante (elige una carta dentro de la pila, no un Portal), Aprendiz (elige jugadoras) y Metamorfo (elige un nombre de personaje) se quedan solo con el modal — no tienen una representación de "Portal" natural que clicar en el grid.
+
+---
+
 ## [1.11.0.46] - 2026-07-20
 
 ### Cambiado
