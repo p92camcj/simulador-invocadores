@@ -125,16 +125,23 @@ export function initActions(players, neutrals) {
       const stack = tipo === 'own' ? players[window.turn].portals[idx] : neutrals[idx];
       const name = stack.at(-1).name;
 
-      if (tipo === 'central') {
-        const pagado = pagarActivacionPortalCentral(players[window.turn]);
-        if (!pagado) return;
-      }
+      // Se invoca solo cuando la habilidad se ha aplicado de verdad (nunca si
+      // el jugador cancela un picker() intermedio a medias): primero cobra el
+      // coste de Portal central si aplica, luego marca la habilidad como
+      // usada, luego refresca la UI. El coste propio del Metamorfo (si lo
+      // hay) ya se cobra dentro de su propio case en abilities.js, antes de
+      // llegar aquí.
+      const onComplete = () => {
+        if (tipo === 'central') {
+          pagarActivacionPortalCentral(players[window.turn]);
+        }
+        window.habilidadUsadaEsteTurno = true;
+        render(players, neutrals, window.levelIdx);
+      };
 
-      window.habilidadUsadaEsteTurno = true;
       const lvl = window.LEVELS[window.levelIdx];
       const need = lvl ? window.INVOCATION_SETS[window.invocationSet][lvl].need : [];
-      applyAbility(name, window.turn, stack, players, neutrals, window.levelIdx, need);
-      render(players, neutrals, window.levelIdx);
+      applyAbility(name, window.turn, stack, players, neutrals, window.levelIdx, need, onComplete);
     });
   };
 

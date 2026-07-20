@@ -4,6 +4,14 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.5.1.30] - 2026-07-20
+
+### Corregido
+- **Cancelar una habilidad a medias la marcaba como usada igualmente.** El handler de "Activar habilidad" (`js/actions.js`) marcaba `window.habilidadUsadaEsteTurno = true` y cobraba la Gema de Portal central en cuanto se elegía QUÉ habilidad activar, antes de que se resolvieran los `picker()` internos (Cronomante: portal + carta; Estratega: dos portales; Aprendiz: dos jugadoras; Metamorfo: personaje objetivo). Si el jugador cancelaba cualquiera de esos pasos, perdía igualmente el turno de habilidad y, en Portal central, la Gema ya cobrada.
+- `applyAbility()` (`js/abilities.js`) admite ahora un `onComplete` que cada `case` invoca una sola vez, justo en el punto de la mutación real — nunca antes. `actions.js` mueve dentro de ese callback el cobro del coste de Portal central y el marcado de la habilidad como usada, en ese orden. El coste propio del Metamorfo (independiente del coste de Portal central) se sigue cobrando dentro de su propio `case`, antes de llamar a `onComplete`, así que en Portal central se cobran las 2 Gemas correctas solo si la transformación se completa de verdad.
+
+---
+
 ## [1.5.0.29] - 2026-07-20
 
 ### Añadido

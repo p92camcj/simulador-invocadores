@@ -1,6 +1,6 @@
 // abilities.js
 import { stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria } from './utils.js';
-import { picker, render } from './render.js';
+import { picker } from './render.js';
 
 function estaProtegido(stack) {
   return stack.length && stack.at(-1).name === 'Centinela' && stack.at(-1).vis?.public;
@@ -22,8 +22,16 @@ function jugadorProtegidoContraAprendiz(jugador, jugadores) {
  * el set de invocación elegido, ver INVOCATION_SETS en utils.js) — solo lo
  * usa el caso 'Metamorfo'. Pásalo explícitamente desde quien llame a esta
  * función; no lo recalcules aquí a partir de globals.
+ *
+ * `onComplete` se invoca UNA sola vez, justo en el punto donde la habilidad
+ * se aplica de verdad (la mutación real del estado del juego) — nunca antes.
+ * Si el jugador cancela cualquier picker() intermedio (Cronomante, Estratega,
+ * Aprendiz, Metamorfo tienen uno o más pasos que se pueden cancelar a
+ * medias), `onComplete` no se llama y no debe haber ocurrido ningún efecto
+ * observable (ni gasto de Gemas, ni marcar la habilidad como usada — eso lo
+ * decide quien llama, dentro de `onComplete`).
  */
-export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = []) {
+export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [], onComplete = () => {}) {
   const owner = players[ownerIdx];
 
   switch (name) {
@@ -36,7 +44,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         const st = stackFrom(key, players, neutrals);
         const carta = st.at(-1);
         carta.vis.public = !carta.vis.public;
-        render(players, neutrals, levelIdx);
+        onComplete();
       });
       break;
     }
@@ -79,7 +87,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           esPropietaria: true
         });
         owner.hand.push({ name: carta.name, vis });
-        render(players, neutrals, levelIdx);
+        onComplete();
       });
       break;
     }
@@ -99,7 +107,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         picker('¿Qué carta quieres subir al top?', opcionesCarta, idx => {
           const seleccionada = st.splice(idx, 1)[0];
           st.push(seleccionada);
-          render(players, neutrals, levelIdx);
+          onComplete();
         });
       });
       break;
@@ -130,7 +138,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
               s2.splice(0, s2.length, ...tmp);
             }
 
-            render(players, neutrals, levelIdx);
+            onComplete();
           }
         );
       });
@@ -172,7 +180,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
             c.vis.others = temp;
           });
 
-          render(players, neutrals, levelIdx);
+          onComplete();
         });
       });
       break;
@@ -197,9 +205,14 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         'Metamorfo cambia a',
         miss.map(m => ({ val: m, lbl: m })),
         v => {
+          // Coste propio del Metamorfo (siempre 1 Gema, independiente del
+          // coste de activar un Portal central que ya se haya cobrado o se
+          // vaya a cobrar en onComplete — ver REGLAMENTO.md, nota del
+          // Metamorfo). Si no se puede pagar, no ha pasado nada: no se llama
+          // a onComplete, así que tampoco se cobra el coste de Portal central.
           if (!gastarGemaUnitaria(owner)) return;
           stack.at(-1).name = v;
-          render(players, neutrals, levelIdx);
+          onComplete();
         }
       );
       break;
