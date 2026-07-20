@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-20 16:17 (Europe/Madrid)
+> **Última actualización:** 2026-07-20 20:23 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -42,6 +42,21 @@
 > sobre la Centinela de la propia jugadora que activa la habilidad. Si la
 > intención real era otra, corregir esta nota y `estaProtegidoParaActivar`
 > en `js/utils.js`.
+>
+> ⚠️ **Decisión de mesa, más estricta que el texto literal — indicación
+> directa del dueño del proyecto:** el glosario de "Carta oculta" (más
+> abajo) dice que la carta que la Clarividente revela a su dueña ya era
+> visible para el resto de jugadoras desde antes — el texto no dice
+> explícitamente que **deje** de serlo mientras la Clarividente está
+> activa. Aquí se ha decidido en mesa un efecto más fuerte que esa lectura
+> literal: mientras una jugadora tenga a la Clarividente visible en su
+> Portal (o esté en el periodo de gracia previo a voltear una carta al
+> dejar de tenerla visible), su mano **completa** — las dos cartas, no solo
+> la que Clarividente revela — queda oculta para el resto de jugadoras, no
+> solo revelada para su dueña. Es una decisión de diseño de la partida
+> simulada, no una lectura distinta del texto original; si en el futuro se
+> prefiere volver al texto literal, corregir esta nota y el bloque
+> correspondiente de `js/render.js` (`zoneOthers`).
 
 ---
 

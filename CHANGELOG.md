@@ -4,6 +4,15 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.8.2.42] - 2026-07-20
+
+### Cambiado
+- **Clarividente ahora oculta la mano COMPLETA de su dueña al resto de jugadoras, no solo revela la carta antes oculta a su propia dueña.** Decisión de mesa más estricta que el texto literal del glosario "Carta oculta" de `docs/reglamento/REGLAMENTO.md` (que no dice explícitamente que la carta deje de ser visible para el resto) — indicación directa del dueño del proyecto, documentada como nueva nota de interpretación en el propio reglamento. `js/render.js`, `zoneOthers`: mientras `p.hasClariActivo || p.haTenidoClarividente` sea cierto para una jugadora, sus DOS cartas se muestran como "Carta oculta" al resto, sobrescribiendo (no combinando con OR) la visibilidad normal por carta (`h.vis?.others`).
+- `actualizarClarividente(players)` (`utils.js`) ya calculaba estos flags para TODAS las jugadoras en cada `render()`, no solo la activa — confirmado que sigue así tras los cambios de tareas anteriores, así que el ocultamiento se aplica de inmediato al jugar la carta, sin esperar al turno de la jugadora afectada.
+- **Nota sobre por qué la propia dueña solo ve su "mano doble" cuando es su turno**: esto NO es un bug de estado — es una limitación inherente al diseño de pantalla compartida de este simulador (ver "Future direction" en `CLAUDE.md`). `zoneActive` solo renderiza la mano de `players[window.turn]`; mostrar el efecto de Clarividente de otra jugadora fuera de su turno filtraría esa información a todas las demás, que miran la misma pantalla. Se resolverá de forma honesta solo con el futuro multijugador por dispositivo, no "arreglando" el renderizado actual.
+
+---
+
 ## [1.8.1.41] - 2026-07-20
 
 ### Corregido

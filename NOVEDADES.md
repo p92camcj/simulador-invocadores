@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.8.2.42 - 2026-07-20
+
+- Cuando una jugadora tiene la Clarividente visible, ahora su mano
+  completa queda oculta para el resto (antes, una de sus dos cartas se
+  podía seguir viendo). Es una decisión de mesa para reforzar el secreto
+  de la información mientras dura el efecto.
+
 ## 1.8.1.41 - 2026-07-20
 
 - Corregido: podían llegar a estar visibles varias Centinelas a la vez en

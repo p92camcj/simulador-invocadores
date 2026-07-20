@@ -160,8 +160,14 @@ export function render(players, neutrals, levelIdx) {
       zoneOthers.innerHTML += `<div class="card"><div class="card-label">Portal ${j+1} (${stack.length})</div>${body}</div>`;
     });
     zoneOthers.innerHTML += '<h5>Cartas ocultas</h5>';
+    // Decisión de mesa (ver docs/reglamento/REGLAMENTO.md, nota sobre
+    // Clarividente): mientras esta jugadora tenga la Clarividente
+    // visible/en periodo de gracia, su mano COMPLETA queda oculta para el
+    // resto — se sobrescribe la visibilidad normal, no se combina con OR.
+    const manoOcultaPorClarividente = p.hasClariActivo || p.haTenidoClarividente;
     p.hand.forEach(h => {
-      zoneOthers.innerHTML += `<div class="card">${cartaImgHtml(h.name, h.vis?.others === true)}</div>`;
+      const visible = manoOcultaPorClarividente ? false : h.vis?.others === true;
+      zoneOthers.innerHTML += `<div class="card">${cartaImgHtml(h.name, visible)}</div>`;
     });
     zoneOthers.innerHTML += `</div>`;
   });
