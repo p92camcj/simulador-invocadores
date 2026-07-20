@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-20 23:16 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 01:14 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -50,13 +50,27 @@
 > explícitamente que **deje** de serlo mientras la Clarividente está
 > activa. Aquí se ha decidido en mesa un efecto más fuerte que esa lectura
 > literal: mientras una jugadora tenga a la Clarividente visible en su
-> Portal (o esté en el periodo de gracia previo a voltear una carta al
-> dejar de tenerla visible), su mano **completa** — las dos cartas, no solo
-> la que Clarividente revela — queda oculta para el resto de jugadoras, no
-> solo revelada para su dueña. Es una decisión de diseño de la partida
-> simulada, no una lectura distinta del texto original; si en el futuro se
-> prefiere volver al texto literal, corregir esta nota y el bloque
-> correspondiente de `js/render.js` (`zoneOthers`).
+> Portal, su mano **completa** — las dos cartas, no solo la que
+> Clarividente revela — queda oculta para el resto de jugadoras, no solo
+> revelada para su dueña. Es una decisión de diseño de la partida simulada,
+> no una lectura distinta del texto original; si en el futuro se prefiere
+> volver al texto literal, corregir esta nota y el bloque correspondiente
+> de `js/render.js` (`renderBoardGrid()`).
+>
+> **Corrección 2026-07-21 — no existe ningún periodo de gracia:** una
+> versión anterior de esta nota mencionaba de pasada "el periodo de gracia
+> previo a voltear una carta al dejar de tenerla visible" como si fuera
+> parte aceptada del diseño. El dueño del proyecto ha confirmado que eso es
+> incorrecto: no debe existir ningún periodo de gracia. En el instante
+> exacto en que una jugadora deja de tener visible su Clarividente (se tapa
+> con otra carta, se traslada el Portal, etc.), pierde **inmediatamente**
+> la visibilidad de una de sus dos cartas — elegida por **ella**, mediante
+> una decisión activa (un picker, no un volteo automático ni una elección
+> arbitraria del sistema), tal y como ya decía el propio texto de la
+> sección "Clarividente" más abajo ("el jugador debe voltear una carta a su
+> elección"). Ni la mano oculta al resto de jugadoras (párrafo anterior) ni
+> la vista de ambas cartas para su dueña deben sobrevivir ni un instante
+> más allá del momento exacto en que la Clarividente deja de estar visible.
 
 ---
 

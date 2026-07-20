@@ -147,26 +147,52 @@ forma natural una vez exista el campo `.aspecto` separado de `.name` (ítem
 imagen de `.aspecto` superpuesta a media opacidad encima, en vez de
 resolver una sola imagen a partir de un nombre ya sobrescrito.
 
-### Clarividente: "voltear carta" al perder visibilidad no es inmediato
+### Clarividente: dos bugs reales confirmados tras probar la partida
 
-Revisado en la tarea que corrigió la corrupción de `carta.vis` en
-`actualizarVisibilidad()` (ver `CHANGELOG.md`): con el dato real de la mano
-intacto (nunca lo toca el efecto de Clarividente), el invariante "una carta
-visible y una oculta" nunca llega a romperse de verdad, así que la acción
-manual de "voltear una carta a su elección" que pide
-`docs/reglamento/REGLAMENTO.md` ("Clarividente") al dejar de tener la
-Clarividente visible **no hace falta** para mantener ese invariante — no se
-ha implementado, a propósito.
+**Actualización 2026-07-21**: esta entrada sustituye a una anterior que
+concluía que no hacía falta implementar nada (con el argumento de que el
+invariante "una carta visible y una oculta" nunca se rompía de verdad). El
+dueño del proyecto ha probado la partida y confirmado que sí hay dos bugs
+reales y distintos por resolver — además, la nota de interpretación de
+`docs/reglamento/REGLAMENTO.md` ("Clarividente") ya no acepta ningún
+"periodo de gracia" como diseño válido: la pérdida de visibilidad debe ser
+inmediata, siempre.
 
-Lo que sí queda como desviación menor del reglamento: la app usa un
-"periodo de gracia" (`player.haTenidoClarividente`, `js/utils.js`
-`actualizarClarividente()`) que sigue mostrando ambas cartas al jugador
-hasta que este vuelva a jugar una carta propia (Fase A de su siguiente
-turno) — el reglamento pide que el efecto termine **inmediatamente** al
-dejar de tener la Clarividente visible (p. ej. en cuanto se juega otra
-carta encima suyo o se traslada a otro Portal). Es una decisión de UX ya
-existente antes de esta tarea, no introducida por ella; queda anotada aquí
-por si se decide ajustar la duración de ese periodo de gracia en el futuro.
+**a. No existe ningún picker ni elección real de la jugadora al perder la
+Clarividente visible.** El efecto "ver ambas cartas" depende únicamente de
+los flags automáticos `hasClariActivo`/`haTenidoClarividente`
+(`actualizarClarividente()`, `js/utils.js`), sin que la jugadora elija
+nunca qué carta prefiere dejar de ver — el texto de la sección
+"Clarividente" pide explícitamente que "el jugador debe voltear una carta
+a su elección". Además, el único sitio que hoy corta el efecto
+(`js/actions.js`, `jugarCartaSeleccionadaEn()`: `if (!pl.hasClariActivo) {
+pl.haTenidoClarividente = false; }`) solo se ejecuta cuando la jugadora
+ACTIVA juega una carta — así que si la Clarividente de otra jugadora deja
+de estar visible por una habilidad ajena (Cronista, Estratega, Cronomante,
+Ocultista actuando sobre su Portal), el efecto no se corta hasta que esa
+jugadora vuelva a jugar una carta en su propio turno, violando la regla
+corregida de "inmediato, sin excepción". Corrección necesaria: disparar un
+picker exactamente en el instante en que `hasClariActivo` pasa de `true` a
+`false` para una jugadora (sea cual sea la causa), preguntándole qué carta
+de las dos quiere que pase a estar oculta para ella — no un sitio único
+como hoy, sino cualquier punto del código que pueda hacer que la
+Clarividente deje de estar visible.
+
+**b. Reportado por el dueño del proyecto tras jugar una partida: al robar
+carta al final de turno, la jugadora pierde la visibilidad de AMBAS
+cartas de su mano, en vez de mantener la que normalmente vería (su carta
+`vis.owner === true`) y perder solo la que veía de más gracias a la
+Clarividente.** Esta sesión intentó reproducir el escenario jugando
+directamente en el navegador (ver commits de esta ronda) en varias
+variantes — grace period ya activo al jugar una carta ajena a la
+Clarividente, y Clarividente genuinamente activa durante todo el turno
+seguida de robo de reposición — y en ambos casos el resultado observado
+fue el invariante normal (una carta visible, una oculta), no la pérdida de
+ambas. **No se ha localizado la causa raíz todavía**: queda como bug
+reportado, pendiente de reproducir con más detalle (número de jugadoras,
+en qué punto exacto del turno, qué acción concreta lo dispara) antes de
+poder señalar una línea de código concreta — no asumir que es el mismo
+mecanismo que el bug (a) sin verificarlo primero.
 
 ### Marcador final y desempate
 

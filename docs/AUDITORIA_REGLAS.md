@@ -1,6 +1,6 @@
 # Auditoría de reglas — reglamento vs. código real
 
-> **Última actualización:** 2026-07-21 01:12 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 01:15 (Europe/Madrid)
 >
 > Informe de auditoría, no una tarea de código. Cruza
 > [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) contra el
@@ -442,6 +442,7 @@ la sección 1.
 | Metamorfo: transformación libre y persistente | ✅ Implementado | — |
 | **Metamorfo: apariencia sin efectos + disfraz visual** (bug de reglas, no solo cosmético — ver [`DEUDA_TECNICA.md` ítem 14](DEUDA_TECNICA.md) y [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md), "Metamorfo: representación visual de la transformación") | ❌ Pendiente | **Alta** |
 | Clarividente: mano completa oculta al resto | ✅ Implementado (decisión de mesa) | — |
+| **Clarividente: corte inmediato + elección activa al perder visibilidad (dos bugs confirmados, ver [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md), "Clarividente: dos bugs reales confirmados tras probar la partida")** | 🔴 Bug | **Media** |
 | Cronomante: reintento tras cancelar, mismo Portal | ✅ Implementado | — |
 | Maestro: bonus pasivo (3 Gemas) | ✅ Implementado | — |
 | Maestro: habilidad activa (mover carta de mano ajena) | ❌ Pendiente | Media |
