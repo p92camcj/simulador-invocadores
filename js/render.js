@@ -1,5 +1,5 @@
 // render.js
-import { mostrarCarta, actualizarVisibilidad, sumaGemas, cardImages, CARTA_OCULTA_IMG } from './utils.js';
+import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG } from './utils.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 
 /**
@@ -69,8 +69,14 @@ export function picker(title, options, cb) {
  * @param {number} levelIdx - Índice de la invocación actual.
  */
 export function render(players, neutrals, levelIdx) {
+  // Solo actualiza los flags hasClariActivo/haTenidoClarividente del
+  // jugador; NUNCA muta carta.vis (ver js/utils.js) — el efecto de
+  // Clarividente se decide en el momento de mostrar cada carta (más abajo,
+  // `pl.hasClariActivo || pl.haTenidoClarividente`), no persistiéndolo en
+  // el dato real. Así el estado subyacente (una carta visible + una
+  // oculta) nunca se corrompe, y sigue intacto si después el Aprendiz
+  // intercambia esta mano con la de otra jugadora.
   actualizarClarividente(players);
-  actualizarVisibilidad(players);
   const zoneActive = document.querySelector('#zoneActive');
   const zoneOthers = document.querySelector('#zoneOthers');
   const zoneNeutral = document.querySelector('#zoneNeutral');

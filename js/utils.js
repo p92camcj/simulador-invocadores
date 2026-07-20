@@ -331,20 +331,3 @@ export function actualizarClarividente(players) {
     }
   });
 }
-
-
-/**
- * Recorre las manos de todas las jugadoras y ajusta la visibilidad de sus cartas
- * según si tienen una Clarividente activa o reciente.
- */
-export function actualizarVisibilidad(players) {
-  players.forEach(player => {
-    if (player.hasClariActivo || player.haTenidoClarividente) {
-      player.hand.forEach(carta => {
-        carta.vis.owner = true;
-        carta.vis.others = false;
-        carta.vis.public = false;
-      });
-    }
-  });
-}

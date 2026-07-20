@@ -4,6 +4,15 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.5.5.35] - 2026-07-20
+
+### Corregido
+- **`actualizarVisibilidad()` corrompía el estado real de la mano al simular el efecto de Clarividente, rompiendo el intercambio de manos del Aprendiz.** `js/utils.js`: esta función, llamada dentro de cada `render()`, sobrescribía directamente `carta.vis.owner/others/public` de TODAS las cartas en mano de cualquier jugadora con Clarividente activa o reciente — no solo para representarlo visualmente, sino persistiendo el cambio en el propio modelo de datos. Cuando después el Aprendiz intercambiaba esa mano con la de otra jugadora e invertía `owner`/`others` (`case 'Aprendiz'`, `js/abilities.js`), invertía el dato ya corrompido, y las dos cartas recibidas acababan con la misma orientación en vez de una visible y una oculta. De paso corregía también, de forma incorrecta, la visibilidad para el **resto** de jugadoras (`others: false` en ambas cartas) cuando el reglamento solo pide que la Clarividente afecte a lo que ve su **dueña** (`owner`), sin tocar lo que ven las demás.
+- Eliminada `actualizarVisibilidad()` por completo: `carta.vis` ahora refleja siempre la orientación real de la carta (una visible y una oculta), y el efecto de Clarividente se decide en el momento de renderizar/seleccionar, con la comprobación de solo lectura `pl.hasClariActivo || pl.haTenidoClarividente` que ya existía en `render.js` y `actions.js`.
+- Revisado si seguía haciendo falta implementar "al dejar de tener visible a la Clarividente, voltear una carta a elección" (`docs/reglamento/REGLAMENTO.md`, "Clarividente"): con el dato real intacto, el invariante "una visible y una oculta" nunca llega a romperse, así que no hace falta esa acción manual para mantenerlo — no se ha implementado. Queda anotada en `docs/MEJORAS_FUTURAS.md` una desviación menor y preexistente (el "periodo de gracia" de `haTenidoClarividente` no es un corte inmediato como pide el reglamento).
+
+---
+
 ## [1.5.4.34] - 2026-07-20
 
 ### Corregido

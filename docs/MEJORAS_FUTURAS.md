@@ -126,6 +126,27 @@ realidad" un Metamorfo. El coste en Gemas ya usa el modelo real
 Portal central, se suma al coste normal de activar un Portal central (2
 Gemas en total, ver `docs/reglamento/REGLAMENTO.md`) — eso ya funciona.
 
+### Clarividente: "voltear carta" al perder visibilidad no es inmediato
+
+Revisado en la tarea que corrigió la corrupción de `carta.vis` en
+`actualizarVisibilidad()` (ver `CHANGELOG.md`): con el dato real de la mano
+intacto (nunca lo toca el efecto de Clarividente), el invariante "una carta
+visible y una oculta" nunca llega a romperse de verdad, así que la acción
+manual de "voltear una carta a su elección" que pide
+`docs/reglamento/REGLAMENTO.md` ("Clarividente") al dejar de tener la
+Clarividente visible **no hace falta** para mantener ese invariante — no se
+ha implementado, a propósito.
+
+Lo que sí queda como desviación menor del reglamento: la app usa un
+"periodo de gracia" (`player.haTenidoClarividente`, `js/utils.js`
+`actualizarClarividente()`) que sigue mostrando ambas cartas al jugador
+hasta que este vuelva a jugar una carta propia (Fase A de su siguiente
+turno) — el reglamento pide que el efecto termine **inmediatamente** al
+dejar de tener la Clarividente visible (p. ej. en cuanto se juega otra
+carta encima suyo o se traslada a otro Portal). Es una decisión de UX ya
+existente antes de esta tarea, no introducida por ella; queda anotada aquí
+por si se decide ajustar la duración de ese periodo de gracia en el futuro.
+
 ### Marcador final y desempate
 
 No existe ninguna pantalla de resultados ni lógica de desempate al acabar

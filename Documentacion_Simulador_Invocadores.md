@@ -52,8 +52,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `pagarActivacionPortalCentral(player)` | `función` | Cobra el coste de activar la habilidad de un Portal central: gratis con Gema de asterisco, o 1 Gema unitaria. `false` si no pudo pagar. |
 | `construirPoolGemas(valores)` | `función` | Construye y mezcla el pool de 5 Gemas de una invocación, marcando la de menor valor como `esAsterisco`. |
 | `generarVis(destino, opciones)` | `función` | Genera el objeto de visibilidad de una carta según su origen y destino. |
-| `actualizarClarividente(players)` | `función` | Actualiza `hasClariActivo`/`haTenidoClarividente` de cada jugador. |
-| `actualizarVisibilidad(players)` | `función` | Ajusta la visibilidad de las manos según los flags de Clarividente. |
+| `actualizarClarividente(players)` | `función` | Actualiza `hasClariActivo`/`haTenidoClarividente` de cada jugador (solo flags, nunca muta `carta.vis`). |
 
 **Modelo de datos de Gemas**: `player.gems` es un array de
 `{ valor: number, nivel: 'C'|'B'|'A'|'experto'|'unitaria', esAsterisco?: boolean }`,
