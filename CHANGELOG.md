@@ -4,6 +4,16 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.5.3.32] - 2026-07-20
+
+### Corregido
+- **Metamorfo ya no restringe la transformación al personaje que falta para completar la invocación activa.** `js/abilities.js`, `case 'Metamorfo'`: eliminado el cálculo de `present`/`miss` a partir de `need` (regla antigua, ya no vigente desde la revisión del reglamento de 2026-07-19 — ver `docs/reglamento/REGLAMENTO.md`, "Metamorfo"). El picker ahora ofrece los 9 personajes no-animales restantes (todo `PERSONAJES_NO_ANIMALES` menos el propio Metamorfo), en cualquier momento del turno, sin depender de qué invocación esté activa ni de qué quede en el mazo — puede imitar incluso a un personaje cuyas dos copias se apartaron al azar al preparar la partida.
+- De paso, si la jugadora no tiene ninguna Gema con la que pagar la transformación, ahora se avisa con `alert()` en vez de fallar en silencio (`return` sin mensaje).
+- Nueva constante `PERSONAJES_NO_ANIMALES` en `js/utils.js` (roster de los 10 personajes no-animales del mazo base), reutilizada tanto por el nuevo `case 'Metamorfo'` como por `js/game.js` para construir `charsBase` en `initGame()`, eliminando una lista de nombres duplicada (ver `docs/DEUDA_TECNICA.md`, ítem 8).
+- La transformación del Metamorfo ya era persistente en la práctica (nada en el código revertía `stack.at(-1).name`); solo la restricción antigua impedía que se pudiera observar en la mayoría de casos. Sigue pendiente la representación visual (ficha superpuesta con la cara del personaje imitado, en vez de solo sobrescribir el nombre) — ver `docs/MEJORAS_FUTURAS.md`.
+
+---
+
 ## [1.5.2.31] - 2026-07-20
 
 ### Corregido

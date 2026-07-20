@@ -164,8 +164,8 @@
 ### 8. Nombres de personaje como strings mágicos repetidos sin roster centralizado (parcialmente mitigado)
 
 - **Dónde**: `js/utils.js` (claves de `iconos`, `INVOCATION_SETS`),
-  `js/game.js` (array `chars`/`charsBase` en `initGame()`),
-  `js/abilities.js` (cada `case` del `switch`).
+  `js/game.js` (cantidades por personaje en `cantidadesModoNormal` dentro
+  de `initGame()`), `js/abilities.js` (cada `case` del `switch`).
 - **Descripción**: la lista de "qué personajes tienen habilidad activable"
   vivía por duplicado — los `case` reales de `abilities.js` y, aparte, un
   array literal repetido en `actions.js`. Esa duplicación concreta ya se
@@ -176,9 +176,17 @@
   automáticamente de los `case` reales de `abilities.js` — así que añadir
   un `case` nuevo sin añadir el nombre a `PERSONAJES_CON_HABILIDAD` seguiría
   siendo un fallo silencioso (la habilidad nunca aparecería como activable
-  en el picker de Fase B).
-- **Impacto real**: bajo hoy (una sola lista manual en vez de dos, pero
-  sigue siendo manual), y sigue siendo relevante para cuando el Maestro
+  en el picker de Fase B). Por otro lado, el roster de "los 10 personajes
+  no-animales" también estaba duplicado (el array de nombres de
+  `charsBase` en `game.js`, y de forma implícita en el `case 'Metamorfo'`
+  de `abilities.js` antes de la revisión de 2026-07-19 de esa habilidad) —
+  esa duplicación **sí** se resolvió: ambos sitios ahora importan la misma
+  constante `PERSONAJES_NO_ANIMALES` de `js/utils.js`; `game.js` solo
+  mantiene aparte el mapa de cantidades por personaje
+  (`cantidadesModoNormal`), que no tiene un origen único razonable del que
+  derivarse.
+- **Impacto real**: bajo hoy (listas manuales en vez de duplicadas, pero
+  siguen siendo manuales), y sigue siendo relevante para cuando el Maestro
   tenga su habilidad activa (ver `MEJORAS_FUTURAS.md`).
 - **Corrección propuesta**: derivar `PERSONAJES_CON_HABILIDAD` de los
   `case` reales de `abilities.js` (p. ej. exportando un `Set` o array desde

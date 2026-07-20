@@ -1,5 +1,5 @@
 // abilities.js
-import { stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria } from './utils.js';
+import { stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria, PERSONAJES_NO_ANIMALES } from './utils.js';
 import { picker } from './render.js';
 
 function estaProtegido(stack) {
@@ -187,23 +187,29 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
     }
 
     case 'Metamorfo': {
-      // Restricción heredada de la versión anterior del reglamento (solo puede
-      // transformarse en un personaje que falte para completar la invocación
-      // activa, y la transformación no persiste): la revisión de reglas de
-      // 2026-07-19 elimina esta restricción y hace la transformación
-      // persistente, pero eso es un bloque de trabajo aparte (ver
-      // docs/MEJORAS_FUTURAS.md) — no tocarlo aquí.
-      const present = new Set();
-      players.forEach(p =>
-        p.portals.forEach(s => s.length && s.at(-1).vis?.public && present.add(s.at(-1).name))
-      );
-      neutrals.forEach(s => s.length && s.at(-1).vis?.public && present.add(s.at(-1).name));
-      const miss = need.filter(n => !present.has(n));
-      if (!miss.length || owner.gems.length === 0) return;
+      // Regla vigente (revisión de reglamento 2026-07-19, ver REGLAMENTO.md
+      // "Metamorfo"): puede transformarse en cualquier personaje NO animal,
+      // en cualquier momento de su turno, sin que haga falta acercar ni
+      // completar ninguna invocación activa — y sin restringirse a lo que
+      // esté en juego o quede en el mazo: puede imitar incluso a un
+      // personaje cuyas dos copias se apartaron al azar al preparar la
+      // partida. `need` ya no se usa en este case (se mantiene en la firma
+      // de applyAbility por si Modo Experto lo necesita más adelante para la
+      // invocación Asterisco, que exige que el Metamorfo conserve su aspecto
+      // natural — ver docs/MEJORAS_FUTURAS.md, no conectado todavía).
+      if (owner.gems.length === 0) {
+        alert('No tienes ninguna Gema con la que pagar la transformación.');
+        return;
+      }
+
+      // Se excluye 'Metamorfo' de las opciones: transformarse en sí mismo no
+      // tendría efecto observable. Es una asunción razonable, no una regla
+      // explícita del reglamento.
+      const opciones = PERSONAJES_NO_ANIMALES.filter(n => n !== 'Metamorfo');
 
       picker(
         'Metamorfo cambia a',
-        miss.map(m => ({ val: m, lbl: m })),
+        opciones.map(m => ({ val: m, lbl: m })),
         v => {
           // Coste propio del Metamorfo (siempre 1 Gema, independiente del
           // coste de activar un Portal central que ya se haya cobrado o se

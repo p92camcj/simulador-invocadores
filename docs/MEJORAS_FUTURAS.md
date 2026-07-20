@@ -61,6 +61,14 @@ Implementado en el mismo bloque de trabajo que separó la Fase B del turno
   `onComplete` que cada `case` invoca solo al mutar el estado de verdad;
   `js/actions.js` mueve ahí el cobro del coste de Portal central y el
   marcado de `window.habilidadUsadaEsteTurno`.
+- **Metamorfo, restricción y persistencia**: `case 'Metamorfo'`
+  (`js/abilities.js`) ya no limita la transformación al personaje que
+  faltase para completar la invocación activa — ofrece los 9 personajes de
+  `PERSONAJES_NO_ANIMALES` (`js/utils.js`, nueva constante) menos el propio
+  Metamorfo, en cualquier momento del turno. La persistencia ya funcionaba
+  (nada revertía `.name`); solo faltaba quitar la restricción para poder
+  observarla. Sigue pendiente la representación visual (ficha superpuesta),
+  ver más abajo.
 
 ---
 
@@ -100,23 +108,23 @@ trabajo nuevo en `js/abilities.js` (nuevo `case 'Maestro'`) y en
 `PERSONAJES_CON_HABILIDAD` (`js/utils.js`, añadir `'Maestro'` a la lista
 de personajes con habilidad activable en Fase B).
 
-### Metamorfo: quitar restricción y hacer persistente la transformación
+### Metamorfo: representación visual de la transformación
 
-Desde la revisión del reglamento de 2026-07-19, el Metamorfo (`js/abilities.js`,
-`case 'Metamorfo'`) debe actualizarse en dos aspectos: (1) ya no puede
-transformarse solo en "el personaje concreto que falta para completar la
-invocación activa" — ahora puede transformarse en cualquier personaje que
-no sea animal, en cualquier momento de su turno; (2) la transformación debe
-persistir hasta que la carta se tape con otra o se vuelva a pagar el coste
-para transformarla en otra cosa, en vez de revertir como hoy. También habría
-que representar visualmente que la carta transformada "es en realidad" un
-Metamorfo (el reglamento usa una ficha superpuesta con la cara del
-personaje imitado), no solo cambiar el nombre internamente sin dejar
-rastro. El coste en Gemas ya usa el modelo real (`gastarGemaUnitaria` en
-`js/utils.js`) y, si el Metamorfo está en un Portal central, se suma al
-coste normal de activar un Portal central (2 Gemas en total, ver
-`docs/reglamento/REGLAMENTO.md`) — eso ya funciona; lo pendiente es solo la
-restricción y la persistencia de la transformación en sí.
+La restricción antigua ("solo el personaje concreto que falta para
+completar la invocación activa") y la falta de persistencia ya están
+corregidas (`js/abilities.js`, `case 'Metamorfo'`, ver `CLAUDE.md`): el
+picker ahora ofrece `PERSONAJES_NO_ANIMALES` (`js/utils.js`) completo menos
+el propio Metamorfo, en cualquier momento del turno, y la transformación ya
+era persistente en la práctica (nada del código revertía `.name`) — solo
+hacía falta quitar la restricción para que se pudiera observar. Lo que
+sigue pendiente de la revisión de reglamento 2026-07-19 es puramente
+visual: el reglamento usa una ficha física superpuesta con la cara del
+personaje imitado, y hoy `stack.at(-1).name = v` se limita a sobrescribir
+el nombre sin dejar ningún rastro en la UI de que la carta "es en
+realidad" un Metamorfo. El coste en Gemas ya usa el modelo real
+(`gastarGemaUnitaria` en `js/utils.js`) y, si el Metamorfo está en un
+Portal central, se suma al coste normal de activar un Portal central (2
+Gemas en total, ver `docs/reglamento/REGLAMENTO.md`) — eso ya funciona.
 
 ### Marcador final y desempate
 

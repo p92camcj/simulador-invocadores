@@ -32,6 +32,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `INVOCATION_SETS` | `const`   | Mapea `introductorio\|normal\|floral` → nivel → `{ nombre, need, gemas }`. Sustituye al antiguo `COMBOS` genérico. |
 | `INVOCATION_ASTERISCO` | `const` | 4ª invocación de Modo Experto (`Madain`), definida pero **no conectada** a ningún flujo real todavía. |
 | `PERSONAJES_CON_HABILIDAD` | `const` | Personajes activables en Fase B (`Ocultista`, `Cronista`, `Cronomante`, `Estratega`, `Aprendiz`, `Metamorfo`). Única fuente para `opcionesActivarHabilidad()`. |
+| `PERSONAJES_NO_ANIMALES` | `const` | Roster de los 10 personajes no-animales del mazo base "Modo normal". Usado por `game.js` para construir `charsBase` y por `abilities.js` (`case 'Metamorfo'`) para las opciones de transformación, sin depender de si esa carta sigue en el mazo o fue apartada al preparar la partida. |
 | `iconos`          | `const`   | Mapa nombre→emoji para representar cartas (incluye Reena/Sora/Lumo). Se usa en `selCard`/`picker()` (texto) y en el estado de invocación; ya no en mano/Portales, que usan `cardImages`. |
 | `mostrarCarta(card)` | `función` | Devuelve la cadena `"<icono> <nombre>"` para mostrar en la UI (selects/pickers y estado de invocación).              |
 | `cardImages`      | `const`   | Mapa nombre de personaje → ruta de imagen real (`assets/cards/*.png`), 14 personajes con habilidad + Reena/Sora/Lumo. El Metamorfo siempre usa `metamorfo.png` tal cual (no hay disfraz visual todavía, ver TODO en el propio archivo). |
@@ -68,7 +69,7 @@ en vez de asumir su forma directamente.
 
 | Nombre             | Tipo      | Descripción                                                                                                                   |
 |--------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------|
-| `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [])` | `función` | Aplica la habilidad de `name` al portal `stack` propiedad de `players[ownerIdx]`, con acceso a `players`, `neutrals` y `levelIdx`. `need` es el array de personajes requeridos por la invocación activa (solo lo usa Metamorfo) — pásalo explícitamente desde quien llame, no lo recalcules dentro del módulo. Incluye casos para: Ocultista, Centinela, Cronista, Cronomante, Estratega, Aprendiz y Metamorfo. |
+| `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [])` | `función` | Aplica la habilidad de `name` al portal `stack` propiedad de `players[ownerIdx]`, con acceso a `players`, `neutrals` y `levelIdx`. `need` es el array de personajes requeridos por la invocación activa — pásalo explícitamente desde quien llame, no lo recalcules dentro del módulo. Actualmente ningún `case` lo usa (Metamorfo dejó de necesitarlo tras la revisión de reglamento de 2026-07-19); se mantiene en la firma para el futuro Modo Experto/invocación Asterisco. Incluye casos para: Ocultista, Centinela, Cronista, Cronomante, Estratega, Aprendiz y Metamorfo (transformación libre en cualquier personaje de `PERSONAJES_NO_ANIMALES` menos el propio Metamorfo, persistente hasta que la carta se tape o se vuelva a transformar). |
 
 ---
 

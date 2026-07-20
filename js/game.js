@@ -1,5 +1,5 @@
 // game.js
-import { shuffle, draw } from './utils.js';
+import { shuffle, draw, PERSONAJES_NO_ANIMALES } from './utils.js';
 import { render } from './render.js';
 import { initActions } from './actions.js';
 
@@ -18,18 +18,13 @@ export function initGame() {
   // (solo cambian nombre/combo de las cartas de invocación en
   // INVOCATION_SETS.floral), porque sus personajes requeridos (Ocultista,
   // Centinela, Maestro, Clarividente...) no existen en el mazo introductorio.
-  const charsBase = [
-    ...Array(2).fill('Maestro'),
-    ...Array(2).fill('Clarividente'),
-    ...Array(2).fill('Ocultista'),
-    ...Array(3).fill('Cronomante'),
-    ...Array(3).fill('Estratega'),
-    ...Array(4).fill('Cronista'),
-    ...Array(4).fill('Aprendiz'),
-    ...Array(4).fill('Centinela'),
-    ...Array(6).fill('Pícaro'),
-    ...Array(2).fill('Metamorfo'),
-  ];
+  const cantidadesModoNormal = {
+    Maestro: 2, Clarividente: 2, Ocultista: 2, Cronomante: 3, Estratega: 3,
+    Cronista: 4, Aprendiz: 4, Centinela: 4, 'Pícaro': 6, Metamorfo: 2,
+  };
+  const charsBase = PERSONAJES_NO_ANIMALES.flatMap(
+    name => Array(cantidadesModoNormal[name]).fill(name)
+  );
   const necesitaAnimales = window.invocationSet === 'introductorio';
   const chars = necesitaAnimales
     ? [...charsBase, ...Array(3).fill('Reena'), ...Array(3).fill('Sora'), ...Array(3).fill('Lumo')]

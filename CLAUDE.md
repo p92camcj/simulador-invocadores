@@ -46,13 +46,18 @@ the version that shipped this):
   the Maestro's own Portal, then that player draws a replacement). The
   passive three-Gem bonus exists and its condition bug is fixed (see
   CHANGELOG), but the active ability is separate, unimplemented work.
-- Metamorfo in `abilities.js` still enforces the old restriction ("only the
-  character that completes the invocation") and reverts the transformation
-  instead of leaving it in place. The current rulebook drops the restriction
-  (transform into any non-animal character, any time on the player's turn)
-  and makes the transformation persistent until the Metamorfo is covered by
-  another card or transformed again. Its Gem cost now uses the real Gem
-  array model (see below), but the transformation rule itself is unchanged.
+- Metamorfo in `abilities.js` now matches the current rulebook: the old
+  restriction ("only the character that completes the invocation") is gone
+  — the picker offers all of `PERSONAJES_NO_ANIMALES` (`utils.js`) minus
+  Metamorfo itself, any time on the player's turn, independent of `need` or
+  what's still in the deck. The transformation was already persistent in
+  practice (nothing in the codebase ever reverted `stack.at(-1).name` back),
+  it just hadn't been exercised because the old restriction made most
+  transformations unreachable. What's still missing from the 2026-07-19
+  rulebook revision is purely visual: the rulebook calls for an overlay
+  token with the imitated character's face, but `stack.at(-1).name = v`
+  just overwrites the name with no indication anywhere that the card is
+  "really" a Metamorfo underneath.
 - Modo Experto's 4th invocation ("Asterisco"/Madain, 4 characters incl.
   Metamorfo + all 3 Animales) is defined as `INVOCATION_ASTERISCO` in
   `utils.js` but deliberately **not** wired into any real game flow yet.
@@ -116,13 +121,17 @@ in `nextTurn()`.
 - **`js/abilities.js`** — `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need)`,
   one `switch` case per character ability (Ocultista, Centinela, Cronista,
   Cronomante, Estratega, Aprendiz, Metamorfo). `need` is the active
-  invocation's required-character array (only used by Metamorfo); pass it
-  explicitly from the caller, don't recompute it here from globals. Always
-  call this with `window.levelIdx` explicitly from outside the module.
+  invocation's required-character array; pass it explicitly from the
+  caller, don't recompute it here from globals. It's currently unused by
+  every case (Metamorfo dropped its use of it — see the rulebook-sync note
+  above) but stays in the signature for Modo Experto's future Asterisco
+  invocation. Always call this with `window.levelIdx` explicitly from
+  outside the module.
 - **`js/render.js`** — pure-ish DOM rendering (`render()`) and the generic
   `picker()` modal used by several abilities. Does not own game state.
 - **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,
-  `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`, `iconos`) and
+  `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`,
+  `PERSONAJES_NO_ANIMALES`, `iconos`) and
   stateless helpers (`shuffle`, `draw`, visibility helpers, the Gem-economy
   helpers `sumaGemas`/`gastarGemaUnitaria`/`gastarGemaAsterisco`/
   `pagarActivacionPortalCentral`/`construirPoolGemas`). This is where the

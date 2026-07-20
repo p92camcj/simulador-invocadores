@@ -37,6 +37,18 @@ export const INVOCATION_ASTERISCO = {
 // Clarividente quedan fuera a propósito: sus efectos son pasivos/automáticos.
 export const PERSONAJES_CON_HABILIDAD = ['Ocultista', 'Cronista', 'Cronomante', 'Estratega', 'Aprendiz', 'Metamorfo'];
 
+// Roster de personajes NO animales del mazo base ("Modo normal", ver
+// docs/reglamento/REGLAMENTO.md, "Preparación del mazo de personajes").
+// Lo usa game.js para construir el mazo (junto con las cantidades por
+// personaje) y abilities.js (case 'Metamorfo') para saber en qué personajes
+// puede transformarse — el Metamorfo puede imitar a cualquiera de estos,
+// independientemente de si esa carta sigue en el mazo, está en juego, o fue
+// una de las 2 apartadas al azar (sin mirar) al preparar la partida.
+export const PERSONAJES_NO_ANIMALES = [
+  'Maestro', 'Clarividente', 'Ocultista', 'Cronomante', 'Estratega',
+  'Cronista', 'Aprendiz', 'Centinela', 'Pícaro', 'Metamorfo'
+];
+
 // ---------- Iconos de personajes ----------
 export const iconos = {
   'Pícaro': '💎',
