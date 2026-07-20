@@ -258,5 +258,16 @@ export function initActions(players, neutrals) {
     });
   }
 
+  // Vista de depuración (Tarea C, solo para pruebas del dueño del
+  // proyecto): alterna entre la vista compartida normal y la vista con
+  // todo visible. render() decide qué zona mostrar según
+  // window.debugViewActive.
+  const btnDebugView = document.querySelector('#btnDebugView');
+  if (btnDebugView) {
+    btnDebugView.onclick = () => {
+      window.debugViewActive = !window.debugViewActive;
+      render(players, neutrals, window.levelIdx);
+    };
+  }
 
 }

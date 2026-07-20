@@ -11,6 +11,7 @@ window.levelIdx = 0;
 window.turn = 0;
 window.played = false;
 window.habilidadUsadaEsteTurno = false;
+window.debugViewActive = false;
 window.juegoTerminado = false;
 window.invocationSet = 'normal';
 

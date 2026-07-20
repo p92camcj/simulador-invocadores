@@ -4,6 +4,15 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.9.0.43] - 2026-07-20
+
+### Añadido
+- **Vista de depuración**, solo para pruebas del propio dueño del proyecto — nunca para partidas reales, ya que muestra toda la información oculta a la vez. Nuevo botón `#btnDebugView` ("🔧 Vista de pruebas") en la cabecera, visible mientras hay partida en curso, que alterna entre la vista compartida normal y esta nueva vista.
+- `js/render.js`: nueva `renderDebugGrid(players, neutrals)`, un grid CSS con una columna por jugadora (`grid-template-columns: repeat(N, 1fr)`, adaptado a 2-5 jugadoras) más una columna final para los Portales centrales si los hay. Cada columna muestra los Portales de esa jugadora arriba y su mano en un sub-grid de 2 columnas debajo, siempre con el nombre real de cada carta (ignora `vis.public`/`owner`/`others` por completo). `render()` decide automáticamente qué vista mostrar según `window.debugViewActive` (nuevo flag de turno, reseteado en `initGame()`/`resetJuego()`), así que la vista de depuración se mantiene actualizada sin lógica adicional en cada acción.
+- `style.css`: nuevas clases `.debug-view` (borde rojo llamativo + banner "MODO PRUEBAS"), `.debug-grid`/`.debug-col`/`.debug-hand`. En móvil, si las N columnas no caben razonablemente, se usa scroll horizontal con columnas de ancho fijo en vez de forzar el layout.
+
+---
+
 ## [1.8.2.42] - 2026-07-20
 
 ### Cambiado

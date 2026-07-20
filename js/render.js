@@ -94,6 +94,52 @@ export function picker(title, options, cb, onCancel) {
 }
 
 /**
+ * Vista de depuración SOLO para pruebas del propio dueño del proyecto: una
+ * columna por jugadora con TODO visible (ignora vis.public/owner/others),
+ * más una columna final para los Portales centrales si los hay. No debe
+ * usarse durante una partida real — mezclarla con la vista compartida
+ * rompería el secreto de información entre jugadoras.
+ */
+export function renderDebugGrid(players, neutrals) {
+  const grid = document.querySelector('#debugGrid');
+  if (!grid) return;
+
+  const totalCols = players.length + (neutrals.length ? 1 : 0);
+  grid.style.gridTemplateColumns = `repeat(${totalCols}, 1fr)`;
+
+  const portalCard = (stack, label) => {
+    const top = stack.at(-1);
+    const body = stack.length === 0
+      ? '<div class="card-empty">Vacío</div>'
+      : cartaImgHtml(top.name, true);
+    return `<div class="card"><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
+  };
+
+  let html = '';
+  players.forEach(p => {
+    html += `<div class="debug-col"><h4>${p.name}</h4><div class="debug-portals">`;
+    p.portals.forEach((stack, i) => {
+      html += portalCard(stack, `Portal ${i + 1}`);
+    });
+    html += '</div><div class="debug-hand">';
+    p.hand.forEach(c => {
+      html += `<div class="card">${cartaImgHtml(c.name, true)}</div>`;
+    });
+    html += '</div></div>';
+  });
+
+  if (neutrals.length) {
+    html += `<div class="debug-col"><h4>Neutrales</h4><div class="debug-portals">`;
+    neutrals.forEach((stack, i) => {
+      html += portalCard(stack, `Neutral ${i + 1}`);
+    });
+    html += '</div></div>';
+  }
+
+  grid.innerHTML = html;
+}
+
+/**
  * Renderiza toda la interfaz del juego:
  * - Zona activa
  * - Zona de otros jugadores
@@ -180,6 +226,21 @@ export function render(players, neutrals, levelIdx) {
       : cartaImgHtml(topCard.name, topCard.vis?.public === true);
     neutralArea.innerHTML += `<div class="card"><div class="card-label">Neutral ${i+1} (${stack.length})</div>${body}</div>`;
   });
+
+  // Vista de depuración (Tarea C): sustituye por completo la vista
+  // compartida normal mientras esté activada — nunca se mezclan, para no
+  // arriesgar el secreto de información de una partida real.
+  const debugView = document.querySelector('#debugView');
+  const sectionflex = document.querySelector('#sectionflex');
+  if (window.debugViewActive) {
+    sectionflex.classList.add('hidden');
+    zoneNeutral.classList.add('hidden');
+    debugView.classList.remove('hidden');
+    renderDebugGrid(players, neutrals);
+  } else {
+    debugView?.classList.add('hidden');
+    sectionflex.classList.remove('hidden');
+  }
 
   const lvl = LEVELS[levelIdx] || '-';
   lblInv.textContent = lvl;

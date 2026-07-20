@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.9.0.43 - 2026-07-20
+
+- Nueva "Vista de pruebas" (botón 🔧 en la cabecera), pensada solo para
+  quien está probando la app: muestra toda la partida a la vez, con todas
+  las cartas boca arriba. No debe usarse en una partida real, porque
+  arruina la sorpresa y el secreto de la información entre jugadoras.
+
 ## 1.8.2.42 - 2026-07-20
 
 - Cuando una jugadora tiene la Clarividente visible, ahora su mano

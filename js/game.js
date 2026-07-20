@@ -47,6 +47,7 @@ export function initGame() {
   window.turn = 0;
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
+  window.debugViewActive = false;
 
   // Configurar controladores de acciones
   initActions(window.players, window.neutrals);
@@ -104,12 +105,14 @@ export function resetJuego() {
   $('#zoneNeutral')?.classList.add('hidden');
   $('#ctrlPlay')?.classList.add('hidden');
   $('#sectionflex').classList.add('hidden');
+  $('#debugView')?.classList.add('hidden');
 
   // Mostrar zona de configuración
   $('#setup')?.classList.remove('hidden');
   $('#btnEndTurn')?.classList.add('hidden');
   $('#btnCtrlPlay')?.classList.add('hidden');
   $('#btnAbility')?.classList.add('hidden');
+  $('#btnDebugView')?.classList.add('hidden');
 
   // Mostrar título y subtítulo
   $('#mainTitle')?.classList.remove('hidden');
@@ -123,6 +126,7 @@ export function resetJuego() {
   window.turn = 0;
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
+  window.debugViewActive = false;
   window.juegoTerminado = false;
 
   // Volver al menú inicial
