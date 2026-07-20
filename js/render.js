@@ -61,8 +61,9 @@ function desgloseGemasAjeno(gems) {
  * @param {string} title - Título del picker
  * @param {Array<{val: string, lbl: string, disabled?: boolean}>} options - Lista de opciones
  * @param {Function} cb - Función callback que recibe el valor seleccionado
+ * @param {Function} [onCancel] - Callback opcional invocado al cancelar, en vez de `cb`
  */
-export function picker(title, options, cb) {
+export function picker(title, options, cb, onCancel) {
   const pickerEl = document.querySelector('#picker');
   const titleEl = document.querySelector('#pickerTitle');
   const selectEl = document.querySelector('#pickerSelect');
@@ -86,7 +87,10 @@ export function picker(title, options, cb) {
     hide();
     cb(v);
   };
-  cancelBtn.onclick = () => hide();
+  cancelBtn.onclick = () => {
+    hide();
+    onCancel?.();
+  };
 }
 
 /**

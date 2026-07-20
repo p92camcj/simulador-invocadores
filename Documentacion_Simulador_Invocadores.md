@@ -93,7 +93,7 @@ en vez de asumir su forma directamente.
 
 | Nombre     | Tipo      | Descripción                                                                                          |
 |------------|-----------|------------------------------------------------------------------------------------------------------|
-| `picker(title, options, cb)` | `función` | Muestra un modal `<div id="picker">` con un `<select>` y botones OK/Cancelar; invoca `cb(valor)` o cierra. Las opciones siguen siendo texto (no imágenes) — un `<select>` nativo no aloja `<img>` de forma fiable. |
+| `picker(title, options, cb, onCancel?)` | `función` | Muestra un modal `<div id="picker">` con un `<select>` y botones OK/Cancelar; invoca `cb(valor)` al aceptar, o `onCancel()` (si se pasó) al cancelar — por defecto cancelar solo cierra el modal sin llamar a nada. Las opciones siguen siendo texto (no imágenes) — un `<select>` nativo no aloja `<img>` de forma fiable. |
 | `render(players, neutrals, levelIdx)` | `función` | Dibuja: <br>- Zona activa (jugadora actual, portales, mano, suma de Gemas vía `sumaGemas()`). <br>- Zona de otros jugadores (portales + sus cartas ocultas). <br>- Portales neutrales. <br>- Estado y componentes de la invocación activa, resuelta desde `INVOCATION_SETS[window.invocationSet][lvl]` (nombre y `need`). <br>Mano y Portales (propios, ajenos y centrales) ya no muestran emoji/texto: usan la función interna `cartaImgHtml(name, visible)`, que renderiza un `<img>` con `cardImages[name]` si la carta es visible para quien mira, o siempre `CARTA_OCULTA_IMG` (con `alt="Carta oculta"`, sin el nombre real) si no lo es. |
 
 ---

@@ -4,6 +4,14 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.7.2.39] - 2026-07-20
+
+### Corregido
+- **Cancelar el segundo picker de Cronomante (qué carta subir al top) no costaba nada, permitiendo "reintentar" con otro Portal.** `js/abilities.js`, `case 'Cronomante'`: al cancelar ese segundo paso no se movía ninguna carta ni se marcaba la habilidad como usada, así que la jugadora podía volver a pulsar "Activar habilidad" y examinar un Portal DISTINTO gratis, viendo el contenido de varios Portales en el mismo turno — pero la "investigación" (examinar la pila) ya había ocurrido al abrir ese picker, según `docs/reglamento/REGLAMENTO.md` ("Cronomante"), independientemente de si luego se reordena algo.
+- `picker()` (`js/render.js`) admite ahora un cuarto parámetro opcional `onCancel`, invocado al pulsar "Cancelar" en vez de no hacer nada. El segundo picker de Cronomante lo usa para llamar a `onComplete()` sin mover ninguna carta (queda marcada como usada, y se cobra igualmente la Gema si el Portal era central). Es una EXCEPCIÓN deliberada al patrón general de "cancelar nunca cuesta" — documentada con un comentario en el propio código para que no se "corrija" por error en el futuro. El PRIMER picker (elegir qué Portal investigar) sigue el patrón general sin cambios: cancelarlo no cuesta nada.
+
+---
+
 ## [1.7.1.38] - 2026-07-20
 
 ### Corregido

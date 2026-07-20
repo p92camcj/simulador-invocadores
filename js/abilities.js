@@ -124,11 +124,29 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           lbl: carta.vis?.public ? mostrarCarta(carta) : 'Carta Oculta'
         }));
 
-        picker('¿Qué carta quieres subir al top?', opcionesCarta, idx => {
-          const seleccionada = st.splice(idx, 1)[0];
-          st.push(seleccionada);
-          onComplete();
-        });
+        // EXCEPCIÓN deliberada al patrón general de "cancelar nunca cuesta"
+        // (ver la nota de `onComplete` en la cabecera de `applyAbility`): la
+        // "investigación" de Cronomante (examinar la pila del Portal
+        // elegido, ver REGLAMENTO.md) ya ocurrió al abrir ESTE picker,
+        // independientemente de si después se reordena algo o no. Cancelar
+        // aquí no debe permitir volver a "Activar habilidad" y examinar un
+        // Portal DISTINTO gratis en el mismo turno, así que se llama a
+        // onComplete() igualmente (queda marcada como usada) pero sin mover
+        // ninguna carta. NO "corregir" esto para que cancelar sea gratis
+        // como en el resto de habilidades — es intencional. El PRIMER
+        // picker (elegir qué Portal investigar) sí sigue el patrón general:
+        // cancelarlo no cuesta nada, porque ahí todavía no se ha examinado
+        // ningún Portal.
+        picker(
+          '¿Qué carta quieres subir al top?',
+          opcionesCarta,
+          idx => {
+            const seleccionada = st.splice(idx, 1)[0];
+            st.push(seleccionada);
+            onComplete();
+          },
+          () => onComplete()
+        );
       });
       break;
     }
