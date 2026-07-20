@@ -64,7 +64,6 @@ export function initSetup() {
     //   3 jugadoras -> 1 portal/jugadora + 2 centrales
     //   4 jugadoras -> 1 portal/jugadora + 1 central
     //   5 jugadoras -> 1 portal/jugadora + 0 centrales
-    // La visibilidad de #zoneNeutral se decide en cada render(), no aquí.
     const m = window.players.length;
     if (m === 2) {
       window.players.forEach(p => p.portals = [[], []]);
@@ -83,13 +82,10 @@ export function initSetup() {
     // Ocultar sección de setup y mostrar control de turno
     $('#setup').classList.add('hidden');
     $('#info').classList.remove('hidden');
-    $('#zoneActive').classList.remove('hidden');
-    $('#zoneOthers').classList.remove('hidden');
+    $('#boardGrid').classList.remove('hidden');
     $('#btnEndTurn').classList.remove('hidden');
-    $('#info').classList.remove('hidden');
-    $('#sectionflex').classList.remove('hidden');
+    if ($('#btnCtrlPlay')) $('#btnCtrlPlay').classList.remove('hidden');
     if ($('#btnAbility')) $('#btnAbility').classList.remove('hidden');
-    if ($('#btnDebugView')) $('#btnDebugView').classList.remove('hidden');
     $('#mainTitle')?.classList.add('hidden');
     $('#mainSubtitle')?.classList.add('hidden');
 

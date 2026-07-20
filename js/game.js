@@ -47,9 +47,9 @@ export function initGame() {
   window.turn = 0;
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
-  window.debugViewActive = false;
   window.selectedCardIdx = null;
   window.cronomantePortalInvestigado = null;
+  window.pickerObjetivoPortal = null;
 
   // Configurar controladores de acciones
   initActions(window.players, window.neutrals);
@@ -68,6 +68,7 @@ export function nextTurn() {
   window.habilidadUsadaEsteTurno = false;
   window.selectedCardIdx = null;
   window.cronomantePortalInvestigado = null;
+  window.pickerObjetivoPortal = null;
   const current = window.players[window.turn];
   //Se comprueba si hay condición de fin de partida, sin cartas en mano
   if (current.hand.length === 0) {
@@ -104,18 +105,15 @@ export function finalizarPartida(motivo) {
 export function resetJuego() {
   // Ocultar zonas de juego
   $('#info')?.classList.add('hidden');
-  $('#zoneActive')?.classList.add('hidden');
-  $('#zoneOthers')?.classList.add('hidden');
-  $('#zoneNeutral')?.classList.add('hidden');
+  $('#boardGrid')?.classList.add('hidden');
   $('#btnPlayCancel')?.classList.add('hidden');
-  $('#sectionflex').classList.add('hidden');
-  $('#debugView')?.classList.add('hidden');
+  $('#ctrlPlay')?.classList.add('hidden');
 
   // Mostrar zona de configuración
   $('#setup')?.classList.remove('hidden');
   $('#btnEndTurn')?.classList.add('hidden');
+  $('#btnCtrlPlay')?.classList.add('hidden');
   $('#btnAbility')?.classList.add('hidden');
-  $('#btnDebugView')?.classList.add('hidden');
 
   // Mostrar título y subtítulo
   $('#mainTitle')?.classList.remove('hidden');
@@ -129,9 +127,9 @@ export function resetJuego() {
   window.turn = 0;
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
-  window.debugViewActive = false;
   window.selectedCardIdx = null;
   window.cronomantePortalInvestigado = null;
+  window.pickerObjetivoPortal = null;
   window.juegoTerminado = false;
 
   // Volver al menú inicial

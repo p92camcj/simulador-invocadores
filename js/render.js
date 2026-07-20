@@ -108,44 +108,97 @@ export function picker(title, options, cb, onCancel) {
 }
 
 /**
- * Vista de depuración SOLO para pruebas del propio dueño del proyecto: una
- * columna por jugadora con TODO visible (ignora vis.public/owner/others),
- * más una columna final para los Portales centrales si los hay. No debe
- * usarse durante una partida real — mezclarla con la vista compartida
- * rompería el secreto de información entre jugadoras.
+ * Construye el HTML de un Portal (propio, central o de otra jugadora) en
+ * modo "jugar carta": clicable/soltable con `portalPlayAttrs`, y con la
+ * clase `.target-portal` mientras haya una carta de mano seleccionada
+ * (`window.selectedCardIdx`) — el clic no hace nada si no hay selección.
  */
-export function renderDebugGrid(players, neutrals) {
-  const grid = document.querySelector('#debugGrid');
+function portalCardJugarHtml(stack, label, destKey) {
+  const topCard = stack.at(-1);
+  const body = stack.length === 0
+    ? '<div class="card-empty">Vacío</div>'
+    : cartaImgHtml(topCard.name, topCard.vis?.public === true);
+  const haySeleccion = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
+  const targetClass = haySeleccion ? ' target-portal' : '';
+  return `<div class="card${targetClass}" ${portalPlayAttrs(destKey)}><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
+}
+
+/**
+ * Tablero único e interactivo: una columna por jugadora (orden fijo por
+ * índice, no se reordena según el turno) más una columna final de
+ * Portales centrales si los hay. Sustituye a las antiguas zonas separadas
+ * zoneActive/zoneOthers/neutralArea — visibilidad real en todo momento
+ * (nada de "vista de depuración" con todo visible):
+ * - Portales: visibles según `vis?.public` de la carta superior, igual
+ *   para cualquier columna (no depende de quién es la activa).
+ * - Mano de la jugadora ACTIVA (`window.turn`): según
+ *   `c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente`.
+ * - Mano de cualquier OTRA jugadora: según `h.vis?.others`, salvo que esa
+ *   jugadora tenga `hasClariActivo || haTenidoClarividente`, en cuyo caso
+ *   se oculta la mano COMPLETA al resto (decisión de mesa, ver
+ *   docs/reglamento/REGLAMENTO.md, nota de Clarividente).
+ * La columna de la jugadora activa se resalta (`.turno-activo`); el resto
+ * se atenúa (`.turno-inactivo`), sin perder su color de identidad fijo.
+ */
+function renderBoardGrid(players, neutrals) {
+  const grid = document.querySelector('#boardGrid');
   if (!grid) return;
 
   const totalCols = players.length + (neutrals.length ? 1 : 0);
   grid.style.gridTemplateColumns = `repeat(${totalCols}, 1fr)`;
 
-  const portalCard = (stack, label) => {
-    const top = stack.at(-1);
-    const body = stack.length === 0
-      ? '<div class="card-empty">Vacío</div>'
-      : cartaImgHtml(top.name, true);
-    return `<div class="card"><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
-  };
-
   let html = '';
-  players.forEach(p => {
-    html += `<div class="debug-col"><h4>${p.name}</h4><div class="debug-portals">`;
-    p.portals.forEach((stack, i) => {
-      html += portalCard(stack, `Portal ${i + 1}`);
+  players.forEach((p, i) => {
+    const esActiva = i === window.turn;
+    const colorClass = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][i % 4];
+    const turnoClass = esActiva ? 'turno-activo' : 'turno-inactivo';
+    html += `<div class="board-col section ${colorClass} ${turnoClass}">`;
+
+    const gemasTxt = esActiva
+      ? `G ${sumaGemas(p.gems)} total — ${desgloseGemasPropio(p.gems)}`
+      : desgloseGemasAjeno(p.gems);
+    html += `<h4>${p.name} (${gemasTxt})</h4>`;
+
+    html += '<div class="board-portals">';
+    p.portals.forEach((stack, j) => {
+      const destKey = esActiva ? `p:${j}` : `a:${i}:${j}`;
+      html += portalCardJugarHtml(stack, `Portal ${j + 1}`, destKey);
     });
-    html += '</div><div class="debug-hand">';
-    p.hand.forEach(c => {
-      html += `<div class="card">${cartaImgHtml(c.name, true)}</div>`;
-    });
-    html += '</div></div>';
+    html += '</div>';
+
+    html += '<h5>Mano</h5><div class="board-hand">';
+    if (esActiva) {
+      p.hand.forEach((c, idx) => {
+        const visible = c.vis?.owner || p.hasClariActivo || p.haTenidoClarividente;
+        const selectedClass = idx === window.selectedCardIdx ? ' selected' : '';
+        html += `
+          <div class="card${selectedClass}" draggable="true"
+            onclick="window.selectHandCard(${idx})"
+            ondragstart="window.handleCardDragStart(event, ${idx})">
+            ${cartaImgHtml(c.name, visible)}
+          </div>`;
+      });
+    } else {
+      // Decisión de mesa (ver docs/reglamento/REGLAMENTO.md, nota sobre
+      // Clarividente): mientras esta jugadora tenga la Clarividente
+      // visible/en periodo de gracia, su mano COMPLETA queda oculta para
+      // el resto — se sobrescribe la visibilidad normal, no se combina
+      // con OR.
+      const manoOcultaPorClarividente = p.hasClariActivo || p.haTenidoClarividente;
+      p.hand.forEach(h => {
+        const visible = manoOcultaPorClarividente ? false : h.vis?.others === true;
+        html += `<div class="card">${cartaImgHtml(h.name, visible)}</div>`;
+      });
+    }
+    html += '</div>';
+
+    html += '</div>'; // .board-col
   });
 
   if (neutrals.length) {
-    html += `<div class="debug-col"><h4>Neutrales</h4><div class="debug-portals">`;
+    html += '<div class="board-col section"><h4>Neutrales</h4><div class="board-portals">';
     neutrals.forEach((stack, i) => {
-      html += portalCard(stack, `Neutral ${i + 1}`);
+      html += portalCardJugarHtml(stack, `Neutral ${i + 1}`, `n:${i}`);
     });
     html += '</div></div>';
   }
@@ -154,11 +207,8 @@ export function renderDebugGrid(players, neutrals) {
 }
 
 /**
- * Renderiza toda la interfaz del juego:
- * - Zona activa
- * - Zona de otros jugadores
- * - Portales neutrales
- * - Estado de invocación
+ * Renderiza toda la interfaz del juego: el tablero único (`renderBoardGrid`)
+ * y el estado de la invocación activa.
  * @param {Array} players - Array de jugadores.
  * @param {Array} neutrals - Array de portales neutrales.
  * @param {number} levelIdx - Índice de la invocación actual.
@@ -166,110 +216,23 @@ export function renderDebugGrid(players, neutrals) {
 export function render(players, neutrals, levelIdx) {
   // Solo actualiza los flags hasClariActivo/haTenidoClarividente del
   // jugador; NUNCA muta carta.vis (ver js/utils.js) — el efecto de
-  // Clarividente se decide en el momento de mostrar cada carta (más abajo,
-  // `pl.hasClariActivo || pl.haTenidoClarividente`), no persistiéndolo en
-  // el dato real. Así el estado subyacente (una carta visible + una
-  // oculta) nunca se corrompe, y sigue intacto si después el Aprendiz
-  // intercambia esta mano con la de otra jugadora.
+  // Clarividente se decide en el momento de mostrar cada carta (más abajo),
+  // no persistiéndolo en el dato real. Así el estado subyacente (una carta
+  // visible + una oculta) nunca se corrompe, y sigue intacto si después el
+  // Aprendiz intercambia esta mano con la de otra jugadora.
   actualizarClarividente(players);
-  const zoneActive = document.querySelector('#zoneActive');
-  const zoneOthers = document.querySelector('#zoneOthers');
-  const zoneNeutral = document.querySelector('#zoneNeutral');
-  const neutralArea = document.querySelector('#neutralArea');
-  const lblTurn = document.querySelector('#lblTurn');
-  const lblInv = document.querySelector('#lblInv');
-  const invStatus = document.querySelector('#invStatus');
 
-  // Los Portales centrales pueden variar durante la partida (aparecen
-  // nuevos al completar invocaciones), así que la visibilidad de esta zona
-  // se decide en cada render(), no solo al preparar la partida.
-  zoneNeutral.classList.toggle('hidden', neutrals.length === 0);
-
-  // Botón de cancelar selección (Tarea D): visible solo mientras hay una
-  // carta de la mano elegida para jugar.
+  // Botón de cancelar selección: visible solo mientras hay una carta de la
+  // mano elegida para jugar.
   document.querySelector('#btnPlayCancel')?.classList.toggle(
     'hidden',
     window.selectedCardIdx === null || window.selectedCardIdx === undefined
   );
 
-  const pl = players[window.turn];
-  const activeColor = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][window.turn % 4];
-  const haySeleccion = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
-  zoneActive.innerHTML = `<div class="section ${activeColor}">`;
-  zoneActive.innerHTML += `<h3>${pl.name} (G ${sumaGemas(pl.gems)} total — ${desgloseGemasPropio(pl.gems)})</h3>`;
-  pl.portals.forEach((stack, i) => {
-    const topCard = stack.at(-1);
-    const body = stack.length === 0
-      ? '<div class="card-empty">Vacío</div>'
-      : cartaImgHtml(topCard.name, topCard.vis?.public === true);
-    const targetClass = haySeleccion ? ' target-portal' : '';
-    zoneActive.innerHTML += `<div class="card${targetClass}" ${portalPlayAttrs(`p:${i}`)}><div class="card-label">Portal ${i+1} (${stack.length})</div>${body}</div>`;
-  });
-  zoneActive.innerHTML += '<h4>Mano</h4>';
-  pl.hand.forEach((c, idx) => {
-    const visible = c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente;
-    const selectedClass = idx === window.selectedCardIdx ? ' selected' : '';
-    zoneActive.innerHTML += `
-      <div class="card${selectedClass}" draggable="true"
-        onclick="window.selectHandCard(${idx})"
-        ondragstart="window.handleCardDragStart(event, ${idx})">
-        ${cartaImgHtml(c.name, visible)}
-      </div>`;
-  });
-  zoneActive.innerHTML += `</div>`;
+  renderBoardGrid(players, neutrals);
 
-  zoneOthers.innerHTML = '';
-  players.forEach((p, i) => {
-    if (i === window.turn) return;
-    const colorClass = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][i % 4];
-    zoneOthers.innerHTML += `<div class="section ${colorClass}">`;
-    zoneOthers.innerHTML += `<h4>${p.name} (${desgloseGemasAjeno(p.gems)})</h4>`;
-    p.portals.forEach((stack, j) => {
-      const topCard = stack.at(-1);
-      const body = stack.length === 0
-        ? '<div class="card-empty">Vacío</div>'
-        : cartaImgHtml(topCard.name, topCard.vis?.public === true);
-      const targetClass = haySeleccion ? ' target-portal' : '';
-      zoneOthers.innerHTML += `<div class="card${targetClass}" ${portalPlayAttrs(`a:${i}:${j}`)}><div class="card-label">Portal ${j+1} (${stack.length})</div>${body}</div>`;
-    });
-    zoneOthers.innerHTML += '<h5>Cartas ocultas</h5>';
-    // Decisión de mesa (ver docs/reglamento/REGLAMENTO.md, nota sobre
-    // Clarividente): mientras esta jugadora tenga la Clarividente
-    // visible/en periodo de gracia, su mano COMPLETA queda oculta para el
-    // resto — se sobrescribe la visibilidad normal, no se combina con OR.
-    const manoOcultaPorClarividente = p.hasClariActivo || p.haTenidoClarividente;
-    p.hand.forEach(h => {
-      const visible = manoOcultaPorClarividente ? false : h.vis?.others === true;
-      zoneOthers.innerHTML += `<div class="card">${cartaImgHtml(h.name, visible)}</div>`;
-    });
-    zoneOthers.innerHTML += `</div>`;
-  });
-
-  neutralArea.innerHTML = '';
-  neutrals.forEach((stack, i) => {
-    const topCard = stack.at(-1);
-    const body = stack.length === 0
-      ? '<div class="card-empty">Vacío</div>'
-      : cartaImgHtml(topCard.name, topCard.vis?.public === true);
-    const targetClass = haySeleccion ? ' target-portal' : '';
-    neutralArea.innerHTML += `<div class="card${targetClass}" ${portalPlayAttrs(`n:${i}`)}><div class="card-label">Neutral ${i+1} (${stack.length})</div>${body}</div>`;
-  });
-
-  // Vista de depuración (Tarea C): sustituye por completo la vista
-  // compartida normal mientras esté activada — nunca se mezclan, para no
-  // arriesgar el secreto de información de una partida real.
-  const debugView = document.querySelector('#debugView');
-  const sectionflex = document.querySelector('#sectionflex');
-  if (window.debugViewActive) {
-    sectionflex.classList.add('hidden');
-    zoneNeutral.classList.add('hidden');
-    debugView.classList.remove('hidden');
-    renderDebugGrid(players, neutrals);
-  } else {
-    debugView?.classList.add('hidden');
-    sectionflex.classList.remove('hidden');
-  }
-
+  const lblInv = document.querySelector('#lblInv');
+  const invStatus = document.querySelector('#invStatus');
   const lvl = LEVELS[levelIdx] || '-';
   lblInv.textContent = lvl;
   if (lvl === '-') {

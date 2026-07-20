@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.11.0.46 - 2026-07-20
+
+- Nuevo diseño del tablero: ahora todas las jugadoras se ven a la vez en
+  columnas, una junto a otra, cada una con su color y con la que tiene el
+  turno destacada. El secreto de la partida (qué cartas ves y cuáles no)
+  sigue funcionando exactamente igual que antes, solo cambia cómo se
+  distribuye en pantalla.
+- En el móvil, si no caben todas las columnas se puede desplazar
+  horizontalmente para verlas todas, en vez de apretujarlas.
+
 ## 1.10.1.45 - 2026-07-20
 
 - Ajustado el comportamiento de Cronomante al cancelar por accidente el

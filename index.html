@@ -27,7 +27,6 @@
       <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
       <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">Ver ayuda</button>
-      <button id="btnDebugView" class="btn secondary hidden">🔧 Vista de pruebas</button>
     </div>
 
     <div id="helpModal" class="section hidden">
@@ -74,18 +73,7 @@
       <h3>Invocación: <span id="lblInv"></span></h3>
       <div id="invStatus" class="status"></div>
     </div>
-    <div id="sectionflex" class="section flex hidden">
-      <div id="zoneActive" class="portal hidden"></div>
-      <div id="zoneOthers" class="handbox hidden"></div>
-    </div>
-    <div id="zoneNeutral" class="section hidden">
-      <h3>Portales neutrales</h3>
-      <div id="neutralArea" class="flex"></div>
-    </div>
-    <div id="debugView" class="section debug-view hidden">
-      <div class="debug-banner">⚠ MODO PRUEBAS — información real, no usar en partida real ⚠</div>
-      <div id="debugGrid" class="debug-grid"></div>
-    </div>
+    <div id="boardGrid" class="section board-grid hidden"></div>
   </div>
   <script type="module" src="js/index.js"></script>
   

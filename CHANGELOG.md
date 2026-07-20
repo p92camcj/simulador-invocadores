@@ -4,6 +4,17 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.11.0.46] - 2026-07-20
+
+### Cambiado
+- **La "vista de depuración" (botón 🔧, todo visible, sin interacción) deja de ser un modo aparte: el grid de N columnas pasa a ser la ÚNICA vista de juego, con visibilidad real e interactiva.** Eliminados `#btnDebugView`, el banner "MODO PRUEBAS", `renderDebugGrid()` y las antiguas zonas `zoneActive`/`zoneOthers`/`neutralArea`/`#sectionflex`/`#zoneNeutral` (ya sin uso, quitadas también del HTML). `js/render.js`: nueva `renderBoardGrid()` interna, invocada siempre por `render()`, con las mismas reglas de secreto de información que antes tenían las zonas separadas — Portales según `vis?.public`; mano de la jugadora activa según `vis?.owner`/Clarividente; mano de cualquier otra jugadora según `vis?.others`, salvo ocultación total por Clarividente (decisión de mesa de una tarea anterior, portada sin cambios).
+- La columna de la jugadora con el turno se resalta (`.turno-activo`, borde/resplandor); el resto se atenúa (`.turno-inactivo`, opacidad reducida) sin perder su color de identidad fijo por índice.
+- Las cartas de la mano activa y los Portales del grid son los mismos elementos clicables/arrastrables ya implementados en la tarea anterior (clic para seleccionar/jugar, drag&drop nativo) — no se recrean, se portan directamente a la nueva `renderBoardGrid()`.
+- Responsive: en móvil el grid usa scroll horizontal manteniendo las N columnas visibles (columnas de ancho fijo, `grid-auto-columns: minmax(260px, 1fr)`) en vez de colapsar a una sola columna.
+- Los Portales centrales se mantienen como columna final "Neutrales", igual que en la vista de depuración de la tarea anterior.
+
+---
+
 ## [1.10.1.45] - 2026-07-20
 
 ### Cambiado
