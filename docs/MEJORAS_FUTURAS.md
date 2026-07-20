@@ -45,6 +45,23 @@ Implementado en el mismo bloque de trabajo que separó la Fase B del turno
   solo fuera del combo). La habilidad activa nueva del Maestro sigue sin
   implementar (ver más abajo).
 
+## Resuelto recientemente (2026-07-20)
+
+- **Reparto de Portales por número de jugadoras**: `js/setup.js` ahora
+  sigue exactamente la tabla del reglamento (2 jugadoras → 2 portales/jugadora
+  + 1 central; 3 → 1 + 2 centrales; 4 → 1 + 1 central; 5 → 1 + 0 centrales),
+  y el formulario admite de 2 a 5 jugadoras (antes tope de 4). La zona de
+  Portales neutrales (`#zoneNeutral`) se muestra/oculta en cada `render()`
+  según `neutrals.length` en vez de fijarse solo al preparar la partida —
+  de paso se corrigió que `#neutralArea` tenía su propia clase `hidden`
+  que nunca se quitaba en ningún sitio, así que los Portales centrales no
+  llegaban a verse nunca, independientemente del nº de jugadoras.
+- **Cancelar una habilidad a medias ya no la marca como usada ni cobra
+  Gemas**: `applyAbility()` (`js/abilities.js`) admite un callback
+  `onComplete` que cada `case` invoca solo al mutar el estado de verdad;
+  `js/actions.js` mueve ahí el cobro del coste de Portal central y el
+  marcado de `window.habilidadUsadaEsteTurno`.
+
 ---
 
 ## Ponerse al día con el reglamento actual
@@ -55,14 +72,6 @@ trabajo concretas. La fuente de verdad de cómo debe comportarse cada una es
 [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) — antes de
 tocar cualquiera de estos bloques, releer la sección correspondiente del
 reglamento, no fiarse de esta descripción resumida.
-
-### Reparto de portales por número de jugadoras
-
-El reparto actual (`js/setup.js`) no coincide con la tabla del reglamento
-para 3/4/5 jugadoras, y el propio formulario de configuración limita el
-número de jugadoras a 2-4 (`index.html`, input `numPlayers`), sin
-contemplar la partida de 5. Implica revisar tanto `setup.js` como el límite
-del formulario.
 
 ### Personajes que faltan: Entusiasta
 
@@ -193,3 +202,16 @@ partida. Si además se corrige el ítem 2 de `DEUDA_TECNICA.md` (comparación
 de versión por orden real), podría valer la pena que el aviso de
 actualización sea más notorio, ya que dejaría de ser un falso positivo
 frecuente.
+
+### Vista de mesa ovalada con jugadora activa siempre al frente
+
+Idea del propietario: visualizar a las jugadoras dispuestas en un óvalo
+(como una mesa física), con la jugadora activa siempre en la posición
+más cercana/destacada, girando la disposición en cada cambio de turno en
+vez de tener una lista fija. Dos enfoques posibles a valorar cuando se
+aborde: (a) barato — reordenar lógicamente la lista de jugadoras en cada
+render para que la activa vaya siempre primero/destacada, sin geometría
+real; (b) currado — posicionamiento real en óvalo vía CSS
+(transform/posición absoluta) con animación de "giro" al cambiar de
+turno. Requiere diseño visual dedicado antes de implementar, no es un
+ajuste menor de CSS.

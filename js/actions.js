@@ -216,8 +216,9 @@ export function initActions(players, neutrals) {
         }
         alert(`Invocación ${lvl} (${invocacion.nombre}) completa`);
 
+        // La visibilidad de #zoneNeutral se decide en cada render() según
+        // neutrals.length (ver render.js), no hace falta tocarla aquí.
         neutrals.push([]);
-        document.querySelector('#zoneNeutral').classList.remove('hidden');
         window.levelIdx++;
         const esUltimaInvocacion = window.levelIdx >= window.LEVELS.length;
         if (esUltimaInvocacion) {

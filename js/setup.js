@@ -12,8 +12,8 @@ export function initSetup() {
     const n = parseInt($('#numPlayers').value);
     const errorEl = $('#numError');
 
-    if (isNaN(n) || n < 2 || n > 4) {
-      errorEl.textContent = 'El número de jugadoras debe estar entre 2 y 4.';
+    if (isNaN(n) || n < 2 || n > 5) {
+      errorEl.textContent = 'El número de jugadoras debe estar entre 2 y 5.';
       errorEl.classList.remove('hidden');
       return;
     }
@@ -59,16 +59,25 @@ export function initSetup() {
       idx++;
     });
 
-    // Configurar portales según número de jugadoras
+    // Configurar portales según número de jugadoras (docs/reglamento/REGLAMENTO.md, "Preparación"):
+    //   2 jugadoras -> 2 portales/jugadora + 1 central
+    //   3 jugadoras -> 1 portal/jugadora + 2 centrales
+    //   4 jugadoras -> 1 portal/jugadora + 1 central
+    //   5 jugadoras -> 1 portal/jugadora + 0 centrales
+    // La visibilidad de #zoneNeutral se decide en cada render(), no aquí.
     const m = window.players.length;
     if (m === 2) {
       window.players.forEach(p => p.portals = [[], []]);
+      window.neutrals = [[]];
     } else if (m === 3) {
       window.players.forEach(p => p.portals = [[]]);
+      window.neutrals = [[], []];
+    } else if (m === 4) {
+      window.players.forEach(p => p.portals = [[]]);
       window.neutrals = [[]];
-      document.querySelector('#zoneNeutral').classList.remove('hidden');
     } else {
       window.players.forEach(p => p.portals = [[]]);
+      window.neutrals = [];
     }
 
     // Ocultar sección de setup y mostrar control de turno

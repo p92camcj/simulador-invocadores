@@ -73,10 +73,16 @@ export function render(players, neutrals, levelIdx) {
   actualizarVisibilidad(players);
   const zoneActive = document.querySelector('#zoneActive');
   const zoneOthers = document.querySelector('#zoneOthers');
+  const zoneNeutral = document.querySelector('#zoneNeutral');
   const neutralArea = document.querySelector('#neutralArea');
   const lblTurn = document.querySelector('#lblTurn');
   const lblInv = document.querySelector('#lblInv');
   const invStatus = document.querySelector('#invStatus');
+
+  // Los Portales centrales pueden variar durante la partida (aparecen
+  // nuevos al completar invocaciones), así que la visibilidad de esta zona
+  // se decide en cada render(), no solo al preparar la partida.
+  zoneNeutral.classList.toggle('hidden', neutrals.length === 0);
 
   const pl = players[window.turn];
   const activeColor = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][window.turn % 4];

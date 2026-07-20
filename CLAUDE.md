@@ -40,9 +40,6 @@ the version that shipped this):
 - Missing modes: Introductorio (as a full selectable deck-prep variant, not
   just its invocation set), Avanzado, Experto (with the central autómata),
   the 2v2 team variant, and the Entusiasta expansion.
-- Portal distribution by player count doesn't match the rulebook's table for
-  3/4/5 players (see `setup.js`), and the setup form still caps player count
-  at 2-4 (no 5-player option).
 - No tiebreak logic or final scoreboard at game end.
 - Maestro is missing the rulebook's new **active** ability entirely (moving
   a card another player can see — their hidden-to-self card — straight to
@@ -99,11 +96,11 @@ in `nextTurn()`.
 - **`js/index.js`** — entry point. Initializes the global `window.*` state,
   exposes `LEVELS`/`INVOCATION_SETS` on `window`, and calls `initSetup()` on
   `DOMContentLoaded`.
-- **`js/setup.js`** — the player-count/name-entry/invocation-set screen.
-  Builds `window.players` / `window.neutrals` (Portal distribution by
-  player count lives here — see the gap noted above), reads
-  `window.invocationSet` from `#selInvocationSet`, gives each player their
-  starting 3 unit Gems, and calls `initGame()`.
+- **`js/setup.js`** — the player-count (2-5)/name-entry/invocation-set
+  screen. Builds `window.players` / `window.neutrals` (Portal distribution
+  by player count lives here, matching the rulebook's table for 2-5
+  players), reads `window.invocationSet` from `#selInvocationSet`, gives
+  each player their starting 3 unit Gems, and calls `initGame()`.
 - **`js/game.js`** — builds the character deck (`initGame`, sized and
   composed per `window.invocationSet`, see the gap above), turn advancement
   and the "no cards left" end condition (`nextTurn`), and end-of-game

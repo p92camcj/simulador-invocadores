@@ -4,6 +4,15 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.5.2.31] - 2026-07-20
+
+### Corregido
+- **Reparto de Portales centrales por nº de jugadoras no seguía la tabla del reglamento.** `js/setup.js`: 2 jugadoras no creaba ningún Portal central (debía ser 1), 3 jugadoras creaba solo 1 (debían ser 2), y 4 jugadoras caía en la misma rama que 5 y tampoco creaba ninguno (debía ser 1). Corregido a los 4 casos exactos de la tabla (2→2+1, 3→1+2, 4→1+1, 5→1+0), verificado programáticamente.
+- El formulario de configuración admite ahora de 2 a 5 jugadoras (antes tope de 4), para poder probar la partida de 5.
+- La zona de Portales neutrales (`#zoneNeutral`) se muestra u oculta en cada `render()` según `neutrals.length`, no solo al preparar la partida — necesario porque pueden aparecer Portales centrales nuevos durante la partida (al completar una invocación). De paso se corrigió que `#neutralArea` tenía su propia clase `hidden` que ningún código quitaba nunca, así que los Portales centrales no llegaban a mostrarse en la práctica para ningún nº de jugadoras; verificado en navegador real.
+
+---
+
 ## [1.5.1.30] - 2026-07-20
 
 ### Corregido
