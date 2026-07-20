@@ -18,7 +18,12 @@
 > Ítems 12 y 13 añadidos el 2026-07-20 desde
 > [`docs/AUDITORIA_REGLAS.md`](AUDITORIA_REGLAS.md), que cruza el
 > reglamento contra el código con foco en interacciones entre
-> habilidades — el detalle largo de ambos vive ahí, no aquí.
+> habilidades — el detalle largo de ambos vive ahí, no aquí. Ítem 14
+> añadido el 2026-07-20 tras confirmar el dueño del proyecto que la
+> apariencia del Metamorfo no debe conceder ningún efecto del personaje
+> imitado (ver la nueva nota de interpretación en
+> [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md), sección
+> "Metamorfo").
 
 ---
 
@@ -64,6 +69,58 @@
   campo (X, luego Y, luego Z). Si `tag_name` no es parseable como `X.Y.Z`,
   no se muestra el banner y se deja un `console.warn` en vez de arriesgar
   un falso positivo.
+
+---
+
+## Prioridad Alta
+
+### 14. Metamorfo transformado se trata como el personaje real en protecciones/restricciones/bonus — falta separar identidad de apariencia
+
+- **Dónde**: `js/abilities.js`, `case 'Metamorfo'` (la mutación en sí,
+  `stack.at(-1).name = v`), y todo sitio que compare `.name` contra un
+  personaje concreto para decidir protección, restricciones o bonus:
+  `jugadoraProtegidaPorCentinela()` / `estaProtegidoParaActivar()`
+  (protección de Centinela), `esCentinelaVisible()` (restricción propia de
+  Ocultista, en `abilities.js`), `ocultarOtrasCentinelas()` (auto-giro de
+  Centinela), y previsiblemente cualquier lógica futura de bonus pasivo de
+  Pícaro/Maestro que dependa del nombre (ver `docs/MEJORAS_FUTURAS.md`,
+  "Maestro: habilidad activa nueva").
+- **Descripción**: `case 'Metamorfo'` sobrescribe directamente
+  `stack.at(-1).name = v`, así que a partir de ese momento la carta
+  transformada **es**, a todos los efectos del código, el personaje
+  imitado — no hay ningún campo separado que distinga "identidad real
+  (Metamorfo)" de "apariencia (el personaje imitado)". Confirmado por el
+  dueño del proyecto como lectura incorrecta de la regla (ver nueva nota
+  de interpretación en `docs/reglamento/REGLAMENTO.md`, sección
+  "Metamorfo"): la transformación es puramente de apariencia a efectos de
+  invocación y **nunca** debe conceder ni provocar ningún efecto activo,
+  pasivo, de protección o de restricción propio del personaje imitado. Con
+  el modelo de datos actual, cualquier comprobación que use `.name` para
+  identidad real trata erróneamente a un Metamorfo transformado como si
+  fuera de verdad ese personaje — por ejemplo, un Metamorfo transformado
+  en Centinela pasaría hoy la comprobación `st.at(-1).name === 'Centinela'
+  && st.at(-1).vis?.public` de `jugadoraProtegidaPorCentinela()` y
+  protegería Portales que no debería proteger; y `esCentinelaVisible()`
+  bloquearía a Ocultista sobre él, cuando el reglamento corregido dice
+  explícitamente que Ocultista SÍ debe poder aplicarse ahí.
+- **Impacto real**: alto — es un bug de reglas confirmado (no una
+  ambigüedad), directamente alcanzable en cuanto alguien transforme un
+  Metamorfo en Centinela, Pícaro o Maestro, que son elecciones normales y
+  nada exóticas del picker de la habilidad.
+- **Corrección propuesta** (no aplicada en esta ronda, solo documentada):
+  separar identidad real de apariencia en el modelo de datos de la carta —
+  mantener `.name === 'Metamorfo'` siempre (nunca sobrescribirlo), y añadir
+  un campo nuevo, p. ej. `.aspecto`, para lo que se muestra y para lo que
+  cuenta a efectos de invocación (cumplimiento de la combinación requerida,
+  reparto de Gemas). Auditar CADA sitio de `abilities.js`/`utils.js` que
+  hoy compara `.name` contra un personaje concreto y decidir, caso a caso,
+  si debe seguir mirando `.name` (identidad real: protección de Centinela,
+  restricción de Ocultista, auto-giro de Centinela) o pasar a mirar
+  `.aspecto` (invocación, reparto de Gemas). No implementar el disfraz
+  visual (ficha superpuesta, ver `docs/MEJORAS_FUTURAS.md`) sin resolver
+  antes este campo separado — ambos van de la mano.
+- **Prioridad**: **Alta** — bug de reglas confirmado por el dueño del
+  proyecto, no una decisión de diseño abierta.
 
 ---
 

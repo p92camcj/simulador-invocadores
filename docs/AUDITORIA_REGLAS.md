@@ -1,6 +1,6 @@
 # Auditoría de reglas — reglamento vs. código real
 
-> **Última actualización:** 2026-07-20 22:09 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 01:11 (Europe/Madrid)
 >
 > Informe de auditoría, no una tarea de código. Cruza
 > [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) contra el
@@ -322,6 +322,18 @@ interpretación en `REGLAMENTO.md` (mismo patrón que las notas ya
 existentes al principio del documento) — no se ha tocado el reglamento en
 esta tarea de auditoría, queda como recomendación.
 
+**Actualización 2026-07-21**: el mismo `stack.at(-1).name = v` de raíz de
+esta sección resultó tener un problema más amplio y ya confirmado (no una
+ambigüedad abierta): al no separar identidad real de apariencia, un
+Metamorfo transformado también se cuela como el personaje real en
+comprobaciones de protección de Centinela, en la restricción propia de
+Ocultista, y previsiblemente en bonus pasivos futuros. Ver la nueva nota
+de interpretación en `docs/reglamento/REGLAMENTO.md` ("Metamorfo") y el
+ítem 14 de `docs/DEUDA_TECNICA.md` para el detalle completo — se deja como
+entrada separada en la tabla resumen (sección 6) en vez de fusionarla con
+esta, porque son dos hallazgos distintos aunque compartan la misma causa
+de código.
+
 ### 3.6 Clarividente (mano oculta al resto) + intercambio de Aprendiz (verificado, sin hueco)
 
 `hasClariActivo`/`haTenidoClarividente` son propiedades del objeto
@@ -425,7 +437,7 @@ la sección 1.
 | Auto-giro al aparecer una 2ª Centinela (Fase A) | ✅ Implementado | — |
 | **Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro (bug, sección 3.1)** | 🔴 Bug | **Media** |
 | Metamorfo: transformación libre y persistente | ✅ Implementado | — |
-| Metamorfo: ficha visual de disfraz superpuesta | ❌ Pendiente (solo visual) | Baja |
+| **Metamorfo: apariencia sin efectos + disfraz visual** (bug de reglas, no solo cosmético — ver [`DEUDA_TECNICA.md` ítem 14](DEUDA_TECNICA.md) y [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md), "Metamorfo: representación visual de la transformación") | ❌ Pendiente | **Alta** |
 | Clarividente: mano completa oculta al resto | ✅ Implementado (decisión de mesa) | — |
 | Cronomante: reintento tras cancelar, mismo Portal | ✅ Implementado | — |
 | Maestro: bonus pasivo (3 Gemas) | ✅ Implementado | — |

@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-20 20:23 (Europe/Madrid)
+> **Última actualización:** 2026-07-20 23:16 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -367,6 +367,35 @@ coste.
 > **Nota:** si el Metamorfo está en un Portal central costará 2 Gemas, una
 > por el coste de usar una habilidad de un Portal central y otra por la
 > habilidad propia de transformarse.
+
+> **Nota de interpretación — indicación directa del dueño del proyecto:**
+> la transformación del Metamorfo es **puramente de apariencia a efectos de
+> invocación** (cumplir la combinación requerida y el reparto de Gemas,
+> como ya dice el texto principal de esta sección). No concede
+> absolutamente ningún otro efecto del personaje imitado, sea del tipo que
+> sea:
+> - **Ninguna habilidad activa** (esto ya lo decía el texto original: "esta
+>   transformación no le permite ejecutar la habilidad del personaje
+>   imitado").
+> - **Ninguna protección pasiva**: un Metamorfo transformado en Centinela
+>   **no** protege los Portales de su dueña — solo una Centinela real y
+>   visible lo hace.
+> - **Ningún bonus pasivo**: transformarse en Pícaro no otorga la Gema de
+>   valor 1 al completarse una invocación; transformarse en Maestro no
+>   otorga el bonus pasivo de tres Gemas.
+> - **Ninguna restricción asociada al personaje imitado**: Ocultista **sí**
+>   puede aplicarse sobre un Metamorfo transformado en Centinela, porque no
+>   es una Centinela de verdad — la restricción "no puede aplicarse sobre
+>   una Centinela que esté visible" no se activa por apariencia, solo por
+>   identidad real.
+>
+> Si en el futuro se decide que algún efecto pasivo o de protección SÍ debe
+> seguir a la apariencia en vez de a la identidad real, esto debe
+> corregirse aquí explícitamente antes de implementarlo — hoy la regla es
+> "ninguno". Ver `docs/DEUDA_TECNICA.md` para el bug de código que hoy
+> incumple esta regla (`stack.at(-1).name = v` sobrescribe la identidad
+> real, no solo la apariencia) y `docs/MEJORAS_FUTURAS.md` para la
+> representación visual pendiente (ficha superpuesta con transparencia).
 
 ![Habilidades: Entusiasta y final de partida](img/12-habilidades-entusiasta-final-partida.jpg)
 

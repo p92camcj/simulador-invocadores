@@ -123,15 +123,29 @@ corregidas (`js/abilities.js`, `case 'Metamorfo'`, ver `CLAUDE.md`): el
 picker ahora ofrece `PERSONAJES_NO_ANIMALES` (`js/utils.js`) completo menos
 el propio Metamorfo, en cualquier momento del turno, y la transformación ya
 era persistente en la práctica (nada del código revertía `.name`) — solo
-hacía falta quitar la restricción para que se pudiera observar. Lo que
-sigue pendiente de la revisión de reglamento 2026-07-19 es puramente
-visual: el reglamento usa una ficha física superpuesta con la cara del
-personaje imitado, y hoy `stack.at(-1).name = v` se limita a sobrescribir
+hacía falta quitar la restricción para que se pudiera observar. El coste en
+Gemas ya usa el modelo real (`gastarGemaUnitaria` en `js/utils.js`) y, si
+el Metamorfo está en un Portal central, se suma al coste normal de activar
+un Portal central (2 Gemas en total, ver `docs/reglamento/REGLAMENTO.md`) —
+eso ya funciona.
+
+Lo que sigue pendiente, y que ahora depende directamente de resolver
+primero el ítem 14 de `docs/DEUDA_TECNICA.md` (identidad real vs.
+apariencia del Metamorfo — no tiene sentido construir el disfraz visual
+sobre un modelo de datos donde `.name` todavía confunde ambas cosas), es
+puramente la representación visual: hoy `stack.at(-1).name = v` sobrescribe
 el nombre sin dejar ningún rastro en la UI de que la carta "es en
-realidad" un Metamorfo. El coste en Gemas ya usa el modelo real
-(`gastarGemaUnitaria` en `js/utils.js`) y, si el Metamorfo está en un
-Portal central, se suma al coste normal de activar un Portal central (2
-Gemas en total, ver `docs/reglamento/REGLAMENTO.md`) — eso ya funciona.
+realidad" un Metamorfo. **Solución de diseño concreta pedida por el dueño
+del proyecto**: superponer la imagen/icono del personaje imitado sobre la
+carta del Metamorfo, pero con transparencia/opacidad reducida, de forma
+que a través de ella se siga viendo que la carta base es un Metamorfo — no
+ocultar del todo su identidad visual real (a diferencia de, por ejemplo,
+una ficha opaca que tapase por completo el arte original). Esto encaja de
+forma natural una vez exista el campo `.aspecto` separado de `.name` (ítem
+14 de `DEUDA_TECNICA.md`): `cartaImgHtml()`/`portalCardHtml()`
+(`js/render.js`) pintarían la imagen base de Metamorfo (`.name`) con la
+imagen de `.aspecto` superpuesta a media opacidad encima, en vez de
+resolver una sola imagen a partir de un nombre ya sobrescrito.
 
 ### Clarividente: "voltear carta" al perder visibilidad no es inmediato
 
