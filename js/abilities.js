@@ -81,9 +81,16 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
       picker('Portal objetivo', opcionesCronista, key => {
         const st = stackFrom(key, players, neutrals);
         const carta = st.pop();
+        // La orientación en mano no depende de cómo estaba la carta en el
+        // Portal, sino de lo que le falte a la mano para mantener el
+        // invariante "una carta visible y una oculta" (ver REGLAMENTO.md,
+        // "Cronista"): en el momento de activar esta habilidad la mano del
+        // jugador activo tiene exactamente 1 carta (Fase A ya jugó la otra).
+        const cartaRestante = owner.hand[0];
+        const visible = cartaRestante?.vis?.owner !== true;
         const vis = generarVis('mano', {
           origen: 'cronista',
-          visible: carta.vis?.public === true,
+          visible,
           esPropietaria: true
         });
         owner.hand.push({ name: carta.name, vis });

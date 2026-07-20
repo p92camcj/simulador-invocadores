@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.5.4.34] - 2026-07-20
+
+### Corregido
+- **Cronista orientaba la carta robada según cómo estaba en el Portal, no según lo que le faltaba a la mano.** `js/abilities.js`, `case 'Cronista'`: usaba `carta.vis?.public` (visibilidad de la carta en el Portal de origen) para decidir si la carta llegaba visible u oculta a la mano — sin relación con el invariante de mano exigido por `docs/reglamento/REGLAMENTO.md` ("Cronista": siempre una carta visible y una oculta). Ahora se calcula a partir de la única carta que queda en la mano del jugador activo en ese momento (Fase B, tras jugar en Fase A): si esa carta restante es visible para su dueña, la robada entra oculta, y viceversa.
+
+---
+
 ## [1.5.3.32] - 2026-07-20
 
 ### Corregido
