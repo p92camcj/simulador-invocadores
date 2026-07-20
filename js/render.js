@@ -188,8 +188,14 @@ function renderBoardGrid(players, neutrals) {
   const grid = document.querySelector('#boardGrid');
   if (!grid) return;
 
+  // minmax(240px, 1fr): cada columna crece para llenar el ancho disponible
+  // cuando cabe (pantallas anchas, sin scroll horizontal); el scroll
+  // horizontal de `.board-grid` (style.css) solo entra en juego cuando ni
+  // siquiera el mínimo de 240px por columna cabe (pantallas estrechas o
+  // muchas jugadoras a la vez) — mismo criterio para cualquier ancho, sin
+  // rama de código separada para escritorio/móvil.
   const totalCols = players.length + (neutrals.length ? 1 : 0);
-  grid.style.gridTemplateColumns = `repeat(${totalCols}, 1fr)`;
+  grid.style.gridTemplateColumns = `repeat(${totalCols}, minmax(240px, 1fr))`;
 
   let html = '';
   players.forEach((p, i) => {

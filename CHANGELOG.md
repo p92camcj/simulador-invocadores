@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.12.2.48] - 2026-07-20
+
+### Corregido
+- **Grid de N columnas sin scroll horizontal forzado**: `renderBoardGrid()` (`js/render.js`) fijaba `grid-template-columns` con `1fr` fijo, lo que en la práctica dejaba el ancho mínimo de cada columna (`min-width: 220px` en `.board-col`, `style.css`) forzando scroll horizontal incluso en pantallas de escritorio con espacio de sobra. Ahora usa `repeat(N, minmax(240px, 1fr))`: cada columna crece para llenar el ancho disponible cuando cabe, y el scroll horizontal de `.board-grid` solo entra en juego cuando de verdad no caben todas las columnas (pantallas estrechas o muchas jugadoras a la vez) — mismo criterio para cualquier tamaño de pantalla, sin rama de código distinta para escritorio/móvil. Se eliminó la regla redundante `.board-col { min-width: 220px }` (ya cubierta por el `minmax()` del propio grid) y la rama `@media (max-width: 768px)` que forzaba `grid-auto-flow: column` con un ancho fijo por columna, ahora innecesaria y potencialmente conflictiva con la regla base.
+
+---
+
 ## [1.12.1.48] - 2026-07-20
 
 ### Añadido

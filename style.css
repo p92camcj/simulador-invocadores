@@ -256,14 +256,17 @@ select {
 }
 
 /* Tablero único (Tarea C, revisión): una columna por jugadora + Portales
-   centrales, siempre con la visibilidad real de la partida. */
+   centrales, siempre con la visibilidad real de la partida.
+   `grid-template-columns` se fija desde JS (renderBoardGrid() en
+   render.js) como `repeat(N, minmax(240px, 1fr))`: cada columna crece
+   para llenar el ancho disponible cuando cabe, y el scroll horizontal de
+   abajo solo entra en juego cuando ni el mínimo de 240px por columna cabe
+   — mismo criterio para cualquier tamaño de pantalla, sin rama de código
+   distinta para escritorio/móvil. */
 .board-grid {
   display: grid;
   gap: 10px;
   overflow-x: auto;
-}
-.board-col {
-  min-width: 220px;
 }
 .board-col h4 {
   margin: 0 0 6px;
@@ -457,13 +460,9 @@ select {
     max-height: 90vh;
   }
 
-  /* N columnas no caben razonablemente en móvil: en vez de forzar el
-     layout, se usa scroll horizontal manteniendo todas las columnas
-     visibles, con un ancho fijo legible por columna. */
-  .board-grid {
-    grid-template-columns: none !important;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(260px, 1fr);
-  }
+  /* No hace falta ninguna regla de grid específica aquí: el
+     `minmax(240px, 1fr)` que fija render.js ya decide por sí solo si las
+     columnas caben (crecen) o no (scroll horizontal de `.board-grid`),
+     igual en móvil que en escritorio. */
 }
 

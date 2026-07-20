@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.12.2.48 - 2026-07-20
+
+- El tablero ya no obliga a hacer scroll horizontal cuando la pantalla
+  tiene sitio de sobra: en un ordenador con varias jugadoras, las columnas
+  ahora aprovechan todo el ancho disponible. El scroll lateral solo
+  aparece si de verdad no caben todas las columnas (pantallas pequeñas o
+  muchas jugadoras a la vez).
+
 ## 1.12.1.48 - 2026-07-20
 
 - Cambio interno, sin novedades visibles para quien juega: se ha escrito
