@@ -4,6 +4,15 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.7.1.38] - 2026-07-20
+
+### Corregido
+- **`estaProtegido()` solo comprobaba el Portal concreto donde estaba la Centinela, no todos los Portales de esa jugadora.** `js/abilities.js`: según `docs/reglamento/REGLAMENTO.md` ("Centinela") y su FAQ de la variante a 2 jugadoras ("protege ambos Portales del jugador"), mientras una Centinela esté visible en un Portal de una jugadora, ninguna habilidad puede afectar a NINGUNO de sus Portales, no solo al que contiene la Centinela. Nueva `jugadoraProtegidaPorCentinela(player)` en `js/utils.js` (usada también para simplificar `jugadorProtegidoContraAprendiz`, que antes tenía lógica aparte para partidas a 2 jugadoras — ya innecesaria, la regla general la cubre).
+- **La protección bloqueaba también a la propia dueña de la Centinela dirigiendo su propia habilidad contra sus propios Portales.** Según indicación del diseñador del juego, la Centinela protege frente a las **demás** jugadoras, no frente a una misma — ver la nueva nota de interpretación añadida en `docs/reglamento/REGLAMENTO.md` sobre la ambigüedad de la FAQ correspondiente. Nueva `estaProtegidoParaActivar(stackKey, stack, players, actingPlayerIdx)` en `js/utils.js`, que combina la protección con esta excepción; sustituye a `estaProtegido()` en los 4 `case` que la usaban (Ocultista, Cronista, Cronomante, Estratega) y en el Aprendiz (permite elegirse a sí misma aunque esté protegida, sigue bloqueando elegir a otra jugadora protegida). `portalesConEstado()` ahora pasa también la clave del Portal (`val`) a `esInvalido`, necesaria para saber de quién es cada Portal.
+- La restricción independiente del Ocultista ("no puede aplicarse sobre una Centinela que esté visible") se mantiene como comprobación separada (`esCentinelaVisible`), y sigue aplicando siempre, incluso sobre la Centinela de la propia jugadora que activa la habilidad.
+
+---
+
 ## [1.7.0.37] - 2026-07-20
 
 ### Corregido

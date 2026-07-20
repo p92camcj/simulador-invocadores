@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-19 19:07 (Europe/Madrid)
+> **Última actualización:** 2026-07-20 16:17 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -24,6 +24,24 @@
 > jugarán esta partida"* — es decir, se apartan 2 cartas al azar sin mirarlas,
 > igual que ya hacía la versión anterior del reglamento con 4 cartas. Si la
 > intención real era otra, corregir esta nota y el apartado correspondiente.
+>
+> ⚠️ **Punto ambiguo en la FAQ, pendiente de confirmar con el diseñador:**
+> la pregunta "¿Se puede usar la habilidad de un personaje contra un Portal
+> protegido por la Centinela?" responde *"No. Mientras una Centinela esté
+> visible en un Portal, ninguna habilidad puede afectar a ese Portal,
+> incluidas las que provienen de otros jugadores"*. El texto no distingue
+> explícitamente si esa protección también aplica frente a la propia dueña
+> de la Centinela activando su propia habilidad contra su propio Portal.
+> Por indicación del diseñador del juego, aquí se ha interpretado que la
+> protección es frente a las **demás** jugadoras únicamente: una jugadora
+> puede dirigir sus propias habilidades (Ocultista, Cronista, Cronomante,
+> Estratega, Aprendiz eligiéndose a sí misma) contra un Portal suyo aunque
+> esté protegido por su propia Centinela visible. Esto no afecta a la
+> restricción independiente del propio Ocultista ("no puede aplicarse sobre
+> una Centinela que esté visible"), que sigue vigente siempre, incluso
+> sobre la Centinela de la propia jugadora que activa la habilidad. Si la
+> intención real era otra, corregir esta nota y `estaProtegidoParaActivar`
+> en `js/utils.js`.
 
 ---
 

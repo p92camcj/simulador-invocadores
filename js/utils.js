@@ -140,7 +140,7 @@ export function stackFrom(key, players, neutrals) {
  *
  * @param {Array} players - Lista de jugadoras
  * @param {Array} neutrals - Lista de portales neutrales
- * @param {Function} esInvalido - Función que recibe un stack y devuelve true si debe estar deshabilitado
+ * @param {Function} esInvalido - Función que recibe (stack, val) y devuelve true si debe estar deshabilitado
  * @returns {Array<{ val: string, lbl: string, disabled?: boolean }>}
  */
 export function portalesConEstado(players, neutrals, esInvalido) {
@@ -149,9 +149,50 @@ export function portalesConEstado(players, neutrals, esInvalido) {
     return {
       val,
       lbl,
-      disabled: esInvalido(st)
+      disabled: esInvalido(st, val)
     };
   });
+}
+
+/**
+ * ¿Está esta jugadora protegida ahora mismo por una Centinela propia
+ * visible? La protección cubre TODOS sus Portales, no solo el que
+ * contiene la Centinela — ver REGLAMENTO.md, "Centinela" ("mientras una
+ * Centinela esté visible en un Portal de un jugador, ninguna habilidad
+ * puede afectar a sus Portales") y la FAQ de la variante a 2 jugadoras
+ * ("protege ambos Portales del jugador"), que es un caso particular de
+ * esta regla general, no una excepción aparte.
+ */
+export function jugadoraProtegidaPorCentinela(player) {
+  return player.portals.some(
+    st => st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public
+  );
+}
+
+/**
+ * ¿Es el Portal identificado por `stackKey` (formato de `listPortals`,
+ * `"i:j"` para el Portal `j` de la jugadora `i`, o `"n:k"` para el Portal
+ * central `k`) un objetivo INVÁLIDO para que `actingPlayerIdx` dirija una
+ * habilidad contra él?
+ *
+ * - Portal central: protegido solo si su propia carta superior es una
+ *   Centinela visible (no tiene dueña de quien eximirse).
+ * - Portal de una jugadora: protegido si ESA jugadora está protegida por
+ *   su propia Centinela (`jugadoraProtegidaPorCentinela`) — EXCEPTO si
+ *   quien activa la habilidad es ella misma. Interpretación del texto de
+ *   la FAQ según indicación del diseñador del juego: la Centinela protege
+ *   frente a las DEMÁS jugadoras, no frente a la propia dueña actuando
+ *   sobre sus propios Portales (ver nota en docs/reglamento/REGLAMENTO.md,
+ *   "Centinela").
+ */
+export function estaProtegidoParaActivar(stackKey, stack, players, actingPlayerIdx) {
+  const [p] = stackKey.split(':');
+  if (p === 'n') {
+    return stack.length && stack.at(-1).name === 'Centinela' && stack.at(-1).vis?.public;
+  }
+  const portalOwnerIdx = parseInt(p, 10);
+  if (portalOwnerIdx === actingPlayerIdx) return false;
+  return jugadoraProtegidaPorCentinela(players[portalOwnerIdx]);
 }
 
 /**

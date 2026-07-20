@@ -1,19 +1,30 @@
 // abilities.js
-import { stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria, PERSONAJES_NO_ANIMALES } from './utils.js';
+import {
+  stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria,
+  PERSONAJES_NO_ANIMALES, jugadoraProtegidaPorCentinela, estaProtegidoParaActivar
+} from './utils.js';
 import { picker } from './render.js';
 
-function estaProtegido(stack) {
-  return stack.length && stack.at(-1).name === 'Centinela' && stack.at(-1).vis?.public;
-}
+/**
+ * ¿Su propia carta superior es una Centinela visible? Restricción propia
+ * de Ocultista, independiente de la protección de Portales: "esta
+ * habilidad no puede ser aplicada sobre una Centinela que esté visible"
+ * (REGLAMENTO.md) se aplica siempre, incluso a la propia dueña de esa
+ * Centinela — a diferencia de `estaProtegidoParaActivar`, que sí exime a
+ * la propia dueña.
+ */
+const esCentinelaVisible = st =>
+  st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public;
 
-function jugadorProtegidoContraAprendiz(jugador, jugadores) {
-  if (jugadores.length === 2) {
-    return jugador.portals.some(estaProtegido);
-  }
-  if (jugador.portals.length === 1) {
-    return estaProtegido(jugador.portals[0]);
-  }
-  return false;
+/**
+ * ¿Bloquea la Centinela que `jugadorIdx` sea elegido como una de las dos
+ * jugadoras del intercambio del Aprendiz? Igual que con el resto de
+ * habilidades, la protección exime a quien la activa cuando se elige a sí
+ * misma (REGLAMENTO.md permite "puedes elegirte a ti").
+ */
+function jugadorProtegidoContraAprendiz(jugadorIdx, players, actingPlayerIdx) {
+  if (jugadorIdx === actingPlayerIdx) return false;
+  return jugadoraProtegidaPorCentinela(players[jugadorIdx]);
 }
 
 /**
@@ -36,8 +47,10 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
 
   switch (name) {
     case 'Ocultista': {
-      const opciones = portalesConEstado(players, neutrals, st =>
-        estaProtegido(st) || st.length === 0
+      const opciones = portalesConEstado(players, neutrals, (st, val) =>
+        esCentinelaVisible(st) ||
+        estaProtegidoParaActivar(val, st, players, ownerIdx) ||
+        st.length === 0
       );
 
       picker('¿Qué portal quieres alterar?', opciones, key => {
@@ -74,8 +87,8 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
       break;
 
     case 'Cronista': {
-      const opcionesCronista = portalesConEstado(players, neutrals, st =>
-        estaProtegido(st) || st.length === 0
+      const opcionesCronista = portalesConEstado(players, neutrals, (st, val) =>
+        estaProtegidoParaActivar(val, st, players, ownerIdx) || st.length === 0
       );
 
       picker('Portal objetivo', opcionesCronista, key => {
@@ -100,8 +113,8 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
     }
 
     case 'Cronomante': {
-      const opcionesCrono = portalesConEstado(players, neutrals, st =>
-        estaProtegido(st) || st.length <= 1
+      const opcionesCrono = portalesConEstado(players, neutrals, (st, val) =>
+        estaProtegidoParaActivar(val, st, players, ownerIdx) || st.length <= 1
       );
 
       picker('Elige un portal para manipular', opcionesCrono, key => {
@@ -121,7 +134,9 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
     }
 
     case 'Estratega': {
-      const portalesValidos = portalesConEstado(players, neutrals, st => estaProtegido(st));
+      const portalesValidos = portalesConEstado(players, neutrals, (st, val) =>
+        estaProtegidoParaActivar(val, st, players, ownerIdx)
+      );
 
       picker('1er portal', portalesValidos, first => {
         picker(
@@ -130,14 +145,16 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           second => {
             const s1 = stackFrom(first, players, neutrals);
             const s2 = stackFrom(second, players, neutrals);
+            const p1Protegido = estaProtegidoParaActivar(first, s1, players, ownerIdx);
+            const p2Protegido = estaProtegidoParaActivar(second, s2, players, ownerIdx);
 
-            if (estaProtegido(s1) && estaProtegido(s2)) {
+            if (p1Protegido && p2Protegido) {
               alert('Ambos portales están protegidos por Centinela.');
               return;
             }
-            if (estaProtegido(s1)) {
+            if (p1Protegido) {
               s2.splice(0, s2.length, ...s1);
-            } else if (estaProtegido(s2)) {
+            } else if (p2Protegido) {
               s1.splice(0, s1.length, ...s2);
             } else {
               const tmp = [...s1];
@@ -161,7 +178,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
     case 'Aprendiz': {
       const opcionesAprendiz = players
         .map((p, i) => ({ val: i, lbl: p.name }))
-        .filter(p => !jugadorProtegidoContraAprendiz(players[p.val], players));
+        .filter(p => !jugadorProtegidoContraAprendiz(p.val, players, ownerIdx));
 
       picker('Primera jugadora', opcionesAprendiz, v1 => {
         v1 = parseInt(v1);
