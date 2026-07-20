@@ -4,6 +4,16 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.10.0.44] - 2026-07-20
+
+### Añadido
+- **Jugar carta por clic directo (carta → Portal), sustituyendo el panel con dos `<select>` + botón "Jugar".** Clic en una carta de la propia mano la selecciona (`window.selectHandCard`, clase `.selected`); con una carta seleccionada, todos los Portales (propios, centrales y de otras jugadoras) se muestran como objetivo clicable (clase `.target-portal`) — clic en uno de ellos juega la carta ahí (`window.tryPlayOnPortal`), mismo resultado final (`stack.push(...)`) y mismas reglas de Fase A de siempre (incluido el hook de Centinela). Un segundo clic sobre la misma carta la deselecciona; el nuevo botón "Cancelar selección" (`#btnPlayCancel`, en la cabecera) hace lo mismo y solo es visible mientras hay una carta elegida.
+- **Drag & drop nativo como alternativa que coexiste con el clic**: `draggable="true"` en las cartas de la mano, `dragstart`/`dragover`/`drop` en los Portales objetivo — arrastrar una carta hasta un Portal tiene el mismo efecto que seleccionarla y hacer clic en él.
+- Eliminado el panel `#ctrlPlay` (los `<select>` de carta/destino) y el botón de cabecera "Jugar una carta" (`#btnCtrlPlay`), ya innecesarios: la mano ya se muestra siempre en pantalla durante el turno, así que seleccionar directamente sustituye por completo a abrir un panel aparte.
+- La vista de depuración (Tarea C) sigue siendo solo de inspección: no lleva seleccción/clic para jugar cartas, hay que volver a la vista normal para jugar.
+
+---
+
 ## [1.9.0.43] - 2026-07-20
 
 ### Añadido

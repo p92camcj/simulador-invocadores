@@ -3,21 +3,10 @@ import { nextTurn, finalizarPartida } from './game.js';
 import { render, picker } from './render.js';
 import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
 import {
-  draw, generarVis, mostrarCarta,
+  draw, generarVis,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
   construirPoolGemas
 } from './utils.js';
-
-/**
- * Etiqueta entre paréntesis de lo que hay en el top de un Portal, con el
- * mismo criterio de visibilidad que usa render.js: 'Vacío' si no tiene
- * cartas, el nombre si la carta superior es pública, 'Carta Oculta' si no.
- */
-function topLabel(stack) {
-  if (!stack.length) return 'Vacío';
-  const top = stack.at(-1);
-  return top.vis?.public ? mostrarCarta(top) : 'Carta Oculta';
-}
 
 /**
  * Inicializa los controladores de acciones (selección de cartas, jugar, activar
@@ -26,74 +15,21 @@ function topLabel(stack) {
  * @param {Array} neutrals - Array de portales neutrales.
  */
 export function initActions(players, neutrals) {
-  // Selección de carta y portal
-  window.selectCard = i => {
-    if (window.played) {
-      alert('Ya jugaste');
-      return;
-    }
-    const pl = players[window.turn];
-    const selCard = document.querySelector('#selCard');
-    selCard.innerHTML = '';
-    pl.hand.forEach((c, idx) => {
-      const visible = c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente;
-      const opt = document.createElement('option');
-      opt.value = idx;
-      opt.textContent = visible ? mostrarCarta(c) : '?';
-      if (idx === i) opt.selected = true;
-      selCard.appendChild(opt);
-    });
-
-    const selDest = document.querySelector('#selDest');
-    selDest.innerHTML = '';
-    pl.portals.forEach((stack, j) => {
-      const opt = document.createElement('option');
-      opt.value = `p:${j}`;
-      opt.textContent = `Tu portal ${j+1} (${topLabel(stack)})`;
-      selDest.appendChild(opt);
-    });
-    neutrals.forEach((stack, j) => {
-      const opt = document.createElement('option');
-      opt.value = `n:${j}`;
-      opt.textContent = `Neutral ${j+1} (${topLabel(stack)})`;
-      selDest.appendChild(opt);
-    });
-    players.forEach((p, pi) => {
-      if (pi !== window.turn) {
-        p.portals.forEach((stack, pj) => {
-          const opt = document.createElement('option');
-          opt.value = `a:${pi}:${pj}`;
-          opt.textContent = `${p.name} P${pj+1} (${topLabel(stack)})`;
-          selDest.appendChild(opt);
-        });
-      }
-    });
-
-    document.querySelector('#ctrlPlay').classList.remove('hidden');
-
-  };
-
-  // Cancelar juego de carta
-  document.querySelector('#btnPlayCancel').onclick = () => {
-    document.querySelector('#ctrlPlay').classList.add('hidden');
-  };
-
-  // Jugar carta (Fase A). Ya no activa ninguna habilidad automáticamente:
-  // la activación de habilidad es una acción aparte, ver btnAbility más abajo.
-  document.querySelector('#btnPlay').onclick = () => {
+  // Jugar carta (Fase A) sobre `destKey` (mismo formato que antes poblaba
+  // el `<select>` de destino: 'p:<idx>' | 'n:<idx>' | 'a:<pi>:<pj>'), usando
+  // la carta actualmente seleccionada (window.selectedCardIdx). No activa
+  // ninguna habilidad automáticamente — eso es Fase B, ver btnAbility.
+  function jugarCartaSeleccionadaEn(destKey) {
     if (window.juegoTerminado) return;
     if (window.played) return;
+    if (window.selectedCardIdx === null || window.selectedCardIdx === undefined) return;
+
     const pl = players[window.turn];
-    const selCard = document.querySelector('#selCard');
-    const cardIdx = parseInt(selCard.value);
-    if (isNaN(cardIdx) || !pl.hand[cardIdx]) {
-      alert('Debes seleccionar una carta válida antes de jugar.');
-      return;
-    }
+    const cardIdx = window.selectedCardIdx;
+    if (!pl.hand[cardIdx]) return;
     const card = pl.hand.splice(cardIdx, 1)[0];
 
-    const selDest = document.querySelector('#selDest').value;
-    const [tp, a, b] = selDest.split(':');
+    const [tp, a, b] = destKey.split(':');
     const stack = tp === 'p'
       ? pl.portals[+a]
       : tp === 'n'
@@ -107,12 +43,57 @@ export function initActions(players, neutrals) {
     }
 
     window.played = true;
-    document.querySelector('#ctrlPlay').classList.add('hidden');
+    window.selectedCardIdx = null;
 
     render(players, neutrals, window.levelIdx);
     if (!pl.hasClariActivo) {
       pl.haTenidoClarividente = false;
     }
+  }
+
+  // Clic en una carta de la propia mano: la selecciona; un segundo clic
+  // sobre la misma carta la deselecciona (toggle). No hace nada si ya se
+  // jugó carta este turno.
+  window.selectHandCard = idx => {
+    if (window.played) return;
+    const pl = players[window.turn];
+    if (!pl.hand[idx]) return;
+    window.selectedCardIdx = (window.selectedCardIdx === idx) ? null : idx;
+    render(players, neutrals, window.levelIdx);
+  };
+
+  // Clic en un Portal (propio, central o de otra jugadora): si hay una
+  // carta seleccionada la juega ahí; sin selección activa, no hace nada.
+  window.tryPlayOnPortal = destKey => {
+    jugarCartaSeleccionadaEn(destKey);
+  };
+
+  // Drag & drop nativo como alternativa al clic — ambos métodos coexisten.
+  window.handleCardDragStart = (event, idx) => {
+    if (window.played) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.setData('text/plain', String(idx));
+    event.dataTransfer.effectAllowed = 'move';
+  };
+  window.handlePortalDragOver = event => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+  window.handlePortalDrop = (event, destKey) => {
+    event.preventDefault();
+    const idxStr = event.dataTransfer.getData('text/plain');
+    if (idxStr === '') return;
+    window.selectedCardIdx = parseInt(idxStr, 10);
+    jugarCartaSeleccionadaEn(destKey);
+  };
+
+  // Cancelar la selección de carta actual (visible solo mientras hay una
+  // carta elegida, ver render.js).
+  document.querySelector('#btnPlayCancel').onclick = () => {
+    window.selectedCardIdx = null;
+    render(players, neutrals, window.levelIdx);
   };
 
   // Activar habilidad (Fase B, opcional, una vez por turno): la habilidad del
@@ -248,15 +229,6 @@ export function initActions(players, neutrals) {
     nextTurn();
     window.played = false;
   };
-
-  // Hace que el botón "Jugar una carta" en la parte
-  // superor de la cabecera, funcione y abra la ventana para jugar carta
-  const btnCtrlPlay = document.getElementById("btnCtrlPlay");
-  if (btnCtrlPlay) {
-    btnCtrlPlay.addEventListener("click", () => {
-      window.selectCard(0);
-    });
-  }
 
   // Vista de depuración (Tarea C, solo para pruebas del dueño del
   // proyecto): alterna entre la vista compartida normal y la vista con

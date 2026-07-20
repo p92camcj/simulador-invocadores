@@ -12,6 +12,7 @@ window.turn = 0;
 window.played = false;
 window.habilidadUsadaEsteTurno = false;
 window.debugViewActive = false;
+window.selectedCardIdx = null;
 window.juegoTerminado = false;
 window.invocationSet = 'normal';
 

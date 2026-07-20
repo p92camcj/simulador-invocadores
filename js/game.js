@@ -48,6 +48,7 @@ export function initGame() {
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
   window.debugViewActive = false;
+  window.selectedCardIdx = null;
 
   // Configurar controladores de acciones
   initActions(window.players, window.neutrals);
@@ -64,6 +65,7 @@ export function initGame() {
 export function nextTurn() {
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
+  window.selectedCardIdx = null;
   const current = window.players[window.turn];
   //Se comprueba si hay condición de fin de partida, sin cartas en mano
   if (current.hand.length === 0) {
@@ -103,14 +105,13 @@ export function resetJuego() {
   $('#zoneActive')?.classList.add('hidden');
   $('#zoneOthers')?.classList.add('hidden');
   $('#zoneNeutral')?.classList.add('hidden');
-  $('#ctrlPlay')?.classList.add('hidden');
+  $('#btnPlayCancel')?.classList.add('hidden');
   $('#sectionflex').classList.add('hidden');
   $('#debugView')?.classList.add('hidden');
 
   // Mostrar zona de configuración
   $('#setup')?.classList.remove('hidden');
   $('#btnEndTurn')?.classList.add('hidden');
-  $('#btnCtrlPlay')?.classList.add('hidden');
   $('#btnAbility')?.classList.add('hidden');
   $('#btnDebugView')?.classList.add('hidden');
 
@@ -127,6 +128,7 @@ export function resetJuego() {
   window.played = false;
   window.habilidadUsadaEsteTurno = false;
   window.debugViewActive = false;
+  window.selectedCardIdx = null;
   window.juegoTerminado = false;
 
   // Volver al menú inicial

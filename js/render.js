@@ -45,6 +45,20 @@ function desgloseGemasAjeno(gems) {
 }
 
 /**
+ * Atributos comunes de un Portal jugable: clic para jugar la carta
+ * seleccionada (no hace nada si no hay ninguna, ver `window.tryPlayOnPortal`
+ * en `actions.js`) y drag&drop nativo como alternativa que coexiste con el
+ * clic. `destKey` usa el mismo formato que antes poblaba `#selDest`:
+ * `p:<idx>` (portal propio), `n:<idx>` (central) o `a:<pi>:<pj>` (portal de
+ * otra jugadora).
+ */
+function portalPlayAttrs(destKey) {
+  return `onclick="window.tryPlayOnPortal('${destKey}')" `
+    + `ondragover="window.handlePortalDragOver(event)" `
+    + `ondrop="window.handlePortalDrop(event, '${destKey}')"`;
+}
+
+/**
  * Muestra un selector emergente para elegir una opción entre varias.
  *
  * Cada opción puede tener:
@@ -171,8 +185,16 @@ export function render(players, neutrals, levelIdx) {
   // se decide en cada render(), no solo al preparar la partida.
   zoneNeutral.classList.toggle('hidden', neutrals.length === 0);
 
+  // Botón de cancelar selección (Tarea D): visible solo mientras hay una
+  // carta de la mano elegida para jugar.
+  document.querySelector('#btnPlayCancel')?.classList.toggle(
+    'hidden',
+    window.selectedCardIdx === null || window.selectedCardIdx === undefined
+  );
+
   const pl = players[window.turn];
   const activeColor = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][window.turn % 4];
+  const haySeleccion = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
   zoneActive.innerHTML = `<div class="section ${activeColor}">`;
   zoneActive.innerHTML += `<h3>${pl.name} (G ${sumaGemas(pl.gems)} total — ${desgloseGemasPropio(pl.gems)})</h3>`;
   pl.portals.forEach((stack, i) => {
@@ -180,13 +202,17 @@ export function render(players, neutrals, levelIdx) {
     const body = stack.length === 0
       ? '<div class="card-empty">Vacío</div>'
       : cartaImgHtml(topCard.name, topCard.vis?.public === true);
-    zoneActive.innerHTML += `<div class="card"><div class="card-label">Portal ${i+1} (${stack.length})</div>${body}</div>`;
+    const targetClass = haySeleccion ? ' target-portal' : '';
+    zoneActive.innerHTML += `<div class="card${targetClass}" ${portalPlayAttrs(`p:${i}`)}><div class="card-label">Portal ${i+1} (${stack.length})</div>${body}</div>`;
   });
   zoneActive.innerHTML += '<h4>Mano</h4>';
   pl.hand.forEach((c, idx) => {
     const visible = c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente;
+    const selectedClass = idx === window.selectedCardIdx ? ' selected' : '';
     zoneActive.innerHTML += `
-      <div class="card" onclick="selectCard(${idx})">
+      <div class="card${selectedClass}" draggable="true"
+        onclick="window.selectHandCard(${idx})"
+        ondragstart="window.handleCardDragStart(event, ${idx})">
         ${cartaImgHtml(c.name, visible)}
       </div>`;
   });
@@ -203,7 +229,8 @@ export function render(players, neutrals, levelIdx) {
       const body = stack.length === 0
         ? '<div class="card-empty">Vacío</div>'
         : cartaImgHtml(topCard.name, topCard.vis?.public === true);
-      zoneOthers.innerHTML += `<div class="card"><div class="card-label">Portal ${j+1} (${stack.length})</div>${body}</div>`;
+      const targetClass = haySeleccion ? ' target-portal' : '';
+      zoneOthers.innerHTML += `<div class="card${targetClass}" ${portalPlayAttrs(`a:${i}:${j}`)}><div class="card-label">Portal ${j+1} (${stack.length})</div>${body}</div>`;
     });
     zoneOthers.innerHTML += '<h5>Cartas ocultas</h5>';
     // Decisión de mesa (ver docs/reglamento/REGLAMENTO.md, nota sobre
@@ -224,7 +251,8 @@ export function render(players, neutrals, levelIdx) {
     const body = stack.length === 0
       ? '<div class="card-empty">Vacío</div>'
       : cartaImgHtml(topCard.name, topCard.vis?.public === true);
-    neutralArea.innerHTML += `<div class="card"><div class="card-label">Neutral ${i+1} (${stack.length})</div>${body}</div>`;
+    const targetClass = haySeleccion ? ' target-portal' : '';
+    neutralArea.innerHTML += `<div class="card${targetClass}" ${portalPlayAttrs(`n:${i}`)}><div class="card-label">Neutral ${i+1} (${stack.length})</div>${body}</div>`;
   });
 
   // Vista de depuración (Tarea C): sustituye por completo la vista

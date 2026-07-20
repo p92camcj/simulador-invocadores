@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.10.0.44 - 2026-07-20
+
+- Jugar una carta es ahora más directo: toca la carta de tu mano y luego
+  toca el Portal donde quieras jugarla, sin pasar por un panel con listas
+  desplegables. Puedes tocar de nuevo la carta para deshacer la selección.
+- En dispositivos con ratón, también puedes arrastrar la carta hasta el
+  Portal (drag & drop) como alternativa a tocar.
+
 ## 1.9.0.43 - 2026-07-20
 
 - Nueva "Vista de pruebas" (botón 🔧 en la cabecera), pensada solo para

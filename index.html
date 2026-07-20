@@ -23,7 +23,7 @@
       Un juego diseñado por <a href="https://www.elmeepleazul.es" target="_blank" rel="noopener noreferrer">@elmeepleazul</a>
     </p>
     <div class="header-bar">
-      <button id="btnCtrlPlay" class="btn primary hidden">Jugar una carta</button>
+      <button id="btnPlayCancel" class="btn secondary cancel hidden">Cancelar selección</button>
       <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
       <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">Ver ayuda</button>
@@ -61,20 +61,6 @@
         <button id="btnStart" class="btn primary">Iniciar</button>
       </div>
     </div>
-    <div id="ctrlPlay" class="section hidden">
-      <div class="play-title">
-        <span>Jugar carta</span>
-        <button class="close-btn" onclick="document.getElementById('ctrlPlay').classList.add('hidden')">✖</button>
-      </div>
-    
-      <div class="play-line">
-        <select id="selCard"></select>
-        <select id="selDest"></select>
-        <button id="btnPlay" class="btn primary">Jugar</button>
-        <button id="btnPlayCancel" class="btn secondary cancel">Cancelar</button>
-      </div>
-    </div>
-    
     <div id="picker" class="section hidden">
       <h3 id="pickerTitle"></h3>
       <select id="pickerSelect"></select>

@@ -88,7 +88,6 @@ export function initSetup() {
     $('#btnEndTurn').classList.remove('hidden');
     $('#info').classList.remove('hidden');
     $('#sectionflex').classList.remove('hidden');
-    if ($('#btnCtrlPlay')) $('#btnCtrlPlay').classList.remove('hidden');
     if ($('#btnAbility')) $('#btnAbility').classList.remove('hidden');
     if ($('#btnDebugView')) $('#btnDebugView').classList.remove('hidden');
     $('#mainTitle')?.classList.add('hidden');
