@@ -65,13 +65,21 @@ export const iconos = {
   'Sora': '🦋',
   'Lumo': '🐦'
 };
-export const mostrarCarta = card => `${iconos[card.name] || ''} ${card.name}`;
+// Muestra la APARIENCIA de la carta (card.aspecto si el Metamorfo está
+// transformado, si no card.name) — ver DEUDA_TECNICA.md ítem 14: lo que se
+// enseña en pantalla sigue al disfraz, nunca a la identidad real.
+export const mostrarCarta = card => {
+  const nombre = card.aspecto || card.name;
+  return `${iconos[nombre] || ''} ${nombre}`;
+};
 
 // ---------- Imágenes de cartas ----------
-// TODO: cuando el Metamorfo tenga disfraz persistente (ver
-// docs/MEJORAS_FUTURAS.md), mostrar la imagen del personaje imitado + una
-// insignia indicando que es en realidad un Metamorfo, en vez de usar
-// siempre metamorfo.png tal cual.
+// render.js resuelve la imagen a partir de card.aspecto || card.name (ítem
+// 14 de DEUDA_TECNICA.md), así que un Metamorfo transformado ya muestra la
+// imagen del personaje imitado. TODO (ver docs/MEJORAS_FUTURAS.md, "Metamorfo:
+// representación visual de la transformación"): falta la insignia con
+// transparencia que deje ver, a través de ella, que la carta base sigue
+// siendo un Metamorfo — hoy no queda ningún rastro visual de eso.
 export const cardImages = {
   'Maestro': 'assets/cards/maestro.png',
   'Clarividente': 'assets/cards/clarividente.png',
@@ -207,17 +215,26 @@ export function estaProtegidoParaActivar(stackKey, stack, players, actingPlayerI
  * @returns {Array<{ val: string, lbl: string }>} val: 'own:<idx>' | 'central:<idx>'
  */
 export function opcionesActivarHabilidad(playerIdx, players, neutrals) {
+  // La etiqueta de cada opción usa la IDENTIDAD real (top.name), no
+  // mostrarCarta() (que muestra la apariencia) — a propósito, porque la
+  // habilidad que de verdad se activa aquí es la del personaje real (p. ej.
+  // un Metamorfo transformado en Ocultista solo puede volver a
+  // transformarse, no usar la habilidad de Ocultista — ver
+  // docs/reglamento/REGLAMENTO.md, nota de interpretación de Metamorfo), y
+  // etiquetarlo con la apariencia confundiría sobre qué picker se abre al
+  // elegir la opción.
+  const etiqueta = card => `${iconos[card.name] || ''} ${card.name}`;
   const opciones = [];
   players[playerIdx].portals.forEach((stack, idx) => {
     const top = stack.at(-1);
     if (top && top.vis?.public && PERSONAJES_CON_HABILIDAD.includes(top.name)) {
-      opciones.push({ val: `own:${idx}`, lbl: `Tu portal ${idx + 1}: ${mostrarCarta(top)} (gratis)` });
+      opciones.push({ val: `own:${idx}`, lbl: `Tu portal ${idx + 1}: ${etiqueta(top)} (gratis)` });
     }
   });
   neutrals.forEach((stack, idx) => {
     const top = stack.at(-1);
     if (top && top.vis?.public && PERSONAJES_CON_HABILIDAD.includes(top.name)) {
-      opciones.push({ val: `central:${idx}`, lbl: `Neutral ${idx + 1}: ${mostrarCarta(top)} (cuesta 1 Gema)` });
+      opciones.push({ val: `central:${idx}`, lbl: `Neutral ${idx + 1}: ${etiqueta(top)} (cuesta 1 Gema)` });
     }
   });
   return opciones;

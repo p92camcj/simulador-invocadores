@@ -29,6 +29,64 @@
 
 ## Resueltos
 
+### ~~14. Metamorfo transformado se trataba como el personaje real en protecciones/restricciones/bonus~~ (resuelto)
+
+- **Qué era**: `case 'Metamorfo'` (`js/abilities.js`) sobrescribía
+  directamente `stack.at(-1).name = v`, así que a partir de ese momento la
+  carta transformada **era**, a todos los efectos del código, el personaje
+  imitado — no había ningún campo separado que distinguiera "identidad real
+  (Metamorfo)" de "apariencia (el personaje imitado)". Un Metamorfo
+  transformado en Centinela pasaba la comprobación
+  `jugadoraProtegidaPorCentinela()`/`esCentinelaVisible()` y protegía
+  Portales (o bloqueaba a Ocultista) sin ser una Centinela real; un
+  Metamorfo transformado en Pícaro/Maestro habría disparado sus bonus
+  pasivos si esta ronda no lo hubiera corregido antes de que se pudiera
+  observar.
+- **Cómo se resolvió**: se separó identidad de apariencia en el modelo de
+  datos de la carta. `case 'Metamorfo'` ahora escribe `stack.at(-1).aspecto
+  = v` en vez de sobrescribir `.name` — `.name` sigue siendo `'Metamorfo'`
+  siempre. Se auditó cada sitio de `js/abilities.js`/`js/utils.js` que
+  compara `.name` contra un personaje concreto y se decidió caso a caso:
+  - **Sigue mirando `.name`** (identidad real, sin cambios de código):
+    protección de Centinela (`jugadoraProtegidaPorCentinela`,
+    `estaProtegidoParaActivar`), restricción propia de Ocultista
+    (`esCentinelaVisible`), auto-giro de Centinela
+    (`ocultarOtrasCentinelas`), Clarividente (`hasClari`,
+    `actualizarClarividente`), bonus pasivo de Pícaro
+    (`js/actions.js`), qué habilidad ofrece `opcionesActivarHabilidad`
+    (un Metamorfo transformado en Ocultista solo puede volver a
+    transformarse, no usar la habilidad de Ocultista).
+  - **Pasa a mirar `.aspecto || .name`** (apariencia, cambio de código):
+    cumplimiento de la combinación de la invocación y reparto de sus
+    Gemas (`js/actions.js`, función `add()`), el indicador de estado de
+    la invocación en pantalla (`js/render.js`, `invStatus`), y lo que se
+    muestra en cualquier carta (`mostrarCarta()` en `js/utils.js`,
+    `cartaImgHtml()` en `js/render.js`).
+  - **Reescrito con identidad real, ya no reutiliza el `map` de la
+    invocación**: el bonus pasivo de 3 Gemas del Maestro (`js/actions.js`)
+    — un Metamorfo transformado en Maestro cuenta para completar el combo
+    de la invocación, pero no otorga este bonus, que es propio del
+    Maestro real.
+  - `.aspecto` se propaga explícitamente en los dos sitios donde una carta
+    se reconstruye como objeto nuevo (`case 'Cronista'` en
+    `js/abilities.js`, y `jugarCartaSeleccionadaEn()` en `js/actions.js`),
+    para no perderlo silenciosamente si una carta transformada vuelve a
+    una mano y se rejuega.
+- **Verificado manualmente** (sesión de navegador, no solo lectura de
+  código): transformar un Metamorfo en Centinela no lo protege ni bloquea a
+  Ocultista; un Metamorfo transformado cuenta para completar una invocación
+  y reparte su Gema con normalidad; un Metamorfo transformado en Maestro NO
+  recibe el bonus pasivo de 3 Gemas (un Maestro real, en el mismo
+  escenario, sí lo recibe); la etiqueta de "Activar habilidad" para un
+  Metamorfo transformado sigue mostrando "Metamorfo", no el personaje
+  imitado.
+- **Prioridad**: era **Alta**.
+- **Pendiente, fuera de esta corrección**: la representación visual con
+  ficha superpuesta semitransparente (ver `docs/MEJORAS_FUTURAS.md`,
+  "Metamorfo: representación visual de la transformación") — hoy la
+  imagen de la carta muestra directamente `.aspecto` sin ninguna indicación
+  de que es "en realidad" un Metamorfo.
+
 ### ~~12. Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro — dos Centinelas visibles a la vez~~ (resuelto)
 
 - **Qué era**: en `case 'Ocultista'` (`js/abilities.js`), tras alternar
@@ -90,80 +148,9 @@
 
 ## Prioridad Alta
 
-### 14. Metamorfo transformado se trata como el personaje real en protecciones/restricciones/bonus — falta separar identidad de apariencia
-
-> **Nota:** este ítem sigue pendiente. Ver la sección "Resueltos" más arriba
-> para el ítem 12, un bug distinto en el mismo archivo (`js/abilities.js`).
-
-- **Dónde**: `js/abilities.js`, `case 'Metamorfo'` (la mutación en sí,
-  `stack.at(-1).name = v`), y todo sitio que compare `.name` contra un
-  personaje concreto para decidir protección, restricciones o bonus:
-  `jugadoraProtegidaPorCentinela()` / `estaProtegidoParaActivar()`
-  (protección de Centinela), `esCentinelaVisible()` (restricción propia de
-  Ocultista, en `abilities.js`), `ocultarOtrasCentinelas()` (auto-giro de
-  Centinela), y previsiblemente cualquier lógica futura de bonus pasivo de
-  Pícaro/Maestro que dependa del nombre (ver `docs/MEJORAS_FUTURAS.md`,
-  "Maestro: habilidad activa nueva").
-- **Descripción**: `case 'Metamorfo'` sobrescribe directamente
-  `stack.at(-1).name = v`, así que a partir de ese momento la carta
-  transformada **es**, a todos los efectos del código, el personaje
-  imitado — no hay ningún campo separado que distinga "identidad real
-  (Metamorfo)" de "apariencia (el personaje imitado)". Confirmado por el
-  dueño del proyecto como lectura incorrecta de la regla (ver nueva nota
-  de interpretación en `docs/reglamento/REGLAMENTO.md`, sección
-  "Metamorfo"): la transformación es puramente de apariencia a efectos de
-  invocación y **nunca** debe conceder ni provocar ningún efecto activo,
-  pasivo, de protección o de restricción propio del personaje imitado. Con
-  el modelo de datos actual, cualquier comprobación que use `.name` para
-  identidad real trata erróneamente a un Metamorfo transformado como si
-  fuera de verdad ese personaje — por ejemplo, un Metamorfo transformado
-  en Centinela pasaría hoy la comprobación `st.at(-1).name === 'Centinela'
-  && st.at(-1).vis?.public` de `jugadoraProtegidaPorCentinela()` y
-  protegería Portales que no debería proteger; y `esCentinelaVisible()`
-  bloquearía a Ocultista sobre él, cuando el reglamento corregido dice
-  explícitamente que Ocultista SÍ debe poder aplicarse ahí.
-- **Impacto real**: alto — es un bug de reglas confirmado (no una
-  ambigüedad), directamente alcanzable en cuanto alguien transforme un
-  Metamorfo en Centinela, Pícaro o Maestro, que son elecciones normales y
-  nada exóticas del picker de la habilidad.
-- **Corrección propuesta** (no aplicada en esta ronda, solo documentada):
-  separar identidad real de apariencia en el modelo de datos de la carta —
-  mantener `.name === 'Metamorfo'` siempre (nunca sobrescribirlo), y añadir
-  un campo nuevo, p. ej. `.aspecto`, para lo que se muestra y para lo que
-  cuenta a efectos de invocación (cumplimiento de la combinación requerida,
-  reparto de Gemas). Auditar CADA sitio de `abilities.js`/`utils.js` que
-  hoy compara `.name` contra un personaje concreto y decidir, caso a caso,
-  si debe seguir mirando `.name` (identidad real: protección de Centinela,
-  restricción de Ocultista, auto-giro de Centinela) o pasar a mirar
-  `.aspecto` (invocación, reparto de Gemas). No implementar el disfraz
-  visual (ficha superpuesta, ver `docs/MEJORAS_FUTURAS.md`) sin resolver
-  antes este campo separado — ambos van de la mano.
-- **Prioridad**: **Alta** — bug de reglas confirmado por el dueño del
-  proyecto, no una decisión de diseño abierta.
-
-### 12. Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro — dos Centinelas visibles a la vez
-
-- **Dónde**: `js/abilities.js`, `case 'Ocultista'`.
-- **Descripción**: detectado en `docs/AUDITORIA_REGLAS.md` (sección 3.1,
-  con la secuencia de reproducción completa). Resumen: cuando el auto-giro
-  (`ocultarOtrasCentinelas()`, disparado al jugar una segunda Centinela)
-  oculta una Centinela que estaba visible, esa carta queda como Centinela
-  oculta en el top de su Portal. `esCentinelaVisible()` y
-  `estaProtegidoParaActivar()` solo bloquean Centinelas **visibles**, así
-  que Ocultista puede elegir ese Portal y alternarla de vuelta a visible
-  sin que nada vuelva a disparar `ocultarOtrasCentinelas()` — resultado:
-  dos Centinelas visibles a la vez, violando "solo puede haber una
-  Centinela visible en mesa".
-- **Impacto real**: alcanzable en una partida real (Modo normal tiene 4
-  Centinelas en el mazo); rompe la protección de Portales de forma
-  duradera hasta que se juegue una Centinela nueva.
-- **Corrección propuesta**: en `case 'Ocultista'`, tras alternar
-  `carta.vis.public`, si `carta.name === 'Centinela' && carta.vis.public`,
-  llamar también a `ocultarOtrasCentinelas(st, players, neutrals)`.
-- **Prioridad**: **Alta**. Subida de Media a Alta: confirmado por el
-  dueño del proyecto como corrección obligatoria para la próxima ronda de
-  código, regla vigente: solo puede haber una Centinela visible en mesa,
-  la última que se descubrió o jugó.
+Sin ítems abiertos ahora mismo — los ítems 12 y 14 (Ocultista/Centinela,
+identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
+"Resueltos" más arriba.
 
 ---
 

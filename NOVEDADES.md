@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.12.5.54 - 2026-07-21
+
+- Arreglado otro fallo de reglas con el Metamorfo: transformarse en otro
+  personaje ya no da protección de Centinela, ni bloquea a la Ocultista, ni
+  da el bonus de Gemas del Maestro, como si de verdad fuera ese personaje —
+  el Metamorfo transformado sigue contando para completar invocaciones y
+  repartir sus Gemas (eso no cambia), pero ya no puede "hacer trampa"
+  copiando efectos que no le corresponden por ser solo un disfraz.
+
 ## 1.12.4.53 - 2026-07-21
 
 - Arreglado un fallo de reglas: en ciertas situaciones era posible dejar dos

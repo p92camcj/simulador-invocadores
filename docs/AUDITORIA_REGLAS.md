@@ -1,6 +1,6 @@
 # Auditoría de reglas — reglamento vs. código real
 
-> **Última actualización:** 2026-07-21 01:31 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 01:39 (Europe/Madrid)
 >
 > Informe de auditoría, no una tarea de código. Cruza
 > [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) contra el
@@ -328,14 +328,25 @@ esta tarea de auditoría, queda como recomendación.
 **Actualización 2026-07-21**: el mismo `stack.at(-1).name = v` de raíz de
 esta sección resultó tener un problema más amplio y ya confirmado (no una
 ambigüedad abierta): al no separar identidad real de apariencia, un
-Metamorfo transformado también se cuela como el personaje real en
+Metamorfo transformado también se colaba como el personaje real en
 comprobaciones de protección de Centinela, en la restricción propia de
-Ocultista, y previsiblemente en bonus pasivos futuros. Ver la nueva nota
-de interpretación en `docs/reglamento/REGLAMENTO.md` ("Metamorfo") y el
-ítem 14 de `docs/DEUDA_TECNICA.md` para el detalle completo — se deja como
-entrada separada en la tabla resumen (sección 6) en vez de fusionarla con
-esta, porque son dos hallazgos distintos aunque compartan la misma causa
-de código.
+Ocultista, y en el bonus pasivo del Maestro. Ver la nota de interpretación
+en `docs/reglamento/REGLAMENTO.md` ("Metamorfo") y el ítem 14 de
+`docs/DEUDA_TECNICA.md` (ahora en "Resueltos") para el detalle completo.
+
+**Actualización 2026-07-21 (2) — resuelto**: `case 'Metamorfo'`
+(`js/abilities.js`) ya no sobrescribe `.name`; escribe `.aspecto` en su
+lugar. `.name` sigue siendo `'Metamorfo'` siempre (identidad real, usada
+por protección de Centinela, restricción de Ocultista, bonus pasivos);
+`.aspecto` cuenta para completar la invocación, repartir sus Gemas y para
+lo que se muestra en pantalla. La ambigüedad de esta sección (qué pasa si
+la carta transformada sale del sistema de Portales, p. ej. vía Cronista) se
+resolvió en el sentido más conservador: `.aspecto` se propaga junto con
+`.name` en cualquier sitio donde el código reconstruye el objeto-carta
+(`case 'Cronista'`, `jugarCartaSeleccionadaEn()` en `js/actions.js`), así
+que la transformación sigue sin revertirse nunca automáticamente — mismo
+comportamiento de fondo que antes, solo que ahora modelado con el campo
+correcto.
 
 ### 3.6 Clarividente (mano oculta al resto) + intercambio de Aprendiz (verificado, sin hueco)
 
@@ -440,7 +451,8 @@ la sección 1.
 | Auto-giro al aparecer una 2ª Centinela (Fase A) | ✅ Implementado | — |
 | Ocultista puede revelar una Centinela oculta sin re-disparar el auto-giro (bug, sección 3.1) | ✅ Corregido | — |
 | Metamorfo: transformación libre y persistente | ✅ Implementado | — |
-| **Metamorfo: apariencia sin efectos + disfraz visual** (bug de reglas, no solo cosmético — ver [`DEUDA_TECNICA.md` ítem 14](DEUDA_TECNICA.md) y [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md), "Metamorfo: representación visual de la transformación") | ❌ Pendiente | **Alta** |
+| Metamorfo: apariencia separada de identidad real (protección/restricción/bonus no siguen al disfraz) | ✅ Corregido | — |
+| Metamorfo: disfraz visual con ficha superpuesta semitransparente (solo cosmético, ver [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md)) | ❌ Pendiente | Baja |
 | Clarividente: mano completa oculta al resto | ✅ Implementado (decisión de mesa) | — |
 | **Clarividente: corte inmediato + elección activa al perder visibilidad (dos bugs confirmados, ver [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md), "Clarividente: dos bugs reales confirmados tras probar la partida")** | 🔴 Bug | **Media** |
 | Cronomante: reintento tras cancelar, mismo Portal | ✅ Implementado | — |

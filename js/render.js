@@ -149,9 +149,11 @@ export function pickerPortal(title, opciones, cb, onCancel) {
  */
 function portalCardHtml(stack, label, destKeyJugar, keyObjetivo) {
   const topCard = stack.at(-1);
+  // aspecto || name (ítem 14 de DEUDA_TECNICA.md): la imagen sigue la
+  // apariencia (disfraz del Metamorfo), nunca la identidad real.
   const body = stack.length === 0
     ? '<div class="card-empty">Vacío</div>'
-    : cartaImgHtml(topCard.name, topCard.vis?.public === true);
+    : cartaImgHtml(topCard.aspecto || topCard.name, topCard.vis?.public === true);
 
   const objetivo = window.pickerObjetivoPortal;
   if (objetivo) {
@@ -255,7 +257,7 @@ function renderBoardGrid(players, neutrals) {
           <div class="card${selectedClass}" draggable="true"
             onclick="window.selectHandCard(${idx})"
             ondragstart="window.handleCardDragStart(event, ${idx})">
-            ${cartaImgHtml(c.name, visible)}
+            ${cartaImgHtml(c.aspecto || c.name, visible)}
           </div>`;
       });
     } else {
@@ -267,7 +269,7 @@ function renderBoardGrid(players, neutrals) {
       const manoOcultaPorClarividente = p.hasClariActivo || p.haTenidoClarividente;
       p.hand.forEach(h => {
         const visible = manoOcultaPorClarividente ? false : h.vis?.others === true;
-        html += `<div class="card">${cartaImgHtml(h.name, visible)}</div>`;
+        html += `<div class="card">${cartaImgHtml(h.aspecto || h.name, visible)}</div>`;
       });
     }
     html += '</div>';
@@ -316,11 +318,22 @@ export function render(players, neutrals, levelIdx) {
   lblInv.textContent = `${lvl} — ${invocacion.nombre}`;
   const cnt = {};
   need.forEach(n => cnt[n] = 0);
+  // aspecto || name (ítem 14 de DEUDA_TECNICA.md): este recuento debe
+  // reflejar exactamente lo mismo que la comprobación real de invocación en
+  // actions.js, que también cuenta por apariencia — si no, este indicador
+  // podría mostrar "falta" un personaje que un Metamorfo transformado ya
+  // está cumpliendo de verdad.
   players.forEach(p => p.portals.forEach(stack => {
-    if (stack.length && stack.at(-1).vis?.public && cnt[stack.at(-1).name] !== undefined) cnt[stack.at(-1).name]++;
+    if (stack.length && stack.at(-1).vis?.public) {
+      const nombre = stack.at(-1).aspecto || stack.at(-1).name;
+      if (cnt[nombre] !== undefined) cnt[nombre]++;
+    }
   }));
   neutrals.forEach(stack => {
-    if (stack.length && stack.at(-1).vis?.public && cnt[stack.at(-1).name] !== undefined) cnt[stack.at(-1).name]++;
+    if (stack.length && stack.at(-1).vis?.public) {
+      const nombre = stack.at(-1).aspecto || stack.at(-1).name;
+      if (cnt[nombre] !== undefined) cnt[nombre]++;
+    }
   });
   invStatus.innerHTML = need.map(n => {
     const cls = cnt[n] === 0 ? 'missing' : cnt[n] === 1 ? 'present' : 'duplicate';

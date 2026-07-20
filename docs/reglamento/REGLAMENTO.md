@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-21 01:14 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 01:45 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -406,10 +406,12 @@ coste.
 > Si en el futuro se decide que algún efecto pasivo o de protección SÍ debe
 > seguir a la apariencia en vez de a la identidad real, esto debe
 > corregirse aquí explícitamente antes de implementarlo — hoy la regla es
-> "ninguno". Ver `docs/DEUDA_TECNICA.md` para el bug de código que hoy
-> incumple esta regla (`stack.at(-1).name = v` sobrescribe la identidad
-> real, no solo la apariencia) y `docs/MEJORAS_FUTURAS.md` para la
-> representación visual pendiente (ficha superpuesta con transparencia).
+> "ninguno". **Corrección 2026-07-21:** el simulador ya separa identidad
+> real (`.name`, nunca sobrescrito) de apariencia (`.aspecto`) en el modelo
+> de datos de la carta — ver `docs/DEUDA_TECNICA.md` ítem 14 (resuelto) para
+> el detalle de qué comprobación mira cada campo. Sigue pendiente, aparte,
+> la representación visual (ficha superpuesta con transparencia), ver
+> `docs/MEJORAS_FUTURAS.md`.
 
 ![Habilidades: Entusiasta y final de partida](img/12-habilidades-entusiasta-final-partida.jpg)
 

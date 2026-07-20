@@ -50,7 +50,11 @@ export function initActions(players, neutrals) {
       : tp === 'n'
         ? neutrals[+a]
         : players[+a].portals[+b];
-    stack.push({ name: card.name, vis: generarVis('portal', {}) });
+    // Se propaga `.aspecto` (ítem 14 de DEUDA_TECNICA.md) por si esta carta
+    // ya era un Metamorfo transformado que había vuelto a la mano (p. ej.
+    // vía Cronista) — de lo contrario se perdería la apariencia al
+    // reconstruir el objeto para el nuevo Portal.
+    stack.push({ name: card.name, aspecto: card.aspecto, vis: generarVis('portal', {}) });
     // Efecto pasivo/automático de Centinela (REGLAMENTO.md: "solo puede
     // haber una Centinela visible en mesa"), no requiere Fase B.
     if (card.name === 'Centinela') {
@@ -289,7 +293,11 @@ export function initActions(players, neutrals) {
       const map = new Map();
       const add = (idx, s) => {
         if (s.length && s.at(-1).vis?.public) {
-          const nombre = s.at(-1).name;
+          // Apariencia, no identidad (ítem 14 de DEUDA_TECNICA.md): un
+          // Metamorfo transformado cuenta como el personaje imitado a
+          // efectos de cumplir la combinación de la invocación y repartir
+          // sus Gemas (REGLAMENTO.md, "Metamorfo").
+          const nombre = s.at(-1).aspecto || s.at(-1).name;
           if (need.includes(nombre)) {
             if (!map.has(nombre)) map.set(nombre, []);
             map.get(nombre).push(idx);
@@ -331,9 +339,29 @@ export function initActions(players, neutrals) {
         const hayPicaroVisible = allPortals.some(
           st => st.length && st.at(-1).name === 'Pícaro' && st.at(-1).vis?.public
         );
-        if (need.includes('Maestro') && map.get('Maestro')?.length === 1 && map.get('Maestro')[0] !== null && !hayPicaroVisible) {
-          const beneficiario = players[map.get('Maestro')[0]];
-          beneficiario.gems.push({ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' });
+        // Identidad real, no apariencia (ítem 14 de DEUDA_TECNICA.md): un
+        // Metamorfo transformado en Maestro cuenta para completar el combo
+        // de la invocación (map, arriba, usa .aspecto para eso) pero NO
+        // otorga este bonus pasivo, que es propio del Maestro real — por
+        // eso aquí no se reutiliza `map` (indexado por apariencia), se
+        // recorren los Portales buscando `.name === 'Maestro'` directamente.
+        let maestroOwnerIdx = null;
+        let maestrosRealesVisibles = 0;
+        players.forEach((player, playerIdx) => {
+          player.portals.forEach(st => {
+            if (st.length && st.at(-1).vis?.public && st.at(-1).name === 'Maestro') {
+              maestrosRealesVisibles++;
+              maestroOwnerIdx = playerIdx;
+            }
+          });
+        });
+        neutrals.forEach(st => {
+          if (st.length && st.at(-1).vis?.public && st.at(-1).name === 'Maestro') {
+            maestrosRealesVisibles++;
+          }
+        });
+        if (need.includes('Maestro') && maestrosRealesVisibles === 1 && maestroOwnerIdx !== null && !hayPicaroVisible) {
+          players[maestroOwnerIdx].gems.push({ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' });
         }
         alert(`Invocación ${lvl} (${invocacion.nombre}) completa`);
 

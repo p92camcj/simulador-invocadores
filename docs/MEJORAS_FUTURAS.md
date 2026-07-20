@@ -129,23 +129,25 @@ el Metamorfo está en un Portal central, se suma al coste normal de activar
 un Portal central (2 Gemas en total, ver `docs/reglamento/REGLAMENTO.md`) —
 eso ya funciona.
 
-Lo que sigue pendiente, y que ahora depende directamente de resolver
-primero el ítem 14 de `docs/DEUDA_TECNICA.md` (identidad real vs.
-apariencia del Metamorfo — no tiene sentido construir el disfraz visual
-sobre un modelo de datos donde `.name` todavía confunde ambas cosas), es
-puramente la representación visual: hoy `stack.at(-1).name = v` sobrescribe
-el nombre sin dejar ningún rastro en la UI de que la carta "es en
-realidad" un Metamorfo. **Solución de diseño concreta pedida por el dueño
+**Actualización 2026-07-21**: el ítem 14 de `docs/DEUDA_TECNICA.md`
+(identidad real vs. apariencia del Metamorfo) ya está resuelto — existe un
+campo `.aspecto` separado de `.name`, y `cartaImgHtml()`/`portalCardHtml()`
+(`js/render.js`) ya resuelven la imagen a partir de `card.aspecto ||
+card.name`, así que un Metamorfo transformado ya muestra la imagen del
+personaje imitado (`.name` se mantiene siempre en `'Metamorfo'` para
+protección/restricciones/bonus, ver `CLAUDE.md`). Lo que sigue pendiente es
+puramente el matiz visual: hoy no queda ningún rastro en la UI de que esa
+carta "es en realidad" un Metamorfo — se ve exactamente igual que el
+personaje imitado real. **Solución de diseño concreta pedida por el dueño
 del proyecto**: superponer la imagen/icono del personaje imitado sobre la
 carta del Metamorfo, pero con transparencia/opacidad reducida, de forma
 que a través de ella se siga viendo que la carta base es un Metamorfo — no
 ocultar del todo su identidad visual real (a diferencia de, por ejemplo,
-una ficha opaca que tapase por completo el arte original). Esto encaja de
-forma natural una vez exista el campo `.aspecto` separado de `.name` (ítem
-14 de `DEUDA_TECNICA.md`): `cartaImgHtml()`/`portalCardHtml()`
-(`js/render.js`) pintarían la imagen base de Metamorfo (`.name`) con la
-imagen de `.aspecto` superpuesta a media opacidad encima, en vez de
-resolver una sola imagen a partir de un nombre ya sobrescrito.
+una ficha opaca que tapase por completo el arte original). Ya no está
+bloqueada por nada: solo hace falta cambiar `cartaImgHtml()`/
+`portalCardHtml()` para pintar la imagen base de Metamorfo con la imagen de
+`.aspecto` superpuesta a media opacidad encima, en vez de resolver una sola
+imagen a partir de `.aspecto || .name`.
 
 ### Clarividente: dos bugs reales confirmados tras probar la partida
 

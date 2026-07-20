@@ -128,7 +128,10 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           visible,
           esPropietaria: true
         });
-        owner.hand.push({ name: carta.name, vis });
+        // Se propaga `.aspecto` si la carta era un Metamorfo transformado
+        // (ítem 14 de DEUDA_TECNICA.md) — de lo contrario se perdería la
+        // apariencia silenciosamente al reconstruir el objeto para la mano.
+        owner.hand.push({ name: carta.name, aspecto: carta.aspecto, vis });
         onComplete();
       });
       break;
@@ -306,7 +309,20 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           // Metamorfo). Si no se puede pagar, no ha pasado nada: no se llama
           // a onComplete, así que tampoco se cobra el coste de Portal central.
           if (!gastarGemaUnitaria(owner)) return;
-          stack.at(-1).name = v;
+          // DEUDA_TECNICA.md ítem 14: la transformación es SOLO apariencia.
+          // `.name` NUNCA se sobrescribe — sigue siendo 'Metamorfo' siempre,
+          // para que protección de Centinela, restricción de Ocultista,
+          // auto-giro de Centinela y bonus pasivos (Pícaro/Maestro), que
+          // comprueban `.name`, sigan viendo la identidad real y no se
+          // dejen engañar por el disfraz. `.aspecto` es lo nuevo: cuenta
+          // para cumplir la combinación de la invocación y el reparto de
+          // sus Gemas (js/actions.js), y es lo que se muestra en pantalla
+          // (mostrarCarta/cartaImgHtml) — igual que ya decía el reglamento
+          // ("cuenta como dicho personaje a todos los efectos de la
+          // invocación... pero esta transformación no le permite ejecutar
+          // la habilidad del personaje imitado" ni ningún otro efecto
+          // pasivo/de protección suyo).
+          stack.at(-1).aspecto = v;
           onComplete();
         }
       );

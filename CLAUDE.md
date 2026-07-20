@@ -72,11 +72,30 @@ the version that shipped this):
   what's still in the deck. The transformation was already persistent in
   practice (nothing in the codebase ever reverted `stack.at(-1).name` back),
   it just hadn't been exercised because the old restriction made most
-  transformations unreachable. What's still missing from the 2026-07-19
-  rulebook revision is purely visual: the rulebook calls for an overlay
-  token with the imitated character's face, but `stack.at(-1).name = v`
-  just overwrites the name with no indication anywhere that the card is
-  "really" a Metamorfo underneath.
+  transformations unreachable.
+- **Fixed 2026-07-21 (DEUDA_TECNICA.md item 14)**: the transformation used
+  to overwrite `stack.at(-1).name = v` directly, so a transformed Metamorfo
+  was treated as the real imitated character everywhere `.name` was
+  compared — including Centinela protection, Ocultista's own restriction,
+  and passive bonuses, none of which the rulebook's interpretation note
+  allows apparence to trigger. Card objects now carry two separate fields:
+  `.name` (real identity, never overwritten — stays `'Metamorfo'` forever)
+  and `.aspecto` (the imitated character, set by `case 'Metamorfo'`).
+  Protection/restriction/passive-bonus checks (`jugadoraProtegidaPorCentinela`,
+  `estaProtegidoParaActivar`, `esCentinelaVisible`, `ocultarOtrasCentinelas`,
+  Clarividente, Pícaro's bonus, the Maestro bonus rewritten in `actions.js`
+  to scan for a real `.name === 'Maestro'` instead of reusing the
+  aspecto-based invocation `map`) all read `.name`. Invocation-combo
+  fulfillment/Gem distribution (`actions.js`) and everything rendered on
+  screen (`mostrarCarta()` in `utils.js`, `cartaImgHtml()` calls in
+  `render.js`) read `card.aspecto || card.name` instead — a transformed
+  Metamorfo's card art already shows the imitated character (it just
+  doesn't have the "psst, it's really a Metamorfo" overlay badge yet, see
+  `docs/MEJORAS_FUTURAS.md`). The one deliberate exception:
+  `opcionesActivarHabilidad()` (`utils.js`) labels the Fase-B ability menu
+  with real identity, not appearance — clicking that option always
+  triggers Metamorfo's own re-transform ability, never the imitated
+  character's, so the label has to say so.
 - Modo Experto's 4th invocation ("Asterisco"/Madain, 4 characters incl.
   Metamorfo + all 3 Animales) is defined as `INVOCATION_ASTERISCO` in
   `utils.js` but deliberately **not** wired into any real game flow yet.

@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.12.5.54] - 2026-07-21
+
+### Corregido
+- **El Metamorfo transformado ya no engaña a las protecciones, restricciones ni bonus pasivos (`DEUDA_TECNICA.md` ítem 14)**: `case 'Metamorfo'` (`js/abilities.js`) sobrescribía directamente `stack.at(-1).name = v`, así que a partir de ahí la carta transformada era, a todos los efectos del código, el personaje imitado — un Metamorfo transformado en Centinela protegía Portales y bloqueaba a Ocultista como si fuera una Centinela real, y transformarse en Maestro habría disparado su bonus pasivo. Se separó identidad de apariencia: la carta ahora tiene `.name` (identidad real, nunca sobrescrito — sigue siendo `'Metamorfo'` siempre) y `.aspecto` (el personaje imitado). Protección de Centinela, restricción de Ocultista, auto-giro de Centinela, Clarividente y los bonus pasivos de Pícaro/Maestro (`js/actions.js`, este último reescrito para buscar un Maestro real en vez de reutilizar el mapa de la invocación) siguen mirando `.name`; el cumplimiento de la combinación de la invocación, el reparto de sus Gemas y todo lo que se muestra en pantalla (`mostrarCarta()`, `cartaImgHtml()`) pasan a mirar `card.aspecto || card.name`. La única excepción a propósito: la etiqueta del menú de "Activar habilidad" sigue mostrando la identidad real, porque activarla siempre dispara la habilidad de Metamorfo (volver a transformarse), nunca la del personaje imitado. Verificado manualmente contra el código real (navegador): protección/restricción/bonus ya no siguen al disfraz, invocación y Gemas sí.
+
+---
+
 ## [1.12.4.53] - 2026-07-21
 
 ### Corregido
