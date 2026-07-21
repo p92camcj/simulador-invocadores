@@ -29,6 +29,24 @@
 
 ## Resueltos
 
+### ~~7. `switch` de `applyAbility()` sin bloques `{}` por `case`~~ (resuelto de rebote)
+
+- **Qué era**: los `case` del `switch` de `applyAbility()` (`js/abilities.js`)
+  declaraban `const`/`let` sin envolver cada `case` en `{ }`, compartiendo
+  todos el mismo bloque léxico del `switch` — patrón frágil ante colisión
+  de nombres entre `case`s futuros.
+- **Verificado 2026-07-21 (sesión de deuda técnica)**: al releer
+  `js/abilities.js` completo para esta sesión, los 6 `case` con
+  declaraciones (`Ocultista`, `Cronista`, `Cronomante`, `Estratega`,
+  `Aprendiz`, `Metamorfo`) ya envuelven su cuerpo en `{ }` — confirmado con
+  grep, sin ninguna excepción. No hay commit específico que documente este
+  cambio como corrección de este ítem; se resolvió como efecto colateral
+  de alguna de las ediciones de `abilities.js` de rondas anteriores (los
+  `case` reescritos para los ítems 12/14 ya se escribieron con bloque desde
+  el principio). No fue necesario ningún cambio de código en esta sesión,
+  solo actualizar este documento.
+- **Prioridad**: era **Baja**.
+
 ### ~~5. Nombres de jugadora sin escapar insertados vía `innerHTML`~~ (resuelto)
 
 - **Qué era**: el nombre de cada jugadora se toma de un `<input>` sin
@@ -343,22 +361,6 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 ---
 
 ## Prioridad Baja
-
-### 7. `switch` de `applyAbility()` sin bloques `{}` por `case`
-
-- **Dónde**: `js/abilities.js`, función `applyAbility()`.
-- **Descripción**: los `case` del `switch` declaran `const`/`let` (p. ej.
-  `const opciones`, `const opcionesCronista`, `const need`) sin envolver
-  cada `case` en `{ }`, así que todas comparten el mismo bloque léxico del
-  `switch`. Hoy no hay colisión de nombres entre los distintos `case`, pero
-  es un patrón frágil: añadir un `case` nuevo que reutilice un nombre ya
-  usado en otro (p. ej. otro `const need`) sería un `SyntaxError` de
-  redeclaración, y el error señalado por el motor no siempre es obvio a
-  primera vista.
-- **Impacto real**: ninguno hoy; friccción futura al añadir personajes
-  nuevos (Entusiasta, Animales — ver `MEJORAS_FUTURAS.md`).
-- **Corrección propuesta**: envolver cada `case` en `{ }`.
-- **Prioridad**: **Baja**.
 
 ### 8. Nombres de personaje como strings mágicos repetidos sin roster centralizado (parcialmente mitigado)
 
