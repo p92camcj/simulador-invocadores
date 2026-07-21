@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.5.60] - 2026-07-21
+
+### Cambiado
+- **Estética del desglose de Gemas: círculos de color en vez de texto plano**: `js/render.js` sustituye `desgloseGemasPropio()`/`desgloseGemasAjeno()` (texto tipo "C×2, B×1, unitaria×3") por una única función `gemDotsHtml(gems, {mostrarValorReal})`, que agrupa por nivel y pinta un `<span class="gem-dot gem-dot--X">` (círculo CSS, sin icono cargado) seguido del recuento — mapeo de colores fijo según las reglas del juego: azul = Gemas unitarias de valor 1, amarillo = primera invocación completada (nivel C), rojo = siguiente invocación (nivel B), morado = última invocación (nivel A). Para la jugadora activa (`mostrarValorReal: true`) se añade entre paréntesis la suma de los valores reales de cada grupo, junto al total ya existente (`sumaGemas`); para el resto, solo el recuento por nivel, sin ningún valor real — misma regla de no fuga de información que ya existía. Nuevas clases en `style.css` (`.gem-breakdown`, `.gem-dot`, `.gem-dot--unitaria`/`--c`/`--b`/`--a`), con `flex-wrap` para seguir cabiendo bien en el grid de columnas por jugadora en móvil. Verificado manualmente con Gemas de varios niveles para la jugadora activa y para otra jugadora, y que no aparece scroll horizontal añadido en un viewport de 380px.
+
+---
+
 ## [1.13.4.59] - 2026-07-21
 
 ### Corregido

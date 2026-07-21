@@ -1,5 +1,5 @@
 // render.js
-import { mostrarCarta, sumaGemas, contarGemasPorNivel, cardImages, CARTA_OCULTA_IMG } from './utils.js';
+import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG } from './utils.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 
 /**
@@ -100,35 +100,45 @@ function cartaImgHtml(name, visible) {
   return `<img src="${src}" alt="${alt}" class="card-img">`;
 }
 
-/**
- * Desglose completo (valor real de cada Gema) para la jugadora activa —
- * es la única que puede verlo, ver REGLAMENTO.md sobre secreto de Gemas.
- */
-function desgloseGemasPropio(gems) {
-  if (!gems.length) return 'sin Gemas';
-  const grupos = new Map();
-  gems.forEach(g => {
-    const key = `${g.nivel}:${g.valor}`;
-    grupos.set(key, (grupos.get(key) || 0) + 1);
-  });
-  return [...grupos.entries()]
-    .map(([key, n]) => {
-      const [nivel, valor] = key.split(':');
-      return `${nivel}×${n} (v.${valor} c/u)`;
-    })
-    .join(', ');
-}
+// Tarea 5: círculos de color en vez de texto plano por nivel/color de
+// invocación (mapeo de colores según las reglas del juego, ver
+// REGLAMENTO.md — azul: Gemas unitarias de valor 1; amarillo: primera
+// invocación completada (nivel C); rojo: siguiente invocación (nivel B);
+// morado: última invocación (nivel A)). Orden fijo, de menor a mayor
+// valor, para que la misma posición signifique siempre lo mismo de un
+// vistazo a otro. TODO si el futuro Modo Experto conecta
+// `INVOCATION_ASTERISCO` (`utils.js`) a algún flujo real: haría falta un
+// quinto nivel/color aquí — no implementado ahora porque hoy no hay
+// ninguna Gema real de nivel 'experto' en juego (ver CLAUDE.md).
+const NIVEL_ORDEN_GEMAS = ['unitaria', 'C', 'B', 'A'];
+const NIVEL_CLASE_GEMA = { unitaria: 'gem-dot--unitaria', C: 'gem-dot--c', B: 'gem-dot--b', A: 'gem-dot--a' };
 
 /**
- * Recuento por nivel sin valores reales — para el resto de jugadoras, que
- * no deben poder ver los puntos exactos de las demás (fuga de información,
- * ver REGLAMENTO.md sobre secreto de Gemas).
+ * Círculos de color con el recuento de Gemas por nivel. Para la jugadora
+ * activa (`mostrarValorReal: true`) añade entre paréntesis la suma de los
+ * valores reales de ese grupo — el resto de jugadoras solo ven el
+ * recuento por nivel, nunca valores reales (fuga de información, ver
+ * REGLAMENTO.md sobre secreto de Gemas) — igual que ya hacía
+ * `desgloseGemasPropio()`/`desgloseGemasAjeno()`, ahora unificadas en esta
+ * única función.
  */
-function desgloseGemasAjeno(gems) {
-  const cnt = contarGemasPorNivel(gems);
-  const entries = Object.entries(cnt);
-  if (!entries.length) return 'sin Gemas';
-  return entries.map(([nivel, n]) => `${nivel}×${n}`).join(', ');
+function gemDotsHtml(gems, { mostrarValorReal }) {
+  if (!gems.length) return 'sin Gemas';
+  const porNivel = new Map();
+  gems.forEach(g => {
+    const entry = porNivel.get(g.nivel) || { count: 0, suma: 0 };
+    entry.count++;
+    entry.suma += g.valor || 0;
+    porNivel.set(g.nivel, entry);
+  });
+  return NIVEL_ORDEN_GEMAS
+    .filter(nivel => porNivel.has(nivel))
+    .map(nivel => {
+      const { count, suma } = porNivel.get(nivel);
+      const valorTxt = mostrarValorReal ? ` (${suma})` : '';
+      return `<span class="gem-dot ${NIVEL_CLASE_GEMA[nivel]}" title="Gemas de nivel ${nivel}"></span>×${count}${valorTxt}`;
+    })
+    .join(' ');
 }
 
 /**
@@ -340,9 +350,9 @@ function renderBoardGrid(players, neutrals) {
     html += `<div class="board-col section ${colorClass} ${turnoClass}">`;
 
     const gemasTxt = esHumanaActiva
-      ? `G ${sumaGemas(p.gems)} total — ${desgloseGemasPropio(p.gems)}`
-      : desgloseGemasAjeno(p.gems);
-    html += `<h4>${p.name}${p.tipo === 'auto' ? ' 🤖' : ''} (${gemasTxt})</h4>`;
+      ? `G ${sumaGemas(p.gems)} total — ${gemDotsHtml(p.gems, { mostrarValorReal: true })}`
+      : gemDotsHtml(p.gems, { mostrarValorReal: false });
+    html += `<h4>${p.name}${p.tipo === 'auto' ? ' 🤖' : ''} <span class="gem-breakdown">(${gemasTxt})</span></h4>`;
 
     html += '<div class="board-portals">';
     p.portals.forEach((stack, j) => {

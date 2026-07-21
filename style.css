@@ -300,6 +300,43 @@ select {
 .board-col h4 {
   margin: 0 0 6px;
 }
+/* Tarea 5: círculos de color por nivel/color de invocación en vez de
+   texto plano (ver gemDotsHtml() en render.js). Mapeo de colores fijo
+   según las reglas del juego: azul = Gemas unitarias de valor 1, amarillo
+   = primera invocación completada (nivel C), rojo = siguiente invocación
+   (nivel B), morado = última invocación (nivel A). El borde oscuro es
+   para que el círculo siga siendo visible sobre cualquier color de fondo
+   de columna (`.player-yellow`, etc.). */
+.gem-breakdown {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  font-size: 0.85rem;
+  font-weight: normal;
+  vertical-align: middle;
+}
+.gem-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  margin-right: 2px;
+  vertical-align: middle;
+}
+.gem-dot--unitaria {
+  background-color: #2196f3;
+}
+.gem-dot--c {
+  background-color: #fbc02d;
+}
+.gem-dot--b {
+  background-color: #e53935;
+}
+.gem-dot--a {
+  background-color: #8e24aa;
+}
 .board-portals .card {
   margin: 4px auto;
 }

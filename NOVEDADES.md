@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.5.60 - 2026-07-21
+
+- **Las Gemas ahora se muestran con círculos de color** en vez de texto:
+  azul para las unitarias, amarillo para las de la primera invocación,
+  rojo para la segunda y morado para la última. Para ti (la jugadora
+  activa) se sigue mostrando también el valor real de cada grupo entre
+  paréntesis; para el resto, solo se ve cuántas tiene de cada color, como
+  hasta ahora.
+
 ## 1.13.4.59 - 2026-07-21
 
 - **Arreglado que la app pudiera quedarse "atascada" en una versión
