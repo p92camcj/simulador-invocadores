@@ -350,6 +350,11 @@ export function initActions(players, neutrals) {
         }
         alert(`Invocación ${lvl} (${invocacion.nombre}) completa`);
 
+        // Orden REAL de invocaciones completadas en esta partida —
+        // necesario para el desempate del marcador final (ver
+        // calcularResultadoFinal() en utils.js, y game.js/finalizarPartida).
+        window.invocacionesCompletadas.push(lvl);
+
         neutrals.push([]);
         window.levelIdx++;
         const esUltimaInvocacion = window.levelIdx >= window.LEVELS.length;

@@ -273,17 +273,16 @@ en qué punto exacto del turno, qué acción concreta lo dispara) antes de
 poder señalar una línea de código concreta — no asumir que es el mismo
 mecanismo que el bug (a) sin verificarlo primero.
 
-### Marcador final y desempate
+### ~~Marcador final y desempate~~ (resuelto 2026-07-21 — cálculo, sin pantalla dedicada)
 
-No existe ninguna pantalla de resultados ni lógica de desempate al acabar
-la partida — `finalizarPartida()` (`js/game.js`) hoy solo pregunta si se
-quiere jugar otra vez, sin mostrar gemas finales por jugadora ni resolver
-empates según las reglas. **Prioridad Alta** (bloquea la variante 2vs2 de
-abajo y es literalmente cómo se decide quién gana la partida) — ver
-`docs/AUDITORIA_REGLAS.md`, sección 4, para el detalle de qué falta
-exactamente y una estimación de tamaño (M: el cálculo en sí es sencillo
-con los datos ya existentes en `player.gems`, la pieza grande es sustituir
-`alert()`/`confirm()` por una pantalla de resultados real).
+`finalizarPartida()` (`js/game.js`) ya muestra el recuento final de Gemas
+por jugadora y resuelve el ganador (o empate) con la cadena de desempate
+completa del reglamento — `calcularResultadoFinal()`, nueva en
+`js/utils.js`, función pura y testada (`tests/run-tests.mjs`). Sigue
+usando `alert()`/`confirm()` como el resto de la app (ver `DEUDA_TECNICA.md`
+ítem 10) en vez de una pantalla de resultados dedicada — eso queda como
+mejora de UX pendiente, ver "Sustituir `alert()`/`confirm()`..." más abajo.
+Detalle completo en `docs/AUDITORIA_REGLAS.md`, sección 4.
 
 ### Modos Introductorio, Avanzado y Experto
 
@@ -311,9 +310,13 @@ Falta la variante de equipos 2vs2 descrita en el reglamento. Más pequeña
 de lo que parece (tamaño S–M, ver `docs/AUDITORIA_REGLAS.md` sección 1.4):
 el reglamento no cambia el orden de turnos (lo resuelve la disposición
 física en la mesa), así que solo hace falta etiquetar jugadoras por
-equipo en la configuración y sumar Gemas por equipo en el marcador final
-— por eso está bloqueada por el bloque anterior (no hay marcador del que
-sumar).
+equipo en la configuración y sumar Gemas por equipo en el marcador final.
+**Actualización 2026-07-21**: el marcador final individual ya existe
+(`calcularResultadoFinal()`, `js/utils.js`, ver el bloque anterior) — esta
+variante sigue bloqueada, pero ahora específicamente porque esa función
+suma y desempata por JUGADORA, no por equipo; haría falta una variante
+(o un parámetro de agrupación) que sume `sumaGemas()` por equipo antes de
+aplicar la misma cadena de desempate, no partir de cero.
 
 ---
 

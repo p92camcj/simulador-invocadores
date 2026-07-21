@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.16.0.75 - 2026-07-21
+
+- **¡Ya hay marcador final!** Al terminar la partida (se complete la
+  última invocación o alguien se quede sin cartas), ahora se muestra
+  cuántas Gemas tiene cada jugadora y quién ha ganado. Si hay empate en la
+  suma total, se decide igual que en el reglamento físico: primero por
+  quién ha participado en más invocaciones distintas, luego por la Gema
+  de mayor valor de la última invocación conseguida, y así hacia atrás si
+  hace falta; si el empate se mantiene del todo, se comparte la victoria.
+
 ## 1.15.1.74 - 2026-07-21
 
 - **Mensajes de los autómatas corregidos**: cuando un autómata jugaba una

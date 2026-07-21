@@ -421,6 +421,86 @@ export function construirPoolGemas(valores) {
 
 
 /**
+ * Clasificación final de la partida (REGLAMENTO.md, "Final de la
+ * partida"): mayor suma total de Gemas gana; en caso de empate, quien haya
+ * participado en más invocaciones DISTINTAS (nº de niveles de `LEVELS`
+ * presentes en `player.gems` — las Gemas unitarias sueltas de Pícaro/
+ * Maestro, `nivel: 'unitaria'`, no cuentan como invocación, a propósito:
+ * `nivel` solo vale 'C'/'B'/'A' para las Gemas repartidas por completar una
+ * invocación real); si persiste, la Gema de mayor valor de la ÚLTIMA
+ * invocación completada en esta partida (0 si ninguna); si persiste, se
+ * repite con la invocación completada inmediatamente anterior, y así hacia
+ * atrás; si el empate se mantiene tras agotar todas las invocaciones
+ * completadas, victoria compartida.
+ *
+ * `invocacionesCompletadas` es el orden REAL en que se completaron en ESTA
+ * partida (`window.invocacionesCompletadas`, ver `js/actions.js`) — no se
+ * puede asumir que siempre fue C→B→A completo, la partida puede terminar
+ * antes por mano vacía.
+ *
+ * Función pura (sin DOM/alert) para que sea testable directamente — ver
+ * `tests/run-tests.mjs`. Devuelve `{ stats, ganadores, motivoDesempate }`:
+ * `stats` ya viene ordenado de mejor a peor puesto; `ganadores` es el/los
+ * jugadoras empatadas en el primer puesto; `motivoDesempate` es `null` si
+ * la suma total ya decidió sin empate, o el nombre del criterio que
+ * finalmente desempató (o "empate total" si ninguno lo consiguió).
+ */
+export function calcularResultadoFinal(players, invocacionesCompletadas = []) {
+  const nivelesDesdeElMasReciente = [...invocacionesCompletadas].reverse();
+
+  const stats = players.map((p, idx) => {
+    const gemasPorNivelReal = {};
+    p.gems.forEach(g => {
+      if (!LEVELS.includes(g.nivel)) return;
+      gemasPorNivelReal[g.nivel] = Math.max(gemasPorNivelReal[g.nivel] || 0, g.valor || 0);
+    });
+    return {
+      idx,
+      nombre: p.name,
+      total: sumaGemas(p.gems),
+      numInvocaciones: Object.keys(gemasPorNivelReal).length,
+      gemasPorNivelReal,
+    };
+  });
+
+  // Compara dos jugadoras aplicando la cadena de desempate completa.
+  // `cmp < 0` si `a` va por delante de `b`. Devuelve también el CRITERIO
+  // que decidió la comparación (o "empate total" si ninguno lo hizo), para
+  // poder anunciarlo en el resultado final.
+  function comparar(a, b) {
+    if (a.total !== b.total) return { cmp: b.total - a.total, criterio: 'suma total de Gemas' };
+    if (a.numInvocaciones !== b.numInvocaciones) {
+      return { cmp: b.numInvocaciones - a.numInvocaciones, criterio: 'número de invocaciones distintas' };
+    }
+    for (const nivel of nivelesDesdeElMasReciente) {
+      const va = a.gemasPorNivelReal[nivel] || 0;
+      const vb = b.gemasPorNivelReal[nivel] || 0;
+      if (va !== vb) return { cmp: vb - va, criterio: `Gema de mayor valor en la invocación ${nivel}` };
+    }
+    return { cmp: 0, criterio: 'empate total' };
+  }
+
+  const ordenados = [...stats].sort((a, b) => comparar(a, b).cmp);
+
+  const ganadores = [ordenados[0]];
+  let motivoDesempate = null;
+  for (let i = 1; i < ordenados.length; i++) {
+    const { cmp, criterio } = comparar(ordenados[0], ordenados[i]);
+    if (cmp !== 0) {
+      // La suma total ya diferenciaba (nunca hubo empate real que resolver)
+      // → no hay nada que anunciar. Cualquier otro criterio significa que
+      // la suma SÍ estaba empatada y algo más abajo en la cadena decidió.
+      if (i === 1 && criterio !== 'suma total de Gemas') motivoDesempate = criterio;
+      break; // ordenado: a partir de aquí ya no hay más empatadas con el primer puesto
+    }
+    ganadores.push(ordenados[i]);
+    motivoDesempate = criterio; // solo puede ser 'empate total' cuando cmp === 0
+  }
+
+  return { stats: ordenados, ganadores, motivoDesempate };
+}
+
+/**
  * Genera el objeto de visibilidad de una carta según el contexto.
  * @param {string} destino - 'mano' | 'portal'
  * @param {Object} opciones

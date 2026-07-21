@@ -4,6 +4,43 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.16.0.75] - 2026-07-21
+
+### Añadido
+- **Marcador final y desempate (Bloque 2)**: `finalizarPartida(motivo)`
+  (`js/game.js`) ahora calcula y muestra, antes de preguntar "¿jugar otra
+  vez?", el recuento final de Gemas de cada jugadora y quién gana — según
+  REGLAMENTO.md, "Final de la partida". Nueva `calcularResultadoFinal(players,
+  invocacionesCompletadas)` (`js/utils.js`, función pura): (1) mayor suma
+  total de Gemas; en empate, (2) más invocaciones DISTINTAS en las que se
+  ha participado (nº de niveles de `LEVELS` presentes en `player.gems` —
+  las Gemas unitarias sueltas de Pícaro/Maestro, `nivel: 'unitaria'`, no
+  cuentan); en empate, (3) Gema de mayor valor en la ÚLTIMA invocación
+  completada en esa partida; en empate, (4) se repite con la invocación
+  completada inmediatamente anterior, y así hacia atrás; si el empate
+  persiste tras agotar todas las completadas, victoria compartida.
+- Nuevo `window.invocacionesCompletadas` (inicializado en
+  `initGame()`/`resetJuego()`, `js/game.js`): registra, en orden real, los
+  niveles de invocación completados en la partida en curso — se empuja en
+  `js/actions.js` justo donde ya se reparten las Gemas de esa invocación.
+  Necesario porque la partida puede terminar antes de completar todas las
+  invocaciones (mano vacía), así que no se puede asumir siempre C→B→A.
+- Sigue usando `alert()`/`confirm()` (como el resto de la app hoy, ver
+  `docs/DEUDA_TECNICA.md` ítem 10) para mostrar el resultado — no hay
+  pantalla de resultados dedicada en este bloque, alcance deliberado (ver
+  `docs/MEJORAS_FUTURAS.md`).
+- 5 tests nuevos en `tests/run-tests.mjs` cubriendo la cadena de desempate
+  completa: suma distinta, suma igual con distinto nº de invocaciones,
+  suma e invocaciones iguales con distinto valor en la última invocación,
+  empate que se resuelve retrocediendo a la invocación anterior, y empate
+  total tras agotar todos los niveles.
+- Marcada como resuelta la sección 4 de `docs/AUDITORIA_REGLAS.md`; la
+  variante 2vs2 (`docs/MEJORAS_FUTURAS.md`) sigue pendiente, ahora
+  específicamente porque necesita sumar por EQUIPO, no por jugadora — el
+  marcador individual no lo contempla.
+
+---
+
 ## [1.15.1.74] - 2026-07-21
 
 ### Corregido

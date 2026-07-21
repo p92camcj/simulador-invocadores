@@ -1,5 +1,5 @@
 // game.js
-import { shuffle, draw, composicionMazoTotal } from './utils.js';
+import { shuffle, draw, composicionMazoTotal, calcularResultadoFinal } from './utils.js';
 import { render } from './render.js';
 import { initActions } from './actions.js';
 import { decidirYJugarTurno } from './bot.js';
@@ -49,6 +49,12 @@ export function initGame() {
   // probabilístico, ver js/bot-probabilidad.js): vive solo en memoria JS de
   // ESTA partida, nunca se persiste ni sale de la sesión de juego actual.
   window.memoriaBots = [];
+  // Orden REAL en que se completan las invocaciones en ESTA partida (se
+  // empuja el nivel en actions.js, justo donde ya se reparten sus Gemas) —
+  // necesario para el desempate de marcador final (REGLAMENTO.md, "Final
+  // de la partida"): la partida puede terminar antes de completar todas,
+  // así que no se puede asumir que siempre fue C→B→A completo.
+  window.invocacionesCompletadas = [];
 
   // Configurar controladores de acciones
   initActions(window.players, window.neutrals);
@@ -101,9 +107,27 @@ export function nextTurn() {
   }
 }
 
-// Finaliza la partida y se pregunta si queremos una nueva partida
+/**
+ * Construye el texto del recuento final de Gemas y el veredicto (ganadora
+ * única, o empate compartido con el motivo del desempate) a partir de
+ * `calcularResultadoFinal()` (`utils.js`) — ver REGLAMENTO.md, "Final de la
+ * partida". Solo formatea texto plano, sin mutar nada.
+ */
+function construirMensajeResultadoFinal(players, invocacionesCompletadas) {
+  const { stats, ganadores, motivoDesempate } = calcularResultadoFinal(players, invocacionesCompletadas);
+  const lineas = stats.map(s => `- ${s.nombre}: ${s.total} Gema${s.total === 1 ? '' : 's'}`);
+  const veredicto = ganadores.length === 1
+    ? `Ganadora: ${ganadores[0].nombre}` + (motivoDesempate ? ` (desempate: ${motivoDesempate})` : '')
+    : `Empate compartido entre ${ganadores.map(g => g.nombre).join(', ')}` + (motivoDesempate ? ` (${motivoDesempate})` : '');
+  return `Recuento final de Gemas:\n${lineas.join('\n')}\n\n${veredicto}`;
+}
+
+// Finaliza la partida: muestra el recuento final de Gemas y la ganadora (o
+// el empate) según REGLAMENTO.md, "Final de la partida", y luego pregunta
+// si queremos una nueva partida.
 export function finalizarPartida(motivo) {
-  const jugarOtra = confirm(`${motivo}\n\n¿Quieres jugar otra vez?`);
+  const resultado = construirMensajeResultadoFinal(window.players, window.invocacionesCompletadas || []);
+  const jugarOtra = confirm(`${motivo}\n\n${resultado}\n\n¿Quieres jugar otra vez?`);
   if (jugarOtra) {
     // Reset completo
     resetJuego(); // o podríamos llamar a initSetup() si quieres mantener el estado sin recarga
@@ -153,6 +177,7 @@ export function resetJuego() {
   window.pickerObjetivoPortal = null;
   window.juegoTerminado = false;
   window.memoriaBots = [];
+  window.invocacionesCompletadas = [];
 
   // Volver al menú inicial
   initSetup();

@@ -1,6 +1,6 @@
 # Auditoría de reglas — reglamento vs. código real
 
-> **Última actualización:** 2026-07-21 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 18:59 (Europe/Madrid)
 >
 > Informe de auditoría, no una tarea de código. Cruza
 > [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) contra el
@@ -425,37 +425,35 @@ pilas, no solo de la carta superior.
 
 ## 4. Final de partida
 
-`finalizarPartida(motivo)` (`js/game.js`) hoy:
+**Resuelto (2026-07-21, Bloque 2 de la tarea "Marcador final, redacción de
+mensajes y estrategia del autómata").** `finalizarPartida(motivo)`
+(`js/game.js`) ahora:
 
-1. Pregunta `confirm("...¿Quieres jugar otra vez?")`.
-2. Si sí → `resetJuego()` (vuelve a la pantalla de configuración).
-3. Si no → sustituye `document.body.innerHTML` por un mensaje de
-   despedida genérico y un botón "Volver a empezar" (`location.reload()`).
+1. Construye el recuento final con `calcularResultadoFinal(players,
+   invocacionesCompletadas)` (nueva, `js/utils.js`, función pura, ver
+   `tests/run-tests.mjs`): suma total de Gemas por jugadora, ordenadas de
+   mejor a peor puesto, y la ganadora (o el empate) tras aplicar la cadena
+   de desempate completa del reglamento — (1) mayor suma total, (2) más
+   invocaciones DISTINTAS en las que se ha participado (nº de niveles de
+   `LEVELS` presentes en `player.gems`, sin contar las Gemas unitarias
+   sueltas de Pícaro/Maestro, que llevan `nivel: 'unitaria'`), (3) Gema de
+   mayor valor en la ÚLTIMA invocación completada en esa partida concreta,
+   (4) repetir con la invocación anterior y así hacia atrás, (5) empate
+   compartido si persiste tras agotar todas las completadas.
+2. Necesitaba saber en qué orden se completaron las invocaciones en ESA
+   partida (no siempre C→B→A completo, la partida puede acabar antes por
+   mano vacía): `window.invocacionesCompletadas` (nuevo, inicializado en
+   `initGame()`/`resetJuego()`) se empuja en `js/actions.js`, justo donde
+   ya se reparten las Gemas de la invocación recién completada.
+3. Sigue usando `alert()`/`confirm()` (como el resto de la app hoy, ver
+   `DEUDA_TECNICA.md` ítem 10) para mostrar el recuento y el veredicto,
+   antes de la pregunta de "¿jugar otra vez?" — sin pantalla de resultados
+   dedicada, que queda fuera del alcance de este bloque (ver
+   `MEJORAS_FUTURAS.md`).
 
-**No existe ninguna otra lógica de final de partida.** Específicamente,
-falta TODO lo siguiente del reglamento ("Final de la partida"):
-
-- No se muestra el recuento de Gemas de cada jugadora (bocarriba, como
-  pide el reglamento) — ni siquiera el total, que hoy solo la propia
-  jugadora activa puede ver durante la partida (`sumaGemas()`/
-  `desgloseGemasPropio()` en `render.js`, deliberadamente ocultado a las
-  demás mientras la partida está en curso).
-- No se calcula ni se anuncia quién gana.
-- No existe ninguna lógica de desempate: (1) nº de invocaciones distintas
-  en las que se ha participado, (2) Gema de mayor valor de la última
-  invocación, (3) repetir con invocaciones anteriores, (4) empate
-  compartido si persiste. Nada de esto está ni siquiera parcialmente
-  esbozado en el código.
-- La variante 2vs2 (sección 1.4) depende directamente de que exista este
-  marcador, para sumar por equipo en vez de por jugadora.
-
-- **Tamaño estimado**: **M** — el cálculo en sí (sumar `sumaGemas()` por
-  jugadora, ordenar, aplicar los 3 niveles de desempate) es sencillo con
-  los datos que ya existen (`player.gems` ya registra `nivel` y `valor`
-  de cada Gema, así que "nº de invocaciones distintas" y "Gema de mayor
-  valor de la última invocación" son derivables sin cambiar el modelo de
-  datos), pero sustituir el `alert()`/`confirm()` actual por una pantalla
-  de resultados real es una pieza de UI nueva no trivial.
+La variante 2vs2 (sección 1.4) sigue bloqueada: necesita sumar Gemas por
+EQUIPO, no por jugadora individual — `calcularResultadoFinal()` no
+contempla equipos, eso queda para cuando se aborde esa variante.
 
 ---
 
@@ -503,8 +501,8 @@ la sección 1.
 | Introductorio: variante completa de preparación de mazo | ❌ Pendiente | Media |
 | Modo Avanzado | ❌ Pendiente | Media |
 | Modo Experto (autómata + invocación Asterisco) | ❌ Pendiente | Baja (mayor esfuerzo, menor demanda probable) |
-| Variante 2 contra 2 | ❌ Pendiente (bloqueada por marcador final) | Media |
-| Marcador final y desempate | ❌ Pendiente | **Alta** (bloquea 2vs2 y cierra el objetivo del juego: "ver quién gana") |
+| Variante 2 contra 2 | ❌ Pendiente (bloqueada por suma por equipo, no por marcador) | Media |
+| Marcador final y desempate | ✅ Implementado (2026-07-21) | — |
 | Jugar carta: 3 métodos coexistentes (clic/drag&drop/panel) | ✅ Implementado | — |
 | Grid único interactivo con visibilidad real | ✅ Implementado | — |
 | Bloqueo de objetivo de habilidad en el grid | ✅ Implementado | — |

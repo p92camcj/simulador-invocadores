@@ -17,7 +17,7 @@ import {
   sumaGemas, contarGemasPorNivel, tieneGemaAsterisco, gastarGemaAsterisco,
   gastarGemaUnitaria, construirPoolGemas, todosLosPortales,
   jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
-  opcionesActivarHabilidad, generarVis,
+  opcionesActivarHabilidad, generarVis, calcularResultadoFinal,
 } from '../js/utils.js';
 import { ocultarOtrasCentinelas, candidatosObjetivoMaestro, bajarCartaMaestro } from '../js/abilities.js';
 import {
@@ -249,6 +249,60 @@ test('bajarCartaMaestro re-dispara el auto-giro de Centinela si la carta movida 
   bajarCartaMaestro([owner, target, otraJugadoraConCentinela], [], 1, 0);
   assert.equal(target.portals[0][0].vis.public, true, 'la Centinela recién bajada queda visible');
   assert.equal(otraJugadoraConCentinela.portals[0][0].vis.public, false, 'la otra Centinela debe ocultarse');
+});
+
+console.log('Marcador final y desempate (utils.js) — Bloque 2');
+
+test('calcularResultadoFinal: gana quien tiene mayor suma total, sin necesidad de desempate', () => {
+  const players = [
+    { name: 'Ana', gems: [{ valor: 5, nivel: 'C' }] },
+    { name: 'Bob', gems: [{ valor: 3, nivel: 'C' }] },
+  ];
+  const r = calcularResultadoFinal(players, ['C']);
+  assert.deepEqual(r.ganadores.map(g => g.nombre), ['Ana']);
+  assert.equal(r.motivoDesempate, null);
+});
+
+test('calcularResultadoFinal: con la misma suma, gana quien participó en más invocaciones distintas (Gemas unitarias no cuentan como invocación)', () => {
+  const players = [
+    { name: 'Ana', gems: [{ valor: 3, nivel: 'C' }, { valor: 2, nivel: 'B' }] }, // total 5, 2 invocaciones
+    { name: 'Bob', gems: [{ valor: 5, nivel: 'C' }, { valor: 0, nivel: 'unitaria' }] }, // total 5, 1 invocación real
+  ];
+  const r = calcularResultadoFinal(players, ['C', 'B']);
+  assert.deepEqual(r.ganadores.map(g => g.nombre), ['Ana']);
+  assert.equal(r.motivoDesempate, 'número de invocaciones distintas');
+});
+
+test('calcularResultadoFinal: con suma e invocaciones iguales, gana quien tiene la Gema de mayor valor en la ÚLTIMA invocación completada', () => {
+  const players = [
+    { name: 'Ana', gems: [{ valor: 3, nivel: 'C' }, { valor: 4, nivel: 'B' }] }, // total 7
+    { name: 'Bob', gems: [{ valor: 4, nivel: 'C' }, { valor: 3, nivel: 'B' }] }, // total 7
+  ];
+  const r = calcularResultadoFinal(players, ['C', 'B']); // B es la última completada
+  assert.deepEqual(r.ganadores.map(g => g.nombre), ['Ana']);
+  assert.equal(r.motivoDesempate, 'Gema de mayor valor en la invocación B');
+});
+
+test('calcularResultadoFinal: si el empate persiste incluso tras comparar la invocación anterior, se repite el proceso hacia atrás', () => {
+  const players = [
+    { name: 'Ana', gems: [{ valor: 3, nivel: 'C' }, { valor: 4, nivel: 'B' }] },
+    { name: 'Bob', gems: [{ valor: 4, nivel: 'C' }, { valor: 4, nivel: 'B' }, { valor: -1, nivel: 'unitaria' }] },
+  ];
+  // Sumas: Ana 7, Bob 7 (4+4-1). Invocaciones distintas: ambas 2 (C y B).
+  // Última completada (B): Ana 4, Bob 4 — empate, se repite con la anterior (C).
+  const r = calcularResultadoFinal(players, ['C', 'B']);
+  assert.deepEqual(r.ganadores.map(g => g.nombre), ['Bob']);
+  assert.equal(r.motivoDesempate, 'Gema de mayor valor en la invocación C');
+});
+
+test('calcularResultadoFinal: empate compartido si persiste tras agotar todas las invocaciones completadas', () => {
+  const players = [
+    { name: 'Ana', gems: [{ valor: 3, nivel: 'C' }] },
+    { name: 'Bob', gems: [{ valor: 3, nivel: 'C' }] },
+  ];
+  const r = calcularResultadoFinal(players, ['C']);
+  assert.deepEqual(r.ganadores.map(g => g.nombre).sort(), ['Ana', 'Bob']);
+  assert.equal(r.motivoDesempate, 'empate total');
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');
