@@ -6,6 +6,11 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.10.66 - 2026-07-21
+
+- Revisión interna de calidad de código (unificación de cómo se recorren
+  los Portales de la mesa), sin cambios visibles para las jugadoras.
+
 ## 1.13.9.64 - 2026-07-21
 
 - Revisión interna de seguridad del código (nombres de jugadora en el

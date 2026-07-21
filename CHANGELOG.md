@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.10.66] - 2026-07-21
+
+### Cambiado
+- **`docs/DEUDA_TECNICA.md` ítem 4 — iteración duplicada de "todos los portales de jugadoras + neutrales" centralizada en un helper único**: se añade `todosLosPortales(players, neutrals)` a `js/utils.js`, devolviendo `{ stack, playerIdx, portalIdx }[]` (`playerIdx` es `null` para un Portal neutral). Sustituye el patrón manual `players.forEach(p => p.portals.forEach(...))` seguido de `neutrals.forEach(...)` en 4 sitios: `js/actions.js` (construcción de `map`/`allPortals` en la comprobación de invocación, el bonus pasivo de Pícaro, y el recuento de Maestros reales visibles) y `js/abilities.js` (`ocultarOtrasCentinelas()`). Sin cambio de comportamiento en ningún caso — el filtrado por `playerIdx !== null` donde el código original solo miraba Portales de jugadora (nunca centrales) se preserva explícitamente. Verificado en el navegador simulando 3 escenarios completos tras el refactor: invocación de nivel A con bonus de Maestro (3 Gemas unitarias extra para su dueña, sin Pícaro visible), invocación de nivel C con Pícaro presente (Gema unitaria de bonus + su carta se oculta tras cobrarla), y `ocultarOtrasCentinelas()` con Centinelas en ambas jugadoras y en un Portal central (solo la recién jugada permanece visible) — los tres coinciden con el comportamiento esperado antes del refactor.
+
+---
+
 ## [1.13.9.64] - 2026-07-21
 
 ### Corregido

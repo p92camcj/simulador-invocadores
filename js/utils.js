@@ -122,6 +122,27 @@ export function draw(player, visible) {
   }
 }
 
+/**
+ * Recorre todos los Portales del tablero (de cada jugadora + los
+ * centrales/neutrales) y devuelve un array plano de
+ * `{ stack, playerIdx, portalIdx }` — `playerIdx` es `null` para un Portal
+ * neutral. Centraliza el patrón "players.forEach(p => p.portals.forEach(...))
+ * seguido de neutrals.forEach(...)" repetido en varios sitios (ver
+ * docs/DEUDA_TECNICA.md ítem 4).
+ */
+export function todosLosPortales(players, neutrals) {
+  const arr = [];
+  players.forEach((p, playerIdx) => {
+    p.portals.forEach((stack, portalIdx) => {
+      arr.push({ stack, playerIdx, portalIdx });
+    });
+  });
+  neutrals.forEach((stack, portalIdx) => {
+    arr.push({ stack, playerIdx: null, portalIdx });
+  });
+  return arr;
+}
+
 export function listPortals(players, neutrals) {
   const arr = [];
   players.forEach((p, pi) => {

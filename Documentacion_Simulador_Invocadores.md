@@ -43,6 +43,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `shuffle(array)`  | `función` | Mezcla un array _in place_ (algoritmo Fisher–Yates).                        |
 | `draw(player, visible)` | `función` | Robo de carta del mazo global (`window.deck`) a la mano de un jugador.      |
 | `listPortals(players, neutrals)` | `función` | Devuelve array de `{val, lbl}` para poblar selectores de portales (propios, ajenos, neutrales). |
+| `todosLosPortales(players, neutrals)` | `función` | Devuelve array plano de `{stack, playerIdx, portalIdx}` (todos los Portales de jugadoras + neutrales; `playerIdx` es `null` para un Portal neutral). Centraliza el patrón `players.forEach(p => p.portals.forEach(...))` + `neutrals.forEach(...)`, usado en `actions.js` (comprobación de invocación, bonus de Pícaro/Maestro) y `abilities.js` (`ocultarOtrasCentinelas()`). |
 | `stackFrom(key, players, neutrals)` | `función` | Dada clave `"i:j"` o `"n:k"`, devuelve la pila de cartas (portal) correspondiente. |
 | `portalesConEstado(players, neutrals, esInvalido)` | `función` | Como `listPortals()` pero añade `disabled` según `esInvalido(stack, val)` — usado por `picker()` para bloquear opciones. |
 | `jugadoraProtegidaPorCentinela(player)` | `función` | `true` si esa jugadora tiene una Centinela visible en cualquiera de sus Portales — la protección cubre TODOS sus Portales, no solo el que la contiene. |

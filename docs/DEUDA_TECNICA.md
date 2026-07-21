@@ -29,6 +29,30 @@
 
 ## Resueltos
 
+### ~~4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en varios sitios~~ (resuelto)
+
+- **Qué era**: `js/actions.js` (comprobación de invocación: `map`/`allPortals`,
+  bonus de Pícaro, recuento de Maestros) y `js/abilities.js`
+  (`ocultarOtrasCentinelas()`) repetían manualmente
+  `players.forEach(p => p.portals.forEach(...))` seguido de
+  `neutrals.forEach(...)`, con pequeñas variaciones cada vez, en vez de
+  usar un helper único.
+- **Cómo se resolvió**: se añadió `todosLosPortales(players, neutrals)` a
+  `js/utils.js`, devolviendo `{ stack, playerIdx, portalIdx }[]`
+  (`playerIdx` es `null` para un Portal neutral), y se usó en los 4 sitios
+  identificados. Donde el código original solo miraba Portales de
+  jugadora (nunca centrales, p. ej. el bonus de Pícaro), se preservó
+  explícitamente con `.filter(t => t.playerIdx !== null)` — sin cambio de
+  comportamiento en ningún caso.
+- **Verificado manualmente** en el navegador, simulando 3 escenarios
+  completos tras el refactor: invocación de nivel A con bonus de Maestro
+  (3 Gemas unitarias extra, sin Pícaro visible), invocación de nivel C con
+  Pícaro presente (Gema unitaria de bonus + su carta se oculta tras
+  cobrarla), y `ocultarOtrasCentinelas()` con Centinelas en ambas
+  jugadoras y en un Portal central (solo la recién jugada permanece
+  visible) — los tres coinciden con el comportamiento esperado.
+- **Prioridad**: era **Media**.
+
 ### ~~7. `switch` de `applyAbility()` sin bloques `{}` por `case`~~ (resuelto de rebote)
 
 - **Qué era**: los `case` del `switch` de `applyAbility()` (`js/abilities.js`)
@@ -301,36 +325,6 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 ---
 
 ## Prioridad Media
-
-### 4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en varios sitios
-
-- **Dónde**: `js/actions.js` (el bloque de comprobación de invocación en el
-  handler de "Terminar turno", dos veces: una para construir `map` y otra
-  para `allPortals`), y `js/abilities.js` (caso `Centinela` —
-  `ocultarOtrasCentinelas()` — y caso `Metamorfo`).
-- **Actualización 2026-07-20**: la duplicación en `js/render.js` (antes
-  "zona activa, zona de otras jugadoras y zona neutral" por separado) se
-  redujo de forma significativa al unificar el tablero en
-  `renderBoardGrid()` (un único bucle sobre `players` + un bloque aparte
-  para `neutrals`, en vez de 3 bloques independientes) — no queda como
-  ítem pendiente para ese archivo.
-- **Descripción**: el proyecto ya tiene `listPortals()`, `stackFrom()` y
-  `portalesConEstado()` en `js/utils.js` pensados exactamente para
-  centralizar "recorre todos los portales de jugadoras + neutrales", pero
-  se usan solo en los `picker()` de habilidades. El resto del código
-  repite manualmente `players.forEach(p => p.portals.forEach(...))` seguido
-  de `neutrals.forEach(...)`, con pequeñas variaciones cada vez.
-- **Impacto real**: cualquier cambio en cómo se representan los portales
-  (p. ej. al implementar el modo Avanzado/Experto con autómata central,
-  ver `docs/AUDITORIA_REGLAS.md`) obliga a tocar la misma lógica de
-  recorrido en varios sitios en vez de uno, con riesgo real de que alguno
-  se quede desactualizado.
-- **Corrección propuesta**: añadir un helper único en `utils.js` (p. ej.
-  `todosLosPortales(players, neutrals)` devolviendo `{stack, playerIdx, portalIdx}[]`)
-  y usarlo en los 6 sitios en vez de repetir el doble `forEach`.
-- **Prioridad**: **Media** — no es un bug hoy, pero es el sitio más
-  probable de introducir uno al tocar reglas relacionadas con portales
-  (que es justo el trabajo pendiente más grande, ver `MEJORAS_FUTURAS.md`).
 
 ### 6. Sin tests automatizados ni ninguna verificación no manual
 

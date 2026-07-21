@@ -1,7 +1,8 @@
 // abilities.js
 import {
   stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria,
-  PERSONAJES_NO_ANIMALES, jugadoraProtegidaPorCentinela, estaProtegidoParaActivar
+  PERSONAJES_NO_ANIMALES, jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
+  todosLosPortales
 } from './utils.js';
 import { picker, pickerPortal } from './render.js';
 
@@ -37,14 +38,7 @@ function jugadorProtegidoContraAprendiz(jugadorIdx, players, actingPlayerIdx) {
  * mediante "Activar habilidad".
  */
 export function ocultarOtrasCentinelas(stackJugada, players, neutrals) {
-  players.forEach(p =>
-    p.portals.forEach(st => {
-      if (st !== stackJugada && st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public) {
-        st.at(-1).vis.public = false;
-      }
-    })
-  );
-  neutrals.forEach(st => {
+  todosLosPortales(players, neutrals).forEach(({ stack: st }) => {
     if (st !== stackJugada && st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public) {
       st.at(-1).vis.public = false;
     }

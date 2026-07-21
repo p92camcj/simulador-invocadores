@@ -5,7 +5,7 @@ import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
 import {
   draw, generarVis, mostrarCarta,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
-  construirPoolGemas
+  construirPoolGemas, todosLosPortales
 } from './utils.js';
 
 /**
@@ -306,14 +306,9 @@ export function initActions(players, neutrals) {
         }
       };
 
-      players.forEach((player, playerIdx) => {
-        player.portals.forEach(stack => add(playerIdx, stack));
-      });
-      neutrals.forEach(st => add(null, st));
-      const allPortals = [
-        ...players.flatMap(p => p.portals),
-        ...neutrals
-      ];
+      const todosPortales = todosLosPortales(players, neutrals);
+      todosPortales.forEach(({ stack, playerIdx }) => add(playerIdx, stack));
+      const allPortals = todosPortales.map(t => t.stack);
       const puedeInvocar = allPortals.every(p => p.length && p.at(-1).vis?.public);
       if (puedeInvocar && need.every(k => map.get(k))) {
         const pool = construirPoolGemas(invocacion.gemas);
@@ -325,15 +320,16 @@ export function initActions(players, neutrals) {
           }
         });
         // Habilidad Pícaro: siempre Gema unitaria (valor 1), independientemente
-        // de si el Pícaro era o no requisito de esta invocación.
-        players.forEach(p => p.portals.forEach(st => {
+        // de si el Pícaro era o no requisito de esta invocación. Solo Portales
+        // de jugadora (nunca centrales/neutrales) — mismo criterio que antes.
+        todosPortales.filter(t => t.playerIdx !== null).forEach(({ playerIdx, stack: st }) => {
           if (st.length && st.at(-1).name === 'Pícaro' && st.at(-1).vis?.public) {
-            p.gems.push({ valor: 1, nivel: 'unitaria' });
+            players[playerIdx].gems.push({ valor: 1, nivel: 'unitaria' });
             if (st.at(-1).vis) {
               st.at(-1).vis.public = false;
             }
           }
-        }));
+        });
         // Maestro: bonus pasivo de 3 Gemas unitarias si es requisito de la
         // invocación (en cualquier nivel, no solo 'A') y no hay ningún Pícaro
         // visible en ninguna parte de la mesa (no solo fuera del combo actual).
@@ -348,17 +344,10 @@ export function initActions(players, neutrals) {
         // recorren los Portales buscando `.name === 'Maestro'` directamente.
         let maestroOwnerIdx = null;
         let maestrosRealesVisibles = 0;
-        players.forEach((player, playerIdx) => {
-          player.portals.forEach(st => {
-            if (st.length && st.at(-1).vis?.public && st.at(-1).name === 'Maestro') {
-              maestrosRealesVisibles++;
-              maestroOwnerIdx = playerIdx;
-            }
-          });
-        });
-        neutrals.forEach(st => {
+        todosPortales.forEach(({ stack: st, playerIdx }) => {
           if (st.length && st.at(-1).vis?.public && st.at(-1).name === 'Maestro') {
             maestrosRealesVisibles++;
+            if (playerIdx !== null) maestroOwnerIdx = playerIdx;
           }
         });
         if (need.includes('Maestro') && maestrosRealesVisibles === 1 && maestroOwnerIdx !== null && !hayPicaroVisible) {
