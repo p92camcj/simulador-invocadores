@@ -4,6 +4,33 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.19.0.78] - 2026-07-21
+
+### Añadido
+- **Uso estratégico de Estratega por el autómata (Bloque 4, 4.2)**: hasta
+  ahora ningún nivel de dificultad usaba esta habilidad.
+  - `'normal'` (`decidirEstrategaNormal`, `js/bot.js`): SOLO beneficio
+    propio y con certeza — intercambia su primer Portal propio disponible
+    por el primer Portal (ajeno o central) que muestre un requisito de la
+    invocación activa que el bot no tenga ya en un Portal PROPIO.
+  - `'dificil'` (`decidirEstrategaDificil`): evalúa un conjunto de pares
+    candidatos (`candidatosEstrategaDificil` — todos los que involucran un
+    Portal propio, más el par "Portal ajeno vulnerable + Portal central"
+    para denegación pura sin beneficio propio) por el valor esperado
+    RESULTANTE de intercambiar sus contenidos.
+- Corregido durante el desarrollo de este bloque (nunca llegó a
+  publicarse en una versión anterior): al reutilizar `valorEsperadoDeAccion()`
+  para las DOS posiciones de un intercambio de Estratega, el mecanismo de
+  "denegación por duplicado" (que asume que un personaje se AÑADE en un
+  sitio nuevo mientras sigue existiendo donde estaba) contaba dos veces la
+  misma denegación, porque en un intercambio el personaje se RELOCALIZA
+  (deja de estar en el origen en la misma acción). `valorPosicion()`
+  (interna) ahora evalúa cada posición sin ese mecanismo, dejando solo el
+  de "tapar" (`cubreNecesarioUnicoRival`), calculado aparte por posición.
+- 3 tests nuevos en `tests/run-tests.mjs`.
+
+---
+
 ## [1.18.0.77] - 2026-07-21
 
 ### Añadido

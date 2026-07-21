@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.19.0.78 - 2026-07-21
+
+- **Los autómatas ya saben usar a Estratega**: antes nunca activaban esta
+  habilidad. Ahora intercambian uno de sus Portales por el de otra
+  jugadora (o uno central) cuando eso les trae un personaje que
+  necesitaban. En dificultad "Difícil" también saben usarla para
+  quitarle a una rival el crédito de un personaje que ya casi tenía
+  conseguido, cambiándoselo por un Portal menos útil.
+
 ## 1.18.0.77 - 2026-07-21
 
 - **Los autómatas ya saben usar a Cronomante**: antes nunca activaban esta

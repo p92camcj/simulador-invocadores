@@ -28,6 +28,7 @@ import {
 import {
   listaPortalesConDestino, describirObjetivoHabilidad, decidirJugadaFaseA,
   candidatosCronomante, decidirCronomanteNormal,
+  decidirEstrategaNormal, decidirEstrategaDificil,
 } from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
@@ -361,6 +362,50 @@ test('Cronomante (Difícil): el término adversarial justifica tapar el único r
   );
   assert.equal(cubreNecesarioUnicoRival, true);
   assert.ok(ev > 0, 'tapar el único Z visible de la rival con W (que no le sirve) debe aportar valor adversarial positivo');
+});
+
+console.log('Uso estratégico de habilidades activas — 4.2 Estratega (bot.js) — Bloque 4');
+
+test('Estratega (Normal): intercambia su propio Portal vacío por el Portal ajeno con un requisito aún no cumplido', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [null] },
+      { idx: 1, esUnoMismo: false, portales: [{ name: 'Y' }] },
+    ],
+    neutrales: [],
+  };
+  assert.deepEqual(decidirEstrategaNormal(vista, need), { portalKeyA: '0:0', portalKeyB: '1:0' });
+});
+
+test('Estratega (Normal): no activa si ningún Portal ajeno ofrece un requisito pendiente', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [null] },
+      { idx: 1, esUnoMismo: false, portales: [{ name: 'W' }] },
+    ],
+    neutrales: [],
+  };
+  assert.equal(decidirEstrategaNormal(vista, need), null);
+});
+
+test('Estratega (Difícil): sigue prefiriendo denegar el único requisito visible de una rival a un Portal central aunque no le quede ningún Portal propio con el que beneficiarse', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [] }, // sin Portales propios: aísla el mecanismo, sin posible beneficio propio
+      { idx: 1, esUnoMismo: false, portales: [{ name: 'Z' }] },
+    ],
+    neutrales: [null],
+  };
+  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
+  // 'Z' ya está cumplido (visible en la mesa, en el propio Portal vulnerable de la rival) —
+  // simplificación deliberada para aislar el mecanismo: aquí no hay ganancia propia posible,
+  // solo la denegación pura.
+  const contexto = { need, cumplidos: ['Z'], valorGemaNivel: 4, necesariosUnicosDeRivales };
+  const decision = decidirEstrategaDificil(vista, need, { probabilidadPorNombre: {} }, contexto);
+  assert.deepEqual(decision, { portalKeyA: '1:0', portalKeyB: 'n:0', ev: 2 });
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');

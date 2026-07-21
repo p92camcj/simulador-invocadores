@@ -468,12 +468,121 @@ export function decidirCronomanteNormal(vista, memoriaBot, need) {
 }
 
 /**
+ * Heurística 'normal' de Estratega (Bloque 4, 4.2): intercambia Portales
+ * COMPLETOS (con su pila) — la propiedad del personaje visible resultante
+ * pasa a quien sea dueña de cada posición. SOLO beneficio propio, solo con
+ * certeza: el primer Portal ajeno (o central) que muestre un requisito de
+ * `need` todavía no cumplido en la mesa, intercambiado por el primero de
+ * los propios Portales (nunca el matiz adversarial puro — reasignar
+ * protección de Centinela o quitarle crédito a una rival sin beneficio
+ * propio — reservado a 'dificil').
+ */
+export function decidirEstrategaNormal(vista, need) {
+  // "No lo tiene ya" se comprueba contra lo que el propio bot YA muestra en
+  // sus Portales propios — nunca contra la visibilidad global del tablero,
+  // que trivialmente ya incluiría el propio personaje objetivo (está
+  // visible en el Portal `otro` que se está evaluando, por definición).
+  const propiosVisibles = vista.jugadoras
+    .filter(j => j.esUnoMismo)
+    .flatMap(j => j.portales)
+    .filter(p => p?.name)
+    .map(p => p.name);
+  const portales = listaPortalesFormatoHabilidad(vista);
+  const propios = portales.filter(p => p.esPropio);
+  for (const propio of propios) {
+    for (const otro of portales) {
+      if (otro.key === propio.key) continue;
+      if (otro.estado?.name && need.includes(otro.estado.name) && !propiosVisibles.includes(otro.estado.name)) {
+        return { portalKeyA: propio.key, portalKeyB: otro.key };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Pares de Portales candidatos para la heurística 'dificil' de Estratega
+ * (Bloque 4, 4.2): no hace falta probar todas las combinaciones posibles
+ * del tablero (nº de Portales pequeño, ≤10 en la práctica, así que
+ * evaluar todos los pares sería igualmente barato) — el criterio de poda
+ * real es de RELEVANCIA, no de coste: (a) cualquier par que involucre un
+ * Portal PROPIO (beneficio propio, traer o deshacerse de un personaje), y
+ * (b) el par (Portal ajeno vulnerable, Portal central) — denegación PURA
+ * sin beneficio propio directo, la única combinación ajena-ajena con una
+ * señal de valor clara sin más información. Pares ajeno-ajeno que no sean
+ * vulnerables se descartan: no hay ninguna señal de valor esperado que los
+ * distinga de un intercambio neutro.
+ */
+function candidatosEstrategaDificil(vista, necesariosUnicosDeRivales) {
+  const portales = listaPortalesFormatoHabilidad(vista);
+  const propios = portales.filter(p => p.esPropio);
+  const centrales = portales.filter(p => p.key.startsWith('n:'));
+  const vulnerables = portales.filter(p =>
+    !p.esPropio && Object.values(necesariosUnicosDeRivales).includes(`a:${p.key}`)
+  );
+  const pares = [];
+  propios.forEach(a => portales.forEach(b => { if (a.key !== b.key) pares.push([a, b]); }));
+  vulnerables.forEach(v => centrales.forEach(c => pares.push([v, c])));
+  return pares;
+}
+
+/**
+ * Valor esperado de que `personaje` acabe visible en la posición `p`
+ * (propia, ajena o central) tras un intercambio de Estratega. Usa el
+ * mismo mecanismo adversarial `cubreNecesarioUnicoRival` que Fase A/
+ * Cronomante, pero DELIBERADAMENTE quita `necesariosUnicosDeRivales` del
+ * `contexto` que le pasa a `valorEsperadoDeAccion()`: el "mecanismo 1"
+ * (denegación por duplicado) de esa función asume que el personaje se
+ * AÑADE en un sitio nuevo mientras sigue existiendo donde estaba — cierto
+ * para jugar una carta desde la mano, pero NO para un intercambio de
+ * Estratega, donde el personaje se RELOCALIZA (deja de estar en la
+ * posición de origen exactamente en la misma acción). Sin esto, evaluar
+ * ambas posiciones del intercambio contaría la misma denegación dos veces.
+ * Aquí solo debe aplicar el mecanismo 2 (`cubreNecesarioUnicoRival`, ya
+ * calculado arriba con la clave de ESTA posición concreta).
+ */
+function valorPosicion(p, personaje, probabilidades, contexto, necesariosUnicosDeRivales) {
+  const esCentral = p.key.startsWith('n:');
+  const destKey = esCentral ? p.key : `a:${p.key}`;
+  const cubreNecesarioUnicoRival = !p.esPropio && Object.values(necesariosUnicosDeRivales).includes(destKey);
+  return valorEsperadoDeAccion(
+    { personaje, esPropio: p.esPropio, esCentral, destKey, cubreNecesarioUnicoRival, completaInvocacionSiSeJuega: false },
+    probabilidades,
+    { ...contexto, necesariosUnicosDeRivales: undefined }
+  );
+}
+
+/**
+ * Heurística 'dificil' de Estratega (Bloque 4, 4.2): evalúa cada par
+ * candidato (`candidatosEstrategaDificil`) por el valor esperado RESULTANTE
+ * de intercambiar sus contenidos — el personaje que queda en la posición A
+ * es el que antes estaba en B (y viceversa), cada uno valorado según quién
+ * sea ahora su dueña. Aproximación honesta, no un cálculo perfecto: no
+ * resta el valor que la posición ya tenía ANTES del intercambio (mismo
+ * tipo de simplificación que el resto del motor, ver
+ * `js/bot-probabilidad.js`) — permite, por ejemplo, preferir quitarle a
+ * una rival un requisito casi completo por uno central sin beneficio
+ * propio, si el término adversarial lo justifica.
+ */
+export function decidirEstrategaDificil(vista, need, probabilidades, contexto) {
+  const necesariosUnicosDeRivales = contexto.necesariosUnicosDeRivales || {};
+  let mejor = null;
+  candidatosEstrategaDificil(vista, necesariosUnicosDeRivales).forEach(([a, b]) => {
+    const personajeA = a.estado?.hidden ? null : a.estado?.name ?? null;
+    const personajeB = b.estado?.hidden ? null : b.estado?.name ?? null;
+    const ev = valorPosicion(a, personajeB, probabilidades, contexto, necesariosUnicosDeRivales)
+      + valorPosicion(b, personajeA, probabilidades, contexto, necesariosUnicosDeRivales);
+    if (!mejor || ev > mejor.ev) mejor = { portalKeyA: a.key, portalKeyB: b.key, ev };
+  });
+  return mejor;
+}
+
+/**
  * Heurística 'normal' de Fase B: Ocultista/Cronista (igual que siempre —
  * útiles solo si falta algún personaje del combo activo por revelar Y
  * existe al menos un Portal oculto legal donde intentarlo), y desde el
- * Bloque 4 también Cronomante (`decidirCronomanteNormal`, arriba).
- * Estratega, Aprendiz, Metamorfo y Maestro se añaden en los siguientes
- * commits de este mismo bloque.
+ * Bloque 4 también Cronomante y Estratega (arriba). Aprendiz, Metamorfo y
+ * Maestro se añaden en los siguientes commits de este mismo bloque.
  */
 function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBot) {
   const candidatos = objetivosHabilidadDisponibles(players, neutrals, botIdx);
@@ -490,6 +599,12 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
   if (cronomante) {
     const decision = decidirCronomanteNormal(vista, memoriaBot, need);
     if (decision) return { ...cronomante, objetivoPreferido: [decision.portalKey, decision.nombreDeseado] };
+  }
+
+  const estratega = candidatos.find(c => c.name === 'Estratega');
+  if (estratega) {
+    const decision = decidirEstrategaNormal(vista, need);
+    if (decision) return { ...estratega, objetivoPreferido: [decision.portalKeyA, decision.portalKeyB] };
   }
 
   return null;
@@ -577,6 +692,9 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
           considerar({ ...c, ev, objetivoPreferido: [p.key, nombre] });
         });
       });
+    } else if (c.name === 'Estratega') {
+      const decision = decidirEstrategaDificil(vista, need, probabilidades, contexto);
+      if (decision) considerar({ ...c, ev: decision.ev, objetivoPreferido: [decision.portalKeyA, decision.portalKeyB] });
     }
   });
 
@@ -701,6 +819,8 @@ export function describirObjetivoHabilidad(name, valores, vista) {
       // DOM ya cerrado, así que el resumen se queda con el Portal
       // manipulado, sin precisar qué carta subió al top.
       return `reorganizó ${conDe(etiquetaPortalPorClaveHabilidad(valores[0], vista))}`;
+    case 'Estratega':
+      return `intercambió ${etiquetaPortalPorClaveHabilidad(valores[0], vista)} con ${etiquetaPortalPorClaveHabilidad(valores[1], vista)}`;
     default:
       return '';
   }
