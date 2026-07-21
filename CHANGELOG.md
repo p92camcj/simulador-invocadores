@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.9.64] - 2026-07-21
+
+### Corregido
+- **`docs/DEUDA_TECNICA.md` ítem 5 — nombres de jugadora sin escapar interpolados vía `innerHTML` en `js/render.js`**: `renderBoardGrid()` interpolaba `p.name` directamente en la plantilla de string del tablero (`html += \`<h4>${p.name}...\``) antes de asignarla de una vez vía `grid.innerHTML = html` — un nombre con marcado HTML embebido se ejecutaría/renderizaría como HTML real en vez de mostrarse como texto. La parte equivalente en `js/setup.js` ya se había resuelto en una ronda anterior al construir el formulario de nombres con `createElement` en vez de concatenar `innerHTML`. Se añade `escapeHtml()` a `js/utils.js` (reutilizable por cualquier módulo ES del proyecto) y se aplica a `p.name` en el único punto de `render.js` que lo necesitaba — se revisó el resto de interpolaciones de nombre del archivo (`h.name`/`c.aspecto` de cartas, títulos de `picker()`) y todas usan `textContent` o son nombres de personaje fijos del propio juego, no texto introducido por una jugadora. Verificado en el navegador: un nombre con `<b>bold</b>` embebido se muestra como texto literal (sin crear ningún elemento `<b>` real), y nombres normales (incluida la marca 🤖 de autómata y el desglose de Gemas) se siguen mostrando igual que antes.
+
+---
+
 ## [1.13.8.63] - 2026-07-21
 
 ### Eliminado

@@ -101,6 +101,12 @@ export const CARTA_OCULTA_IMG = 'assets/cards/carta-oculta-reverso.png';
 // ---------- Utilidades DOM y lógica básica ----------
 export const $ = selector => document.querySelector(selector);
 
+// Escapa texto de origen no confiable (p. ej. nombres de jugadora) antes de
+// interpolarlo en una plantilla de string que se asigna vía innerHTML.
+export function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

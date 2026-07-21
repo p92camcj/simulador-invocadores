@@ -39,6 +39,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `cardImages`      | `const`   | Mapa nombre de personaje → ruta de imagen real (`assets/cards/*.png`), 14 personajes con habilidad + Reena/Sora/Lumo. El Metamorfo siempre usa `metamorfo.png` tal cual (no hay disfraz visual todavía, ver TODO en el propio archivo). |
 | `CARTA_OCULTA_IMG`| `const`   | Ruta del reverso genérico (`assets/cards/carta-oculta-reverso.png`) usado por `render.js` para cualquier carta oculta para quien mira, sin filtrar el nombre real en el `alt`. |
 | `$`               | `función` | Atajo para `document.querySelector(selector)`.                               |
+| `escapeHtml(str)` | `función` | Escapa `&`/`<`/`>` de texto de origen no confiable (p. ej. nombres de jugadora) antes de interpolarlo en una plantilla de string asignada vía `innerHTML`. Usada por `render.js` para `p.name` en `renderBoardGrid()`. |
 | `shuffle(array)`  | `función` | Mezcla un array _in place_ (algoritmo Fisher–Yates).                        |
 | `draw(player, visible)` | `función` | Robo de carta del mazo global (`window.deck`) a la mano de un jugador.      |
 | `listPortals(players, neutrals)` | `función` | Devuelve array de `{val, lbl}` para poblar selectores de portales (propios, ajenos, neutrales). |

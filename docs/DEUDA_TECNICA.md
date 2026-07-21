@@ -29,6 +29,31 @@
 
 ## Resueltos
 
+### ~~5. Nombres de jugadora sin escapar insertados vía `innerHTML`~~ (resuelto)
+
+- **Qué era**: el nombre de cada jugadora se toma de un `<input>` sin
+  ningún tipo de escapado. `js/setup.js` (`form.innerHTML += ...` al
+  regenerar el formulario de nombres) ya se había resuelto en una ronda
+  anterior (2026-07-21, al añadir la UI de autómatas: se sustituyó por
+  `createElement` + asignación de propiedades). Seguía abierto en
+  `js/render.js`: `renderBoardGrid()` construía el HTML del tablero como
+  una única plantilla de string con `${p.name}` interpolado directamente
+  (`html += \`<h4>${p.name}...\``) antes de asignarla de una vez vía
+  `grid.innerHTML = html` — un nombre con marcado HTML embebido se
+  ejecutaría/renderizaría como HTML real en vez de mostrarse como texto.
+- **Cómo se resolvió**: se añadió `escapeHtml()` a `js/utils.js`
+  (reutilizable por cualquier módulo ES del proyecto) y se aplicó a
+  `p.name` en el único punto de `render.js` que lo necesitaba. Se revisó
+  el resto de interpolaciones de nombre del archivo (`h.name`/`c.aspecto`
+  de cartas, títulos de `picker()`) — todas usan `textContent` o son
+  nombres de personaje fijos del propio juego, no texto introducido por
+  una jugadora, así que no necesitaban cambio.
+- **Verificado manualmente**: un nombre con `<b>bold</b>` embebido se
+  muestra como texto literal (sin crear ningún elemento `<b>` real);
+  nombres normales (incluida la marca 🤖 de autómata y el desglose de
+  Gemas) se siguen mostrando igual que antes.
+- **Prioridad**: era **Media**.
+
 ### ~~9. `hasClari()` en `utils.js` es código muerto~~ (resuelto)
 
 - **Qué era**: `export`ada en `js/utils.js` pero no importada ni usada en
@@ -288,40 +313,6 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 - **Prioridad**: **Media** — no es un bug hoy, pero es el sitio más
   probable de introducir uno al tocar reglas relacionadas con portales
   (que es justo el trabajo pendiente más grande, ver `MEJORAS_FUTURAS.md`).
-
-### 5. Nombres de jugadora sin escapar insertados vía `innerHTML`
-
-- **Dónde**: ~~`js/setup.js` (`form.innerHTML += ...` al regenerar el
-  formulario de nombres)~~ **resuelto 2026-07-21** — ver más abajo. Sigue
-  abierto en `js/render.js`: la función interna `renderBoardGrid()`
-  (sucesora de las antiguas `zoneActive`/`zoneOthers` tras el refactor del
-  grid único) sigue construyendo el HTML del tablero como una única
-  plantilla de string con `${p.name}` interpolado directamente
-  (`html += \`<h4>${p.name}...\``) antes de asignarla de una vez vía
-  `grid.innerHTML = html`.
-- **Descripción**: el nombre de cada jugadora se toma de un `<input>` sin
-  ningún tipo de escapado. Un nombre como `"><img src=x onerror=alert(1)>`
-  ejecutaría HTML/JS arbitrario al renderizarse en `render.js`.
-- **Resuelto en `js/setup.js` (2026-07-21)**: al tocar este archivo para
-  añadir la UI de autómatas (ver `docs/MEJORAS_FUTURAS.md`, "Jugador
-  autómata"), se sustituyó la concatenación de `innerHTML` por
-  `document.createElement('input')` + asignación de propiedades
-  (`.value`, `.name`, `.placeholder`, `.dataset.tipo`) — ya no hay
-  interpolación de texto de usuario en una plantilla de string en este
-  archivo.
-- **Impacto real**: bajo en la práctica actual — es una app local, de una
-  sola pestaña, sin usuarios remotos ni backend, así que el único que
-  podría "atacarse" es la propia partida en la misma pantalla. Pero es un
-  patrón de inyección HTML/JS real y barato de evitar, y se vuelve más
-  relevante si algún día existe el multijugador por red mencionado en
-  "Future direction" de `CLAUDE.md` (ver también `MEJORAS_FUTURAS.md`),
-  donde el nombre sí vendría de otro dispositivo.
-- **Corrección propuesta (pendiente en `render.js`)**: usar `textContent` /
-  `createElement` en vez de concatenar `innerHTML` para cualquier valor que
-  incluya `p.name`, o como mínimo pasar los nombres por una función de
-  escape de HTML antes de interpolarlos.
-- **Prioridad**: **Media** — impacto bajo hoy, pero crece si se construye
-  la dirección de multijugador; arreglo barato.
 
 ### 6. Sin tests automatizados ni ninguna verificación no manual
 

@@ -1,5 +1,5 @@
 // render.js
-import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG } from './utils.js';
+import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG, escapeHtml } from './utils.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 
 /**
@@ -352,7 +352,7 @@ function renderBoardGrid(players, neutrals) {
     const gemasTxt = esHumanaActiva
       ? `G ${sumaGemas(p.gems)} total — ${gemDotsHtml(p.gems, { mostrarValorReal: true })}`
       : gemDotsHtml(p.gems, { mostrarValorReal: false });
-    html += `<h4>${p.name}${p.tipo === 'auto' ? ' 🤖' : ''} <span class="gem-breakdown">(${gemasTxt})</span></h4>`;
+    html += `<h4>${escapeHtml(p.name)}${p.tipo === 'auto' ? ' 🤖' : ''} <span class="gem-breakdown">(${gemasTxt})</span></h4>`;
 
     html += '<div class="board-portals">';
     p.portals.forEach((stack, j) => {

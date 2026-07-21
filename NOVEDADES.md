@@ -6,6 +6,11 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.9.64 - 2026-07-21
+
+- Revisión interna de seguridad del código (nombres de jugadora en el
+  tablero), sin cambios visibles para las jugadoras.
+
 ## 1.13.8.63 - 2026-07-21
 
 - Revisión interna de calidad de código (limpieza de una función interna
