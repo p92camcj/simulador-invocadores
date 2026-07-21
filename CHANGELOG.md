@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.6.61] - 2026-07-21
+
+### Corregido
+- **`docs/DEUDA_TECNICA.md` ítem 13 — `window.cronomanteOnComplete` no se reseteaba junto a `window.cronomantePortalInvestigado`**: `js/game.js` (`initGame()`, `nextTurn()`, `resetJuego()`) y `js/index.js` (inicialización de estado global) ya reseteaban `window.cronomantePortalInvestigado = null` en los 3 puntos de entrada relevantes, pero dejaban el callback guardado en paralelo (`window.cronomanteOnComplete`, usado por Cronomante para completar una investigación tras un cancel) como referencia obsoleta. Sin impacto funcional real (solo se lee dentro de `if (window.cronomantePortalInvestigado)`, que sí queda correctamente cerrado), pero es higiene de estado que convenía cerrar antes de que algún cambio futuro dependiera implícitamente de ese acoplamiento. Se añade `window.cronomanteOnComplete = null;` junto a los 4 resets existentes.
+
+---
+
 ## [1.13.5.60] - 2026-07-21
 
 ### Cambiado

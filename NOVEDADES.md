@@ -6,6 +6,11 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.6.61 - 2026-07-21
+
+- Revisión interna de calidad de código (limpieza de estado de la
+  habilidad del Cronomante), sin cambios visibles para las jugadoras.
+
 ## 1.13.5.60 - 2026-07-21
 
 - **Las Gemas ahora se muestran con círculos de color** en vez de texto:

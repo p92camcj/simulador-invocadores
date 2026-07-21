@@ -50,6 +50,7 @@ export function initGame() {
   window.habilidadUsadaEsteTurno = false;
   window.selectedCardIdx = null;
   window.cronomantePortalInvestigado = null;
+  window.cronomanteOnComplete = null;
   window.pickerObjetivoPortal = null;
 
   // Configurar controladores de acciones
@@ -69,6 +70,7 @@ export function nextTurn() {
   window.habilidadUsadaEsteTurno = false;
   window.selectedCardIdx = null;
   window.cronomantePortalInvestigado = null;
+  window.cronomanteOnComplete = null;
   window.pickerObjetivoPortal = null;
   const current = window.players[window.turn];
   //Se comprueba si hay condición de fin de partida, sin cartas en mano
@@ -150,6 +152,7 @@ export function resetJuego() {
   window.habilidadUsadaEsteTurno = false;
   window.selectedCardIdx = null;
   window.cronomantePortalInvestigado = null;
+  window.cronomanteOnComplete = null;
   window.pickerObjetivoPortal = null;
   window.juegoTerminado = false;
 

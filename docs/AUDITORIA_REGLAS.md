@@ -1,6 +1,6 @@
 # Auditoría de reglas — reglamento vs. código real
 
-> **Última actualización:** 2026-07-21 01:39 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 06:12 (Europe/Madrid)
 >
 > Informe de auditoría, no una tarea de código. Cruza
 > [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) contra el
@@ -291,13 +291,14 @@ los 3 puntos de entrada reales:
   simplemente la pierde para el turno siguiente, coherente con "una
   mirada por turno".
 
-**Nota menor, no un bug**: `window.cronomanteOnComplete` (el callback
-guardado para poder completar tras un cancel) no se resetea explícitamente
-en ninguno de esos 3 sitios — pero es inofensivo porque solo se lee dentro
-de la rama `if (window.cronomantePortalInvestigado)`, y esa variable sí se
-resetea siempre correctamente, así que la referencia obsoleta nunca llega
-a ejecutarse. Añadido como ítem de limpieza menor en
-`docs/DEUDA_TECNICA.md`.
+**Nota menor, no un bug — resuelta 2026-07-21**: `window.cronomanteOnComplete`
+(el callback guardado para poder completar tras un cancel) no se reseteaba
+explícitamente en ninguno de esos 3 sitios — era inofensivo porque solo se
+lee dentro de la rama `if (window.cronomantePortalInvestigado)`, y esa
+variable sí se resetea siempre correctamente, así que la referencia
+obsoleta nunca llegaba a ejecutarse. Cerrado de todos modos como limpieza
+de higiene de estado — ver `docs/DEUDA_TECNICA.md` ítem 13 (movido a
+"Resueltos").
 
 ### 3.5 Metamorfo transformado + movido por Cronista/Aprendiz/Estratega/Cronomante (verificado, sin hueco de código — sí una ambigüedad de reglamento nueva)
 

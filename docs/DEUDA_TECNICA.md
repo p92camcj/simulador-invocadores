@@ -29,6 +29,22 @@
 
 ## Resueltos
 
+### ~~13. `window.cronomanteOnComplete` no se resetea junto a `cronomantePortalInvestigado`~~ (resuelto)
+
+- **Qué era**: `window.cronomantePortalInvestigado` sí se reseteaba a
+  `null` en los 3 puntos de entrada relevantes (`initGame()`, `nextTurn()`,
+  `resetJuego()` en `js/game.js`); el callback guardado en paralelo
+  `window.cronomanteOnComplete` no, ni tampoco en la inicialización de
+  estado global de `js/index.js`.
+- **Impacto real**: ninguno confirmado — solo se lee dentro de
+  `if (window.cronomantePortalInvestigado)`, que sí queda correctamente
+  cerrado, así que la referencia obsoleta nunca se ejecutaba.
+- **Cómo se resolvió**: se añadió `window.cronomanteOnComplete = null;`
+  junto a los 4 resets existentes (los 3 de `game.js` más el de
+  `index.js`).
+- **Prioridad**: Baja (impacto real), documentado en la sección Media por
+  agruparse con el resto de esa sección en la auditoría original.
+
 ### ~~15. Service Worker con caché first-y-para-siempre: código servido podía quedar desactualizado indefinidamente~~ (resuelto)
 
 - **Qué era**: `service-worker.js` tenía `CACHE_NAME` fijo
@@ -207,22 +223,6 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 ---
 
 ## Prioridad Media
-
-### 13. `window.cronomanteOnComplete` no se resetea junto a `cronomantePortalInvestigado`
-
-- **Dónde**: `js/game.js` (`initGame()`, `nextTurn()`, `resetJuego()`).
-- **Descripción**: detectado en `docs/AUDITORIA_REGLAS.md` (sección 3.4).
-  `window.cronomantePortalInvestigado` sí se resetea a `null` en los 3
-  puntos de entrada relevantes; el callback guardado en paralelo
-  `window.cronomanteOnComplete` no. Es inofensivo hoy porque solo se lee
-  dentro de la rama `if (window.cronomantePortalInvestigado)`, que sí
-  queda correctamente cerrada — pero es una referencia obsoleta que
-  convendría limpiar para no depender de ese acoplamiento implícito.
-- **Impacto real**: ninguno hoy, solo higiene de estado.
-- **Corrección propuesta**: añadir `window.cronomanteOnComplete = null;`
-  junto a los 3 resets existentes de `cronomantePortalInvestigado`.
-- **Prioridad**: **Baja** (documentado aquí como Media por agruparse con
-  el resto de esta sección, pero el impacto real es de prioridad Baja).
 
 ### 4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en varios sitios
 
