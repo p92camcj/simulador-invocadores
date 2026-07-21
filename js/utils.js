@@ -116,12 +116,6 @@ export function draw(player, visible) {
   }
 }
 
-export function hasClari(player) {
-  return player.portals.some(
-    stack => stack.length && stack.at(-1).name === 'Clarividente' && stack.at(-1).vis
-  );
-}
-
 export function listPortals(players, neutrals) {
   const arr = [];
   players.forEach((p, pi) => {

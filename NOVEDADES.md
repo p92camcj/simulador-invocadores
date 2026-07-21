@@ -6,6 +6,11 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.8.63 - 2026-07-21
+
+- Revisión interna de calidad de código (limpieza de una función interna
+  sin uso), sin cambios visibles para las jugadoras.
+
 ## 1.13.7.62 - 2026-07-21
 
 - Revisión interna de calidad de código (manejo de errores al comprobar

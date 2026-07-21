@@ -29,6 +29,25 @@
 
 ## Resueltos
 
+### ~~9. `hasClari()` en `utils.js` es código muerto~~ (resuelto)
+
+- **Qué era**: `export`ada en `js/utils.js` pero no importada ni usada en
+  ningún otro archivo (confirmado con grep). La lógica equivalente vivía
+  duplicada inline dentro de `actualizarClarividente()` en el mismo
+  archivo.
+- **Detalle no anotado en la descripción original**: no era ni siquiera un
+  duplicado exacto — `hasClari` comprobaba `stack.at(-1).vis` (cualquier
+  objeto `vis` truthy), mientras que `actualizarClarividente()` comprueba
+  específicamente `stack.at(-1).vis?.public === true` (la condición
+  correcta según la nota de interpretación de Clarividente del
+  reglamento). Reutilizarla tal cual en vez de eliminarla habría
+  introducido un comportamiento sutilmente distinto.
+- **Cómo se resolvió**: se eliminó la función (no se fusionó), y la fila
+  correspondiente en `Documentacion_Simulador_Invocadores.md`.
+- **Verificado manualmente**: sin referencias restantes (`grep`), la app
+  carga con normalidad.
+- **Prioridad**: era **Baja**.
+
 ### ~~11. `fetch` de la Release de GitHub sin `.catch()`~~ (resuelto)
 
 - **Qué era**: `js/version-check.js`, la segunda cadena `fetch(...)` (la de
@@ -380,19 +399,6 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 - **Corrección propuesta**: derivar `PERSONAJES_CON_HABILIDAD` de los
   `case` reales de `abilities.js` (p. ej. exportando un `Set` o array desde
   ese módulo) en vez de mantener una copia manual en `utils.js`.
-- **Prioridad**: **Baja**.
-
-### 9. `hasClari()` en `utils.js` es código muerto
-
-- **Dónde**: `js/utils.js`, función `hasClari(player)`.
-- **Descripción**: está `export`ada pero no se importa ni se usa en ningún
-  otro archivo del proyecto (confirmado con grep). La lógica equivalente
-  vive duplicada inline dentro de `actualizarClarividente()` en el mismo
-  archivo.
-- **Impacto real**: ninguno, solo ruido.
-- **Corrección propuesta**: eliminarla, o si se mantiene por claridad de
-  API, usarla desde `actualizarClarividente()` en vez de duplicar la
-  condición.
 - **Prioridad**: **Baja**.
 
 ### 10. `alert()` / `confirm()` bloqueantes para todo el flujo de juego

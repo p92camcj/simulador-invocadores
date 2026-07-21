@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.8.63] - 2026-07-21
+
+### Eliminado
+- **`docs/DEUDA_TECNICA.md` ítem 9 — `hasClari()` código muerto en `js/utils.js`**: `export`ada pero no importada ni usada en ningún otro archivo (confirmado con grep). Su lógica no era siquiera un duplicado exacto de la usada realmente en `actualizarClarividente()` (`hasClari` comprobaba `stack.at(-1).vis` truthy; `actualizarClarividente` comprueba específicamente `vis?.public === true`, la condición correcta), así que reutilizarla tal cual habría introducido un comportamiento distinto — se elimina directamente en vez de intentar fusionarla. Se quita también la fila correspondiente de `Documentacion_Simulador_Invocadores.md`. Verificado que no queda ninguna referencia (`grep`) y que la app sigue cargando con normalidad.
+
+---
+
 ## [1.13.7.62] - 2026-07-21
 
 ### Corregido

@@ -41,7 +41,6 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 | `$`               | `función` | Atajo para `document.querySelector(selector)`.                               |
 | `shuffle(array)`  | `función` | Mezcla un array _in place_ (algoritmo Fisher–Yates).                        |
 | `draw(player, visible)` | `función` | Robo de carta del mazo global (`window.deck`) a la mano de un jugador.      |
-| `hasClari(player)`| `función` | `true` si el jugador tiene una **Clarividente** visible en alguno de sus portales. |
 | `listPortals(players, neutrals)` | `función` | Devuelve array de `{val, lbl}` para poblar selectores de portales (propios, ajenos, neutrales). |
 | `stackFrom(key, players, neutrals)` | `función` | Dada clave `"i:j"` o `"n:k"`, devuelve la pila de cartas (portal) correspondiente. |
 | `portalesConEstado(players, neutrals, esInvalido)` | `función` | Como `listPortals()` pero añade `disabled` según `esInvalido(stack, val)` — usado por `picker()` para bloquear opciones. |
