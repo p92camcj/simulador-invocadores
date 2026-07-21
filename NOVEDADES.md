@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.3.58 - 2026-07-21
+
+- **Arreglado el selector de destino al jugar carta en móvil**: el
+  desplegable que indica qué hay en cada Portal (vacío, carta oculta o
+  personaje) cortaba el texto sin más en pantallas estrechas cuando el
+  nombre era largo (por ejemplo, con nombres de autómata). Ahora se
+  muestra completo.
+
 ## 1.13.2.57 - 2026-07-21
 
 - **Arreglados los botones de la cabecera en el móvil**: antes, en

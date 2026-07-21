@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.3.58] - 2026-07-21
+
+### Corregido
+- **`#selDest` truncaba sin elipsis las opciones largas en móvil**: la funcionalidad de mostrar entre paréntesis qué hay en el top de cada Portal ("Tu portal 1 (Vacío)", "Neutral 1 (✍️ Cronista)", "Beto P1 (Carta Oculta)") seguía intacta en `js/actions.js` (`topLabel()`/`abrirPanelJugarCarta()`, restaurada en v1.12.0.47) — el problema real, confirmado tras probar en un viewport de 380px real (iframe, no simulado), era puramente de CSS: `#ctrlPlay select`/`.play-line select` (`style.css`, `@media (max-width: 768px)`) capaban el `<select>` a `max-width: 160px`, y un `<select>` nativo no añade elipsis al desbordar — simplemente cortaba el texto ("Beto P1 (Carta Ocult" sin más), perdiendo justo la información que el selector existe para mostrar. Se sube el tope a `max-width: 100%`: cada `<select>` ya ocupa su propia fila dentro del panel gracias al `flex-wrap` existente de `.play-line`, así que hay margen de sobra. Verificado con el nombre de autómata más largo del pool (`Místicobot`) combinado con el personaje más largo (`Ocultista`): "Místicobot P1 (🙈 Ocultista)" se muestra completo, sin desbordar el panel ni el viewport de 380px.
+
+---
+
 ## [1.13.2.57] - 2026-07-21
 
 ### Corregido

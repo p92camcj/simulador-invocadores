@@ -406,7 +406,13 @@ select {
     font-size: 0.95rem;
     padding: 4px 6px;
     width: auto;
-    max-width: 160px;
+    /* Tarea 3: 160px truncaba sin elipsis opciones largas de #selDest
+       ("Beto P1 (Carta Oculta)", nombres de autómata + personaje...),
+       perdiendo justo la info de "qué hay en el top" que este selector
+       existe para mostrar. `.play-line` ya envuelve cada `<select>` a su
+       propia fila en viewports estrechos, así que hay margen de sobra para
+       ampliarlo sin romper el layout. */
+    max-width: 100%;
   }
 
   #ctrlPlay button {
@@ -456,7 +462,8 @@ select {
     font-size: 0.95rem;
     padding: 6px;
     min-width: 110px;
-    max-width: 160px;
+    /* Ver nota de #ctrlPlay select más arriba (Tarea 3). */
+    max-width: 100%;
   }
 
   .play-line button {
