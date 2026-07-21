@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.21.0.80 - 2026-07-21
+
+- **Los autómatas ya saben usar a Aprendiz**: antes nunca activaban esta
+  habilidad. Ahora, si les conviene, intercambian su mano con la de otra
+  jugadora para quedarse con una carta que necesitan. En dificultad
+  "Difícil" también pueden intercambiar las manos de otras DOS jugadoras
+  entre sí (sin quedarse ellos nada) solo para desbaratar a la que va
+  ganando, si detectan que le conviene menos su nueva mano.
+
 ## 1.20.0.79 - 2026-07-21
 
 - **Los autómatas ya usan a Cronista también contra el resto**: antes

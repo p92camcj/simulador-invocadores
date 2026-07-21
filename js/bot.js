@@ -18,7 +18,7 @@ import { render } from './render.js';
 import {
   actualizarMemoriaBot, estimarProbabilidadesPersonajes,
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
-  calcularNecesariosUnicosDeRivales,
+  calcularNecesariosUnicosDeRivales, PESO_ADVERSARIAL,
 } from './bot-probabilidad.js';
 
 // ---------- Nombres de autómatas ----------
@@ -613,6 +613,12 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
     if (portalKey) return { ...cronista, objetivoPreferido: portalKey };
   }
 
+  const aprendiz = candidatos.find(c => c.name === 'Aprendiz');
+  if (aprendiz) {
+    const decision = decidirAprendizNormal(vista, need);
+    if (decision) return { ...aprendiz, objetivoPreferido: [decision.idx1, decision.idx2] };
+  }
+
   return null;
 }
 
@@ -632,6 +638,97 @@ export function decidirCronistaAdversarialNormal(vista, need) {
   const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
   const [clave] = Object.values(necesariosUnicosDeRivales);
   return clave ? clave.slice(2) : null; // "a:i:j" -> "i:j" (formato de habilidad)
+}
+
+/**
+ * Heurística 'normal' de Aprendiz (Bloque 4, 4.4): intercambia manos
+ * COMPLETAS de dos jugadoras, manteniendo la orientación de cada carta.
+ * SOLO beneficio propio, incluyéndose a sí mismo: si su propia carta
+ * conocida ya es útil (requisito activo, todavía no cumplido en la mesa),
+ * no la cambia a ciegas; si no, busca una rival cuya carta pública
+ * conocida (`cartaOcultaPublica`) SÍ lo sea, y se intercambia con ella.
+ * Nunca el uso puramente adversarial de intercambiar las manos de DOS
+ * rivales sin el bot — razonar sobre el efecto en terceros sin beneficio
+ * propio directo queda reservado a 'dificil' (ver prompt original de esta
+ * tarea).
+ */
+export function decidirAprendizNormal(vista, need) {
+  const propiaConocida = vista.propiaCartaConocida?.name ?? null;
+  const visibles = personajesVisiblesActuales(vista);
+  const propiaEsUtil = propiaConocida && need.includes(propiaConocida) && !visibles.includes(propiaConocida);
+  if (propiaEsUtil) return null;
+
+  const propia = vista.jugadoras.find(j => j.esUnoMismo);
+  const candidata = vista.jugadoras.find(j =>
+    !j.esUnoMismo && j.cartaOcultaPublica && need.includes(j.cartaOcultaPublica) && !visibles.includes(j.cartaOcultaPublica)
+  );
+  if (!candidata) return null;
+  return { idx1: propia.idx, idx2: candidata.idx };
+}
+
+/**
+ * Valor (en unidades de "valor de Gema del nivel activo") de tener
+ * `nombre` en la propia mano, sin jugarla todavía: mismo descuento "a
+ * futuro, no jugada de inmediato" (`* 0.5`) que ya aplica Cronista a la
+ * carta que se lleva a la mano — 0 si no es requisito activo o si ya está
+ * cumplido en la mesa (no aportaría nada nuevo).
+ */
+function valorCartaEnManoPropia(nombre, need, cumplidos, valorGemaNivel) {
+  if (!nombre || !need.includes(nombre) || cumplidos.includes(nombre)) return 0;
+  return valorGemaNivel * 0.5;
+}
+
+/**
+ * Heurística 'dificil' de Aprendiz, caso "se incluye a sí mismo" (Bloque 4,
+ * 4.4): para cada rival, compara el valor de RECIBIR su carta pública
+ * conocida frente a CEDER la propia (`valorCartaEnManoPropia`) — elige la
+ * rival con mayor ganancia neta. Deliberadamente NO reutiliza
+ * `valorEsperadoDeAccion()`: esa función modela cartas que acaban VISIBLES
+ * en un Portal, y aquí ninguna carta se juega, solo cambia de mano — usar
+ * su mecanismo de "Portal ajeno/central"/adversarial no tendría sentido
+ * (ninguna carta se hace públicamente visible por este intercambio).
+ */
+export function decidirAprendizPropioDificil(vista, need, cumplidos, valorGemaNivel) {
+  const propia = vista.jugadoras.find(j => j.esUnoMismo);
+  const propiaConocida = vista.propiaCartaConocida?.name ?? null;
+  const valorCedido = valorCartaEnManoPropia(propiaConocida, need, cumplidos, valorGemaNivel);
+
+  let mejor = null;
+  vista.jugadoras.forEach(j => {
+    if (j.esUnoMismo || !j.cartaOcultaPublica) return;
+    const ev = valorCartaEnManoPropia(j.cartaOcultaPublica, need, cumplidos, valorGemaNivel) - valorCedido;
+    if (!mejor || ev > mejor.ev) mejor = { idx1: propia.idx, idx2: j.idx, ev };
+  });
+  return mejor;
+}
+
+/**
+ * Heurística 'dificil' de Aprendiz, caso "uso adversarial SIN beneficio
+ * propio" (Bloque 4, 4.4): intercambia las manos de DOS RIVALES entre sí
+ * (el bot no se incluye), para desbaratar a quien vaya mejor posicionada
+ * — solo tiene sentido en 'dificil', razonar sobre el efecto en terceros
+ * sin ganancia propia inmediata. "Mejor posicionada" se estima con la
+ * única señal disponible sin hacer trampa: el RECUENTO total de Gemas por
+ * nivel de cada rival (`vista.jugadoras[i].gemasPorNivel`, nunca su valor
+ * exacto). Solo tiene sentido si a la líder se le puede quitar con ello
+ * algo que de verdad le convenía (su carta pública conocida es un
+ * requisito activo todavía no cumplido) — si no, no hay nada que
+ * desbaratar. Requiere al menos 2 rivales (con 1 sola rival, "intercambiar
+ * sin el bot" no es posible).
+ */
+export function decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGemaNivel) {
+  const rivales = vista.jugadoras.filter(j => !j.esUnoMismo);
+  if (rivales.length < 2) return null;
+
+  const totalGemas = j => Object.values(j.gemasPorNivel || {}).reduce((a, b) => a + b, 0);
+  const lider = rivales.reduce((max, j) => (totalGemas(j) > totalGemas(max) ? j : max), rivales[0]);
+  const otra = rivales.find(j => j.idx !== lider.idx);
+  if (!otra) return null;
+
+  if (!lider.cartaOcultaPublica || !need.includes(lider.cartaOcultaPublica) || cumplidos.includes(lider.cartaOcultaPublica)) {
+    return null;
+  }
+  return { idx1: lider.idx, idx2: otra.idx, ev: valorGemaNivel * PESO_ADVERSARIAL };
 }
 
 /**
@@ -737,6 +834,11 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
     } else if (c.name === 'Estratega') {
       const decision = decidirEstrategaDificil(vista, need, probabilidades, contexto);
       if (decision) considerar({ ...c, ev: decision.ev, objetivoPreferido: [decision.portalKeyA, decision.portalKeyB] });
+    } else if (c.name === 'Aprendiz') {
+      const propioResultado = decidirAprendizPropioDificil(vista, need, cumplidos, valorGemaNivel);
+      if (propioResultado) considerar({ ...c, ev: propioResultado.ev, objetivoPreferido: [propioResultado.idx1, propioResultado.idx2] });
+      const ajenoResultado = decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGemaNivel);
+      if (ajenoResultado) considerar({ ...c, ev: ajenoResultado.ev, objetivoPreferido: [ajenoResultado.idx1, ajenoResultado.idx2] });
     }
   });
 
@@ -863,6 +965,8 @@ export function describirObjetivoHabilidad(name, valores, vista) {
       return `reorganizó ${conDe(etiquetaPortalPorClaveHabilidad(valores[0], vista))}`;
     case 'Estratega':
       return `intercambió ${etiquetaPortalPorClaveHabilidad(valores[0], vista)} con ${etiquetaPortalPorClaveHabilidad(valores[1], vista)}`;
+    case 'Aprendiz':
+      return `intercambió la mano de ${nombreJugadoraPorIdx(parseInt(valores[0], 10), vista)} con la de ${nombreJugadoraPorIdx(parseInt(valores[1], 10), vista)}`;
     default:
       return '';
   }

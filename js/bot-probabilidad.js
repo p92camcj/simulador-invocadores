@@ -69,7 +69,7 @@ const FACTOR_DESTINO_CENTRAL = 0;
 // porque el objetivo primario del bot sigue siendo su propio avance, no la
 // guerra total contra las rivales — valor elegido, no derivado de ninguna
 // regla del juego.
-const PESO_ADVERSARIAL = 0.5;
+export const PESO_ADVERSARIAL = 0.5;
 
 // Bonus (en unidades de "valor medio de Gema del nivel activo") que se suma
 // cuando una acción, con certeza, deja la invocación activa completa AHORA

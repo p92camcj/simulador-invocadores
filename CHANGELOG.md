@@ -4,6 +4,28 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.21.0.80] - 2026-07-21
+
+### Añadido
+- **Uso estratégico de Aprendiz por el autómata (Bloque 4, 4.4)**: hasta
+  ahora ningún nivel de dificultad usaba esta habilidad.
+  - `'normal'` (`decidirAprendizNormal`, `js/bot.js`): SOLO beneficio
+    propio incluyéndose a sí mismo — si su propia carta conocida ya es un
+    requisito útil no la cambia a ciegas; si no, se intercambia con la
+    primera rival cuya carta pública conocida sí lo sea.
+  - `'dificil'` combina dos casos (gana el de mayor valor esperado):
+    incluyéndose (`decidirAprendizPropioDificil`, comparando recibir vs.
+    ceder con el mismo descuento "a futuro, en mano" que ya usa Cronista)
+    y puramente adversarial SIN el bot
+    (`decidirAprendizAjenoAjenoDificil`, intercambia las manos de las DOS
+    rivales para desbaratar a la que va mejor posicionada, estimada por
+    el recuento de Gemas por nivel — nunca el valor exacto de cada una).
+- Nuevo `PESO_ADVERSARIAL` exportado desde `js/bot-probabilidad.js` (antes
+  interno) para que `js/bot.js` lo reutilice sin duplicar el valor.
+- 5 tests nuevos en `tests/run-tests.mjs`.
+
+---
+
 ## [1.20.0.79] - 2026-07-21
 
 ### Añadido

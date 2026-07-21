@@ -30,6 +30,7 @@ import {
   candidatosCronomante, decidirCronomanteNormal,
   decidirEstrategaNormal, decidirEstrategaDificil,
   decidirCronistaAdversarialNormal,
+  decidirAprendizNormal, decidirAprendizPropioDificil, decidirAprendizAjenoAjenoDificil,
 } from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
@@ -438,6 +439,65 @@ test('Cronista (Difícil): retirar un personaje VISIBLE (no solo oculto) que hoy
     contexto
   ) * 0.5;
   assert.ok(ev > 0);
+});
+
+console.log('Uso estratégico de habilidades activas — 4.4 Aprendiz (bot.js) — Bloque 4');
+
+test('Aprendiz (Normal): se intercambia con la rival cuya carta pública conocida es un requisito útil, si la propia no lo es', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    propiaCartaConocida: { name: 'W' },
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [], cartaOcultaPublica: null },
+      { idx: 1, esUnoMismo: false, portales: [], cartaOcultaPublica: 'Y' },
+    ],
+    neutrales: [],
+  };
+  assert.deepEqual(decidirAprendizNormal(vista, need), { idx1: 0, idx2: 1 });
+});
+
+test('Aprendiz (Normal): no se intercambia si su propia carta conocida ya es útil', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    propiaCartaConocida: { name: 'X' },
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [], cartaOcultaPublica: null },
+      { idx: 1, esUnoMismo: false, portales: [], cartaOcultaPublica: 'Y' },
+    ],
+    neutrales: [],
+  };
+  assert.equal(decidirAprendizNormal(vista, need), null);
+});
+
+test('Aprendiz (Difícil, incluyéndose): prefiere a la rival cuya carta pública aporta más valor neto que la propia carta cedida', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    propiaCartaConocida: { name: 'W' },
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, cartaOcultaPublica: null },
+      { idx: 1, esUnoMismo: false, cartaOcultaPublica: 'Y' },
+      { idx: 2, esUnoMismo: false, cartaOcultaPublica: null },
+    ],
+  };
+  assert.deepEqual(decidirAprendizPropioDificil(vista, need, [], 4), { idx1: 0, idx2: 1, ev: 2 });
+});
+
+test('Aprendiz (Difícil, adversarial sin el bot): intercambia las manos de las DOS rivales para desbaratar a la que va mejor posicionada', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, gemasPorNivel: {} },
+      { idx: 1, esUnoMismo: false, gemasPorNivel: { C: 3 }, cartaOcultaPublica: 'Z' },
+      { idx: 2, esUnoMismo: false, gemasPorNivel: { C: 1 }, cartaOcultaPublica: 'Q' },
+    ],
+  };
+  assert.deepEqual(decidirAprendizAjenoAjenoDificil(vista, need, [], 4), { idx1: 1, idx2: 2, ev: 2 });
+});
+
+test('Aprendiz (Difícil, adversarial): no activa con una sola rival (no hay "otra" con la que intercambiar sin el bot)', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { jugadoras: [{ idx: 0, esUnoMismo: true }, { idx: 1, esUnoMismo: false, gemasPorNivel: { C: 3 }, cartaOcultaPublica: 'Z' }] };
+  assert.equal(decidirAprendizAjenoAjenoDificil(vista, need, [], 4), null);
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');
