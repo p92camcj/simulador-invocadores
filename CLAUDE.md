@@ -284,9 +284,21 @@ from its first version.
 
 ## Commands
 
-No build/lint/test tooling — this is plain static HTML/CSS/JS. Verification
-is manual: open `index.html` (or serve the folder locally) and play through
-the scenario being changed.
+No build/lint tooling, no `package.json` — this is plain static HTML/CSS/JS.
+Verification of any UI/game-flow change is still manual: open `index.html`
+(or serve the folder locally) and play through the scenario being changed.
+Since 2026-07-21 there's a minimal automated check for the pure logic in
+`js/utils.js`/`js/abilities.js` (Gem economy, portal traversal, Centinela
+protection, Fase B options) — no framework, native `node:assert`:
+
+```bash
+node tests/run-tests.mjs
+```
+
+Deliberately narrow scope (see `docs/DEUDA_TECNICA.md` ítem 6): does not
+cover `actions.js`/`game.js`/`render.js` (DOM-dependent) or the `case`s of
+`abilities.js` that open a real UI `picker()`. Run it after touching any of
+the functions it covers, but it does not replace manual browser testing.
 
 ```bash
 git add -A

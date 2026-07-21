@@ -391,6 +391,28 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
   asumirse aquí.
 - **Prioridad**: **Media** — no es un bug puntual, es la causa raíz de que
   esos bugs pasaran desapercibidos.
+- **Alcance parcial cubierto 2026-07-21 (sesión de deuda técnica)**: se
+  añadió `tests/run-tests.mjs` — runner sin dependencias (`node
+  tests/run-tests.mjs`, sin `package.json` ni framework, node:assert
+  nativo importando los módulos ES directamente) con 16 casos sobre las
+  funciones puras más críticas de `js/utils.js` (economía de Gemas:
+  `sumaGemas`, `contarGemasPorNivel`, `gastarGemaUnitaria`,
+  `gastarGemaAsterisco`, `construirPoolGemas`; portales y protección de
+  Centinela: `todosLosPortales`, `jugadoraProtegidaPorCentinela`,
+  `estaProtegidoParaActivar`; visibilidad: `generarVis`) y una de
+  `js/abilities.js` (`ocultarOtrasCentinelas`, regresión del ítem 12).
+  Incluye 3 casos de regresión explícita del ítem 16 (bug de coste de
+  Portal central recién corregido esta misma sesión) para que no vuelva a
+  colarse en silencio. **Explícitamente NO cubierto** (alcance deliberado,
+  no una tarea a medias): `actions.js`/`game.js`/`render.js` (dependen del
+  DOM real — probarlos exigiría `jsdom` o similar, decisión de mayor
+  calado no tomada aquí) ni el resto de `case` de `abilities.js`
+  (Ocultista, Cronista, Cronomante, Estratega, Aprendiz, Metamorfo abren un
+  `picker()` de UI real, no son fácilmente probables como funciones puras
+  sin esa capa). Es un punto de partida real y honesto sobre su alcance,
+  no la resolución completa de este ítem — introducir un framework de
+  verdad (Vitest u otro) o cobertura de la capa de UI sigue siendo una
+  decisión de mayor calado sin tomar.
 
 ---
 
