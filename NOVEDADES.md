@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.20.0.79 - 2026-07-21
+
+- **Los autómatas ya usan a Cronista también contra el resto**: antes
+  solo la usaban para recuperar cartas ocultas. Ahora, si una rival tiene
+  visible el único personaje que necesita para una recompensa, el
+  autómata puede llevárselo a la mano para quitárselo, no solo cuando
+  está boca abajo.
+
 ## 1.19.0.78 - 2026-07-21
 
 - **Los autómatas ya saben usar a Estratega**: antes nunca activaban esta

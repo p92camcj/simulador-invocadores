@@ -4,6 +4,25 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.20.0.79] - 2026-07-21
+
+### Añadido
+- **Uso estratégico de Cronista por el autómata (Bloque 4, 4.3)**: Cronista,
+  a diferencia de Ocultista, siempre pudo actuar sobre un Portal YA
+  VISIBLE (se lleva su carta superior a la mano) — pero ningún nivel de
+  dificultad lo aprovechaba, ambos solo consideraban Portales ocultos.
+  - `'normal'` (`decidirCronistaAdversarialNormal`, `js/bot.js`): además de
+    la comprobación compartida con Ocultista, denegación GRATUITA — se
+    lleva a la mano el único ejemplar visible en toda la mesa de un
+    requisito que hoy tiene una RIVAL.
+  - `'dificil'` (dentro de `decidirHabilidadFaseBDificil`): evalúa el mismo
+    uso adversarial sobre Portales visibles (antes solo ocultos), con el
+    mismo `cubreNecesarioUnicoRival` y la misma ponderación a la baja
+    (`* 0.5`) que ya aplicaba a Cronista.
+- 3 tests nuevos en `tests/run-tests.mjs`.
+
+---
+
 ## [1.19.0.78] - 2026-07-21
 
 ### Añadido

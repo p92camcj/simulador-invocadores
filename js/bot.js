@@ -607,7 +607,31 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
     if (decision) return { ...estratega, objetivoPreferido: [decision.portalKeyA, decision.portalKeyB] };
   }
 
+  const cronista = candidatos.find(c => c.name === 'Cronista');
+  if (cronista) {
+    const portalKey = decidirCronistaAdversarialNormal(vista, need);
+    if (portalKey) return { ...cronista, objetivoPreferido: portalKey };
+  }
+
   return null;
+}
+
+/**
+ * Heurística 'normal' ADICIONAL, específica de Cronista (Bloque 4, 4.3):
+ * a diferencia de Ocultista, Cronista puede actuar sobre un Portal YA
+ * VISIBLE (se lleva su carta superior a la mano, no solo la oculta) —
+ * denegación GRATUITA: si el Portal de una rival muestra, como única
+ * copia visible en toda la mesa, un requisito de la invocación activa,
+ * llevárselo a la mano se lo quita sin coste real para el bot. El
+ * beneficio propio especulativo ("recuperar una carta conocida para
+ * jugarla mejor en un turno posterior") se deja fuera de 'normal' —
+ * depende de predecir jugadas futuras, demasiado incierto para esta
+ * heurística de bajo riesgo; sí lo modela 'dificil' vía valor esperado.
+ */
+export function decidirCronistaAdversarialNormal(vista, need) {
+  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
+  const [clave] = Object.values(necesariosUnicosDeRivales);
+  return clave ? clave.slice(2) : null; // "a:i:j" -> "i:j" (formato de habilidad)
 }
 
 /**
@@ -619,7 +643,11 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
  *   determinista; si no, usa la distribución de probabilidad completa.
  *   Cronista se pondera a la baja (`* 0.5`): solo reposiciona la carta a
  *   la propia mano, no la deja jugada de inmediato — su valor es a futuro,
- *   un turno más tarde como mínimo.
+ *   un turno más tarde como mínimo. Además (Bloque 4, 4.3), Cronista —a
+ *   diferencia de Ocultista— también puede actuar sobre un Portal YA
+ *   VISIBLE: se evalúa el uso ADVERSARIAL de retirar de la mesa el único
+ *   ejemplar visible de un requisito que hoy solo tiene una rival
+ *   (`cubreNecesarioUnicoRival`, mismo mecanismo que el resto del bloque).
  * - **Maestro**: determinista siempre — la carta oculta-para-el-resto de
  *   otra jugadora ya es una identidad CONOCIDA con certeza (mismo campo
  *   `cartaOcultaPublica` que expone la vista saneada). Como la carta baja
@@ -659,6 +687,20 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
         ) * (c.name === 'Cronista' ? 0.5 : 1);
         considerar({ ...c, ev, objetivoPreferido: p.key });
       });
+      if (c.name === 'Cronista') {
+        listaPortalesFormatoHabilidad(vista)
+          .filter(p => !p.esPropio && p.estado?.name)
+          .forEach(p => {
+            const destKeyFaseA = `a:${p.key}`;
+            if (!Object.values(necesariosUnicosDeRivales).includes(destKeyFaseA)) return;
+            const ev = valorEsperadoDeAccion(
+              { personaje: null, esPropio: false, esCentral: false, destKey: destKeyFaseA, cubreNecesarioUnicoRival: true, completaInvocacionSiSeJuega: false },
+              probabilidades,
+              contexto
+            ) * 0.5;
+            considerar({ ...c, ev, objetivoPreferido: p.key });
+          });
+      }
     } else if (c.name === 'Maestro') {
       vista.jugadoras.forEach(j => {
         if (j.esUnoMismo || !j.cartaOcultaPublica) return;

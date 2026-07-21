@@ -29,6 +29,7 @@ import {
   listaPortalesConDestino, describirObjetivoHabilidad, decidirJugadaFaseA,
   candidatosCronomante, decidirCronomanteNormal,
   decidirEstrategaNormal, decidirEstrategaDificil,
+  decidirCronistaAdversarialNormal,
 } from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
@@ -406,6 +407,37 @@ test('Estratega (Difícil): sigue prefiriendo denegar el único requisito visibl
   const contexto = { need, cumplidos: ['Z'], valorGemaNivel: 4, necesariosUnicosDeRivales };
   const decision = decidirEstrategaDificil(vista, need, { probabilidadPorNombre: {} }, contexto);
   assert.deepEqual(decision, { portalKeyA: '1:0', portalKeyB: 'n:0', ev: 2 });
+});
+
+console.log('Uso estratégico de habilidades activas — 4.3 Cronista (bot.js / bot-probabilidad.js) — Bloque 4');
+
+test('Cronista (Normal): denegación gratuita — se lleva a la mano el único requisito visible de una rival, aunque esté visible (no oculto)', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [{ idx: 1, esUnoMismo: false, portales: [{ name: 'Z' }] }],
+    neutrales: [],
+  };
+  assert.equal(decidirCronistaAdversarialNormal(vista, need), '1:0');
+});
+
+test('Cronista (Normal): no activa si ningún requisito está visible en exclusiva en un Portal ajeno', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { jugadoras: [{ idx: 1, esUnoMismo: false, portales: [{ name: 'W' }] }], neutrales: [] };
+  assert.equal(decidirCronistaAdversarialNormal(vista, need), null);
+});
+
+test('Cronista (Difícil): retirar un personaje VISIBLE (no solo oculto) que hoy solo tiene una rival aporta valor adversarial positivo', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { jugadoras: [{ idx: 1, esUnoMismo: false, portales: [{ name: 'Z' }] }], neutrales: [] };
+  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
+  const destKeyFaseA = 'a:1:0';
+  const contexto = { need, cumplidos: ['Z'], valorGemaNivel: 4, necesariosUnicosDeRivales };
+  const ev = valorEsperadoDeAccion(
+    { personaje: null, esPropio: false, esCentral: false, destKey: destKeyFaseA, cubreNecesarioUnicoRival: true, completaInvocacionSiSeJuega: false },
+    { probabilidadPorNombre: {} },
+    contexto
+  ) * 0.5;
+  assert.ok(ev > 0);
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');
