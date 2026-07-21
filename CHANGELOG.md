@@ -4,6 +4,18 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.0.55] - 2026-07-21
+
+### Añadido
+- **Jugador autómata ("bot")**: se pueden combinar jugadoras humanas y autómatas controladas por la app, dentro del límite de 2-5 jugadoras. Nuevo campo "Autómatas (bots)" en la pantalla de configuración (`js/setup.js`, 0..jugadoras, validado); los últimos `nBots` puestos reciben un nombre único de un pool temático de 10 nombres terminados en "bot" (`Arcanobot`, `Nigrobot`, `Rúnabot`, `Encantobot`, `Oráculobot`, `Hechizobot`, `Conjurobot`, `Místicobot`, `Videntebot`, `Brujobot`), mostrado en un campo de solo lectura; el resto de puestos siguen pidiendo nombre editable como hasta ahora. De paso se resolvió la mitad de `DEUDA_TECNICA.md` ítem 5 en este archivo: los `<input>` del formulario de nombres se construyen ahora con `createElement`/propiedades en vez de interpolar en `innerHTML`.
+- **Nuevo `js/bot.js`**: toda la lógica de decisión de las autómatas. `construirEstadoVisibleParaBot()` construye una vista saneada del estado (la propia carta "visible", nunca la "oculta"; la carta "oculta" de cualquier otra jugadora, pública por reglamento; el estado de cada Portal; recuentos de Gemas) de la que parte cualquier decisión — auditable de un vistazo que el bot no puede hacer trampa. `decidirYJugarTurno()` ejecuta el turno completo (Fases A-E) reutilizando exactamente los mismos puntos de entrada que usa una jugadora humana (`window.tryPlayOnPortal`, `applyAbility()` de `abilities.js`, resolviendo programáticamente el/los `picker()` que abra, y terminando con un clic simulado en `#btnEndTurn`) — no duplica ninguna lógica de reglas. Heurística del único nivel implementado (`'normal'`, guardado en `player.dificultad`): en Fase A prioriza la carta conocida si completa la invocación activa, si no la juega donde razonablemente ayuda; en Fase B solo activa Ocultista o Cronista, y solo si falta algún personaje del combo por revelar y hay un Portal oculto donde intentarlo (Estratega/Cronomante/Aprendiz/Metamorfo quedan para dificultades futuras, ver `docs/MEJORAS_FUTURAS.md`).
+- **`js/game.js` (`nextTurn()`)**: detecta `players[turn].tipo === 'auto'`, oculta los controles de acción humanos durante su turno y, tras un breve `setTimeout`, dispara `decidirYJugarTurno()`. Como el bot termina su turno simulando el mismo clic en "Terminar turno" que usaría una humana, los turnos de varias autómatas consecutivas se encadenan automáticamente hasta que le toca a una jugadora humana.
+- **`js/render.js`**: una autómata nunca revela su propia carta "visible" ni el desglose exacto de sus Gemas, ni siquiera durante su propio turno — a diferencia de una jugadora humana activa (simplificación ya asumida de este simulador de una sola pantalla compartida), un bot no tiene "su propia pantalla" a la que mostrárselo, así que se trata siempre como cualquier jugadora no activa (solo su carta "oculta", pública, y el recuento de Gemas por nivel). Su nombre lleva un icono 🤖 junto a las Gemas.
+
+Verificado manualmente en navegador: nombres de bot únicos y sin colisión con nombres humanos; la carta "visible" del bot nunca aparece en el HTML renderizado, ni siquiera en el instante exacto en que empieza su turno; combinaciones de 1 humana+1 bot y 2 humanas+2 bots completan turnos correctamente, incluyendo activación real de Ocultista con resolución del picker y encadenado de varias autómatas seguidas sin quedarse bloqueado ningún modal; el flujo de turno humano no se ve afectado tras el turno de un bot.
+
+---
+
 ## [1.12.5.54] - 2026-07-21
 
 ### Corregido

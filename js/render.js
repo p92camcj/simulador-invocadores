@@ -206,11 +206,14 @@ function renderBoardNeutrals(neutrals) {
  * depuración" con todo visible):
  * - Portales: visibles según `vis?.public` de la carta superior, igual
  *   para cualquier columna (no depende de quién es la activa).
- * - Mano de la jugadora ACTIVA (`window.turn`): según
+ * - Mano de la jugadora ACTIVA (`window.turn`), SOLO si es humana
+ *   (`p.tipo !== 'auto'`, `esHumanaActiva` más abajo): según
  *   `c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente`.
- * - Mano de cualquier OTRA jugadora: según `h.vis?.others`, salvo que esa
- *   jugadora tenga `hasClariActivo || haTenidoClarividente`, en cuyo caso
- *   se oculta la mano COMPLETA al resto (decisión de mesa, ver
+ * - Mano de cualquier OTRA jugadora, Y de una autómata en su propio turno
+ *   (una autómata nunca tiene "su propia pantalla" que la vea — ver
+ *   `js/bot.js`): según `h.vis?.others`, salvo que esa jugadora tenga
+ *   `hasClariActivo || haTenidoClarividente`, en cuyo caso se oculta la
+ *   mano COMPLETA al resto (decisión de mesa, ver
  *   docs/reglamento/REGLAMENTO.md, nota de Clarividente).
  * La columna de la jugadora activa se resalta (`.turno-activo`); el resto
  * se atenúa (`.turno-inactivo`), sin perder su color de identidad fijo.
@@ -232,14 +235,24 @@ function renderBoardGrid(players, neutrals) {
   let html = '';
   players.forEach((p, i) => {
     const esActiva = i === window.turn;
+    // Una autómata nunca tiene "su propia pantalla" — la única audiencia es
+    // la persona humana mirando esta pantalla compartida, así que su carta
+    // "visible" (solo-dueña) y su desglose exacto de Gemas NUNCA deben
+    // mostrarse, ni siquiera durante su propio turno (a diferencia de una
+    // jugadora humana activa, para quien mostrarlo es la simplificación ya
+    // asumida de este simulador de una sola pantalla — ver CLAUDE.md,
+    // "Future direction"). `esHumanaActiva` sustituye a `esActiva` solo en
+    // esos dos sitios; el resto (resaltado de columna, destino de Portal
+    // para jugar) sigue dependiendo del turno real.
+    const esHumanaActiva = esActiva && p.tipo !== 'auto';
     const colorClass = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][i % 4];
     const turnoClass = esActiva ? 'turno-activo' : 'turno-inactivo';
     html += `<div class="board-col section ${colorClass} ${turnoClass}">`;
 
-    const gemasTxt = esActiva
+    const gemasTxt = esHumanaActiva
       ? `G ${sumaGemas(p.gems)} total — ${desgloseGemasPropio(p.gems)}`
       : desgloseGemasAjeno(p.gems);
-    html += `<h4>${p.name} (${gemasTxt})</h4>`;
+    html += `<h4>${p.name}${p.tipo === 'auto' ? ' 🤖' : ''} (${gemasTxt})</h4>`;
 
     html += '<div class="board-portals">';
     p.portals.forEach((stack, j) => {
@@ -249,7 +262,7 @@ function renderBoardGrid(players, neutrals) {
     html += '</div>';
 
     html += '<h5>Mano</h5><div class="board-hand">';
-    if (esActiva) {
+    if (esHumanaActiva) {
       p.hand.forEach((c, idx) => {
         const visible = c.vis?.owner || p.hasClariActivo || p.haTenidoClarividente;
         const selectedClass = idx === window.selectedCardIdx ? ' selected' : '';
@@ -261,6 +274,13 @@ function renderBoardGrid(players, neutrals) {
           </div>`;
       });
     } else {
+      // Misma rama para cualquier jugadora no activa Y para una autómata en
+      // su propio turno (ver `esHumanaActiva` arriba): nunca ve su propia
+      // carta "visible", solo la "oculta" (pública para el resto por
+      // reglamento). De paso, ninguna carta con onclick/draggable — nada de
+      // controles de selección para una autómata (tampoco tiene sentido que
+      // el resto de jugadoras seleccione cartas ajenas).
+      //
       // Decisión de mesa (ver docs/reglamento/REGLAMENTO.md, nota sobre
       // Clarividente): mientras esta jugadora tenga la Clarividente
       // visible/en periodo de gracia, su mano COMPLETA queda oculta para

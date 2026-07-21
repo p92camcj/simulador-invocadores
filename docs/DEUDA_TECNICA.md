@@ -204,15 +204,24 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 
 ### 5. Nombres de jugadora sin escapar insertados vía `innerHTML`
 
-- **Dónde**: `js/render.js` (`zoneActive.innerHTML += \`<h3>${pl.name}...\``,
-  y el equivalente para `zoneOthers`), y `js/setup.js`
-  (`form.innerHTML += \`<input ... value="${nombre}" ...>\`` al
-  regenerar el formulario de nombres).
+- **Dónde**: ~~`js/setup.js` (`form.innerHTML += ...` al regenerar el
+  formulario de nombres)~~ **resuelto 2026-07-21** — ver más abajo. Sigue
+  abierto en `js/render.js`: la función interna `renderBoardGrid()`
+  (sucesora de las antiguas `zoneActive`/`zoneOthers` tras el refactor del
+  grid único) sigue construyendo el HTML del tablero como una única
+  plantilla de string con `${p.name}` interpolado directamente
+  (`html += \`<h4>${p.name}...\``) antes de asignarla de una vez vía
+  `grid.innerHTML = html`.
 - **Descripción**: el nombre de cada jugadora se toma de un `<input>` sin
-  ningún tipo de escapado y se reinserta directamente vía `innerHTML` en
-  varios sitios. Un nombre como `"><img src=x onerror=alert(1)>` rompería
-  el atributo `value` en `setup.js` al regenerar el formulario, o
+  ningún tipo de escapado. Un nombre como `"><img src=x onerror=alert(1)>`
   ejecutaría HTML/JS arbitrario al renderizarse en `render.js`.
+- **Resuelto en `js/setup.js` (2026-07-21)**: al tocar este archivo para
+  añadir la UI de autómatas (ver `docs/MEJORAS_FUTURAS.md`, "Jugador
+  autómata"), se sustituyó la concatenación de `innerHTML` por
+  `document.createElement('input')` + asignación de propiedades
+  (`.value`, `.name`, `.placeholder`, `.dataset.tipo`) — ya no hay
+  interpolación de texto de usuario en una plantilla de string en este
+  archivo.
 - **Impacto real**: bajo en la práctica actual — es una app local, de una
   sola pestaña, sin usuarios remotos ni backend, así que el único que
   podría "atacarse" es la propia partida en la misma pantalla. Pero es un
@@ -220,10 +229,10 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
   relevante si algún día existe el multijugador por red mencionado en
   "Future direction" de `CLAUDE.md` (ver también `MEJORAS_FUTURAS.md`),
   donde el nombre sí vendría de otro dispositivo.
-- **Corrección propuesta**: usar `textContent` / `createElement` en vez de
-  concatenar `innerHTML` para cualquier valor que incluya `pl.name`, o como
-  mínimo pasar los nombres por una función de escape de HTML antes de
-  interpolarlos.
+- **Corrección propuesta (pendiente en `render.js`)**: usar `textContent` /
+  `createElement` en vez de concatenar `innerHTML` para cualquier valor que
+  incluya `p.name`, o como mínimo pasar los nombres por una función de
+  escape de HTML antes de interpolarlos.
 - **Prioridad**: **Media** — impacto bajo hoy, pero crece si se construye
   la dirección de multijugador; arreglo barato.
 

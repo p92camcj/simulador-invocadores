@@ -143,12 +143,39 @@ in `nextTurn()`.
   screen. Builds `window.players` / `window.neutrals` (Portal distribution
   by player count lives here, matching the rulebook's table for 2-5
   players), reads `window.invocationSet` from `#selInvocationSet`, gives
-  each player their starting 3 unit Gems, and calls `initGame()`.
+  each player their starting 3 unit Gems, and calls `initGame()`. Also
+  handles the "Autómatas (bots)" field (0..player count, validated): the
+  last `nBots` name slots become read-only autómata names (from
+  `bot.js`'s `nombresDisponiblesParaBots()`), the rest stay editable human
+  inputs; each `window.players[i]` gets `tipo: 'humano'|'auto'` (plus
+  `dificultad: 'normal'` for bots — the only level this MVP implements, see
+  `js/bot.js`).
+- **`js/bot.js`** — autómata ("bot") decision logic, added 2026-07-21. No
+  decision function ever reads `players[botIdx].hand`/`window.deck`
+  directly — everything starts from `construirEstadoVisibleParaBot()`, a
+  sanitized view (own known card only, no own hidden card, any other
+  player's public hidden card, per-Portal visibility, Gem counts) so it's
+  auditable at a glance that the bot can't cheat even as the heuristic
+  changes. `decidirYJugarTurno(players, neutrals, botIdx, contexto)` is the
+  single entry point, dispatching on `players[botIdx].dificultad`
+  (`HEURISTICAS_POR_DIFICULTAD`, only `'normal'` exists today) — it reuses
+  the exact same legal actions a human uses (`window.tryPlayOnPortal`,
+  `applyAbility()`, a simulated click on `#btnEndTurn`), including
+  programmatically resolving whatever `picker()`/`pickerPortal()` modal
+  `applyAbility()` opens (same `#pickerSelect`/`#pickerOk` a human click
+  would use) — it never duplicates rules logic. The `'normal'` heuristic
+  only ever activates Ocultista or Cronista in Fase B (Estratega,
+  Cronomante, Aprendiz, Metamorfo are deliberately left for future,
+  harder difficulty levels — see `docs/MEJORAS_FUTURAS.md`).
 - **`js/game.js`** — builds the character deck (`initGame`, sized and
   composed per `window.invocationSet`, see the gap above), turn advancement
   and the "no cards left" end condition (`nextTurn`), and end-of-game
   handling (`finalizarPartida`, `resetJuego`). `finalizarPartida` must stay
-  `export`ed — it's called from `actions.js`.
+  `export`ed — it's called from `actions.js`. `nextTurn()` also branches on
+  `current.tipo === 'auto'`: hides the human action buttons and, after a
+  short `setTimeout`, calls `bot.js`'s `decidirYJugarTurno()` — which ends
+  its own turn by clicking `#btnEndTurn`, so consecutive bot turns chain
+  automatically until a human player is up.
 - **`js/actions.js`** — wires up the UI controls: card selection, playing a
   card onto a Portal (Fase A only — the one exception is Centinela's
   passive auto-hide effect, see below, which fires right here as a direct
@@ -182,7 +209,13 @@ in `nextTurn()`.
   modal, but also lets the matching Portal in the grid itself be clicked as
   an alternative — used by the ability cases that target a Portal:
   Ocultista, Cronista, Cronomante's first picker, Estratega's both
-  pickers). Does not own game state.
+  pickers). Does not own game state. A column's own "visible" hand card
+  (owner-only) only ever renders for a HUMAN active player
+  (`esHumanaActiva = esActiva && p.tipo !== 'auto'`) — an autómata never
+  has "its own screen" watching this single shared display, so it's always
+  treated like a non-active player's hand (only its public "oculta" card
+  shows, no click/drag handlers), even on its own turn. Same flag gates the
+  exact-Gem-total breakdown vs. the by-level-only one.
 - **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,
   `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`,
   `PERSONAJES_NO_ANIMALES`, `iconos`) and

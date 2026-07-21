@@ -12,6 +12,27 @@
 
 ---
 
+## Resuelto recientemente (2026-07-21)
+
+- **Jugador autómata ("bot")**: se pueden combinar jugadoras humanas y
+  autómatas (controladas por la app) dentro del límite de 2-5 jugadoras.
+  Nuevo módulo `js/bot.js`: `construirEstadoVisibleParaBot()` construye una
+  vista saneada del estado (sin la carta oculta propia del bot ni el mazo)
+  de la que parten TODAS las decisiones, para que quede auditable que el
+  bot nunca hace trampa; `decidirYJugarTurno()` ejecuta el turno completo
+  (Fases A-E) reutilizando exactamente las mismas funciones/controles que
+  usa una jugadora humana (`window.tryPlayOnPortal`, `applyAbility()`, el
+  propio botón "Terminar turno") — no duplica ninguna lógica de reglas.
+  `js/setup.js` añade un campo "Autómatas (bots)" en la configuración
+  (0..jugadoras) con nombres temáticos únicos terminados en "bot"
+  (`nombresDisponiblesParaBots()`); `js/game.js` (`nextTurn()`) detecta
+  `player.tipo === 'auto'` y dispara el turno del bot tras un breve
+  `setTimeout`; `js/render.js` oculta siempre la carta "visible" (propia)
+  de una autómata, incluso durante su propio turno — nunca tiene "su
+  propia pantalla" que la vea, a diferencia de una jugadora humana activa
+  en este simulador de una sola pantalla compartida. Ver "niveles de
+  dificultad del autómata" más abajo para lo que queda pendiente.
+
 ## Resuelto recientemente (2026-07-19)
 
 Implementado en el mismo bloque de trabajo que separó la Fase B del turno
@@ -71,6 +92,32 @@ Implementado en el mismo bloque de trabajo que separó la Fase B del turno
   ver más abajo.
 
 ---
+
+## Jugador autómata: niveles de dificultad
+
+El MVP (ver "Resuelto recientemente" arriba) implementa un único nivel de
+dificultad, `'normal'`, con una heurística sencilla: prioriza jugar su
+carta conocida allí donde complete la invocación activa, si no ayuda donde
+razonablemente puede, y solo activa Ocultista/Cronista (no Estratega,
+Cronomante, Aprendiz ni Metamorfo) cuando hay un objetivo "razonable"
+disponible. `player.dificultad` ya existe en el modelo de datos y
+`js/bot.js` ya despacha por ese campo
+(`HEURISTICAS_POR_DIFICULTAD`/`decidirYJugarTurno()`), así que añadir un
+nivel nuevo no debería requerir tocar `js/setup.js`/`js/game.js` — solo:
+
+- Escribir una nueva función `decidirYJugarTurno<Nivel>()` en `js/bot.js`
+  con la misma firma que `decidirYJugarTurnoNormal()`, y añadirla a
+  `HEURISTICAS_POR_DIFICULTAD`.
+- Un selector de dificultad visible en la UI de configuración
+  (`js/setup.js`) — hoy queda fijo a `'normal'` para no añadir complejidad
+  al MVP.
+- Para un nivel más agresivo: aprovechar el punto de extensión ya dejado
+  comentado en `js/bot.js` (memoria de lo visto públicamente en turnos
+  anteriores — qué personaje pasó por un Portal antes de quedar tapado,
+  cómo han fluctuado las manos ajenas — información lícita según las
+  reglas, un "jugador muy inteligente" la recordaría) y ampliar la
+  heurística de Fase B a Estratega/Cronomante/Aprendiz/Metamorfo con
+  objetivos más elaborados que "cualquier Portal oculto disponible".
 
 ## Ponerse al día con el reglamento actual
 

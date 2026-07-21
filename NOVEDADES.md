@@ -6,6 +6,23 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.0.55 - 2026-07-21
+
+- **¡Ya puedes jugar con autómatas!** En la pantalla de configuración,
+  además de elegir cuántas jugadoras sois (2 a 5), ahora puedes decidir
+  cuántas de esas plazas las ocupa la app en modo automático. Cada
+  autómata recibe un nombre único y temático (Arcanobot, Nigrobot,
+  Rúnabot...) y juega su turno sola: elige qué carta jugar y dónde, y a
+  veces activa la habilidad de un personaje si le conviene, todo con una
+  pequeña pausa de "pensando..." para que no se sienta instantáneo.
+- Las autómatas juegan limpio: nunca "hacen trampa" mirando cartas que no
+  deberían conocer (ni su propia carta oculta, ni la carta que solo tú
+  puedes ver de tu mano), y en pantalla nunca se revela su propia carta
+  visible — ni siquiera durante su turno, para que la partida siga siendo
+  justa para el resto de personas jugando desde la misma pantalla.
+- De momento solo existe un nivel de autómata (el "normal"); niveles más
+  listos o más agresivos quedan para una próxima versión.
+
 ## 1.12.5.54 - 2026-07-21
 
 - Arreglado otro fallo de reglas con el Metamorfo: transformarse en otro

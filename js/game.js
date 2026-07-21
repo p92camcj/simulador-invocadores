@@ -2,6 +2,7 @@
 import { shuffle, draw, PERSONAJES_NO_ANIMALES } from './utils.js';
 import { render } from './render.js';
 import { initActions } from './actions.js';
+import { decidirYJugarTurno } from './bot.js';
 
 import { initSetup } from './setup.js';
 import { $ } from './utils.js';
@@ -76,10 +77,29 @@ export function nextTurn() {
     return;
   }
   
-  alert('Turno de ' + current.name);
+  // Durante el turno de una autómata se ocultan los controles de acción
+  // humanos (jugar carta/activar habilidad/terminar turno) para que nadie
+  // interfiera a mitad de su turno — el propio bot los sigue invocando por
+  // JS (window.tryPlayOnPortal, #btnEndTurn.click()), ocultarlos con CSS
+  // no le afecta a él, solo a los clics humanos.
+  const esBot = current.tipo === 'auto';
+  document.querySelector('#btnCtrlPlay')?.classList.toggle('hidden', esBot);
+  document.querySelector('#btnAbility')?.classList.toggle('hidden', esBot);
+  document.querySelector('#btnEndTurn')?.classList.toggle('hidden', esBot);
+
+  alert(esBot ? `🤖 ${current.name} está pensando…` : 'Turno de ' + current.name);
   document.querySelector('#lblTurn').textContent =
   `Turno de: ${current.name} — Mazo: ${window.deck.length}`;
   render(window.players, window.neutrals, window.levelIdx);
+
+  if (esBot) {
+    setTimeout(() => {
+      decidirYJugarTurno(window.players, window.neutrals, window.turn, {
+        levelIdx: window.levelIdx,
+        invocationSet: window.invocationSet,
+      });
+    }, 500);
+  }
 }
 
 // Finaliza la partida y se pregunta si queremos una nueva partida
