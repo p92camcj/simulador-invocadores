@@ -24,6 +24,7 @@ import {
   actualizarMemoriaBot, estimarProbabilidadesPersonajes,
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
 } from '../js/bot-probabilidad.js';
+import { listaPortalesConDestino, describirObjetivoHabilidad } from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
 // en Node no existen como globales, así que se stubean antes de importar
@@ -248,6 +249,38 @@ test('bajarCartaMaestro re-dispara el auto-giro de Centinela si la carta movida 
   bajarCartaMaestro([owner, target, otraJugadoraConCentinela], [], 1, 0);
   assert.equal(target.portals[0][0].vis.public, true, 'la Centinela recién bajada queda visible');
   assert.equal(otraJugadoraConCentinela.portals[0][0].vis.public, false, 'la otra Centinela debe ocultarse');
+});
+
+console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');
+
+test('listaPortalesConDestino etiqueta cada Portal en tercera persona, nunca en segunda ("tu")', () => {
+  const vista = {
+    jugadoras: [
+      { idx: 0, nombre: 'Arcanobot', esUnoMismo: true, portales: [{ hidden: true }] },
+      { idx: 1, nombre: 'Ana', esUnoMismo: false, portales: [{ hidden: true }, null] },
+    ],
+    neutrales: [{ hidden: true }],
+  };
+  const lista = listaPortalesConDestino(vista);
+  assert.deepEqual(lista.map(p => p.etiqueta), [
+    'su propio Portal 1',
+    'el Portal 1 de Ana',
+    'el Portal 2 de Ana',
+    'el Portal Neutral 1',
+  ]);
+  lista.forEach(p => assert.ok(!/\btu\b/i.test(p.etiqueta), `no debe usar segunda persona: "${p.etiqueta}"`));
+});
+
+test('describirObjetivoHabilidad identifica correctamente de quién es cada Portal/mano afectada', () => {
+  const vista = {
+    jugadoras: [
+      { idx: 0, nombre: 'Arcanobot', esUnoMismo: true },
+      { idx: 1, nombre: 'Ana', esUnoMismo: false },
+    ],
+  };
+  assert.equal(describirObjetivoHabilidad('Ocultista', ['1:0'], vista), 'cambió la visibilidad del Portal 1 de Ana');
+  assert.equal(describirObjetivoHabilidad('Cronista', ['0:0'], vista), 'se llevó a la mano la carta superior de su propio Portal 1');
+  assert.equal(describirObjetivoHabilidad('Maestro', ['1'], vista), 'bajó una carta de la mano de Ana a su propio Portal');
 });
 
 console.log('Motor probabilístico del autómata "dificil" (bot-probabilidad.js)');

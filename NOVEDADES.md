@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.15.1.74 - 2026-07-21
+
+- **Mensajes de los autómatas corregidos**: cuando un autómata jugaba una
+  carta en su propio Portal, el aviso decía algo como "...en tu Portal",
+  como si te hablase directamente a ti. Ahora los mensajes están escritos
+  como los leería alguien mirando la partida desde fuera: "...en su propio
+  Portal" o "...en el Portal de Ana", según a quién pertenezca. Además, al
+  activar una habilidad ahora se cuenta también sobre qué Portal o mano
+  actuó, no solo el nombre de la habilidad.
+
 ## 1.15.0.73 - 2026-07-21
 
 - **Nuevo nivel de dificultad "Difícil" para los autómatas**: al configurar

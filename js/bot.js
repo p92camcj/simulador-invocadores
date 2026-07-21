@@ -121,21 +121,30 @@ function personajesVisiblesActuales(vista) {
   return nombres;
 }
 
-/** Lista de todos los Portales como destinos jugables, con su estado y una etiqueta legible. */
-function listaPortalesConDestino(vista) {
+/**
+ * Lista de todos los Portales como destinos jugables, con su estado y una
+ * etiqueta legible EN TERCERA PERSONA — quien lee el resumen del turno
+ * (`mostrarResumenTurnoBot`) es siempre la persona humana observando la
+ * partida, nunca la propia autómata, así que la etiqueta nunca puede decir
+ * "tu Portal" (bug corregido: antes se generaba en segunda persona, como si
+ * la autómata se hablase a sí misma). "su propio Portal" cuando es el
+ * Portal de la propia autómata, "el Portal N de {nombre}" cuando es de otra
+ * jugadora.
+ */
+export function listaPortalesConDestino(vista) {
   const lista = [];
   vista.jugadoras.forEach(j => {
     j.portales.forEach((estado, idx) => {
       lista.push({
         destKey: j.esUnoMismo ? `p:${idx}` : `a:${j.idx}:${idx}`,
         esPropio: j.esUnoMismo,
-        etiqueta: `${j.esUnoMismo ? 'tu' : j.nombre} Portal ${idx + 1}`,
+        etiqueta: j.esUnoMismo ? `su propio Portal ${idx + 1}` : `el Portal ${idx + 1} de ${j.nombre}`,
         estado,
       });
     });
   });
   vista.neutrales.forEach((estado, idx) => {
-    lista.push({ destKey: `n:${idx}`, esPropio: false, etiqueta: `Neutral ${idx + 1}`, estado });
+    lista.push({ destKey: `n:${idx}`, esPropio: false, etiqueta: `el Portal Neutral ${idx + 1}`, estado });
   });
   return lista;
 }
@@ -449,17 +458,24 @@ function elegirOpcionPicker(opcionesDom, vista, yaElegidos, preferido) {
 
 /**
  * Resuelve, por JS, el/los picker() modales que applyAbility() acaba de
- * abrir — la mayoría de habilidades del MVP necesitan solo un paso, pero
- * el bucle admite varios (p. ej. Maestro: jugadora, y si tiene más de un
- * Portal propio, también el Portal). Mismo mecanismo que usaría un clic
- * humano en el modal (#pickerSelect + #pickerOk), no se reimplementa
- * ninguna regla de legalidad — las opciones ya vienen filtradas por la
- * propia habilidad en abilities.js. `preferidoPrimerPaso` (si se indica)
- * solo se aplica al PRIMER picker que se abra — los pasos siguientes (p.
- * ej. el Portal de Maestro tras elegir jugadora) usan el criterio de
- * respaldo, ver `elegirOpcionPicker`.
+ * abrir — la mayoría de habilidades solo necesitan un paso, pero el bucle
+ * admite varios (p. ej. Maestro: jugadora y, si tiene más de un Portal
+ * propio, también el Portal; Estratega: dos Portales; Aprendiz: dos
+ * jugadoras). Mismo mecanismo que usaría un clic humano en el modal
+ * (#pickerSelect + #pickerOk), no se reimplementa ninguna regla de
+ * legalidad — las opciones ya vienen filtradas por la propia habilidad en
+ * abilities.js. `preferidosPorPaso` puede ser un único valor (se aplica
+ * solo al PRIMER picker, compatibilidad con el uso original de esta
+ * función) o un array alineado por índice de paso (necesario para
+ * habilidades de varios pasos donde la heurística 'dificil' ya sabe de
+ * antemano los dos objetivos, p. ej. las dos claves de Estratega o los dos
+ * índices de Aprendiz) — los pasos sin preferencia (`undefined`) usan el
+ * criterio de respaldo, ver `elegirOpcionPicker`. Devuelve el array de
+ * valores REALMENTE elegidos, en orden — lo necesita quien llama para
+ * construir un resumen de turno legible (ver `describirObjetivoHabilidad`).
  */
-function resolverPickersAbiertos(vista, preferidoPrimerPaso) {
+function resolverPickersAbiertos(vista, preferidosPorPaso) {
+  const preferidos = Array.isArray(preferidosPorPaso) ? preferidosPorPaso : [preferidosPorPaso];
   const MAX_PASOS = 4;
   const yaElegidos = [];
   for (let paso = 0; paso < MAX_PASOS; paso++) {
@@ -471,10 +487,52 @@ function resolverPickersAbiertos(vista, preferidoPrimerPaso) {
       document.querySelector('#pickerCancel')?.click();
       break;
     }
-    const elegida = elegirOpcionPicker(opciones, vista, yaElegidos, paso === 0 ? preferidoPrimerPaso : undefined);
+    const elegida = elegirOpcionPicker(opciones, vista, yaElegidos, preferidos[paso]);
     yaElegidos.push(elegida.value);
     selectEl.value = elegida.value;
     document.querySelector('#pickerOk').click();
+  }
+  return yaElegidos;
+}
+
+/** Etiqueta EN TERCERA PERSONA de un Portal identificado con clave "playerIdx:portalIdx"/"n:k" (formato de habilidad, ver `listaPortalesFormatoHabilidad`) — usada para describir en el resumen del turno sobre qué Portal actuó una habilidad. */
+function etiquetaPortalPorClaveHabilidad(key, vista) {
+  if (key === undefined || key === null) return 'un Portal';
+  if (key.startsWith('n:')) return `el Portal Neutral ${parseInt(key.slice(2), 10) + 1}`;
+  const [pi, pj] = key.split(':').map(Number);
+  const j = vista.jugadoras.find(x => x.idx === pi);
+  if (!j) return `el Portal ${pj + 1}`;
+  return j.esUnoMismo ? `su propio Portal ${pj + 1}` : `el Portal ${pj + 1} de ${j.nombre}`;
+}
+
+function nombreJugadoraPorIdx(idx, vista) {
+  return vista.jugadoras.find(j => j.idx === idx)?.nombre ?? `jugadora ${idx + 1}`;
+}
+
+/** Antepone "de"/"del" a una etiqueta de Portal (`etiquetaPortalPorClaveHabilidad`) con la contracción correcta ("del Portal..." si empieza por "el ", "de su propio..." si no). */
+function conDe(etiqueta) {
+  return etiqueta.startsWith('el ') ? `del ${etiqueta.slice(3)}` : `de ${etiqueta}`;
+}
+
+/**
+ * Traduce los valores REALMENTE elegidos en el/los picker() de una
+ * activación de habilidad (ver `resolverPickersAbiertos`) a una frase EN
+ * TERCERA PERSONA para el resumen del turno — identificando siempre de
+ * quién es cada Portal/mano afectada (Bloque 1 de esta tarea). Solo cubre,
+ * de momento, las habilidades que la Fase B del autómata ya sabe usar
+ * (Ocultista, Cronista, Maestro) — el resto de casos se añade a la vez que
+ * se les da uso real (ver Bloque 4).
+ */
+export function describirObjetivoHabilidad(name, valores, vista) {
+  switch (name) {
+    case 'Ocultista':
+      return `cambió la visibilidad ${conDe(etiquetaPortalPorClaveHabilidad(valores[0], vista))}`;
+    case 'Cronista':
+      return `se llevó a la mano la carta superior ${conDe(etiquetaPortalPorClaveHabilidad(valores[0], vista))}`;
+    case 'Maestro':
+      return `bajó una carta de la mano de ${nombreJugadoraPorIdx(parseInt(valores[0], 10), vista)} a su propio Portal`;
+    default:
+      return '';
   }
 }
 
@@ -489,15 +547,24 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
     render(players, neutrals, levelIdx);
   };
   applyAbility(name, botIdx, stack, players, neutrals, levelIdx, need, onComplete);
-  resolverPickersAbiertos(vista, objetivoPreferido);
+  const yaElegidos = resolverPickersAbiertos(vista, objetivoPreferido);
+  return describirObjetivoHabilidad(name, yaElegidos, vista);
 }
 
 // ---------- Resumen del turno (comunicación, sin desvelar la carta oculta) ----------
 
+/**
+ * Mensaje del autómata SIEMPRE en tercera persona (lo lee quien observa la
+ * partida, nunca la propia autómata — bug corregido en esta tarea, ver
+ * `listaPortalesConDestino`/`describirObjetivoHabilidad`).
+ */
 function mostrarResumenTurnoBot(resumen) {
   const cartaTxt = resumen.usoConocida ? resumen.cartaJugada : 'una carta que no conocía';
   let msg = `🤖 ${resumen.jugadora} jugó ${cartaTxt} en ${resumen.etiquetaPortal}.`;
-  if (resumen.habilidad) msg += ` Activó su habilidad: ${resumen.habilidad}.`;
+  if (resumen.habilidad) {
+    msg += ` Activó su habilidad de ${resumen.habilidad}`;
+    msg += resumen.detalleHabilidad ? `: ${resumen.detalleHabilidad}.` : '.';
+  }
   alert(msg);
 }
 
@@ -526,7 +593,7 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto) {
   const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, botIdx);
   const decisionB = decidirHabilidadFaseB(vistaTrasA, players, neutrals, botIdx, need);
   if (decisionB) {
-    activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
+    resumen.detalleHabilidad = activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
     resumen.habilidad = decisionB.name;
   }
 
@@ -571,7 +638,7 @@ function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto) {
   actualizarMemoriaBot(memoriaBot, vistaTrasA);
   const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, botIdx, need, memoriaBot, invocationSet, lvl);
   if (decisionB) {
-    activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
+    resumen.detalleHabilidad = activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
     resumen.habilidad = decisionB.name;
   }
 

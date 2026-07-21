@@ -4,6 +4,39 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.15.1.74] - 2026-07-21
+
+### Corregido
+- **Mensajes del autómata en tercera persona (Bloque 1 de la tarea de
+  marcador final/estrategia)**: `listaPortalesConDestino()` (`js/bot.js`)
+  generaba la etiqueta de un Portal propio como "tu Portal N" — segunda
+  persona, como si la autómata se hablase a sí misma, cuando en realidad el
+  resumen de turno (`alert()`) lo lee siempre la persona humana observando
+  la partida compartida. Ahora usa "su propio Portal N" (Portal de la
+  propia autómata) / "el Portal N de {nombre}" (Portal ajeno) / "el Portal
+  Neutral N" — siempre en tercera persona, sin excepción.
+- **Resumen de habilidad con el objetivo real**: hasta ahora el resumen de
+  turno solo decía "Activó su habilidad: Ocultista." sin decir sobre qué
+  Portal/mano actuó. `resolverPickersAbiertos()` (`js/bot.js`) ahora
+  devuelve los valores REALMENTE elegidos en el/los `picker()` resueltos
+  (antes no devolvía nada), y la nueva `describirObjetivoHabilidad()`
+  los traduce a una frase en tercera persona que identifica correctamente
+  de quién es cada Portal/mano afectado (p. ej. "Activó su habilidad de
+  Cronista: se llevó a la mano la carta superior del Portal 2 de Ana.") —
+  cubre, por ahora, Ocultista/Cronista/Maestro (las únicas habilidades que
+  la Fase B del autómata sabe usar hoy); el resto se documenta a la vez que
+  se les da uso real. `resolverPickersAbiertos()` también admite ahora un
+  array de valores preferidos por paso (no solo el primero), preparado para
+  las habilidades de varios pasos que se añadirán más adelante en esta
+  misma tarea.
+- Añadidos dos tests nuevos en `tests/run-tests.mjs` (exportando
+  `listaPortalesConDestino`/`describirObjetivoHabilidad` desde `js/bot.js`
+  solo para poder probarlos sin DOM) para que una regresión futura a
+  segunda persona, o una descripción de objetivo mal atribuida, falle el
+  test en vez de descubrirse jugando.
+
+---
+
 ## [1.15.0.73] - 2026-07-21
 
 ### Añadido
