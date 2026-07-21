@@ -4,6 +4,32 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.24.0.83] - 2026-07-21
+
+### Añadido
+- **Uso estratégico de Maestro por el autómata (Bloque 4, 4.7 — última
+  habilidad del bloque)**: la habilidad activa del Maestro ya existía
+  (Bloque 2 de una ronda anterior); `'dificil'` ya sabía usarla de forma
+  determinista, pero `'normal'` nunca la había usado.
+  - `'normal'` (`decidirMaestroNormal`, `js/bot.js`): SOLO beneficio
+    propio, con certeza — baja a Portal la carta pública conocida de la
+    primera rival cuya carta sea un requisito activo aún no cumplido.
+  - `'dificil'`: se añaden dos matices sobre la evaluación ya existente —
+    bonus por completar la invocación AHORA MISMO
+    (`completariaLaInvocacionConMaestro`, nueva variante de
+    `completariaLaInvocacion` que aproxima el Portal de destino exacto,
+    desconocido hasta un picker interno de `abilities.js`), y el uso
+    ADVERSARIAL (provocar a propósito un duplicado del único requisito
+    visible de OTRA rival) — este último sale solo de que
+    `contexto.necesariosUnicosDeRivales` ya estaba presente en la llamada
+    a `valorEsperadoDeAccion()`, sin necesidad de ningún caso especial.
+- Con esta habilidad se completa el Bloque 4 de esta tarea: las 7
+  habilidades activas del juego (`PERSONAJES_CON_HABILIDAD`, `utils.js`)
+  tienen ya uso estratégico en AMBOS niveles de dificultad del autómata.
+- 4 tests nuevos en `tests/run-tests.mjs`.
+
+---
+
 ## [1.23.0.82] - 2026-07-21
 
 ### Añadido

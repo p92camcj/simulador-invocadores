@@ -178,11 +178,17 @@ solo vive en memoria JS de la partida en curso, nunca se persiste.
   Portal por valor esperado, en vez del atajo greedy de `'normal'`.
 - **Fase B**: además de Ocultista/Cronista (ahora ponderados por la
   distribución de probabilidad real del Portal oculto en cuestión, no un
-  "cualquiera vale"), el nivel `'dificil'` también sabe usar la nueva
-  habilidad activa del Maestro (Bloque 2) — determinista, porque la carta
-  objetivo (`cartaOcultaPublica`) ya es una identidad conocida con
-  certeza. Estratega/Cronomante/Aprendiz/Metamorfo siguen fuera de
-  ambos niveles (alcance no cubierto por esta tarea).
+  "cualquiera vale"), el nivel `'dificil'` también sabe usar la habilidad
+  activa del Maestro (Bloque 2) — determinista, porque la carta objetivo
+  (`cartaOcultaPublica`) ya es una identidad conocida con certeza.
+  **Actualización 2026-07-21 (Bloque 4 de la tarea "Marcador final,
+  redacción de mensajes y estrategia del autómata")**: Estratega,
+  Cronomante, Aprendiz y Metamorfo ya no están fuera de ningún nivel —
+  las 7 habilidades activas (`PERSONAJES_CON_HABILIDAD`) tienen uso
+  estratégico en AMBAS dificultades, con condición simple en `'normal'` y
+  valor esperado (incluyendo un matiz adversarial por habilidad) en
+  `'dificil'`. Detalle completo en `CHANGELOG.md` (versiones 1.18.0.77 a
+  1.24.0.83) y en `Documentacion_Simulador_Invocadores.md`.
 - **UI**: selector de dificultad en `js/setup.js`/`index.html`
   (`#selDificultadBots`), pero **GLOBAL para todos los autómatas de la
   partida**, no uno por autómata — decisión deliberada de esta tarea para

@@ -311,6 +311,24 @@ function completariaLaInvocacion(vista, need, personaje, destKeyDestino) {
 }
 
 /**
+ * Variante de `completariaLaInvocacion()` para la habilidad activa del
+ * Maestro (Bloque 4, 4.7): baja `personaje` (la carta pública conocida de
+ * la jugadora objetivo) a UNO de sus Portales propios — el índice exacto
+ * no se conoce hasta un segundo picker interno de `abilities.js` (si tiene
+ * más de un Portal propio), así que se aproxima: basta con que quede COMO
+ * MUCHO un Portal del tablero sin ocupar-y-visible (el de destino, que
+ * pasará a estarlo) para considerar que "todos los demás ya lo estaban".
+ */
+export function completariaLaInvocacionConMaestro(vista, need, personaje) {
+  if (!personaje) return false;
+  const portales = listaPortalesConDestino(vista);
+  const sinOcuparYVisible = portales.filter(p => !(p.estado !== null && !p.estado?.hidden));
+  if (sinOcuparYVisible.length > 1) return false;
+  const nombresFinal = personajesVisiblesActuales(vista).concat(personaje);
+  return need.every(k => nombresFinal.includes(k));
+}
+
+/**
  * Heurística 'dificil' de Fase A (ver `js/bot-probabilidad.js` y el prompt
  * original de esta tarea): en vez del atajo greedy de `decidirJugadaFaseA`,
  * evalúa TODAS las combinaciones (carta conocida u oculta) × (Portal
@@ -631,7 +649,32 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
     if (nombreDeseado) return { ...metamorfo, objetivoPreferido: nombreDeseado };
   }
 
+  const maestro = candidatos.find(c => c.name === 'Maestro');
+  if (maestro) {
+    const targetIdx = decidirMaestroNormal(vista, need);
+    if (targetIdx !== null) return { ...maestro, objetivoPreferido: targetIdx };
+  }
+
   return null;
+}
+
+/**
+ * Heurística 'normal' de Maestro (Bloque 4, 4.7 — ya implementado en una
+ * ronda anterior el efecto real de la habilidad, ver `abilities.js`; esta
+ * es la primera vez que algún nivel de dificultad la USA): SOLO beneficio
+ * propio, con CERTEZA (la carta oculta-para-el-resto de una rival ya es
+ * una identidad conocida, `cartaOcultaPublica`, sin necesidad de memoria
+ * ni probabilidad) — baja a su Portal la carta pública conocida de la
+ * primera rival cuya carta lo sea un requisito activo todavía no cumplido
+ * en la mesa. Nunca el matiz adversarial (provocar un duplicado a
+ * propósito) — reservado a 'dificil'.
+ */
+export function decidirMaestroNormal(vista, need) {
+  const visibles = personajesVisiblesActuales(vista);
+  const candidata = vista.jugadoras.find(j =>
+    !j.esUnoMismo && j.cartaOcultaPublica && need.includes(j.cartaOcultaPublica) && !visibles.includes(j.cartaOcultaPublica)
+  );
+  return candidata ? candidata.idx : null;
 }
 
 /**
@@ -904,10 +947,24 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
           });
       }
     } else if (c.name === 'Maestro') {
+      // Bloque 4.7: además del beneficio propio ya existente (determinista,
+      // ver cabecera de esta función) — bonus si esta jugada, con certeza,
+      // deja la invocación activa completa AHORA MISMO
+      // (`completariaLaInvocacionConMaestro`), lo que también reparte
+      // Gemas al bot si tiene requisitos visibles en su propio Portal — y
+      // el matiz adversarial (provocar un duplicado a propósito) sale
+      // solo de que `contexto.necesariosUnicosDeRivales` ya está presente:
+      // si `j.cartaOcultaPublica` coincide con el único ejemplar visible
+      // de OTRA rival, el mecanismo de "denegación por duplicado" de
+      // `valorEsperadoDeAccion()` ya se aplica sin caso especial (no se le
+      // pasa `destKey`, así que nunca coincide con el de esa rival).
       vista.jugadoras.forEach(j => {
         if (j.esUnoMismo || !j.cartaOcultaPublica) return;
         const ev = valorEsperadoDeAccion(
-          { personaje: j.cartaOcultaPublica, esPropio: false, esCentral: false, completaInvocacionSiSeJuega: false },
+          {
+            personaje: j.cartaOcultaPublica, esPropio: false, esCentral: false,
+            completaInvocacionSiSeJuega: completariaLaInvocacionConMaestro(vista, need, j.cartaOcultaPublica),
+          },
           probabilidades,
           contexto
         );

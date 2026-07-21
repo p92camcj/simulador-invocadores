@@ -32,6 +32,7 @@ import {
   decidirCronistaAdversarialNormal, decidirOcultistaAdversarialNormal,
   decidirAprendizNormal, decidirAprendizPropioDificil, decidirAprendizAjenoAjenoDificil,
   decidirMetamorfoNormal, decidirMetamorfoDificil,
+  decidirMaestroNormal, completariaLaInvocacionConMaestro,
 } from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
@@ -563,6 +564,63 @@ test('Metamorfo (Difícil): no activa sin ninguna Gema con la que pagar la trans
   const vista = { gemasPropiasTotalExacto: 0 };
   const contexto = { need: ['X'], cumplidos: [], valorGemaNivel: 4, necesariosUnicosDeRivales: {} };
   assert.equal(decidirMetamorfoDificil(vista, ['X'], true, { probabilidadPorNombre: {} }, contexto), null);
+});
+
+console.log('Uso estratégico de habilidades activas — 4.7 Maestro (bot.js) — Bloque 4');
+
+test('Maestro (Normal): baja la carta pública conocida de la primera rival cuya carta sea un requisito activo aún no cumplido', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [], cartaOcultaPublica: null },
+      { idx: 1, esUnoMismo: false, portales: [], cartaOcultaPublica: 'Y' },
+    ],
+    neutrales: [],
+  };
+  assert.equal(decidirMaestroNormal(vista, need), 1);
+});
+
+test('Maestro (Normal): no activa si ninguna rival tiene una carta pública que sea un requisito pendiente', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [], cartaOcultaPublica: null },
+      { idx: 1, esUnoMismo: false, portales: [], cartaOcultaPublica: 'W' },
+    ],
+    neutrales: [],
+  };
+  assert.equal(decidirMaestroNormal(vista, need), null);
+});
+
+test('completariaLaInvocacionConMaestro: cierto solo si como mucho el Portal de destino queda sin ocupar-y-visible y el resto de need queda cubierto', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vistaCompleta = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [{ name: 'X' }] },
+      { idx: 1, esUnoMismo: false, portales: [null], cartaOcultaPublica: 'Z' },
+    ],
+    neutrales: [{ name: 'Y' }],
+  };
+  assert.equal(completariaLaInvocacionConMaestro(vistaCompleta, need, 'Z'), true);
+
+  const vistaConOtroHueco = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [null] }, // otro Portal también sin ocupar-y-visible
+      { idx: 1, esUnoMismo: false, portales: [null], cartaOcultaPublica: 'Z' },
+    ],
+    neutrales: [{ name: 'Y' }],
+  };
+  assert.equal(completariaLaInvocacionConMaestro(vistaConOtroHueco, need, 'Z'), false);
+});
+
+test('Maestro (Difícil): el mecanismo de denegación por duplicado ya existente se aplica sin caso especial cuando la carta objetivo coincide con el único requisito visible de OTRA rival', () => {
+  const contexto = { need: ['Z'], cumplidos: ['Z'], valorGemaNivel: 4, necesariosUnicosDeRivales: { Z: 'a:2:0' } };
+  const ev = valorEsperadoDeAccion(
+    { personaje: 'Z', esPropio: false, esCentral: false, completaInvocacionSiSeJuega: false },
+    { probabilidadPorNombre: {} },
+    contexto
+  );
+  assert.equal(ev, 2); // 4 * PESO_ADVERSARIAL(0.5), sin crédito de beneficio propio (Z ya cumplido)
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');

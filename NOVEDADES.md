@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.24.0.83 - 2026-07-21
+
+- **Los autómatas ya usan a Maestro con criterio propio, y con esto
+  completan las 7 habilidades del juego**: ahora también en dificultad
+  "Normal" bajan a Portal la carta que le ven a otra jugadora cuando les
+  conviene, y en "Difícil" además tienen en cuenta si esa jugada completa
+  la invocación en el acto o si les permite fastidiarle a otra rival un
+  personaje que ya tenía asegurado. Con esta actualización, los
+  autómatas ya saben usar con estrategia las 7 habilidades del juego, en
+  ambos niveles de dificultad.
+
 ## 1.23.0.82 - 2026-07-21
 
 - **Los autómatas ya saben usar al Metamorfo**: antes nunca lo
