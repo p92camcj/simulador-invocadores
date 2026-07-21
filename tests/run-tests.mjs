@@ -31,6 +31,7 @@ import {
   decidirEstrategaNormal, decidirEstrategaDificil,
   decidirCronistaAdversarialNormal, decidirOcultistaAdversarialNormal,
   decidirAprendizNormal, decidirAprendizPropioDificil, decidirAprendizAjenoAjenoDificil,
+  decidirMetamorfoNormal, decidirMetamorfoDificil,
 } from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
@@ -526,6 +527,42 @@ test('Ocultista (Difícil): esconder un requisito VISIBLE de una rival aporta va
     contexto
   );
   assert.equal(evOcultista, 4 * 0.5); // valorGemaNivel * PESO_ADVERSARIAL, sin el *0.5 adicional de Cronista
+});
+
+console.log('Uso estratégico de habilidades activas — 4.6 Metamorfo (bot.js) — Bloque 4');
+
+test('Metamorfo (Normal): se transforma en el primer requisito activo aún no cumplido, si tiene con qué pagar', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { gemasPropiasTotalExacto: 3, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [] }], neutrales: [] };
+  assert.equal(decidirMetamorfoNormal(vista, need), 'X');
+});
+
+test('Metamorfo (Normal): no activa sin ninguna Gema con la que pagar la transformación', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { gemasPropiasTotalExacto: 0, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [] }], neutrales: [] };
+  assert.equal(decidirMetamorfoNormal(vista, need), null);
+});
+
+test('Metamorfo (Difícil): prefiere el beneficio propio (crédito completo) sobre la denegación cuando ambos están disponibles', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { gemasPropiasTotalExacto: 1 };
+  const contexto = { need, cumplidos: [], valorGemaNivel: 4, necesariosUnicosDeRivales: {} };
+  const decision = decidirMetamorfoDificil(vista, need, true, { probabilidadPorNombre: {} }, contexto);
+  assert.deepEqual(decision, { nombreDeseado: 'X', ev: 3 }); // 4*1 (beneficio propio) - 1 (coste de la Gema)
+});
+
+test('Metamorfo (Difícil): transformarse en el requisito que una rival tiene en exclusiva sigue mereciendo la pena tras pagar la Gema, aunque no haya beneficio propio', () => {
+  const need = ['Z'];
+  const vista = { gemasPropiasTotalExacto: 1 };
+  const contexto = { need, cumplidos: ['Z'], valorGemaNivel: 4, necesariosUnicosDeRivales: { Z: 'a:1:0' } };
+  const decision = decidirMetamorfoDificil(vista, need, true, { probabilidadPorNombre: {} }, contexto);
+  assert.deepEqual(decision, { nombreDeseado: 'Z', ev: 1 }); // 4*0.5 (denegación) - 1 (coste de la Gema)
+});
+
+test('Metamorfo (Difícil): no activa sin ninguna Gema con la que pagar la transformación', () => {
+  const vista = { gemasPropiasTotalExacto: 0 };
+  const contexto = { need: ['X'], cumplidos: [], valorGemaNivel: 4, necesariosUnicosDeRivales: {} };
+  assert.equal(decidirMetamorfoDificil(vista, ['X'], true, { probabilidadPorNombre: {} }, contexto), null);
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');

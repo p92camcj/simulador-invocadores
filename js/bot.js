@@ -625,21 +625,15 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
     if (decision) return { ...aprendiz, objetivoPreferido: [decision.idx1, decision.idx2] };
   }
 
+  const metamorfo = candidatos.find(c => c.name === 'Metamorfo');
+  if (metamorfo) {
+    const nombreDeseado = decidirMetamorfoNormal(vista, need);
+    if (nombreDeseado) return { ...metamorfo, objetivoPreferido: nombreDeseado };
+  }
+
   return null;
 }
 
-/**
- * Heurística 'normal' ADICIONAL, específica de Cronista (Bloque 4, 4.3):
- * a diferencia de Ocultista, Cronista puede actuar sobre un Portal YA
- * VISIBLE (se lleva su carta superior a la mano, no solo la oculta) —
- * denegación GRATUITA: si el Portal de una rival muestra, como única
- * copia visible en toda la mesa, un requisito de la invocación activa,
- * llevárselo a la mano se lo quita sin coste real para el bot. El
- * beneficio propio especulativo ("recuperar una carta conocida para
- * jugarla mejor en un turno posterior") se deja fuera de 'normal' —
- * depende de predecir jugadas futuras, demasiado incierto para esta
- * heurística de bajo riesgo; sí lo modela 'dificil' vía valor esperado.
- */
 /**
  * Clave (formato de habilidad "i:j"/"n:k") del primer Portal ajeno que
  * muestre, como única copia visible en toda la mesa, un requisito de
@@ -655,6 +649,18 @@ function primerRequisitoUnicoDeRivalComoClaveHabilidad(vista, need) {
   return clave ? clave.slice(2) : null; // "a:i:j" -> "i:j" (formato de habilidad)
 }
 
+/**
+ * Heurística 'normal' ADICIONAL, específica de Cronista (Bloque 4, 4.3):
+ * a diferencia de Ocultista, Cronista puede actuar sobre un Portal YA
+ * VISIBLE (se lleva su carta superior a la mano, no solo la oculta) —
+ * denegación GRATUITA: si el Portal de una rival muestra, como única
+ * copia visible en toda la mesa, un requisito de la invocación activa,
+ * llevárselo a la mano se lo quita sin coste real para el bot. El
+ * beneficio propio especulativo ("recuperar una carta conocida para
+ * jugarla mejor en un turno posterior") se deja fuera de 'normal' —
+ * depende de predecir jugadas futuras, demasiado incierto para esta
+ * heurística de bajo riesgo; sí lo modela 'dificil' vía valor esperado.
+ */
 export function decidirCronistaAdversarialNormal(vista, need) {
   return primerRequisitoUnicoDeRivalComoClaveHabilidad(vista, need);
 }
@@ -765,6 +771,62 @@ export function decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGe
     return null;
   }
   return { idx1: lider.idx, idx2: otra.idx, ev: valorGemaNivel * PESO_ADVERSARIAL };
+}
+
+// Coste real de la transformación del Metamorfo (1 Gema unitaria, ver
+// REGLAMENTO.md) expresado en las mismas unidades que `valorGemaNivel`
+// (valor de Gema) — permite restarlo directamente del valor esperado en
+// `decidirMetamorfoDificil()`, algo que el resto del motor no necesita
+// modelar porque ninguna otra habilidad de este bloque tiene un coste en
+// Gemas propio (el coste de activar un Portal CENTRAL si aplica es aparte,
+// ya cobrado por `pagarActivacionPortalCentral()` en `activarHabilidadFaseB`).
+const COSTE_GEMA_METAMORFO = 1;
+
+/**
+ * Heurística 'normal' de Metamorfo (Bloque 4, 4.6): SOLO beneficio propio,
+ * pagando su coste — se transforma en el primer personaje de `need` que
+ * todavía no esté cumplido en ningún sitio de la mesa, si tiene con qué
+ * pagar (`vista.gemasPropiasTotalExacto > 0`, proxy fiable de "tiene al
+ * menos una Gema": `gastarGemaUnitaria()` siempre puede pagar con
+ * cualquier Gema, cambiándola si hace falta). Nunca el uso adversarial
+ * (duplicar a propósito el requisito visible de una rival sin beneficio
+ * propio) — reservado a 'dificil', que sí puede justificarlo con valor
+ * esperado frente al coste real de la Gema pagada.
+ */
+export function decidirMetamorfoNormal(vista, need) {
+  if (!vista.gemasPropiasTotalExacto) return null;
+  const visibles = personajesVisiblesActuales(vista);
+  return need.find(k => !visibles.includes(k)) ?? null;
+}
+
+/**
+ * Heurística 'dificil' de Metamorfo (Bloque 4, 4.6): evalúa CADA personaje
+ * de `need` como transformación candidata, restando siempre el coste real
+ * de la Gema pagada (`COSTE_GEMA_METAMORFO`, mismas unidades que
+ * `valorGemaNivel`). Reutiliza `valorEsperadoDeAccion()` sin necesitar
+ * ningún parámetro nuevo: si el personaje todavía no está cumplido en la
+ * mesa, el mecanismo normal de "beneficio propio" ya lo valora (crédito
+ * completo si `esPropio`); si SÍ está cumplido porque una rival lo tiene
+ * como único ejemplar visible (`contexto.necesariosUnicosDeRivales`), el
+ * mecanismo de "denegación por duplicado" de esa misma función ya aplica
+ * — transformar el Metamorfo en ese personaje crea un segundo ejemplar
+ * visible en un Portal DISTINTO al de la rival (nunca se pasa `destKey`
+ * aquí, así que nunca coincide con el suyo), exactamente el caso que esa
+ * función modela. No hace falta ningún caso especial para el matiz
+ * adversarial: sale solo de reusar la misma maquinaria con `need` completo.
+ */
+export function decidirMetamorfoDificil(vista, need, esPropio, probabilidades, contexto) {
+  if (!vista.gemasPropiasTotalExacto) return null;
+  let mejor = null;
+  need.forEach(nombre => {
+    const ev = valorEsperadoDeAccion(
+      { personaje: nombre, esPropio, esCentral: false, completaInvocacionSiSeJuega: false },
+      probabilidades,
+      contexto
+    ) - COSTE_GEMA_METAMORFO;
+    if (!mejor || ev > mejor.ev) mejor = { nombreDeseado: nombre, ev };
+  });
+  return mejor;
 }
 
 /**
@@ -882,6 +944,9 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
       if (propioResultado) considerar({ ...c, ev: propioResultado.ev, objetivoPreferido: [propioResultado.idx1, propioResultado.idx2] });
       const ajenoResultado = decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGemaNivel);
       if (ajenoResultado) considerar({ ...c, ev: ajenoResultado.ev, objetivoPreferido: [ajenoResultado.idx1, ajenoResultado.idx2] });
+    } else if (c.name === 'Metamorfo') {
+      const decision = decidirMetamorfoDificil(vista, need, c.tipo === 'own', probabilidades, contexto);
+      if (decision) considerar({ ...c, ev: decision.ev, objetivoPreferido: decision.nombreDeseado });
     }
   });
 
@@ -1010,6 +1075,8 @@ export function describirObjetivoHabilidad(name, valores, vista) {
       return `intercambió ${etiquetaPortalPorClaveHabilidad(valores[0], vista)} con ${etiquetaPortalPorClaveHabilidad(valores[1], vista)}`;
     case 'Aprendiz':
       return `intercambió la mano de ${nombreJugadoraPorIdx(parseInt(valores[0], 10), vista)} con la de ${nombreJugadoraPorIdx(parseInt(valores[1], 10), vista)}`;
+    case 'Metamorfo':
+      return `se transformó en ${valores[0]}`;
     default:
       return '';
   }

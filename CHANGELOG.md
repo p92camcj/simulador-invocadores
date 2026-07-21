@@ -4,6 +4,26 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.23.0.82] - 2026-07-21
+
+### Añadido
+- **Uso estratégico de Metamorfo por el autómata (Bloque 4, 4.6)**: hasta
+  ahora ningún nivel de dificultad usaba esta habilidad.
+  - `'normal'` (`decidirMetamorfoNormal`, `js/bot.js`): SOLO beneficio
+    propio, se transforma en el primer requisito de la invocación activa
+    aún no cumplido en la mesa, si tiene con qué pagar la Gema.
+  - `'dificil'` (`decidirMetamorfoDificil`): evalúa cada personaje
+    requisito restando siempre el coste real de la Gema pagada
+    (`COSTE_GEMA_METAMORFO`) — reutiliza `valorEsperadoDeAccion()` sin
+    ningún parámetro nuevo: el matiz adversarial (transformarse
+    deliberadamente en el mismo personaje que una rival tiene visible en
+    exclusiva, para crear un duplicado que le anule la recompensa) sale
+    solo de evaluar `need` completo con esa misma función, sin caso
+    especial.
+- 5 tests nuevos en `tests/run-tests.mjs`.
+
+---
+
 ## [1.22.0.81] - 2026-07-21
 
 ### Añadido

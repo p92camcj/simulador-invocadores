@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.23.0.82 - 2026-07-21
+
+- **Los autómatas ya saben usar al Metamorfo**: antes nunca lo
+  transformaban. Ahora, si tienen una Gema con la que pagarlo, se
+  transforman en el personaje que les falta para una recompensa. En
+  dificultad "Difícil" también pueden transformarse deliberadamente en el
+  mismo personaje que una rival tiene visible en exclusiva, para crearle
+  un duplicado que le anule esa recompensa, si compensa el coste de la
+  Gema.
+
 ## 1.22.0.81 - 2026-07-21
 
 - **Los autómatas ya usan a Ocultista también contra el resto**: antes
