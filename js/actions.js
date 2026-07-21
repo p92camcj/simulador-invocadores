@@ -64,10 +64,11 @@ export function initActions(players, neutrals) {
     window.played = true;
     window.selectedCardIdx = null;
 
+    // render() ya dispara, si aplica, la elección inmediata de Clarividente
+    // (gestionarTransicionesClarividente en render.js) para CUALQUIER
+    // jugadora afectada por esta jugada, no solo `pl` — sin periodo de
+    // gracia que limpiar aquí.
     render(players, neutrals, window.levelIdx);
-    if (!pl.hasClariActivo) {
-      pl.haTenidoClarividente = false;
-    }
   }
 
   // Clic en una carta de la propia mano: la selecciona; un segundo clic
@@ -122,7 +123,7 @@ export function initActions(players, neutrals) {
     const selCard = document.querySelector('#selCard');
     selCard.innerHTML = '';
     pl.hand.forEach((c, idx) => {
-      const visible = c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente;
+      const visible = c.vis?.owner || pl.hasClariActivo;
       const opt = document.createElement('option');
       opt.value = idx;
       opt.textContent = visible ? mostrarCarta(c) : '?';

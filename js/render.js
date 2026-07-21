@@ -3,6 +3,93 @@ import { mostrarCarta, sumaGemas, contarGemasPorNivel, cardImages, CARTA_OCULTA_
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 
 /**
+ * Resuelve, para una jugadora que acaba de perder la visibilidad de su
+ * Clarividente, cuál de sus dos cartas de mano prefiere seguir viendo
+ * (REGLAMENTO.md, "Clarividente": "el jugador debe voltear una carta a su
+ * elección" — corte inmediato, sin periodo de gracia, ver nota de
+ * interpretación). Jugadora humana: picker() con etiquetas neutras (no
+ * revela el nombre del personaje, para no filtrar información en la
+ * pantalla compartida). Autómata: heurística mínima — se queda con la
+ * carta que sea el personaje requerido por la invocación activa si aplica,
+ * si no, al azar (documentado también en bot.js como punto de extensión
+ * futuro si se quisiera algo más elaborado).
+ */
+function resolverEleccionClarividente(player) {
+  const [c0, c1] = player.hand;
+  if (!c0 || !c1) {
+    // Estado inesperado (debería haber siempre exactamente 2 cartas en
+    // mano fuera de mitad de turno): no hay elección real posible, se
+    // limpia el marcador de transición sin más.
+    player._clariEligiendo = false;
+    player._clariVisiblePrev = false;
+    return;
+  }
+
+  const aplicarEleccion = idxElegida => {
+    const elegida = idxElegida === 0 ? c0 : c1;
+    const otra = idxElegida === 0 ? c1 : c0;
+    elegida.vis = { owner: true, others: false, public: false };
+    otra.vis = { owner: false, others: true, public: false };
+    player._clariEligiendo = false;
+    player._clariVisiblePrev = false;
+    render(window.players, window.neutrals, window.levelIdx);
+  };
+
+  if (player.tipo === 'auto') {
+    const lvl = window.LEVELS?.[window.levelIdx];
+    const need = lvl ? window.INVOCATION_SETS?.[window.invocationSet]?.[lvl]?.need : null;
+    const esRequerida = c => !!need && need.includes(c.aspecto || c.name);
+    let idxElegida;
+    if (need && esRequerida(c0) && !esRequerida(c1)) idxElegida = 0;
+    else if (need && esRequerida(c1) && !esRequerida(c0)) idxElegida = 1;
+    else idxElegida = Math.random() < 0.5 ? 0 : 1;
+    aplicarEleccion(idxElegida);
+    return;
+  }
+
+  const elegir = () => picker(
+    `${player.name}: la Clarividente ha dejado de estar visible. ¿Qué carta prefieres seguir viendo?`,
+    [
+      { val: '0', lbl: 'Mi carta de la izquierda' },
+      { val: '1', lbl: 'Mi carta de la derecha' },
+    ],
+    val => aplicarEleccion(parseInt(val, 10)),
+    // No hay forma válida de "no elegir": cancelar simplemente reabre el
+    // mismo picker, porque el reglamento exige que la jugadora SÍ elija.
+    elegir,
+  );
+  elegir();
+}
+
+/**
+ * Detecta, para cada jugadora, la transición "tenía Clarividente visible →
+ * ya no la tiene" (comparando `hasClariActivo` recién calculado contra
+ * `player._clariVisiblePrev`, guardado en la llamada anterior) y dispara de
+ * inmediato `resolverEleccionClarividente()` — nunca se espera al turno
+ * propio de la jugadora ni al de nadie más. Si ya hay un picker en curso
+ * (de otra habilidad, o de otra Clarividente resolviéndose) se pospone sin
+ * más: como `_clariVisiblePrev` no se actualiza para esa jugadora mientras
+ * está pendiente, se reintenta automáticamente en la siguiente llamada a
+ * `render()` (que ocurre constantemente tras cualquier acción del juego).
+ */
+function gestionarTransicionesClarividente(players) {
+  actualizarClarividente(players);
+  const pickerEnCurso = !!window.pickerObjetivoPortal ||
+    document.querySelector('#picker')?.classList.contains('hidden') === false;
+  players.forEach(player => {
+    if (player._clariVisiblePrev === true && !player.hasClariActivo && !player._clariEligiendo) {
+      if (pickerEnCurso) return;
+      player._clariEligiendo = true;
+      resolverEleccionClarividente(player);
+      return;
+    }
+    if (!player._clariEligiendo) {
+      player._clariVisiblePrev = player.hasClariActivo;
+    }
+  });
+}
+
+/**
  * Devuelve el <img> de una carta. Si `visible` es false, siempre usa el
  * reverso genérico (CARTA_OCULTA_IMG) y un alt sin el nombre real — no hay
  * que filtrar en el DOM qué personaje es una carta oculta para quien mira.
@@ -208,13 +295,16 @@ function renderBoardNeutrals(neutrals) {
  *   para cualquier columna (no depende de quién es la activa).
  * - Mano de la jugadora ACTIVA (`window.turn`), SOLO si es humana
  *   (`p.tipo !== 'auto'`, `esHumanaActiva` más abajo): según
- *   `c.vis?.owner || pl.hasClariActivo || pl.haTenidoClarividente`.
+ *   `c.vis?.owner || pl.hasClariActivo`.
  * - Mano de cualquier OTRA jugadora, Y de una autómata en su propio turno
  *   (una autómata nunca tiene "su propia pantalla" que la vea — ver
  *   `js/bot.js`): según `h.vis?.others`, salvo que esa jugadora tenga
- *   `hasClariActivo || haTenidoClarividente`, en cuyo caso se oculta la
- *   mano COMPLETA al resto (decisión de mesa, ver
- *   docs/reglamento/REGLAMENTO.md, nota de Clarividente).
+ *   `hasClariActivo`, en cuyo caso se oculta la mano COMPLETA al resto
+ *   (decisión de mesa, ver docs/reglamento/REGLAMENTO.md, nota de
+ *   Clarividente). Ya no hay periodo de gracia: en cuanto deja de estar
+ *   activa, la elección inmediata de la jugadora
+ *   (`gestionarTransicionesClarividente`, más abajo) ya ha dejado
+ *   `card.vis` en el estado correcto para volver a la visibilidad normal.
  * La columna de la jugadora activa se resalta (`.turno-activo`); el resto
  * se atenúa (`.turno-inactivo`), sin perder su color de identidad fijo.
  */
@@ -264,7 +354,7 @@ function renderBoardGrid(players, neutrals) {
     html += '<h5>Mano</h5><div class="board-hand">';
     if (esHumanaActiva) {
       p.hand.forEach((c, idx) => {
-        const visible = c.vis?.owner || p.hasClariActivo || p.haTenidoClarividente;
+        const visible = c.vis?.owner || p.hasClariActivo;
         const selectedClass = idx === window.selectedCardIdx ? ' selected' : '';
         html += `
           <div class="card${selectedClass}" draggable="true"
@@ -283,10 +373,12 @@ function renderBoardGrid(players, neutrals) {
       //
       // Decisión de mesa (ver docs/reglamento/REGLAMENTO.md, nota sobre
       // Clarividente): mientras esta jugadora tenga la Clarividente
-      // visible/en periodo de gracia, su mano COMPLETA queda oculta para
-      // el resto — se sobrescribe la visibilidad normal, no se combina
-      // con OR.
-      const manoOcultaPorClarividente = p.hasClariActivo || p.haTenidoClarividente;
+      // visible, su mano COMPLETA queda oculta para el resto — se
+      // sobrescribe la visibilidad normal, no se combina con OR. Sin
+      // periodo de gracia: en cuanto deja de estar activa, esta jugadora
+      // vuelve de inmediato a la visibilidad normal (ver
+      // gestionarTransicionesClarividente más arriba).
+      const manoOcultaPorClarividente = p.hasClariActivo;
       p.hand.forEach(h => {
         const visible = manoOcultaPorClarividente ? false : h.vis?.others === true;
         html += `<div class="card">${cartaImgHtml(h.aspecto || h.name, visible)}</div>`;
@@ -308,13 +400,16 @@ function renderBoardGrid(players, neutrals) {
  * @param {number} levelIdx - Índice de la invocación actual.
  */
 export function render(players, neutrals, levelIdx) {
-  // Solo actualiza los flags hasClariActivo/haTenidoClarividente del
-  // jugador; NUNCA muta carta.vis (ver js/utils.js) — el efecto de
-  // Clarividente se decide en el momento de mostrar cada carta (más abajo),
-  // no persistiéndolo en el dato real. Así el estado subyacente (una carta
-  // visible + una oculta) nunca se corrompe, y sigue intacto si después el
-  // Aprendiz intercambia esta mano con la de otra jugadora.
-  actualizarClarividente(players);
+  // Actualiza hasClariActivo (nunca muta carta.vis directamente aquí, ver
+  // js/utils.js: el efecto "ver ambas cartas" se decide al mostrar cada
+  // carta, más abajo) y, si para alguna jugadora acaba de pasar de true a
+  // false, dispara de inmediato su elección de qué carta seguir viendo
+  // (picker humano o heurística de bot) — sin periodo de gracia, ver
+  // gestionarTransicionesClarividente() más arriba. Esa elección sí muta
+  // carta.vis de las dos cartas de mano afectadas, de forma real y
+  // persistente (no una regla de visualización), exactamente como pide
+  // REGLAMENTO.md ("el jugador debe voltear una carta a su elección").
+  gestionarTransicionesClarividente(players);
 
   // Botón de cancelar selección: visible solo mientras hay una carta de la
   // mano elegida para jugar.

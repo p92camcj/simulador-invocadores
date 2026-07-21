@@ -350,22 +350,33 @@ correcto.
 
 ### 3.6 Clarividente (mano oculta al resto) + intercambio de Aprendiz (verificado, sin hueco)
 
-`hasClariActivo`/`haTenidoClarividente` son propiedades del objeto
-**jugadora** (no de las cartas ni de la mano), recalculadas en cada
-`render()` a partir de sus Portales (`actualizarClarividente()`,
-`utils.js`) — nunca a partir del contenido de la mano. Como Aprendiz
-intercambia únicamente los arrays de mano (`players[v1].hand` ↔
-`players[v2].hand`) sin tocar Portales, el efecto de ocultación sigue
-correctamente ligado a **quien tiene la Clarividente visible**, no a
-qué cartas concretas tenga en la mano en cada momento — así que tras un
+**Actualización 2026-07-21**: el bug (a) descrito en `MEJORAS_FUTURAS.md`
+("Clarividente: dos bugs reales confirmados tras probar la partida") está
+resuelto. `hasClariActivo` es una propiedad del objeto **jugadora** (no de
+las cartas ni de la mano), recalculada en cada `render()` a partir de sus
+Portales (`actualizarClarividente()`, `utils.js`) — nunca a partir del
+contenido de la mano. La transición `true → false` se detecta para
+CUALQUIER jugadora en CUALQUIER `render()` (comparando contra
+`player._clariVisiblePrev`, no solo en el turno de su dueña) y dispara de
+inmediato `resolverEleccionClarividente()` (`render.js`): picker con
+etiquetas neutras para una jugadora humana, heurística mínima para una
+autómata. Ya no existe ningún "periodo de gracia" — `haTenidoClarividente`
+se ha eliminado por completo del código.
+
+Como Aprendiz intercambia únicamente los arrays de mano (`players[v1].hand`
+↔ `players[v2].hand`) sin tocar Portales, el efecto de ocultación sigue
+correctamente ligado a **quien tiene la Clarividente visible**, no a qué
+cartas concretas tenga en la mano en cada momento — así que tras un
 intercambio de Aprendiz, la jugadora que sigue teniendo su Clarividente
 visible sigue viendo oculta su mano actual (aunque ahora sean físicamente
 las cartas que antes eran de la otra jugadora) para el resto, exactamente
 como pide la regla ("mientras esta jugadora tenga la Clarividente
-visible..."). Verificado también que el "periodo de gracia"
-(`haTenidoClarividente`) sigue el mismo patrón (ligado a la jugadora, no
-a las cartas), así que tampoco se pierde ni se transfiere por error en un
-intercambio.
+visible...").
+
+El bug (b) (pérdida de visibilidad de AMBAS cartas al robar, reportado tras
+jugar una partida) sigue sin reproducirse ni confirmarse — ver
+`MEJORAS_FUTURAS.md`, no se ha tocado nada relacionado con el robo de
+cartas en esta ronda de cambios.
 
 ### 3.7 Hallazgo adicional — Estratega puede reubicar la protección de una Centinela a otra jugadora (verificado como correcto, no un bug)
 
@@ -454,7 +465,8 @@ la sección 1.
 | Metamorfo: apariencia separada de identidad real (protección/restricción/bonus no siguen al disfraz) | ✅ Corregido | — |
 | Metamorfo: disfraz visual con ficha superpuesta semitransparente (solo cosmético, ver [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md)) | ❌ Pendiente | Baja |
 | Clarividente: mano completa oculta al resto | ✅ Implementado (decisión de mesa) | — |
-| **Clarividente: corte inmediato + elección activa al perder visibilidad (dos bugs confirmados, ver [`MEJORAS_FUTURAS.md`](MEJORAS_FUTURAS.md), "Clarividente: dos bugs reales confirmados tras probar la partida")** | 🔴 Bug | **Media** |
+| Clarividente: corte inmediato + elección activa al perder visibilidad (bug a) | ✅ Corregido (2026-07-21) | — |
+| Clarividente: pérdida de ambas cartas al robar (bug b, sin reproducir) | ❓ Sin confirmar | — |
 | Cronomante: reintento tras cancelar, mismo Portal | ✅ Implementado | — |
 | Maestro: bonus pasivo (3 Gemas) | ✅ Implementado | — |
 | Maestro: habilidad activa (mover carta de mano ajena) | ❌ Pendiente | Media |

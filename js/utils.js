@@ -383,23 +383,20 @@ export function generarVis(destino, { origen, visible, esPropietaria }) {
 
 
 /**
- * Actualiza los flags de visibilidad relacionados con la Clarividente.
- * - hasClariActivo: true si la jugadora tiene una Clarividente visible en el top de un portal.
- * - haTenidoClarividente: permanece true mientras no se haya jugado una carta después.
+ * Actualiza `player.hasClariActivo`: true si la jugadora tiene una
+ * Clarividente visible en el top de un portal. Sin periodo de gracia — ver
+ * `docs/reglamento/REGLAMENTO.md`, nota de interpretación de Clarividente:
+ * la pérdida de visibilidad es inmediata, siempre. La reacción a la
+ * transición true→false (elegir qué carta seguir viendo) vive en
+ * `render.js` (`gestionarTransicionesClarividente`), no aquí — esta función
+ * solo calcula el estado actual.
  */
 export function actualizarClarividente(players) {
   players.forEach(player => {
-    const activa = player.portals.some(
+    player.hasClariActivo = player.portals.some(
       stack => stack.length &&
         stack.at(-1).name === 'Clarividente' &&
         stack.at(-1).vis?.public === true
     );
-    if (activa) {
-      player.hasClariActivo = true;
-      player.haTenidoClarividente = true;
-    } else {
-      player.hasClariActivo = false;
-      // haTenidoClarividente se mantiene hasta que juegue una carta
-    }
   });
 }

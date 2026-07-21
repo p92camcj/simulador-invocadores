@@ -12,7 +12,22 @@
 
 ---
 
-## Resuelto recientemente (2026-07-21)
+## Resuelto recientemente (2026-07-21, tras incorporar el jugador autómata)
+
+- **Clarividente: corte inmediato con elección propia (bug (a) de "dos
+  bugs reales confirmados", más abajo)**: `actualizarClarividente()`
+  (`js/utils.js`) ya no gestiona ningún "periodo de gracia" —
+  `haTenidoClarividente` se ha eliminado por completo. `render.js` añade
+  `gestionarTransicionesClarividente()`, llamada al principio de cada
+  `render()`: detecta, para CUALQUIER jugadora (no solo en su propio
+  turno), la transición `hasClariActivo` de `true` a `false` y dispara de
+  inmediato `resolverEleccionClarividente()` — picker con etiquetas
+  neutras ("Mi carta de la izquierda"/"de la derecha", sin revelar el
+  personaje) para una jugadora humana, heurística mínima (se queda con la
+  carta requerida por la invocación activa si aplica, si no al azar) para
+  una autómata. Si ya hay un picker en curso se pospone y se reintenta en
+  el siguiente `render()`. El bug (b) de la misma entrada sigue sin
+  reproducirse — no tocado en este cambio, ver más abajo.
 
 - **Jugador autómata ("bot")**: se pueden combinar jugadoras humanas y
   autómatas (controladas por la app) dentro del límite de 2-5 jugadoras.
@@ -196,36 +211,16 @@ bloqueada por nada: solo hace falta cambiar `cartaImgHtml()`/
 `.aspecto` superpuesta a media opacidad encima, en vez de resolver una sola
 imagen a partir de `.aspecto || .name`.
 
-### Clarividente: dos bugs reales confirmados tras probar la partida
+### Clarividente: bug (b) pendiente de reproducir (bug (a) ya resuelto)
 
-**Actualización 2026-07-21**: esta entrada sustituye a una anterior que
+**Actualización 2026-07-21**: esta entrada sustituía a una anterior que
 concluía que no hacía falta implementar nada (con el argumento de que el
 invariante "una carta visible y una oculta" nunca se rompía de verdad). El
-dueño del proyecto ha probado la partida y confirmado que sí hay dos bugs
-reales y distintos por resolver — además, la nota de interpretación de
-`docs/reglamento/REGLAMENTO.md` ("Clarividente") ya no acepta ningún
-"periodo de gracia" como diseño válido: la pérdida de visibilidad debe ser
-inmediata, siempre.
-
-**a. No existe ningún picker ni elección real de la jugadora al perder la
-Clarividente visible.** El efecto "ver ambas cartas" depende únicamente de
-los flags automáticos `hasClariActivo`/`haTenidoClarividente`
-(`actualizarClarividente()`, `js/utils.js`), sin que la jugadora elija
-nunca qué carta prefiere dejar de ver — el texto de la sección
-"Clarividente" pide explícitamente que "el jugador debe voltear una carta
-a su elección". Además, el único sitio que hoy corta el efecto
-(`js/actions.js`, `jugarCartaSeleccionadaEn()`: `if (!pl.hasClariActivo) {
-pl.haTenidoClarividente = false; }`) solo se ejecuta cuando la jugadora
-ACTIVA juega una carta — así que si la Clarividente de otra jugadora deja
-de estar visible por una habilidad ajena (Cronista, Estratega, Cronomante,
-Ocultista actuando sobre su Portal), el efecto no se corta hasta que esa
-jugadora vuelva a jugar una carta en su propio turno, violando la regla
-corregida de "inmediato, sin excepción". Corrección necesaria: disparar un
-picker exactamente en el instante en que `hasClariActivo` pasa de `true` a
-`false` para una jugadora (sea cual sea la causa), preguntándole qué carta
-de las dos quiere que pase a estar oculta para ella — no un sitio único
-como hoy, sino cualquier punto del código que pueda hacer que la
-Clarividente deje de estar visible.
+dueño del proyecto probó la partida y confirmó dos bugs reales y distintos.
+El **bug (a)** (sin picker ni elección real, periodo de gracia que no
+cortaba el efecto cuando otra jugadora tapaba la Clarividente) ya está
+**resuelto** — ver "Resuelto recientemente (2026-07-21, tras incorporar el
+jugador autómata)" más arriba. Queda pendiente únicamente el bug (b):
 
 **b. Reportado por el dueño del proyecto tras jugar una partida: al robar
 carta al final de turno, la jugadora pierde la visibilidad de AMBAS

@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.1.56] - 2026-07-21
+
+### Corregido
+- **Clarividente: corte de visibilidad inmediato, con elección real de la jugadora (bug (a) de `docs/MEJORAS_FUTURAS.md`, "Clarividente: dos bugs reales confirmados tras probar la partida")**: se elimina por completo el "periodo de gracia" (`player.haTenidoClarividente`, `actualizarClarividente()` en `js/utils.js`). En su lugar, `js/render.js` añade `gestionarTransicionesClarividente()`, llamada al principio de cada `render()`: detecta, para CUALQUIER jugadora (no solo en su propio turno), la transición de `hasClariActivo` de `true` a `false` — comparando contra `player._clariVisiblePrev`, guardado tras cada `render()` — y dispara de inmediato `resolverEleccionClarividente()`. Antes, el único sitio que cortaba el efecto (`jugarCartaSeleccionadaEn()` en `js/actions.js`) solo se ejecutaba cuando la propia jugadora activa jugaba una carta, así que si otra jugadora (o un bot) tapaba su Clarividente, el efecto sobrevivía hasta que ella volviera a jugar. Ahora: jugadora humana → `picker()` con etiquetas neutras ("Mi carta de la izquierda"/"de la derecha", sin revelar el personaje, para no filtrar información en la pantalla compartida) que invierte de verdad `vis.owner`/`vis.others` de las dos cartas de mano según la elección; autómata → heurística mínima (se queda con la carta requerida por la invocación activa si aplica, si no al azar), sin picker. Si ya hay un picker en curso (de otra habilidad, o de otra elección de Clarividente), se pospone y se reintenta en el siguiente `render()`. Verificado manualmente construyendo el estado a mano y llamando a `render()`/`picker()` directamente: transición humana abre el picker de inmediato e invierte la visibilidad correctamente; transición de autómata se resuelve sola sin abrir ningún picker; una transición que llega con otro picker ya abierto se pospone y se dispara en cuanto ese otro picker se cierra.
+
+---
+
 ## [1.13.0.55] - 2026-07-21
 
 ### Añadido

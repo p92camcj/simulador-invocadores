@@ -6,6 +6,18 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.1.56 - 2026-07-21
+
+- **Arreglado un fallo de la Clarividente**: antes, si tenías la
+  Clarividente visible (viendo tus dos cartas) y otra jugadora o un
+  autómata jugaba una carta encima tapándola, seguías viendo ambas cartas
+  hasta que te tocaba jugar a ti otra vez. Ahora, en el instante exacto en
+  que dejas de tener la Clarividente visible (la tapes tú o cualquier
+  otra), se te pregunta de inmediato cuál de tus dos cartas prefieres
+  seguir viendo — sin revelar qué personaje es cada una en la pregunta,
+  para no dar pistas a quien mire la pantalla. Si es un autómata quien
+  pierde la Clarividente, decide solo, sin preguntar nada.
+
 ## 1.13.0.55 - 2026-07-21
 
 - **¡Ya puedes jugar con autómatas!** En la pantalla de configuración,
