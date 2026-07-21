@@ -95,13 +95,17 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
 }
 
 /**
- * Memoria propia de la bot `botIdx` (conteo de cartas de la dificultad
- * 'dificil', ver `js/bot-probabilidad.js`): qué personaje ha visto pasar
- * por cada Portal a lo largo de la partida, aunque ahora esté tapado.
- * Vive en `window.memoriaBots[botIdx]`, inicializada/reseteada junto al
- * resto del estado de partida en `initGame()`/`resetJuego()` (`game.js`) —
- * solo en memoria JS de esta partida, nunca se persiste ni sale de la
- * sesión de juego actual. La dificultad 'normal' no la usa.
+ * Memoria propia de la bot `botIdx`: qué personaje ha visto pasar por cada
+ * Portal a lo largo de la partida, aunque ahora esté tapado. Vive en
+ * `window.memoriaBots[botIdx]`, inicializada/reseteada junto al resto del
+ * estado de partida en `initGame()`/`resetJuego()` (`game.js`) — solo en
+ * memoria JS de esta partida, nunca se persiste ni sale de la sesión de
+ * juego actual. Desde el Bloque 4 de esta tarea, AMBAS dificultades la
+ * mantienen (antes solo 'dificil'): es simplemente "lo que este bot ha
+ * visto", ni una jugadora humana necesitaría más para recordarlo — el
+ * conteo de cartas/probabilidad de `js/bot-probabilidad.js` sigue siendo
+ * exclusivo de 'dificil', esto es solo la memoria bruta que Cronomante
+ * necesita para tener una decisión con sentido en cualquier nivel.
  */
 function obtenerMemoriaBot(botIdx) {
   if (!window.memoriaBots) window.memoriaBots = [];
@@ -170,23 +174,6 @@ function listaPortalesFormatoHabilidad(vista) {
 // ---------- Fase A: jugar una carta (obligatoria) ----------
 
 /**
- * Heurística 'normal' de Fase A (ver prompt del bot):
- * 1. Si jugar la carta conocida (la propia "visible") en un Portal
- *    bloqueante (vacío u oculto) deja el combo activo completo, es la
- *    jugada prioritaria.
- * 2. Si no, prefiere la carta conocida sobre la oculta propia (para no
- *    arriesgarse a duplicar sin querer un personaje ya necesario), en un
- *    Portal donde razonablemente ayude: uno bloqueante (propio primero) si
- *    existe, o si no, cualquiera que no tape un personaje que sí forme
- *    parte del combo activo.
- * 3. Solo jugaría la oculta propia si no hubiera carta conocida disponible
- *    — en la práctica no ocurre nunca al empezar turno (la mano siempre
- *    tiene una visible y una oculta), se deja por completitud
- *    arquitectónica y como red de seguridad.
- * 5. Empate entre Portales igual de razonables → elección al azar
- *    (aleatoriedad ponderada, para no ser 100% predecible).
- */
-/**
  * Ajuste adversarial de la heurística 'normal' de Fase A (Bloque 3 de esta
  * tarea): jugar en el Portal de otra jugadora, o duplicar un personaje, es
  * una jugada completamente legal — hoy el nivel 'normal' nunca lo
@@ -243,6 +230,26 @@ function decidirJugadaAdversarialNormal(vista, need, conocida, portales) {
   return null;
 }
 
+/**
+ * Heurística 'normal' de Fase A (ver prompt del bot):
+ * 1. Si jugar la carta conocida (la propia "visible") en un Portal
+ *    bloqueante (vacío u oculto) deja el combo activo completo, es la
+ *    jugada prioritaria.
+ * 2. Si no, el ajuste adversarial del Bloque 3 (`decidirJugadaAdversarialNormal`,
+ *    arriba) — denegar por duplicado o tapar un Portal ajeno cerca de
+ *    completarse.
+ * 3. Si no, prefiere la carta conocida sobre la oculta propia (para no
+ *    arriesgarse a duplicar sin querer un personaje ya necesario), en un
+ *    Portal donde razonablemente ayude: uno bloqueante (propio primero) si
+ *    existe, o si no, cualquiera que no tape un personaje que sí forme
+ *    parte del combo activo.
+ * 4. Solo jugaría la oculta propia si no hubiera carta conocida disponible
+ *    — en la práctica no ocurre nunca al empezar turno (la mano siempre
+ *    tiene una visible y una oculta), se deja por completitud
+ *    arquitectónica y como red de seguridad.
+ * 5. Empate entre Portales igual de razonables → elección al azar
+ *    (aleatoriedad ponderada, para no ser 100% predecible).
+ */
 export function decidirJugadaFaseA(vista, need) {
   const conocida = vista.propiaCartaConocida?.name ?? null;
   const portales = listaPortalesConDestino(vista);
@@ -421,28 +428,71 @@ function objetivosHabilidadDisponibles(players, neutrals, botIdx) {
 }
 
 /**
- * Heurística 'normal' de Fase B (ver prompt del bot): del MVP solo se
- * consideran Ocultista y Cronista — Estratega, Cronomante, Aprendiz,
- * Metamorfo y Maestro quedan fuera a propósito (definir un objetivo
- * "razonable" para ellos es bastante más complejo; Maestro en concreto
- * necesita estimar qué carta ajena conviene mover, que es precisamente el
- * motor de valor esperado del nivel 'dificil' — ver más abajo en este
- * archivo). Ocultista/Cronista se consideran "útiles" solo si falta algún
- * personaje del combo activo por revelar Y existe al menos un Portal
- * oculto legal donde intentarlo — activar sin ningún hueco que llenar
- * gastaría el turno sin ganancia esperable.
+ * Candidatos de Cronomante (Bloque 4): cada Portal (propio, ajeno o
+ * central) donde la MEMORIA de este bot (`obtenerMemoriaBot`, historial
+ * bruto de nombres vistos en su cima a lo largo de la partida — nunca la
+ * pila real completa) ofrece al menos una alternativa distinta de lo que
+ * se ve ahora mismo en su cima (jugar la que ya está arriba sería un
+ * no-op). Sin memoria de ese Portal, o sin ninguna alternativa real, ese
+ * Portal no es candidato — Cronomante NO tiene sentido "a ciegas".
  */
-function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need) {
-  const candidatos = objetivosHabilidadDisponibles(players, neutrals, botIdx)
-    .filter(c => c.name === 'Ocultista' || c.name === 'Cronista');
-  if (!candidatos.length) return null;
+export function candidatosCronomante(vista, memoriaBot) {
+  return listaPortalesFormatoHabilidad(vista)
+    .map(p => {
+      const historial = memoriaBot.portales[p.key] || [];
+      const actual = p.estado && !p.estado.hidden ? p.estado.name : null;
+      const alternativas = [...new Set(historial)].filter(n => n !== actual);
+      return { ...p, alternativas };
+    })
+    .filter(p => p.alternativas.length > 0);
+}
 
+/**
+ * Heurística 'normal' de Cronomante (Bloque 4): SOLO beneficio propio, solo
+ * con CERTEZA (la memoria ya vio ese nombre pasar por ese Portal) — nunca
+ * el matiz adversarial (sustituir un personaje visible de una rival por
+ * otro inútil para ella), que el prompt de esta tarea reserva
+ * explícitamente a 'dificil' ("solo si el cálculo de valor esperado lo
+ * justifica"). Activa sobre el primer Portal PROPIO cuya memoria recuerde
+ * un personaje de `need` que todavía no esté cumplido en ningún sitio de
+ * la mesa.
+ */
+export function decidirCronomanteNormal(vista, memoriaBot, need) {
   const visibles = personajesVisiblesActuales(vista);
-  const faltaAlgo = need.some(k => !visibles.includes(k));
-  const hayPortalOculto = listaPortalesConDestino(vista).some(p => p.estado?.hidden);
-  if (!faltaAlgo || !hayPortalOculto) return null;
+  for (const p of candidatosCronomante(vista, memoriaBot)) {
+    if (!p.esPropio) continue;
+    const nombreDeseado = p.alternativas.find(n => need.includes(n) && !visibles.includes(n));
+    if (nombreDeseado) return { portalKey: p.key, nombreDeseado };
+  }
+  return null;
+}
 
-  return elegirAlAzar(candidatos);
+/**
+ * Heurística 'normal' de Fase B: Ocultista/Cronista (igual que siempre —
+ * útiles solo si falta algún personaje del combo activo por revelar Y
+ * existe al menos un Portal oculto legal donde intentarlo), y desde el
+ * Bloque 4 también Cronomante (`decidirCronomanteNormal`, arriba).
+ * Estratega, Aprendiz, Metamorfo y Maestro se añaden en los siguientes
+ * commits de este mismo bloque.
+ */
+function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBot) {
+  const candidatos = objetivosHabilidadDisponibles(players, neutrals, botIdx);
+
+  const ocultistaCronista = candidatos.filter(c => c.name === 'Ocultista' || c.name === 'Cronista');
+  if (ocultistaCronista.length) {
+    const visibles = personajesVisiblesActuales(vista);
+    const faltaAlgo = need.some(k => !visibles.includes(k));
+    const hayPortalOculto = listaPortalesConDestino(vista).some(p => p.estado?.hidden);
+    if (faltaAlgo && hayPortalOculto) return elegirAlAzar(ocultistaCronista);
+  }
+
+  const cronomante = candidatos.find(c => c.name === 'Cronomante');
+  if (cronomante) {
+    const decision = decidirCronomanteNormal(vista, memoriaBot, need);
+    if (decision) return { ...cronomante, objetivoPreferido: [decision.portalKey, decision.nombreDeseado] };
+  }
+
+  return null;
 }
 
 /**
@@ -471,7 +521,12 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
   const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
   const visibles = personajesVisiblesActuales(vista);
   const cumplidos = need.filter(k => visibles.includes(k));
-  const contexto = { need, cumplidos, valorGemaNivel };
+  // Bloque 3/4: mismo término adversarial que ya usa Fase A — qué requisitos
+  // de la invocación activa hoy solo tiene visible una rival, para que
+  // Cronomante (y el resto de habilidades de este bloque) puedan
+  // considerar denegárselos, no solo el beneficio propio.
+  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
+  const contexto = { need, cumplidos, valorGemaNivel, necesariosUnicosDeRivales };
 
   let mejor = null;
   const considerar = candidato => {
@@ -499,6 +554,29 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
         );
         considerar({ ...c, ev, objetivoPreferido: j.idx });
       });
+    } else if (c.name === 'Cronomante') {
+      // Bloque 4: además del beneficio propio (recuperar a la cima, en un
+      // Portal propio, un personaje memorizado que hace falta), evalúa
+      // también el matiz adversarial — sustituir en un Portal AJENO el
+      // único ejemplar visible de un requisito por otra alternativa
+      // memorizada, denegándoselo a esa rival — con el mismo mecanismo
+      // `cubreNecesarioUnicoRival` que ya usa Fase A.
+      candidatosCronomante(vista, memoriaBot).forEach(p => {
+        const destKeyFaseA = p.key.startsWith('n:') ? p.key : `a:${p.key}`;
+        const cubreNecesarioUnicoRival = !p.esPropio &&
+          Object.values(necesariosUnicosDeRivales).includes(destKeyFaseA);
+        p.alternativas.forEach(nombre => {
+          const ev = valorEsperadoDeAccion(
+            {
+              personaje: nombre, esPropio: p.esPropio, esCentral: p.key.startsWith('n:'),
+              destKey: destKeyFaseA, cubreNecesarioUnicoRival, completaInvocacionSiSeJuega: false,
+            },
+            probabilidades,
+            contexto
+          );
+          considerar({ ...c, ev, objetivoPreferido: [p.key, nombre] });
+        });
+      });
     }
   });
 
@@ -514,11 +592,18 @@ function estaOcultoSegunVista(vista, val) {
 
 /**
  * Elige una opción no descartada del `<select>` del picker() actualmente
- * abierto. Si `preferido` coincide con alguna opción disponible (calculado
- * de antemano por la heurística 'dificil' — un Portal concreto para
- * Ocultista/Cronista, o el índice de una jugadora concreta para Maestro,
- * ver `objetivoPreferido` en `decidirHabilidadFaseBDificil`), se usa ese.
- * Si no, cae al criterio de 'normal': preferir un Portal oculto (Ocultista
+ * abierto. Si `preferido` coincide con el VALOR de alguna opción disponible
+ * (calculado de antemano por la heurística — un Portal concreto para
+ * Ocultista/Cronista/Cronomante/Estratega, el índice de una jugadora para
+ * Maestro/Aprendiz, ver `objetivoPreferido` de cada decisión), se usa ese.
+ * Si no coincide por valor, se prueba por TEXTO de la etiqueta (necesario
+ * para el segundo picker de Cronomante: sus opciones son índices dentro de
+ * la pila, no claves de Portal, así que solo el nombre del personaje en la
+ * etiqueta — visible para el bot igual que lo sería en pantalla para una
+ * jugadora humana, ver `case 'Cronomante'` en `abilities.js` — identifica
+ * cuál es; o para Metamorfo, cuyo valor YA es el nombre del personaje, así
+ * que en la práctica coincide por valor). Si nada de eso aplica, cae al
+ * criterio de respaldo de 'normal': preferir un Portal oculto (Ocultista
  * porque revelar uno es lo único con sentido en su MVP; Cronista porque
  * llevarse a la mano una carta desconocida no arriesga quitar del tablero
  * un personaje visible que sí interesara dejar), o al azar si ninguna
@@ -527,8 +612,10 @@ function estaOcultoSegunVista(vista, val) {
 function elegirOpcionPicker(opcionesDom, vista, yaElegidos, preferido) {
   const disponibles = opcionesDom.filter(o => !yaElegidos.includes(o.value));
   if (preferido !== undefined && preferido !== null) {
-    const match = disponibles.find(o => o.value === String(preferido));
-    if (match) return match;
+    const porValor = disponibles.find(o => o.value === String(preferido));
+    if (porValor) return porValor;
+    const porEtiqueta = disponibles.find(o => o.text?.includes(preferido));
+    if (porEtiqueta) return porEtiqueta;
   }
   const ocultos = disponibles.filter(o => estaOcultoSegunVista(vista, o.value));
   return elegirAlAzar(ocultos.length ? ocultos : disponibles);
@@ -596,10 +683,9 @@ function conDe(etiqueta) {
  * Traduce los valores REALMENTE elegidos en el/los picker() de una
  * activación de habilidad (ver `resolverPickersAbiertos`) a una frase EN
  * TERCERA PERSONA para el resumen del turno — identificando siempre de
- * quién es cada Portal/mano afectada (Bloque 1 de esta tarea). Solo cubre,
- * de momento, las habilidades que la Fase B del autómata ya sabe usar
- * (Ocultista, Cronista, Maestro) — el resto de casos se añade a la vez que
- * se les da uso real (ver Bloque 4).
+ * quién es cada Portal/mano afectada (Bloque 1 de esta tarea). Cubre las
+ * habilidades a las que la Fase B del autómata ya da uso real, ampliado a
+ * la vez que cada una se añade (ver Bloque 4).
  */
 export function describirObjetivoHabilidad(name, valores, vista) {
   switch (name) {
@@ -609,6 +695,12 @@ export function describirObjetivoHabilidad(name, valores, vista) {
       return `se llevó a la mano la carta superior ${conDe(etiquetaPortalPorClaveHabilidad(valores[0], vista))}`;
     case 'Maestro':
       return `bajó una carta de la mano de ${nombreJugadoraPorIdx(parseInt(valores[0], 10), vista)} a su propio Portal`;
+    case 'Cronomante':
+      // El 2º valor elegido es un ÍNDICE dentro de la pila real, no un
+      // nombre — no hay forma de traducirlo a un personaje sin releer el
+      // DOM ya cerrado, así que el resumen se queda con el Portal
+      // manipulado, sin precisar qué carta subió al top.
+      return `reorganizó ${conDe(etiquetaPortalPorClaveHabilidad(valores[0], vista))}`;
     default:
       return '';
   }
@@ -652,8 +744,14 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto) {
   const { levelIdx, invocationSet } = contexto;
   const lvl = LEVELS[levelIdx];
   const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
+  // Bloque 4: la memoria ("qué he visto pasar por cada Portal") ya la usa
+  // también el nivel 'normal' — la necesita Cronomante para tener un
+  // objetivo con sentido, sin que eso implique conteo de cartas/probabilidad
+  // (eso sigue siendo exclusivo de 'dificil', ver `obtenerMemoriaBot`).
+  const memoriaBot = obtenerMemoriaBot(botIdx);
 
   const vistaAntes = construirEstadoVisibleParaBot(players, neutrals, botIdx);
+  actualizarMemoriaBot(memoriaBot, vistaAntes);
   const decisionA = decidirJugadaFaseA(vistaAntes, need);
   jugarCartaFaseA(players, botIdx, decisionA);
 
@@ -669,7 +767,8 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto) {
   // mano y el Portal destino ahora es visible, así que la Fase B debe
   // decidir con el tablero actualizado, no con el de antes de jugar.
   const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, botIdx);
-  const decisionB = decidirHabilidadFaseB(vistaTrasA, players, neutrals, botIdx, need);
+  actualizarMemoriaBot(memoriaBot, vistaTrasA);
+  const decisionB = decidirHabilidadFaseB(vistaTrasA, players, neutrals, botIdx, need, memoriaBot);
   if (decisionB) {
     resumen.detalleHabilidad = activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
     resumen.habilidad = decisionB.name;

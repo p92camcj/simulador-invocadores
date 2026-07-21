@@ -25,7 +25,10 @@ import {
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
   calcularNecesariosUnicosDeRivales,
 } from '../js/bot-probabilidad.js';
-import { listaPortalesConDestino, describirObjetivoHabilidad, decidirJugadaFaseA } from '../js/bot.js';
+import {
+  listaPortalesConDestino, describirObjetivoHabilidad, decidirJugadaFaseA,
+  candidatosCronomante, decidirCronomanteNormal,
+} from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
 // en Node no existen como globales, así que se stubean antes de importar
@@ -304,6 +307,60 @@ test('calcularResultadoFinal: empate compartido si persiste tras agotar todas la
   const r = calcularResultadoFinal(players, ['C']);
   assert.deepEqual(r.ganadores.map(g => g.nombre).sort(), ['Ana', 'Bob']);
   assert.equal(r.motivoDesempate, 'empate total');
+});
+
+console.log('Uso estratégico de habilidades activas — 4.1 Cronomante (bot.js) — Bloque 4');
+
+test('candidatosCronomante: solo incluye Portales donde la memoria ofrece una alternativa real distinta de lo visible ahora', () => {
+  const vista = {
+    jugadoras: [{ idx: 0, esUnoMismo: true, portales: [{ name: 'X' }, null] }],
+    neutrales: [{ hidden: true }],
+  };
+  const memoriaBot = { portales: { '0:0': ['Y', 'X'], '0:1': ['Z'], 'n:0': ['Z'] } };
+  const r = candidatosCronomante(vista, memoriaBot);
+  assert.deepEqual(r.map(p => p.key).sort(), ['0:0', '0:1', 'n:0']);
+  assert.deepEqual(r.find(p => p.key === '0:0').alternativas, ['Y']);
+});
+
+test('Cronomante (Normal): activa sobre su propio Portal cuando la memoria recuerda con certeza un requisito aún no cumplido', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [{ hidden: true }] },
+      { idx: 1, esUnoMismo: false, portales: [null] },
+    ],
+    neutrales: [],
+  };
+  const memoriaBot = { portales: { '0:0': ['W', 'X'] } };
+  assert.deepEqual(decidirCronomanteNormal(vista, memoriaBot, need), { portalKey: '0:0', nombreDeseado: 'X' });
+});
+
+test('Cronomante (Normal): no activa si la memoria no ofrece ningún requisito todavía pendiente', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { jugadoras: [{ idx: 0, esUnoMismo: true, portales: [{ hidden: true }] }], neutrales: [] };
+  const memoriaBot = { portales: { '0:0': ['W'] } }; // W no es requisito
+  assert.equal(decidirCronomanteNormal(vista, memoriaBot, need), null);
+});
+
+test('Cronomante (Difícil): el término adversarial justifica tapar el único requisito visible de una rival con una alternativa memorizada', () => {
+  const vista = {
+    jugadoras: [{ idx: 1, esUnoMismo: false, portales: [{ name: 'Z' }] }],
+    neutrales: [],
+  };
+  const need = ['X', 'Y', 'Z'];
+  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
+  const memoriaBot = { portales: { '1:0': ['W', 'Z'] } };
+  const candidato = candidatosCronomante(vista, memoriaBot).find(p => p.key === '1:0');
+  const destKeyFaseA = `a:${candidato.key}`;
+  const cubreNecesarioUnicoRival = Object.values(necesariosUnicosDeRivales).includes(destKeyFaseA);
+  const contexto = { need, cumplidos: [], valorGemaNivel: 4, necesariosUnicosDeRivales };
+  const ev = valorEsperadoDeAccion(
+    { personaje: 'W', esPropio: false, esCentral: false, destKey: destKeyFaseA, cubreNecesarioUnicoRival, completaInvocacionSiSeJuega: false },
+    { probabilidadPorNombre: {} },
+    contexto
+  );
+  assert.equal(cubreNecesarioUnicoRival, true);
+  assert.ok(ev > 0, 'tapar el único Z visible de la rival con W (que no le sirve) debe aportar valor adversarial positivo');
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');

@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.18.0.77 - 2026-07-21
+
+- **Los autómatas ya saben usar a Cronomante**: antes nunca activaban esta
+  habilidad. Ahora, si recuerdan haber visto un personaje que les hace
+  falta pasar por uno de sus Portales, lo recuperan a la cima. En
+  dificultad "Difícil" también pueden usarla para "estropear" el Portal de
+  una rival, sustituyendo el personaje que le convenía por otro que
+  recuerden de ese mismo Portal.
+
 ## 1.17.0.76 - 2026-07-21
 
 - **Los autómatas ahora juegan también "contra" el resto**: antes solo

@@ -4,6 +4,33 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.18.0.77] - 2026-07-21
+
+### Añadido
+- **Uso estratégico de Cronomante por el autómata (Bloque 4, 4.1)**: hasta
+  ahora ningún nivel de dificultad usaba esta habilidad. La MEMORIA del
+  bot (`window.memoriaBots[botIdx]`, historial de qué personaje ha visto
+  pasar por cada Portal) ahora la mantienen AMBAS dificultades (antes solo
+  `'dificil'`) — Cronomante la necesita para decidir con sentido en
+  cualquier nivel; el conteo de cartas/probabilidad de
+  `js/bot-probabilidad.js` sigue siendo exclusivo de `'dificil'`.
+  - `'normal'` (`decidirCronomanteNormal`, `js/bot.js`): activa SOLO por
+    beneficio propio, solo con certeza — un Portal PROPIO cuya memoria
+    recuerda un requisito de la invocación activa aún no cumplido en
+    ningún sitio de la mesa. Nunca el matiz adversarial.
+  - `'dificil'`: evalúa además sustituir, en un Portal AJENO, el único
+    ejemplar visible de un requisito por otra alternativa memorizada —
+    denegándoselo a esa rival — con el mismo `cubreNecesarioUnicoRival` y
+    `PESO_ADVERSARIAL` que ya usa Fase A (Bloque 3).
+- `resolverPickersAbiertos()`/`elegirOpcionPicker()` (`js/bot.js`) ahora
+  también emparejan por TEXTO de la etiqueta, no solo por valor —
+  necesario para el segundo picker de Cronomante (elige un índice dentro
+  de la pila, no una clave de Portal; solo el nombre en la etiqueta
+  identifica cuál es la carta deseada).
+- 4 tests nuevos en `tests/run-tests.mjs`.
+
+---
+
 ## [1.17.0.76] - 2026-07-21
 
 ### Añadido
