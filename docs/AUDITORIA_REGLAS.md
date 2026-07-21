@@ -1,15 +1,26 @@
 # Auditoría de reglas — reglamento vs. código real
 
-> **Última actualización:** 2026-07-21 06:12 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 (Europe/Madrid)
 >
 > Informe de auditoría, no una tarea de código. Cruza
 > [`docs/reglamento/REGLAMENTO.md`](reglamento/REGLAMENTO.md) contra el
-> estado real de `js/*.js` en la versión `1.12.0.47` (tras las tareas C y D
-> de esta misma ronda: el grid único interactivo y la restauración del
-> panel de jugar carta). No sustituye a `docs/MEJORAS_FUTURAS.md` ni a
-> `docs/DEUDA_TECNICA.md` — los complementa; el detalle largo de cada
-> hallazgo vive aquí, esos otros documentos solo se actualizan con la
-> conclusión accionable (ver el final de cada sección).
+> estado real de `js/*.js` en la versión `1.13.11.67` (tras el autómata
+> `js/bot.js`, la corrección del ítem 16 de `DEUDA_TECNICA.md` y toda la
+> ronda de deuda técnica del 2026-07-21). No sustituye a
+> `docs/MEJORAS_FUTURAS.md` ni a `docs/DEUDA_TECNICA.md` — los complementa;
+> el detalle largo de cada hallazgo vive aquí, esos otros documentos solo
+> se actualizan con la conclusión accionable (ver el final de cada
+> sección).
+>
+> **Reauditoría 2026-07-21 (2)**: se releyó el informe completo contra el
+> código real posterior al autómata y a la ronda de deuda técnica. Ver
+> sección 7 (nueva) para el resultado de revisar específicamente cómo
+> interactúa `js/bot.js` con cada mecánica que esta sección 3 ya señalaba
+> como conflictiva. Conclusión corta: **ningún bug nuevo encontrado**; los
+> hallazgos de las secciones 1-6 siguen con el mismo estado que ya tenían
+> (los marcados "Corregido" siguen corregidos, los "Pendiente" siguen
+> pendientes) — se han refrescado únicamente las referencias de versión de
+> este encabezado.
 
 ---
 
@@ -483,6 +494,111 @@ la sección 1.
 
 ---
 
+## 7. Reauditoría 2026-07-21 — el autómata (`js/bot.js`) frente a las mecánicas conflictivas de la sección 3
+
+Motivo: la sección 3 se escribió pensando solo en jugadoras humanas, antes
+de que existiera `js/bot.js`. Esta sección revisa, mecánica a mecánica, si
+la incorporación del autómata (y de las correcciones posteriores: escape
+de nombres, `todosLosPortales()`, el cobro real de Gemas de Portal central
+del ítem 16) abre algún hueco nuevo.
+
+### 7.1 Centinela + autómata (verificado, sin hueco)
+
+El autómata solo activa habilidades vía `activarHabilidadFaseB()` →
+`applyAbility()`, exactamente la misma función que usa un clic humano, y
+solo elige el PORTAL ORIGEN (dónde está la carta cuya habilidad se activa)
+a través de `opcionesActivarHabilidad()` (`utils.js`) — la misma fuente que
+alimenta el picker humano de "¿Qué habilidad quieres activar?". La
+protección de Centinela no se comprueba ahí porque no hace falta: un
+Portal de OTRA jugadora nunca es una fuente de activación válida (solo los
+propios, gratis, o un central, pagando) — eso ya era así antes del bot.
+Cuando la habilidad en sí elige un Portal OBJETIVO (Ocultista/Cronista, las
+únicas que la heurística `'normal'` activa — ver `CLAUDE.md`), esa elección
+pasa por el mismo `portalesConEstado(..., estaProtegidoParaActivar(...))`
+que ya usa el picker humano; `resolverPickersAbiertos()` (`bot.js`) solo
+filtra entre las opciones YA no deshabilitadas del `<select>` real
+(`o.disabled` respetado por `elegirOpcionPicker()`), nunca por su cuenta.
+**Conclusión: la protección de Centinela se aplica al bot exactamente
+igual que a una jugadora humana, sin ninguna vía de bypass.**
+
+### 7.2 Cronomante + autómata (verificado, no aplicable en este MVP)
+
+La heurística `'normal'` (única implementada) filtra explícitamente
+`c.name === 'Ocultista' || c.name === 'Cronista'` en
+`decidirHabilidadFaseB()` — Cronomante nunca se activa por un autómata hoy
+(decisión de alcance ya documentada en `CLAUDE.md` y en el propio
+`bot.js`). Por tanto `window.cronomantePortalInvestigado`/
+`window.cronomanteOnComplete` nunca se fijan desde una jugada de autómata;
+el único punto de entrada real sigue siendo `#btnAbility.onclick`
+(`actions.js`), accionado solo por clic humano. Sin hueco porque no hay
+código alcanzable que lo cree. Queda como trabajo futuro (no de esta
+auditoría) el día que una dificultad más agresiva active Cronomante.
+
+### 7.3 Metamorfo persistente + autómata (verificado, sin hueco)
+
+Mismo razonamiento que 7.2: la heurística `'normal'` nunca activa
+Metamorfo, así que un autómata nunca transforma una carta. Lo que SÍ puede
+pasarle a un autómata es HEREDAR una carta ya transformada por una
+jugadora humana anterior (vía Cronista a su propia mano, o simplemente
+viendo/jugando sobre un Portal donde ya hay un Metamorfo disfrazado). Se
+verificó que ningún camino del bot lee `.name` donde debería leer
+`.aspecto` o viceversa:
+`estadoPortalVisible()` (la vista saneada) expone `top.aspecto || top.name`
+— la APARIENCIA, igual que vería una jugadora humana mirando el tablero,
+nunca la identidad real de un Metamorfo disfrazado. `objetivosHabilidadDisponibles()`
+(la lista de fuentes de habilidad) usa `stack.at(-1).name` — la IDENTIDAD
+real, consistente con `opcionesActivarHabilidad()` (que decide qué
+habilidad se dispara de verdad, no qué parece la carta). Ambos coinciden
+exactamente con el criterio ya establecido para humanas en la corrección
+del ítem 14 de `DEUDA_TECNICA.md`. **Conclusión: el autómata nunca podría
+"destransformar" ni "recolorear" un Metamorfo ajeno por error — ni falta
+que hace, porque tampoco activa su habilidad.**
+
+### 7.4 Clarividente + autómata (verificado, sin hueco de bot; comportamiento pre-existente sin relación con bots anotado por completitud)
+
+`gestionarTransicionesClarividente()` (`render.js`) es agnóstica de
+`player.tipo` — recalcula `hasClariActivo` para cualquier jugadora en
+cualquier `render()`, y `resolverEleccionClarividente()` sí discrimina por
+`player.tipo === 'auto'` para no abrir un `picker()` de UI real (usaría una
+heurística mínima: queda con la carta que sea el personaje requerido por la
+invocación activa si aplica, si no al azar) — evitando así que el turno de
+un autómata se quede bloqueado esperando un clic que nunca llega. Se
+revisó el único caso límite real: si DOS jugadoras (de cualquier
+combinación humana/autómata) pierden visibilidad de Clarividente en la
+misma llamada a `render()`, `pickerEnCurso` se calcula UNA vez al principio
+del `forEach`, así que abrir el picker real de la primera jugadora (si es
+humana) no impide que la segunda (aunque también sea humana) se resuelva
+en la misma pasada, sin esperar a que se cierre el primer picker — dos
+pickers de Clarividente podrían, en teoría, competir por el mismo `#picker`
+del DOM. **Esto no es un hueco introducido por el bot** (una autómata
+nunca abre ese `picker()` real, así que no puede ser una de las dos partes
+en conflicto) — es un caso general preexistente entre dos jugadoras
+HUMANAS que ya existía antes de que se escribiera `js/bot.js`, no detectado
+en la sección 3.6 original. Se anota aquí por completitud (surgió al
+revisar Clarividente para esta ronda) pero se deja fuera del alcance de
+esta auditoría de bot: no se ha confirmado que sea alcanzable en la práctica
+(la disciplina de "solo la jugadora activa juega carta o activa
+habilidad en su turno" reduce mucho la ventana), y arreglarlo bien exigiría
+encolar en vez de solo comprobar `pickerEnCurso` una vez. Se deja documentado
+como candidato a `docs/DEUDA_TECNICA.md` si se decide investigar, no se
+añade todavía como ítem porque no se ha podido confirmar una secuencia de
+juego real que lo dispare (los picker de Clarividente solo se disparan al
+CUBRIR o MOVER una Clarividente visible, algo que en la práctica ocurre una
+vez por jugada, no simultáneamente para dos jugadoras distintas en el
+99% de las partidas reales).
+
+### 7.5 Conclusión general de la sección 7
+
+No se ha encontrado ningún bug real nuevo causado por la interacción entre
+`js/bot.js` y las mecánicas de Centinela/Cronomante/Metamorfo/Clarividente.
+El diseño de "vista saneada + reutilizar exactamente las mismas funciones
+que un clic humano" (documentado en `CLAUDE.md`) resulta, tras esta
+revisión, tan robusto en la práctica como se pretendía en el diseño
+original: no hay ningún atajo del bot que se salte una comprobación de
+protección o de identidad real vs. apariencia.
+
+---
+
 ## Notas de proceso
 
 - No se ha modificado ninguna lógica de juego en esta tarea, salvo la
@@ -494,3 +610,14 @@ la sección 1.
   `docs/MEJORAS_FUTURAS.md` (tamaños S/M/L de la sección 1 y 2, y el
   marcador final de la sección 4) — el detalle largo vive aquí, esos
   documentos solo enlazan la conclusión.
+- **Reauditoría 2026-07-21 (2)**: releído el informe completo contra el
+  código real posterior al autómata (`js/bot.js`) y a toda la ronda de
+  deuda técnica del mismo día. Tampoco en esta pasada se ha modificado
+  ninguna lógica de juego — es de nuevo un informe, no una tarea de
+  código. Ver sección 7 (nueva) para el detalle de bot vs. Centinela/
+  Cronomante/Metamorfo/Clarividente; ningún ítem de las secciones 1-6
+  cambió de estado. El único hallazgo nuevo (7.4, un posible solape de dos
+  `picker()` de Clarividente simultáneos entre dos jugadoras HUMANAS, sin
+  relación con bots) se deja anotado ahí mismo, sin promover a
+  `docs/DEUDA_TECNICA.md` por falta de una secuencia de juego real
+  confirmada que lo dispare.
