@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.4.59] - 2026-07-21
+
+### Corregido
+- **Service Worker con caché desactualizada indefinidamente (causa real del "contador de mazo congelado" en partidas 2vs2 de autómatas)**: investigado el reporte de que el indicador de cartas restantes (`#lblTurn`, actualizado en `nextTurn()` de `js/game.js`) no bajaba en una partida de 2 jugadoras ambas autómatas. Verificado, construyendo el estado a mano y jugando partidas reales de 2 bots contra el código servido sin ningún Service Worker de por medio, que `js/game.js` SÍ recalcula y pinta `window.deck.length` en cada turno, sea humano o bot — mismo camino de código para ambos, sin ninguna rama que se salte la actualización. La causa real estaba en `service-worker.js`: `CACHE_NAME` fijo (`invocadores-v1.5.0`, nunca actualizado) y estrategia cache-first para todo, incluida la lógica de juego — un Service Worker solo repuebla su caché cuando su PROPIO contenido en bytes cambia, así que tocar `js/game.js`/`version.json` nunca disparaba un refresco, y cualquier jugadora con la PWA ya instalada podía quedar ejecutando indefinidamente una versión antigua del código sin ninguna vía para refrescarse sola (ver `docs/DEUDA_TECNICA.md` ítem 15 para el detalle completo). Arreglo: estrategia network-first para documento/JS/CSS/JSON (cae a caché solo sin conexión), `CACHE_NAME` derivado de `version.json` con purga de cachés antiguas en `activate`, `skipWaiting()`/`clients.claim()`, y `js/bot.js`/`js/pwa-install.js` añadidos a la lista de cacheo (faltaban). Verificado manualmente que, sin reinstalar el Service Worker, una petición a través de él ya devuelve el contenido fresco del servidor tras bumpear `version.json` en disco.
+
+---
+
 ## [1.13.3.58] - 2026-07-21
 
 ### Corregido

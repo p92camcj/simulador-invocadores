@@ -29,6 +29,58 @@
 
 ## Resueltos
 
+### ~~15. Service Worker con caché first-y-para-siempre: código servido podía quedar desactualizado indefinidamente~~ (resuelto)
+
+- **Qué era**: `service-worker.js` tenía `CACHE_NAME` fijo
+  (`'invocadores-v1.5.0'`, sin relación con `version.json`) y una
+  estrategia cache-first para **toda** petición, incluidos los módulos de
+  lógica de juego (`js/game.js`, `js/actions.js`, `js/render.js`...). Un
+  Service Worker solo repite su paso `install` (el único momento en que
+  repuebla la caché) cuando el contenido en BYTES de `service-worker.js`
+  cambia — tocar `version.json` o cualquier archivo de `js/` nunca lo
+  dispara. Con `CACHE_NAME` fijo y sin ningún archivo del propio Service
+  Worker cambiando en el trabajo normal del proyecto, cualquier jugadora
+  que ya tuviera la PWA instalada podía quedarse ejecutando indefinidamente
+  el `js/*.js` de la versión que tenía cacheada la primera vez, sin
+  ninguna vía para refrescarse sola — indistinguible desde fuera de un
+  "bug" que en el código real ya llevaba tiempo corregido. `js/bot.js`
+  (añadido después de la última vez que se tocó la lista de cacheo)
+  tampoco estaba incluido en `urlsToCache`.
+- **Cómo se detectó**: investigando el reporte de "el contador de cartas
+  del mazo no baja en partidas 2vs2 de autómatas" (ver
+  `docs/AUDITORIA_REGLAS.md` y `CHANGELOG.md`, v1.13.4.59). Se verificó
+  primero, construyendo el estado a mano y jugando partidas reales de 2
+  autómatas contra el código servido en local sin ningún Service Worker de
+  por medio, que `js/game.js` (`nextTurn()`) SÍ recalcula y pinta
+  `window.deck.length` en cada turno, sea humano o bot — el código real no
+  tenía el bug. La causa quedó en el propio Service Worker.
+- **Cómo se resolvió**: dos cambios independientes en `service-worker.js`:
+  1. **Estrategia network-first** para el "app shell" (documento
+     HTML/JS/CSS/JSON — todo lo que cambia con cada versión): intenta red
+     primero y actualiza la caché con la respuesta fresca; solo cae a la
+     caché si no hay conexión. Esto es lo que arregla el problema de
+     verdad — con red disponible, la app SIEMPRE ejecuta el código real
+     del servidor, sin depender de que el propio Service Worker se
+     reinstale. Los assets de cartas (`assets/cards/*.png`, que no cambian
+     entre versiones) mantienen cache-first.
+  2. `CACHE_NAME` derivado de `version.json` (ya obligatorio subir en cada
+     cambio shippeado, ver `CLAUDE.md`) + purga de cachés de versiones
+     anteriores en `activate` + `skipWaiting()`/`clients.claim()`: mantiene
+     razonablemente al día la caché de reserva que solo se usa sin
+     conexión, sin necesitar cerrar todas las pestañas para tomar el
+     control. Se añadió también `js/bot.js` (y `js/pwa-install.js`, que
+     tampoco estaba) a `urlsToCache`.
+- **Verificado manualmente**: con el Service Worker activo y SIN volver a
+  reinstalarlo (sin tocar `service-worker.js`), se bumpeó `version.json` en
+  disco y se confirmó que una petición a través del Service Worker ya
+  activo devolvía el contenido fresco (`fetch('./version.json')` y
+  `fetch('./js/game.js')` reflejaban el cambio real en disco de
+  inmediato) — la vía network-first no depende del ciclo de vida de
+  instalación del propio Service Worker.
+- **Prioridad**: era **Alta** (afecta a cualquier jugadora que reabra la
+  PWA tras una actualización, no solo al caso de 2 autómatas donde se
+  detectó).
+
 ### ~~14. Metamorfo transformado se trataba como el personaje real en protecciones/restricciones/bonus~~ (resuelto)
 
 - **Qué era**: `case 'Metamorfo'` (`js/abilities.js`) sobrescribía

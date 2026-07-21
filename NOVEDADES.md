@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.4.59 - 2026-07-21
+
+- **Arreglado que la app pudiera quedarse "atascada" en una versión
+  antigua**: si tenías la app instalada desde hace tiempo, a veces podías
+  seguir jugando con código viejo sin darte cuenta (por ejemplo, el
+  contador de cartas del mazo podía no bajar en partidas con autómatas).
+  Ahora la app comprueba siempre la versión real del servidor cuando hay
+  conexión, así que esto no debería volver a pasar.
+
 ## 1.13.3.58 - 2026-07-21
 
 - **Arreglado el selector de destino al jugar carta en móvil**: el
