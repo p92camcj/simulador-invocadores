@@ -427,6 +427,18 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
   `case` reales de `abilities.js` (p. ej. exportando un `Set` o array desde
   ese módulo) en vez de mantener una copia manual en `utils.js`.
 - **Prioridad**: **Baja**.
+- **Evaluado 2026-07-21 (sesión de deuda técnica), no aplicado**: derivar
+  la lista automáticamente exigiría convertir el `switch` de
+  `applyAbility()` en una tabla de despacho (objeto `{ Nombre: handler }`)
+  para poder leer sus claves con `Object.keys(...)` — un cambio de
+  estructura bastante más amplio que el propio ítem, en una función
+  sensible (activación de habilidades) que ya se ha tocado varias veces
+  esta misma ronda de correcciones. Dado que `PERSONAJES_CON_HABILIDAD` ya
+  está centralizado en una única fuente manual (no duplicado) y el coste
+  real de mantenerlo es bajo, se decide NO acometer este refactor ahora —
+  sería sobre-ingeniería para el impacto real descrito arriba. Queda
+  documentado como pendiente por si en el futuro se justifica (p. ej. al
+  añadir la habilidad activa del Maestro).
 
 ### 10. `alert()` / `confirm()` bloqueantes para todo el flujo de juego
 
