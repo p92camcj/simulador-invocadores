@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.7.62] - 2026-07-21
+
+### Corregido
+- **`docs/DEUDA_TECNICA.md` ítem 11 — `fetch` de la última Release de GitHub sin `.catch()`**: `js/version-check.js` ya gestionaba el fallo de `fetch('./version.json')` con su propio `.catch()`, pero la segunda cadena (`fetch('.../releases/latest')`, anidada dentro del `.then()` de la primera) no tenía ningún manejo de error propio — un fallo de red, rate limit de la API de GitHub, o estar offline quedaba como rechazo de promesa no gestionado, invisible para la usuaria. Se añade `.catch(err => console.error(...))` simétrico al de la primera petición. Verificado en el navegador simulando un fallo de red: el error se captura y se registra en consola sin generar ningún `unhandledrejection`; en el caso normal, el banner de nueva versión y el número de versión mostrado siguen funcionando igual que antes.
+
+---
+
 ## [1.13.6.61] - 2026-07-21
 
 ### Corregido

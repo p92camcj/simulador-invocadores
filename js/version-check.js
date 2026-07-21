@@ -221,7 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDiv.appendChild(reloadBtn);
             document.body.appendChild(updateDiv);
           }
-        });
+        })
+        .catch(err => console.error('Error al comprobar la última Release de GitHub:', err));
     })
     .catch(err => console.error('Error al leer version.json:', err));
 });

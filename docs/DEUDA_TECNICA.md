@@ -29,6 +29,22 @@
 
 ## Resueltos
 
+### ~~11. `fetch` de la Release de GitHub sin `.catch()`~~ (resuelto)
+
+- **Qué era**: `js/version-check.js`, la segunda cadena `fetch(...)` (la de
+  `releases/latest`, anidada dentro del `.then()` de `fetch('./version.json')`)
+  no tenía ningún `.catch()` propio. Si la API fallaba, daba rate limit, o
+  el dispositivo estaba offline, quedaba como rechazo de promesa no
+  gestionado, visible solo en consola del navegador.
+- **Cómo se resolvió**: se añadió `.catch(err => console.error(...))`
+  simétrico al de la primera petición, al final de la cadena de la
+  segunda `fetch`.
+- **Verificado manualmente**: simulando un fallo de red en el navegador,
+  el error se captura y registra en consola sin generar ningún
+  `unhandledrejection`; el caso normal (banner de nueva versión, número de
+  versión mostrado) sigue funcionando igual.
+- **Prioridad**: era **Baja**.
+
 ### ~~13. `window.cronomanteOnComplete` no se resetea junto a `cronomantePortalInvestigado`~~ (resuelto)
 
 - **Qué era**: `window.cronomantePortalInvestigado` sí se reseteaba a
@@ -399,20 +415,3 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
   no debería depender de diálogos nativos para su flujo principal".
 - **Prioridad**: **Baja** (como deuda de código; ver `MEJORAS_FUTURAS.md`
   para la mejora de UX en sí).
-
-### 11. `fetch` de la Release de GitHub sin `.catch()`
-
-- **Dónde**: `js/version-check.js`, la segunda cadena `fetch(...)` (la de
-  `releases/latest`).
-- **Descripción**: la primera petición (`fetch('./version.json')`) sí tiene
-  `.catch(err => console.error(...))`, pero la petición a la API de
-  GitHub no tiene ningún manejo de error. Si la API falla, da rate limit,
-  o el dispositivo está offline, queda como rechazo de promesa no
-  gestionado (visible solo en consola del navegador, nunca para la
-  usuaria).
-- **Impacto real**: bajo — en el peor caso simplemente no aparece el
-  banner de actualización (su fiabilidad como comparación de versiones ya
-  se corrigió, ver "Resueltos" al principio de este documento).
-- **Corrección propuesta**: añadir `.catch()` simétrico al de la primera
-  petición.
-- **Prioridad**: **Baja**.
