@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.11.67] - 2026-07-21
+
+### Corregido
+- **Bug real descubierto al evaluar `docs/DEUDA_TECNICA.md` ítem 10 — activar la habilidad de un Portal central era gratis si la jugadora no tenía Gemas con las que pagar**: `pagarActivacionPortalCentral()` (`js/utils.js`) ya devolvía `false` y mostraba un `alert()` cuando la jugadora no podía pagar, pero su valor de retorno nunca se comprobaba en el `onComplete` de `js/actions.js` que la llama — la habilidad ya se había aplicado de verdad en ese punto (el patrón `onComplete` de `applyAbility()` cobra el coste DESPUÉS del efecto, nunca antes), así que un fallo de pago no revertía nada: la jugadora se quedaba con el efecto de la habilidad sin pagar el coste, pese al aviso. Peor aún, `opcionesActivarHabilidad()` ni siquiera comprobaba si la jugadora podía pagar antes de ofrecer la opción "(cuesta 1 Gema)". Se añade la comprobación en origen: la opción de un Portal central solo se ofrece si `sumaGemas(player.gems)` cubre el coste real — 1 para cualquier personaje, pero **2** para el propio Metamorfo, cuya transformación ya cuesta 1 Gema unitaria propia e independiente del coste de activar el Portal central que la contiene (ambos costes se cobran por separado, ver el comentario ya existente en `case 'Metamorfo'` de `abilities.js`) — antes de este arreglo, una jugadora con exactamente 1 Gema podía transformar un Metamorfo central pagando solo ese coste propio y obtener la activación del Portal central gratis. Se usa `sumaGemas()` en vez de `.length` porque una única Gema de valor≥2 sí puede cubrir un coste de 2 (parte el cambio, ver `gastarGemaUnitaria()`). Verificado en el navegador con 4 escenarios: sin Gemas + Ocultista central (ya no se ofrece), Metamorfo central con 1 Gema de valor 1 (sigue sin ofrecerse, coste total 2), Metamorfo central con una Gema de valor 2 (sí se ofrece), y Ocultista central con 1 Gema (sí se ofrece) — además de confirmar que las opciones gratis de Portales propios no se ven afectadas por no tener Gemas.
+
+---
+
 ## [1.13.10.66] - 2026-07-21
 
 ### Cambiado

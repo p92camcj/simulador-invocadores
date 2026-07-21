@@ -252,11 +252,24 @@ export function opcionesActivarHabilidad(playerIdx, players, neutrals) {
       opciones.push({ val: `own:${idx}`, lbl: `Tu portal ${idx + 1}: ${etiqueta(top)} (gratis)` });
     }
   });
+  // Solo se ofrece si la jugadora puede pagar el coste real: 1 Gema unitaria
+  // por activar el Portal central, o gratis revelando una de asterisco (ver
+  // pagarActivacionPortalCentral()) — y 2 en total si el personaje es el
+  // propio Metamorfo, cuya transformación cuesta otra Gema unitaria
+  // independiente (case 'Metamorfo' en abilities.js). El coste se cobra
+  // DESPUÉS de que el efecto ya se haya aplicado (dentro de onComplete, ver
+  // actions.js) y su valor de retorno nunca se comprobaba, así que sin esta
+  // comprobación previa una jugadora sin Gemas suficientes podía activar la
+  // habilidad igualmente: el fallo de pago no revertía nada, quedaba gratis
+  // pese al alert() de "no tienes Gemas". `sumaGemas` (no solo `.length`)
+  // porque una única Gema de valor≥2 puede cubrir un coste de 2 partiendo
+  // el cambio (ver gastarGemaUnitaria).
   neutrals.forEach((stack, idx) => {
     const top = stack.at(-1);
-    if (top && top.vis?.public && PERSONAJES_CON_HABILIDAD.includes(top.name)) {
-      opciones.push({ val: `central:${idx}`, lbl: `Neutral ${idx + 1}: ${etiqueta(top)} (cuesta 1 Gema)` });
-    }
+    if (!top || !top.vis?.public || !PERSONAJES_CON_HABILIDAD.includes(top.name)) return;
+    const costeTotal = top.name === 'Metamorfo' ? 2 : 1;
+    if (sumaGemas(players[playerIdx].gems) < costeTotal) return;
+    opciones.push({ val: `central:${idx}`, lbl: `Neutral ${idx + 1}: ${etiqueta(top)} (cuesta 1 Gema)` });
   });
   return opciones;
 }

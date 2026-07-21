@@ -29,6 +29,46 @@
 
 ## Resueltos
 
+### ~~16. Activar la habilidad de un Portal central era gratis sin Gemas para pagarla~~ (resuelto)
+
+- **Cómo se descubrió**: al evaluar el ítem 10 (`alert()`/`confirm()`
+  bloqueantes) buscando algún caso concreto roto más allá de la
+  incomodidad general de los diálogos nativos.
+- **Qué era**: `pagarActivacionPortalCentral()` (`js/utils.js`) ya
+  devolvía `false` y mostraba un `alert()` cuando la jugadora no podía
+  pagar, pero el `onComplete` que la llama (`js/actions.js`,
+  `#btnAbility.onclick`) nunca comprobaba ese valor de retorno — y para
+  entonces la habilidad ya se había aplicado de verdad (el patrón
+  `onComplete` de `applyAbility()` cobra el coste DESPUÉS del efecto,
+  nunca antes). Además, `opcionesActivarHabilidad()` ni siquiera
+  comprobaba si la jugadora podía pagar antes de ofrecer la opción
+  "(cuesta 1 Gema)". Resultado: una jugadora sin Gemas podía activar
+  igualmente la habilidad de un Portal central, gratis, pese al aviso.
+- **Caso más sutil, también corregido**: el propio Metamorfo en un Portal
+  central tiene un coste DOBLE — su transformación cuesta 1 Gema unitaria
+  propia (cobrada dentro de `case 'Metamorfo'`, antes de `onComplete`),
+  independiente del coste de activar el Portal central que lo contiene
+  (cobrado dentro de `onComplete`). Con exactamente 1 Gema, la
+  transformación consumía esa única Gema y el coste de activación del
+  Portal central quedaba sin cobrar — la comprobación previa necesitaba
+  exigir el doble de valor en Gemas para este caso concreto, no solo
+  "al menos una".
+- **Cómo se resolvió**: `opcionesActivarHabilidad()` ahora solo ofrece la
+  opción de un Portal central si `sumaGemas(player.gems)` cubre el coste
+  real — 1 para cualquier personaje, 2 si es el propio Metamorfo. Se usa
+  `sumaGemas()` (suma de valores) en vez de `.length` porque una única
+  Gema de valor≥2 sí puede cubrir un coste de 2 (parte el cambio, ver
+  `gastarGemaUnitaria()`).
+- **Verificado manualmente**: 4 escenarios en el navegador — sin Gemas +
+  Ocultista central (ya no se ofrece), Metamorfo central con 1 Gema de
+  valor 1 (sigue sin ofrecerse), Metamorfo central con una Gema de valor 2
+  (sí se ofrece), Ocultista central con 1 Gema (sí se ofrece) — y que las
+  opciones gratis de Portales propios no se ven afectadas por no tener
+  Gemas.
+- **Prioridad**: era un bug real no documentado previamente; se trata como
+  **Alta** por afectar directamente a la economía de Gemas de cualquier
+  partida real.
+
 ### ~~4. Iteración "todos los portales de todas las jugadoras + neutrales" duplicada en varios sitios~~ (resuelto)
 
 - **Qué era**: `js/actions.js` (comprobación de invocación: `map`/`allPortals`,
@@ -408,3 +448,14 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
   no debería depender de diálogos nativos para su flujo principal".
 - **Prioridad**: **Baja** (como deuda de código; ver `MEJORAS_FUTURAS.md`
   para la mejora de UX en sí).
+- **Evaluado 2026-07-21 (sesión de deuda técnica)**: se revisó si había,
+  además de la incomodidad general, algún caso concreto roto por depender
+  de `alert()`/`confirm()` para su flujo principal. Se encontró uno real
+  — ver ítem 16 (resuelto): el `alert()` de "no tienes Gemas" en
+  `pagarActivacionPortalCentral()` avisaba mientras la habilidad ya se
+  había aplicado gratis, porque el valor de retorno de esa función nunca
+  se comprobaba. No es un problema de que sea un diálogo nativo en sí
+  (un aviso propio con historial habría tenido el mismo hueco); la causa
+  real era la comprobación de retorno ausente, ya corregida moviendo la
+  validación a origen (`opcionesActivarHabilidad()`). No se encontró
+  ningún otro caso roto más allá de este.

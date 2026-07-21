@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.11.67 - 2026-07-21
+
+- **Arreglado que se pudiera activar gratis la habilidad de un personaje
+  en un Portal central sin tener Gemas para pagarla**: ahora esa opción
+  solo aparece si de verdad puedes pagar su coste (incluyendo el caso del
+  Metamorfo, cuya propia transformación ya tiene un coste aparte).
+
 ## 1.13.10.66 - 2026-07-21
 
 - Revisión interna de calidad de código (unificación de cómo se recorren
