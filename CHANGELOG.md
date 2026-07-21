@@ -4,6 +4,27 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.22.0.81] - 2026-07-21
+
+### Añadido
+- **Uso adversarial de Ocultista sobre Portales visibles (Bloque 4, 4.5)**:
+  Ocultista siempre pudo alternar la visibilidad de un Portal YA VISIBLE
+  (excepto una Centinela visible), no solo revelar uno oculto — pero
+  ningún nivel de dificultad lo aprovechaba para esconder algo, ambos solo
+  consideraban revelar Portales ocultos.
+  - `'normal'` (`decidirOcultistaAdversarialNormal`, `js/bot.js`):
+    denegación GRATUITA, esconde el único ejemplar visible en toda la
+    mesa de un requisito que hoy tiene una RIVAL — comparte el criterio
+    de selección de objetivo con Cronista (interna
+    `primerRequisitoUnicoDeRivalComoClaveHabilidad`, factorizada de
+    `decidirCronistaAdversarialNormal`).
+  - `'dificil'`: evalúa el mismo uso adversarial sobre Portales visibles,
+    sin el descuento `* 0.5` de Cronista — esconder deniega la recompensa
+    de inmediato, no a futuro.
+- 3 tests nuevos en `tests/run-tests.mjs`.
+
+---
+
 ## [1.21.0.80] - 2026-07-21
 
 ### Añadido

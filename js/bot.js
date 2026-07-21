@@ -607,6 +607,12 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
     if (decision) return { ...estratega, objetivoPreferido: [decision.portalKeyA, decision.portalKeyB] };
   }
 
+  const ocultista = candidatos.find(c => c.name === 'Ocultista');
+  if (ocultista) {
+    const portalKey = decidirOcultistaAdversarialNormal(vista, need);
+    if (portalKey) return { ...ocultista, objetivoPreferido: portalKey };
+  }
+
   const cronista = candidatos.find(c => c.name === 'Cronista');
   if (cronista) {
     const portalKey = decidirCronistaAdversarialNormal(vista, need);
@@ -634,10 +640,40 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
  * depende de predecir jugadas futuras, demasiado incierto para esta
  * heurística de bajo riesgo; sí lo modela 'dificil' vía valor esperado.
  */
-export function decidirCronistaAdversarialNormal(vista, need) {
+/**
+ * Clave (formato de habilidad "i:j"/"n:k") del primer Portal ajeno que
+ * muestre, como única copia visible en toda la mesa, un requisito de
+ * `need` — objetivo de denegación GRATUITA compartido por Cronista
+ * (Bloque 4.3, se lo lleva a la mano) y Ocultista (Bloque 4.5, lo oculta
+ * en el sitio): ambas habilidades pueden actuar sobre un Portal YA
+ * VISIBLE, así que el criterio de "a quién apuntar" es idéntico, solo
+ * cambia el efecto real (que decide `abilities.js`, no esta función).
+ */
+function primerRequisitoUnicoDeRivalComoClaveHabilidad(vista, need) {
   const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
   const [clave] = Object.values(necesariosUnicosDeRivales);
   return clave ? clave.slice(2) : null; // "a:i:j" -> "i:j" (formato de habilidad)
+}
+
+export function decidirCronistaAdversarialNormal(vista, need) {
+  return primerRequisitoUnicoDeRivalComoClaveHabilidad(vista, need);
+}
+
+/**
+ * Heurística 'normal' ADICIONAL, específica de Ocultista (Bloque 4, 4.5):
+ * a diferencia de la comprobación compartida con Cronista (que solo
+ * revela un Portal OCULTO cuando falta algo del combo), Ocultista también
+ * puede actuar sobre un Portal YA VISIBLE (excepto una Centinela visible,
+ * restricción que ya aplica `abilities.js` — aquí no hace falta
+ * duplicarla) — denegación GRATUITA: esconde el único ejemplar visible en
+ * toda la mesa de un requisito de `need` que hoy tiene una RIVAL. El
+ * beneficio propio de "esconder mi propio personaje visible para evitar
+ * un duplicado en mi contra" se deja fuera de 'normal' por lo específico
+ * del timing que requeriría predecir (demasiado incierto para esta
+ * heurística de bajo riesgo).
+ */
+export function decidirOcultistaAdversarialNormal(vista, need) {
+  return primerRequisitoUnicoDeRivalComoClaveHabilidad(vista, need);
 }
 
 /**
@@ -740,11 +776,13 @@ export function decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGe
  *   determinista; si no, usa la distribución de probabilidad completa.
  *   Cronista se pondera a la baja (`* 0.5`): solo reposiciona la carta a
  *   la propia mano, no la deja jugada de inmediato — su valor es a futuro,
- *   un turno más tarde como mínimo. Además (Bloque 4, 4.3), Cronista —a
- *   diferencia de Ocultista— también puede actuar sobre un Portal YA
- *   VISIBLE: se evalúa el uso ADVERSARIAL de retirar de la mesa el único
- *   ejemplar visible de un requisito que hoy solo tiene una rival
- *   (`cubreNecesarioUnicoRival`, mismo mecanismo que el resto del bloque).
+ *   un turno más tarde como mínimo. Además (Bloque 4, 4.3/4.5), tanto
+ *   Cronista como Ocultista pueden actuar sobre un Portal YA VISIBLE: se
+ *   evalúa el uso ADVERSARIAL de retirar/esconder el único ejemplar
+ *   visible de un requisito que hoy solo tiene una rival
+ *   (`cubreNecesarioUnicoRival`, mismo mecanismo que el resto del bloque) —
+ *   Ocultista sin el descuento `* 0.5` de Cronista, porque ocultarlo en el
+ *   sitio deniega la recompensa AHORA MISMO, sin esperar a un turno futuro.
  * - **Maestro**: determinista siempre — la carta oculta-para-el-resto de
  *   otra jugadora ya es una identidad CONOCIDA con certeza (mismo campo
  *   `cartaOcultaPublica` que expone la vista saneada). Como la carta baja
@@ -784,7 +822,12 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
         ) * (c.name === 'Cronista' ? 0.5 : 1);
         considerar({ ...c, ev, objetivoPreferido: p.key });
       });
-      if (c.name === 'Cronista') {
+      if (c.name === 'Cronista' || c.name === 'Ocultista') {
+        // Bloque 4.3/4.5: uso adversarial sobre un Portal YA VISIBLE (no
+        // solo oculto) — el único ejemplar visible de un requisito que hoy
+        // tiene una rival. Cronista se pondera a la baja (`* 0.5`, se lleva
+        // la carta a la mano, valor a futuro); Ocultista no (esconderla en
+        // el sitio deniega la recompensa de inmediato, este mismo turno).
         listaPortalesFormatoHabilidad(vista)
           .filter(p => !p.esPropio && p.estado?.name)
           .forEach(p => {
@@ -794,7 +837,7 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
               { personaje: null, esPropio: false, esCentral: false, destKey: destKeyFaseA, cubreNecesarioUnicoRival: true, completaInvocacionSiSeJuega: false },
               probabilidades,
               contexto
-            ) * 0.5;
+            ) * (c.name === 'Cronista' ? 0.5 : 1);
             considerar({ ...c, ev, objetivoPreferido: p.key });
           });
       }

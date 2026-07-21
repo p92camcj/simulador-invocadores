@@ -29,7 +29,7 @@ import {
   listaPortalesConDestino, describirObjetivoHabilidad, decidirJugadaFaseA,
   candidatosCronomante, decidirCronomanteNormal,
   decidirEstrategaNormal, decidirEstrategaDificil,
-  decidirCronistaAdversarialNormal,
+  decidirCronistaAdversarialNormal, decidirOcultistaAdversarialNormal,
   decidirAprendizNormal, decidirAprendizPropioDificil, decidirAprendizAjenoAjenoDificil,
 } from '../js/bot.js';
 
@@ -498,6 +498,34 @@ test('Aprendiz (Difícil, adversarial): no activa con una sola rival (no hay "ot
   const need = ['X', 'Y', 'Z'];
   const vista = { jugadoras: [{ idx: 0, esUnoMismo: true }, { idx: 1, esUnoMismo: false, gemasPorNivel: { C: 3 }, cartaOcultaPublica: 'Z' }] };
   assert.equal(decidirAprendizAjenoAjenoDificil(vista, need, [], 4), null);
+});
+
+console.log('Uso estratégico de habilidades activas — 4.5 Ocultista (bot.js / bot-probabilidad.js) — Bloque 4');
+
+test('Ocultista (Normal): denegación gratuita — esconde el único requisito visible de una rival, aunque no esté oculto', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { jugadoras: [{ idx: 1, esUnoMismo: false, portales: [{ name: 'Z' }] }], neutrales: [] };
+  assert.equal(decidirOcultistaAdversarialNormal(vista, need), '1:0');
+});
+
+test('Ocultista (Normal): no activa si ningún requisito está visible en exclusiva en un Portal ajeno', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { jugadoras: [{ idx: 1, esUnoMismo: false, portales: [{ name: 'W' }] }], neutrales: [] };
+  assert.equal(decidirOcultistaAdversarialNormal(vista, need), null);
+});
+
+test('Ocultista (Difícil): esconder un requisito VISIBLE de una rival aporta valor adversarial pleno, sin el descuento de Cronista', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = { jugadoras: [{ idx: 1, esUnoMismo: false, portales: [{ name: 'Z' }] }], neutrales: [] };
+  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
+  const destKeyFaseA = 'a:1:0';
+  const contexto = { need, cumplidos: ['Z'], valorGemaNivel: 4, necesariosUnicosDeRivales };
+  const evOcultista = valorEsperadoDeAccion(
+    { personaje: null, esPropio: false, esCentral: false, destKey: destKeyFaseA, cubreNecesarioUnicoRival: true, completaInvocacionSiSeJuega: false },
+    { probabilidadPorNombre: {} },
+    contexto
+  );
+  assert.equal(evOcultista, 4 * 0.5); // valorGemaNivel * PESO_ADVERSARIAL, sin el *0.5 adicional de Cronista
 });
 
 console.log('Mensajes del autómata en tercera persona (bot.js) — Bloque 1');

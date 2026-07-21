@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.22.0.81 - 2026-07-21
+
+- **Los autómatas ya usan a Ocultista también contra el resto**: antes
+  solo la usaban para revelar sus propias cartas ocultas. Ahora, si una
+  rival tiene visible el único personaje que necesita para una
+  recompensa, el autómata puede esconderlo, denegándosela de inmediato.
+
 ## 1.21.0.80 - 2026-07-21
 
 - **Los autómatas ya saben usar a Aprendiz**: antes nunca activaban esta
