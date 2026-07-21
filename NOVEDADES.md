@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.13.2.57 - 2026-07-21
+
+- **Arreglados los botones de la cabecera en el móvil**: antes, en
+  pantallas estrechas, los botones de arriba (jugar carta, activar
+  habilidad, terminar turno...) se salían de la pantalla y había que
+  desplazarla entera para llegar a todos. Ahora esos botones se acomodan en
+  varias filas si hace falta, sin tener que mover nada más que la propia
+  barra.
+
 ## 1.13.1.56 - 2026-07-21
 
 - **Arreglado un fallo de la Clarividente**: antes, si tenías la

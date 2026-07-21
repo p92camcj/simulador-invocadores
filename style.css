@@ -164,6 +164,7 @@ select {
   z-index: 1000;
   background: #fff;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
@@ -332,6 +333,17 @@ select {
 /* Mejoras visuales específicas para móviles */
 @media (max-width: 768px) {
 
+  /* Tarea 2: en pantallas estrechas, la fila de botones de cabecera ya no
+     cabe en una sola línea (jugar carta / cancelar selección / activar
+     habilidad / terminar turno / ver ayuda). `.header-bar` ya tiene
+     `flex-wrap: wrap` de forma general (no rompe nada en escritorio, donde
+     los botones siguen cabiendo en una fila); aquí solo se ajusta el
+     reparto para que las filas envueltas queden centradas y compactas en
+     vez de con los huecos grandes de `space-between`. */
+  .header-bar {
+    justify-content: center;
+    gap: 6px 8px;
+  }
 
 
   h1 {

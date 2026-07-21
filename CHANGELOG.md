@@ -4,6 +4,13 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.13.2.57] - 2026-07-21
+
+### Corregido
+- **Botones de cabecera desbordaban en móvil**: `.header-bar` (`style.css`) usaba `display: flex` sin `flex-wrap`, así que en viewports estrechos (~360-400px) la fila de botones ("Jugar una carta", "Cancelar selección", "Activar habilidad", "Terminar turno", "Ver ayuda") no cabía y desbordaba la página entera, obligando a hacer scroll horizontal de toda la pantalla para pulsarlos todos. Se añade `flex-wrap: wrap` a la regla general (sin efecto en escritorio, donde ya cabían en una fila) y, dentro del `@media (max-width: 768px)` ya existente, `justify-content: center` para que las filas envueltas queden compactas en vez de con los huecos grandes de `space-between`. Verificado con una iframe de 380px de ancho (viewport real, no simulado) sirviendo la app: los botones envuelven en varias filas contenidas dentro de la propia barra, sin scroll horizontal de la página; a 1000px de ancho el comportamiento de escritorio no cambia.
+
+---
+
 ## [1.13.1.56] - 2026-07-21
 
 ### Corregido
