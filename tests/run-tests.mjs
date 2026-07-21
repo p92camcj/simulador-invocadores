@@ -23,8 +23,9 @@ import { ocultarOtrasCentinelas, candidatosObjetivoMaestro, bajarCartaMaestro } 
 import {
   actualizarMemoriaBot, estimarProbabilidadesPersonajes,
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
+  calcularNecesariosUnicosDeRivales,
 } from '../js/bot-probabilidad.js';
-import { listaPortalesConDestino, describirObjetivoHabilidad } from '../js/bot.js';
+import { listaPortalesConDestino, describirObjetivoHabilidad, decidirJugadaFaseA } from '../js/bot.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
 // en Node no existen como globales, así que se stubean antes de importar
@@ -422,6 +423,64 @@ test('valorEsperadoDeAccion no otorga valor por un personaje ya cumplido (duplic
 
 test('valorMedioGemaNivel calcula la media real de los 5 valores de Gema del nivel', () => {
   assert.equal(valorMedioGemaNivel('normal', 'C'), (2 + 3 + 3 + 3 + 4) / 5);
+});
+
+console.log('Estrategia adversarial en Fase A (bot.js / bot-probabilidad.js) — Bloque 3');
+
+test('calcularNecesariosUnicosDeRivales: solo marca personajes de need visibles UNA vez y en Portal de una RIVAL', () => {
+  const vista = {
+    jugadoras: [
+      { idx: 0, nombre: 'Bot', esUnoMismo: true, portales: [{ name: 'X' }] }, // propio: no cuenta como "vulnerable"
+      { idx: 1, nombre: 'Ana', esUnoMismo: false, portales: [{ name: 'Y' }, { name: 'Y' }] }, // duplicado: ya no es único
+      { idx: 2, nombre: 'Bea', esUnoMismo: false, portales: [{ name: 'Z' }] }, // única visible de una rival: vulnerable
+    ],
+  };
+  const r = calcularNecesariosUnicosDeRivales(vista, ['X', 'Y', 'Z']);
+  assert.deepEqual(r, { Z: 'a:2:0' });
+});
+
+test('Normal: prefiere denegar por duplicado un requisito que ya tiene una rival y el bot no necesita para sí', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    propiaCartaConocida: { name: 'X' },
+    jugadoras: [
+      { idx: 0, nombre: 'Bot', esUnoMismo: true, portales: [null] },
+      { idx: 1, nombre: 'Ana', esUnoMismo: false, portales: [{ name: 'X' }, null] },
+    ],
+    neutrales: [null],
+  };
+  const decision = decidirJugadaFaseA(vista, need);
+  assert.equal(decision.usaConocida, true);
+  assert.equal(decision.destKey, 'p:0'); // gratis: su propio Portal, sin coste real
+});
+
+test('Normal: prefiere tapar el Portal ajeno con el único requisito visible de esa jugadora sobre una jugada neutra equivalente', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    propiaCartaConocida: { name: 'W' }, // no es requisito: no aplica la denegación por duplicado
+    jugadoras: [
+      { idx: 0, nombre: 'Bot', esUnoMismo: true, portales: [null] },
+      { idx: 1, nombre: 'Ana', esUnoMismo: false, portales: [{ name: 'Y' }] },
+    ],
+    neutrales: [null],
+  };
+  const decision = decidirJugadaFaseA(vista, need);
+  assert.equal(decision.destKey, 'a:1:0'); // tapa a Ana en vez de jugar en su propio Portal vacío
+});
+
+test('valorEsperadoDeAccion (Bloque 3): el término adversarial permite preferir denegar/tapar a una rival aunque el beneficio propio directo sea nulo', () => {
+  const contexto = { need: ['X', 'Y', 'Z'], cumplidos: ['Y'], valorGemaNivel: 4, necesariosUnicosDeRivales: { Z: 'a:1:0' } };
+  const probabilidades = { probabilidadPorNombre: {} };
+  const evPropioSinValor = valorEsperadoDeAccion(
+    { personaje: 'Y', esPropio: true, esCentral: false, destKey: 'p:1', completaInvocacionSiSeJuega: false },
+    probabilidades, contexto
+  );
+  const evTaparRival = valorEsperadoDeAccion(
+    { personaje: 'Y', esPropio: false, esCentral: false, destKey: 'a:1:0', cubreNecesarioUnicoRival: true, completaInvocacionSiSeJuega: false },
+    probabilidades, contexto
+  );
+  assert.equal(evPropioSinValor, 0, 'Y ya está cumplido: jugarla de nuevo en un Portal propio no aporta nada');
+  assert.ok(evTaparRival > evPropioSinValor, 'tapar el único Z visible de la rival aporta valor aunque Y no ayude ya a nadie');
 });
 
 console.log(`\n${pass} OK, ${fail} fallidos`);

@@ -18,6 +18,7 @@ import { render } from './render.js';
 import {
   actualizarMemoriaBot, estimarProbabilidadesPersonajes,
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
+  calcularNecesariosUnicosDeRivales,
 } from './bot-probabilidad.js';
 
 // ---------- Nombres de autómatas ----------
@@ -185,7 +186,64 @@ function listaPortalesFormatoHabilidad(vista) {
  * 5. Empate entre Portales igual de razonables → elección al azar
  *    (aleatoriedad ponderada, para no ser 100% predecible).
  */
-function decidirJugadaFaseA(vista, need) {
+/**
+ * Ajuste adversarial de la heurística 'normal' de Fase A (Bloque 3 de esta
+ * tarea): jugar en el Portal de otra jugadora, o duplicar un personaje, es
+ * una jugada completamente legal — hoy el nivel 'normal' nunca lo
+ * consideraba, solo jugaba "bien para sí mismo". Dos comprobaciones, en
+ * este orden, SOLO con la carta conocida y SOLO con información visible
+ * ahora mismo (nada de memoria ni probabilidad, eso es cosa de 'dificil'):
+ *
+ * 1. **Denegación gratuita por duplicado**: si `conocida` es requisito de
+ *    la invocación activa y ya está visible en el Portal de OTRA jugadora,
+ *    Y el propio bot no la tiene ya visible en un Portal propio (no
+ *    depende de ella para su propia recompensa), jugarla en cualquier
+ *    Portal crea un duplicado que anula la recompensa de ese personaje
+ *    para todo el mundo — sin coste real para el bot, que no tenía nada
+ *    que perder.
+ * 2. **Tapar un Portal ajeno a punto de beneficiarse**: si algún Portal de
+ *    otra jugadora muestra, como ÚNICA copia visible en toda la mesa, un
+ *    personaje requisito de la invocación activa, jugar la carta conocida
+ *    ahí lo tapa (dejará de estar visible), denegándole esa recompensa.
+ *
+ * Devuelve `null` si ninguna de las dos aplica (se sigue con la heurística
+ * greedy de siempre).
+ */
+function decidirJugadaAdversarialNormal(vista, need, conocida, portales) {
+  if (need.includes(conocida)) {
+    const yaVisibleEnAjeno = vista.jugadoras.some(j => !j.esUnoMismo && j.portales.some(p => p?.name === conocida));
+    const propioYaLoTiene = vista.jugadoras.some(j => j.esUnoMismo && j.portales.some(p => p?.name === conocida));
+    if (yaVisibleEnAjeno && !propioYaLoTiene) {
+      const bloqueantes = portales.filter(p => p.estado === null || p.estado?.hidden);
+      const propios = bloqueantes.filter(p => p.esPropio);
+      const elegido = elegirAlAzar(propios.length ? propios : bloqueantes.length ? bloqueantes : portales);
+      return {
+        usaConocida: true,
+        destKey: elegido.destKey,
+        etiqueta: elegido.etiqueta,
+        motivo: `denegación gratuita: duplica a ${conocida} (ya visible en Portal ajeno, el bot no dependía de él)`,
+      };
+    }
+  }
+
+  const conteoVisibles = {};
+  personajesVisiblesActuales(vista).forEach(n => { conteoVisibles[n] = (conteoVisibles[n] || 0) + 1; });
+  const objetivo = portales.find(p =>
+    !p.esPropio && p.estado?.name && need.includes(p.estado.name) && conteoVisibles[p.estado.name] === 1
+  );
+  if (objetivo) {
+    return {
+      usaConocida: true,
+      destKey: objetivo.destKey,
+      etiqueta: objetivo.etiqueta,
+      motivo: `tapa ${objetivo.etiqueta}, único requisito visible de esa jugadora`,
+    };
+  }
+
+  return null;
+}
+
+export function decidirJugadaFaseA(vista, need) {
   const conocida = vista.propiaCartaConocida?.name ?? null;
   const portales = listaPortalesConDestino(vista);
   const bloqueantes = portales.filter(p => p.estado === null || p.estado?.hidden);
@@ -195,6 +253,17 @@ function decidirJugadaFaseA(vista, need) {
     if (need.every(k => resultantes.includes(k))) {
       return { usaConocida: true, destKey: bloqueantes[0].destKey, etiqueta: bloqueantes[0].etiqueta, motivo: 'completa la invocación activa' };
     }
+  }
+
+  // Bloque 3 — ajuste adversarial de bajo coste (desempate/afinado sobre la
+  // heurística greedy de siempre, no un motor de búsqueda nuevo): solo se
+  // considera con la carta CONOCIDA (nunca arriesga la oculta propia en una
+  // jugada puramente defensiva) y solo cuando complementa el atajo de
+  // arriba (que sigue teniendo prioridad si con una única jugada se cierra
+  // la invocación activa).
+  if (conocida) {
+    const adversarial = decidirJugadaAdversarialNormal(vista, need, conocida, portales);
+    if (adversarial) return adversarial;
   }
 
   const usaConocida = conocida !== null;
@@ -244,24 +313,33 @@ function completariaLaInvocacion(vista, need, personaje, destKeyDestino) {
  * como último desempate, al azar (no 100% predecible, mismo criterio que
  * 'normal').
  */
-function decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl) {
+export function decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl) {
   const conocida = vista.propiaCartaConocida?.name ?? null;
   const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet);
   const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
   const visibles = personajesVisiblesActuales(vista);
   const cumplidos = need.filter(k => visibles.includes(k));
-  const contexto = { need, cumplidos, valorGemaNivel };
+  // Bloque 3 — término adversarial: personajes de `need` que hoy solo tiene
+  // visible una rival (denegárselos, por duplicado en otro sitio o tapando
+  // directamente su Portal, la perjudica) — ver `valorEsperadoDeAccion()`.
+  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
+  const destKeysRivalesVulnerables = new Set(Object.values(necesariosUnicosDeRivales));
+  const contexto = { need, cumplidos, valorGemaNivel, necesariosUnicosDeRivales };
 
   const candidatas = [];
   listaPortalesConDestino(vista).forEach(p => {
     const esCentral = p.destKey.startsWith('n:');
+    const cubreNecesarioUnicoRival = destKeysRivalesVulnerables.has(p.destKey);
     if (conocida) {
       candidatas.push({
         usaConocida: true,
         destKey: p.destKey,
         etiqueta: p.etiqueta,
         ev: valorEsperadoDeAccion(
-          { personaje: conocida, esPropio: p.esPropio, esCentral, completaInvocacionSiSeJuega: completariaLaInvocacion(vista, need, conocida, p.destKey) },
+          {
+            personaje: conocida, esPropio: p.esPropio, esCentral, destKey: p.destKey, cubreNecesarioUnicoRival,
+            completaInvocacionSiSeJuega: completariaLaInvocacion(vista, need, conocida, p.destKey),
+          },
           probabilidades,
           contexto
         ),
@@ -275,7 +353,7 @@ function decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl) 
       destKey: p.destKey,
       etiqueta: p.etiqueta,
       ev: valorEsperadoDeAccion(
-        { personaje: null, esPropio: p.esPropio, esCentral, completaInvocacionSiSeJuega: false },
+        { personaje: null, esPropio: p.esPropio, esCentral, destKey: p.destKey, cubreNecesarioUnicoRival, completaInvocacionSiSeJuega: false },
         probabilidades,
         contexto
       ),

@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.17.0.76 - 2026-07-21
+
+- **Los autómatas ahora juegan también "contra" el resto**: antes solo
+  pensaban en avanzar su propia partida. Ahora, si detectan que puede
+  interesarles, también juegan cartas en el Portal de otra jugadora para
+  tapar un personaje que le hacía falta, o duplican a propósito un
+  personaje para anular su recompensa — jugadas totalmente legales que
+  antes nunca se les ocurrían. En dificultad "Difícil" esta decisión se
+  calcula con más matiz, sopesando cuánto perjudica a la rival frente a
+  cuánto le beneficia a él mismo.
+
 ## 1.16.0.75 - 2026-07-21
 
 - **¡Ya hay marcador final!** Al terminar la partida (se complete la

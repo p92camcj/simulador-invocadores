@@ -4,6 +4,39 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.17.0.76] - 2026-07-21
+
+### Añadido
+- **Estrategia adversarial del autómata en Fase A (Bloque 3)**: hasta
+  ahora el autómata jugaba bien para sí mismo pero nunca tenía en cuenta
+  el efecto de sus jugadas sobre el resto — tapar un personaje visible
+  ajeno o duplicar a propósito para anular una invocación de otra
+  jugadora son jugadas completamente legales que no se contemplaban.
+  - `'normal'`: nueva `decidirJugadaAdversarialNormal()` (`js/bot.js`),
+    ajuste ligero sobre la heurística greedy de siempre, solo con
+    información visible ahora mismo (sin memoria/probabilidad) y solo con
+    la carta conocida: denegación GRATUITA por duplicado (la carta
+    conocida es requisito activo, ya visible en Portal ajeno, y el propio
+    bot no la tenía) o, si no, tapar un Portal ajeno con la única copia
+    visible de un requisito activo.
+  - `'dificil'`: `valorEsperadoDeAccion()` (`js/bot-probabilidad.js`) suma
+    ahora un término adversarial explícito y generalizado (no solo un
+    desempate entre opciones ya iguales) — nueva
+    `calcularNecesariosUnicosDeRivales()` identifica qué requisitos de la
+    invocación activa hoy solo tiene visible una rival, ponderado por
+    `PESO_ADVERSARIAL` (0.5, documentado en el propio código).
+  - Discrepancia con el prompt original documentada en el código: se
+    asumía que ya existía un desempate por `contarGemasPorNivel` al que
+    solo había que "generalizar" — nunca se implementó en la ronda
+    anterior, así que este término es nuevo por completo, no una extensión.
+- 4 tests nuevos en `tests/run-tests.mjs`: `calcularNecesariosUnicosDeRivales`,
+  'normal' prefiriendo la denegación gratuita y el tapado sobre una jugada
+  neutra equivalente, y `valorEsperadoDeAccion` demostrando que el término
+  adversarial permite preferir perjudicar a una rival aunque el beneficio
+  propio directo sea nulo.
+
+---
+
 ## [1.16.0.75] - 2026-07-21
 
 ### Añadido

@@ -12,6 +12,47 @@
 
 ---
 
+## Resuelto recientemente (2026-07-21, Bloque 3 — estrategia adversarial en Fase A)
+
+Hasta ahora el autómata jugaba bien para sí mismo pero nunca tenía en
+cuenta el efecto de sus jugadas sobre el resto (tapar personajes visibles
+ajenos, o duplicar a propósito para anular una invocación ajena) — legítimo
+dentro de las reglas, pura cuestión de estrategia. Ambos niveles de
+dificultad lo consideran ahora en Fase A (jugar carta):
+
+- **`'normal'`** (`decidirJugadaAdversarialNormal`, `js/bot.js`): ajuste
+  ligero de bajo coste sobre la heurística greedy de siempre, solo con
+  información visible AHORA MISMO (sin memoria ni probabilidad) y solo con
+  la carta conocida (nunca arriesga la oculta propia en una jugada
+  defensiva): (1) denegación GRATUITA por duplicado, si la carta conocida
+  es requisito activo, ya está visible en un Portal ajeno, y el propio bot
+  no la tenía ya (no pierde nada); (2) si no, tapar un Portal ajeno que
+  muestre, como única copia visible en toda la mesa, un requisito de la
+  invocación activa.
+- **`'dificil'`** (`valorEsperadoDeAccion()`, `js/bot-probabilidad.js`):
+  término adversarial explícito y generalizado (no solo un desempate entre
+  opciones ya iguales) — `calcularNecesariosUnicosDeRivales()` identifica
+  qué requisitos de la invocación activa hoy solo tiene visible una rival;
+  `valorEsperadoDeAccion()` suma valor propio, ponderado por
+  `PESO_ADVERSARIAL` (0.5, valor elegido y documentado, no derivado de
+  ninguna regla), tanto por denegar por duplicado en cualquier otro sitio
+  como por tapar directamente el Portal de esa rival.
+- **Discrepancia con el prompt original de esta tarea, documentada en el
+  propio código** (`bot-probabilidad.js`): el prompt asumía que ya existía
+  un desempate basado en `contarGemasPorNivel` ("para no ayudar a quien va
+  ganando") al que solo había que "generalizar" — pero esa pieza nunca se
+  implementó en la ronda anterior (quedó anotada como deliberadamente
+  omitida, ver más abajo, "Jugador autómata: niveles de dificultad"). El
+  término adversarial de este bloque es nuevo por completo, no una
+  extensión de algo previo.
+- **Sigue sin implementarse** (mismo motivo que antes: señal débil frente a
+  la complejidad añadida): el desempate opcional contra la estimación de
+  Gemas de rivales para "no ayudar en exceso a quien va ganando" — es una
+  idea DISTINTA de la denegación/tapado de este bloque (esa mira el
+  personaje concreto en juego; aquella miraría el marcador agregado de cada
+  rival), sigue siendo una oportunidad de refinamiento futura, no cubierta
+  por esta tarea.
+
 ## Resuelto recientemente (2026-07-21, tras incorporar el jugador autómata)
 
 - **Clarividente: corte inmediato con elección propia (bug (a) de "dos

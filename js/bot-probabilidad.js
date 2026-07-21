@@ -54,6 +54,23 @@ const FACTOR_DESTINO_PROPIO = 1;
 const FACTOR_DESTINO_AJENO = 0.3;
 const FACTOR_DESTINO_CENTRAL = 0;
 
+// Peso adversarial (Bloque 3 de esta tarea): fracción del valor de Gema del
+// nivel activo que el bot "gana" por perjudicar a una rival — denegándole
+// por duplicado un requisito que hoy solo ella tiene visible, o tapando
+// directamente el Portal donde lo tiene. NOTA sobre el prompt original de
+// esta tarea: describía esto como "generalizar el desempate YA EXISTENTE
+// basado en contarGemasPorNivel" — pero ese desempate nunca llegó a
+// implementarse en la ronda anterior (quedó documentado como
+// deliberadamente omitido, ver el comentario en `decidirJugadaFaseADificil`,
+// `js/bot.js`); no existía nada que generalizar. Este término adversarial
+// es, por tanto, nuevo por completo, no una extensión de algo previo — la
+// discrepancia se documenta aquí siguiendo la "Nota general" del prompt.
+// Ponderado por debajo del beneficio propio directo (`FACTOR_DESTINO_*`)
+// porque el objetivo primario del bot sigue siendo su propio avance, no la
+// guerra total contra las rivales — valor elegido, no derivado de ninguna
+// regla del juego.
+const PESO_ADVERSARIAL = 0.5;
+
 // Bonus (en unidades de "valor medio de Gema del nivel activo") que se suma
 // cuando una acción, con certeza, deja la invocación activa completa AHORA
 // MISMO (todos los Portales del tablero ocupados y visibles, y los 3
@@ -156,6 +173,38 @@ export function personajeMemorizadoEnPortal(memoriaBot, clave) {
 }
 
 /**
+ * Personajes de `need` que HOY están visibles como única copia en toda la
+ * mesa Y en un Portal de una RIVAL (nunca del propio bot) — "vulnerables":
+ * denegárselos (por duplicado en cualquier otro sitio, o tapando
+ * directamente ese Portal) le quita a esa rival una recompensa con la que
+ * ya contaba. Devuelve `{ nombre: destKey }` con `destKey` en el MISMO
+ * formato `"a:<playerIdx>:<portalIdx>"` que usa `listaPortalesConDestino()`
+ * (Fase A) para que `valorEsperadoDeAccion()` pueda comparar directamente
+ * el destino de una acción candidata contra este destino sin convertir
+ * formatos. Generaliza, para la dificultad 'dificil', el mismo criterio
+ * "único requisito visible de esa jugadora" que ya usa la heurística
+ * 'normal' (`decidirJugadaAdversarialNormal`, `js/bot.js`) — Bloque 3 de
+ * esta tarea.
+ */
+export function calcularNecesariosUnicosDeRivales(vista, need) {
+  const conteo = {};
+  const ubicacion = {};
+  vista.jugadoras.forEach(j => {
+    j.portales.forEach((estado, idx) => {
+      if (!estado?.name) return;
+      conteo[estado.name] = (conteo[estado.name] || 0) + 1;
+      ubicacion[estado.name] = { esPropio: j.esUnoMismo, destKey: `a:${j.idx}:${idx}` };
+    });
+  });
+  const resultado = {};
+  need.forEach(nombre => {
+    const u = ubicacion[nombre];
+    if (u && !u.esPropio && conteo[nombre] === 1) resultado[nombre] = u.destKey;
+  });
+  return resultado;
+}
+
+/**
  * Valor esperado en Gemas de una acción candidata (jugar o mover un
  * personaje a un Portal). `personaje` es `string` si su identidad es
  * CIERTA (carta conocida, o Portal ya memorizado) o `null` si es una
@@ -166,10 +215,21 @@ export function personajeMemorizadoEnPortal(memoriaBot, clave) {
  * ponderado por quién se queda la Gema de ese hueco concreto si se
  * completa la invocación (`FACTOR_DESTINO_*`), más un bonus fuerte si esta
  * acción, con certeza, deja la invocación completa ahora mismo.
+ *
+ * Término ADVERSARIAL (Bloque 3 de esta tarea, `PESO_ADVERSARIAL` arriba):
+ * además de lo anterior, suma valor propio por perjudicar a una rival —
+ * `contexto.necesariosUnicosDeRivales` (ver `calcularNecesariosUnicosDeRivales`)
+ * y `accionCandidata.destKey`/`cubreNecesarioUnicoRival` identifican los dos
+ * mecanismos posibles: (a) esta acción, jugada en OTRO Portal, crea un
+ * segundo ejemplar visible de un personaje que hoy solo tiene una rival
+ * (denegación por duplicado, ponderada por la probabilidad si la identidad
+ * no es cierta); (b) esta acción se juega EXACTAMENTE en el Portal donde
+ * una rival tiene su único ejemplar visible, tapándolo — deterministamente,
+ * porque cualquier carta que se juegue ahí lo oculta, sea cual sea.
  */
 export function valorEsperadoDeAccion(accionCandidata, probabilidades, contexto) {
-  const { personaje, esPropio, esCentral, completaInvocacionSiSeJuega } = accionCandidata;
-  const { need, cumplidos, valorGemaNivel } = contexto;
+  const { personaje, esPropio, esCentral, completaInvocacionSiSeJuega, destKey, cubreNecesarioUnicoRival } = accionCandidata;
+  const { need, cumplidos, valorGemaNivel, necesariosUnicosDeRivales } = contexto;
 
   const distribucion = personaje ? { [personaje]: 1 } : probabilidades.probabilidadPorNombre;
   const factorDestino = esCentral ? FACTOR_DESTINO_CENTRAL : esPropio ? FACTOR_DESTINO_PROPIO : FACTOR_DESTINO_AJENO;
@@ -182,6 +242,15 @@ export function valorEsperadoDeAccion(accionCandidata, probabilidades, contexto)
   });
 
   if (completaInvocacionSiSeJuega) ev += valorGemaNivel * BONUS_COMPLETAR_INVOCACION;
+
+  if (necesariosUnicosDeRivales) {
+    Object.entries(necesariosUnicosDeRivales).forEach(([nombre, destKeyRival]) => {
+      if (destKey !== undefined && destKey === destKeyRival) return; // eso es "tapar" (mecanismo b), no "duplicar" — no sumar dos veces
+      const prob = distribucion[nombre] || 0;
+      if (prob > 0) ev += prob * valorGemaNivel * PESO_ADVERSARIAL;
+    });
+  }
+  if (cubreNecesarioUnicoRival) ev += valorGemaNivel * PESO_ADVERSARIAL;
 
   return ev;
 }
