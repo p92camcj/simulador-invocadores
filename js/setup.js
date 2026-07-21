@@ -32,6 +32,12 @@ export function initSetup() {
     }
     botsErrorEl.classList.add('hidden');
 
+    // Selector de dificultad: una única dificultad GLOBAL para todos los
+    // autómatas de la partida (no una por autómata) — decisión deliberada
+    // de esta tarea para no complicar la UI con un selector por fila de
+    // nombre; ver CHANGELOG.md. Solo se muestra si hay al menos un bot.
+    $('#lblDificultadBots').classList.toggle('hidden', nBots === 0);
+
     const form = $('#nameForm');
 
     // Si ya hay exactamente los campos necesarios (mismo total Y mismo
@@ -92,6 +98,7 @@ export function initSetup() {
     // humanas de autómatas vía su dataset.tipo.
     const nombresPorDefecto = ['Javi', 'Isa', 'Julio', 'Adrián'];
     let idxHumana = 0;
+    const dificultadBots = $('#selDificultadBots')?.value || 'normal';
 
     // Cada jugador recibe 3 Gemas de valor 1 (azules) en la preparación,
     // sea humana o autómata.
@@ -104,7 +111,7 @@ export function initSetup() {
 
       const gemasIniciales = Array.from({ length: 3 }, () => ({ valor: 1, nivel: 'unitaria' }));
       const jugador = { name: nombre, tipo: esBot ? 'auto' : 'humano', hand: [], portals: [], gems: gemasIniciales };
-      if (esBot) jugador.dificultad = 'normal'; // único nivel del MVP; ver js/bot.js
+      if (esBot) jugador.dificultad = dificultadBots; // 'normal' o 'dificil', ver js/bot.js
       window.players.push(jugador);
     });
 

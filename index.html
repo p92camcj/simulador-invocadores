@@ -49,6 +49,13 @@
       <label>Autómatas (bots) entre esas jugadoras: <input id="numBots" type="number" min="0" max="5" value="0" /></label>
       <div id="botsError" class="error-msg hidden">Número de autómatas inválido.</div>
 
+      <label id="lblDificultadBots" class="hidden">Dificultad de los autómatas:
+        <select id="selDificultadBots">
+          <option value="normal" selected>Normal (heurística directa)</option>
+          <option value="dificil">Difícil (conteo de cartas y valor esperado)</option>
+        </select>
+      </label>
+
       <label>Set de invocación:
         <select id="selInvocationSet">
           <option value="introductorio">Introductorio (Cilast / Burnio / Aspir)</option>

@@ -540,20 +540,27 @@ igual que a una jugadora humana, sin ninguna vía de bypass.**
 
 ### 7.2 Cronomante + autómata (verificado, no aplicable en este MVP)
 
-La heurística `'normal'` (única implementada) filtra explícitamente
-`c.name === 'Ocultista' || c.name === 'Cronista'` en
-`decidirHabilidadFaseB()` — Cronomante nunca se activa por un autómata hoy
-(decisión de alcance ya documentada en `CLAUDE.md` y en el propio
-`bot.js`). Por tanto `window.cronomantePortalInvestigado`/
-`window.cronomanteOnComplete` nunca se fijan desde una jugada de autómata;
-el único punto de entrada real sigue siendo `#btnAbility.onclick`
-(`actions.js`), accionado solo por clic humano. Sin hueco porque no hay
-código alcanzable que lo cree. Queda como trabajo futuro (no de esta
-auditoría) el día que una dificultad más agresiva active Cronomante.
+La heurística `'normal'` filtra explícitamente `c.name === 'Ocultista' ||
+c.name === 'Cronista'` en `decidirHabilidadFaseB()` — Cronomante nunca se
+activa por un autómata en ese nivel (decisión de alcance ya documentada en
+`CLAUDE.md` y en el propio `bot.js`). Por tanto
+`window.cronomantePortalInvestigado`/`window.cronomanteOnComplete` nunca se
+fijan desde una jugada de autómata; el único punto de entrada real sigue
+siendo `#btnAbility.onclick` (`actions.js`), accionado solo por clic
+humano. Sin hueco porque no hay código alcanzable que lo cree.
+
+**Actualización 2026-07-21 (Bloque 3, motor probabilístico)**: ya existe
+una segunda dificultad, `'dificil'` (`js/bot.js`/`js/bot-probabilidad.js`),
+pero también deja Cronomante fuera a propósito — solo amplía Fase B con
+Maestro además de Ocultista/Cronista (ver `CHANGELOG.md`). Esta sección
+sigue sin hueco: Cronomante sigue sin ningún camino alcanzable desde
+ninguna dificultad de autómata existente. Cronomante/Estratega/Aprendiz/
+Metamorfo quedan como trabajo futuro si se añade una dificultad más
+agresiva todavía.
 
 ### 7.3 Metamorfo persistente + autómata (verificado, sin hueco)
 
-Mismo razonamiento que 7.2: la heurística `'normal'` nunca activa
+Mismo razonamiento que 7.2: ninguna dificultad de autómata existente activa
 Metamorfo, así que un autómata nunca transforma una carta. Lo que SÍ puede
 pasarle a un autómata es HEREDAR una carta ya transformada por una
 jugadora humana anterior (vía Cronista a su propia mano, o simplemente

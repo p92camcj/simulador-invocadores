@@ -162,8 +162,12 @@ in `nextTurn()`.
   last `nBots` name slots become read-only autómata names (from
   `bot.js`'s `nombresDisponiblesParaBots()`), the rest stay editable human
   inputs; each `window.players[i]` gets `tipo: 'humano'|'auto'` (plus
-  `dificultad: 'normal'` for bots — the only level this MVP implements, see
-  `js/bot.js`).
+  `dificultad` for bots, read from `#selDificultadBots` —
+  `'normal'`|`'dificil'`, see `js/bot.js`/`js/bot-probabilidad.js`). The
+  difficulty selector (`#lblDificultadBots`) is shown only when at least
+  one bot is configured, and is **global for all bots in the match** — not
+  one per bot, a deliberate simplification for this MVP (see
+  `CHANGELOG.md` for the version that added the `'dificil'` level).
 - **`js/bot.js`** — autómata ("bot") decision logic, added 2026-07-21. No
   decision function ever reads `players[botIdx].hand`/`window.deck`
   directly — everything starts from `construirEstadoVisibleParaBot()`, a
@@ -172,20 +176,56 @@ in `nextTurn()`.
   auditable at a glance that the bot can't cheat even as the heuristic
   changes. `decidirYJugarTurno(players, neutrals, botIdx, contexto)` is the
   single entry point, dispatching on `players[botIdx].dificultad`
-  (`HEURISTICAS_POR_DIFICULTAD`, only `'normal'` exists today) — it reuses
+  (`HEURISTICAS_POR_DIFICULTAD`: `'normal'` or `'dificil'`) — it reuses
   the exact same legal actions a human uses (`window.tryPlayOnPortal`,
   `applyAbility()`, a simulated click on `#btnEndTurn`), including
   programmatically resolving whatever `picker()`/`pickerPortal()` modal
   `applyAbility()` opens (same `#pickerSelect`/`#pickerOk` a human click
   would use) — it never duplicates rules logic. The `'normal'` heuristic
   only ever activates Ocultista or Cronista in Fase B (Estratega,
-  Cronomante, Aprendiz, Metamorfo are deliberately left for future,
-  harder difficulty levels — see `docs/MEJORAS_FUTURAS.md`).
-- **`js/game.js`** — builds the character deck (`initGame`, sized and
-  composed per `window.invocationSet`, see the gap above), turn advancement
-  and the "no cards left" end condition (`nextTurn`), and end-of-game
-  handling (`finalizarPartida`, `resetJuego`). `finalizarPartida` must stay
-  `export`ed — it's called from `actions.js`. `nextTurn()` also branches on
+  Cronomante, Aprendiz, Metamorfo, Maestro are deliberately left out of
+  this level — Maestro specifically needs the expected-value engine to
+  pick a sensible target, see below).
+- **`js/bot-probabilidad.js`** — card-counting/expected-value engine for
+  the `'dificil'` difficulty, added 2026-07-21. Every function is pure (no
+  DOM, no `window`, no real `players`/`neutrals`) — it only ever receives
+  the same sanitized `vista` `bot.js` already builds for `'normal'`, plus a
+  per-bot `memoriaBot` (`{ portales: { "playerIdx:portalIdx"|"n:k":
+  string[] } }`, lives in `window.memoriaBots[botIdx]`, reset in
+  `initGame()`/`resetJuego()`, never persisted beyond the current game).
+  `actualizarMemoriaBot()` appends to that history only when the visible
+  top of a Portal *changes* (so toggling the same card's visibility twice
+  doesn't double-count it). `estimarProbabilidadesPersonajes()` subtracts
+  what's already accounted for (memory + public hand cards + the bot's own
+  known card) from `composicionMazoTotal()` (`utils.js`, the real public
+  deck composition) and spreads each remaining character's probability
+  uniformly across the still-unknown slots — an explicitly-documented
+  simplification, not a certainty. `valorEsperadoDeAccion()` scores a
+  candidate (play/move a character, known or as a probability
+  distribution, onto a given Portal) by whether it's still-needed for the
+  active invocation, weighted by who'd actually collect that character's
+  Gem if the invocation completes (own Portal = full weight, another
+  player's = discounted, central/neutral = zero — matching the real rule
+  that a central-portal-only match on a required character forfeits its
+  Gem, see `actions.js`'s `arr[0] !== null` check), plus a bonus if the
+  play deterministically completes the invocation right now. `bot.js`'s
+  `'dificil'` heuristic evaluates every (card × Portal) combination this
+  way for Fase A, and Ocultista/Cronista/**Maestro** for Fase B (Maestro's
+  evaluation is deterministic, since its target card's identity is already
+  known with certainty via `cartaOcultaPublica`) — not implemented: an
+  optional tiebreak against rivals' estimated Gems the original task
+  description allowed but didn't require (see the comment in
+  `decidirJugadaFaseADificil`, `js/bot.js`), and any awareness of "don't
+  cover your own visible ability card" when choosing a destination Portal
+  in Fase A.
+- **`js/game.js`** — builds the character deck (`initGame`, via
+  `composicionMazoTotal(window.invocationSet)` in `utils.js` — see the gap
+  above), turn advancement and the "no cards left" end condition
+  (`nextTurn`), and end-of-game handling (`finalizarPartida`,
+  `resetJuego`). `finalizarPartida` must stay `export`ed — it's called
+  from `actions.js`. `initGame()`/`resetJuego()` also reset
+  `window.memoriaBots = []` (per-bot memory for the `'dificil'` difficulty,
+  see `js/bot-probabilidad.js`). `nextTurn()` also branches on
   `current.tipo === 'auto'`: hides the human action buttons and, after a
   short `setTimeout`, calls `bot.js`'s `decidirYJugarTurno()` — which ends
   its own turn by clicking `#btnEndTurn`, so consecutive bot turns chain
@@ -239,7 +279,11 @@ in `nextTurn()`.
   exact-Gem-total breakdown vs. the by-level-only one.
 - **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,
   `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`,
-  `PERSONAJES_NO_ANIMALES`, `iconos`) and
+  `PERSONAJES_NO_ANIMALES`, `CANTIDADES_MODO_NORMAL`, `CANTIDADES_ANIMALES`,
+  `iconos`), `composicionMazoTotal(invocationSet)` (total public deck
+  composition — the single source `game.js`'s `initGame()` and
+  `js/bot-probabilidad.js`'s card counting both read from, so the two never
+  drift apart), and
   stateless helpers (`shuffle`, `draw`, `reponerManoSiFalta` (draws to
   restore the "1 owner-visible + 1 hidden" hand invariant — shared by the
   end-of-turn draw in `actions.js` and Maestro's active ability in

@@ -6,6 +6,19 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.15.0.73 - 2026-07-21
+
+- **Nuevo nivel de dificultad "Difícil" para los autómatas**: al configurar
+  una partida con autómatas, ahora puedes elegir entre "Normal" (la
+  heurística de siempre) y "Difícil". En "Difícil", cada autómata lleva la
+  cuenta de qué personajes ha visto pasar por cada Portal a lo largo de la
+  partida y calcula, para cada jugada posible, cuántas Gemas espera ganar
+  con ella — en vez de jugar simplemente "lo primero razonable", compara
+  todas las opciones y elige la de mayor valor esperado, incluyendo cuándo
+  merece la pena usar la nueva habilidad del Maestro. La dificultad se
+  elige una sola vez para todos los autómatas de la partida, no una por
+  autómata.
+
 ## 1.14.0.72 - 2026-07-21
 
 - **Nueva habilidad activa del Maestro**: hasta ahora el Maestro solo daba

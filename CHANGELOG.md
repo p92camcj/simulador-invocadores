@@ -4,6 +4,68 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.15.0.73] - 2026-07-21
+
+### Añadido
+- **Motor probabilístico de conteo de cartas para el autómata, nivel
+  "Difícil" (Bloque 3)**: nuevo módulo `js/bot-probabilidad.js`, con
+  funciones puras (sin DOM) que solo operan sobre la vista saneada del bot
+  y su propia memoria — nunca sobre `players`/`neutrals`/`window.deck`
+  reales, igual que el resto de `js/bot.js`. `composicionMazoTotal()`
+  (nueva en `js/utils.js`, factorizada de un literal que antes vivía
+  duplicado dentro de `initGame()` en `js/game.js`) da la composición
+  pública total del mazo configurado; `estimarProbabilidadesPersonajes()`
+  resta lo ya contabilizado por el bot (una memoria nueva por autómata,
+  `window.memoriaBots[botIdx]`, que recuerda qué personaje ha visto pasar
+  por cada Portal aunque ahora esté tapado — solo en memoria JS de la
+  partida en curso, nunca se persiste) y reparte la probabilidad de los
+  personajes de ubicación desconocida de forma uniforme entre los huecos
+  restantes; `valorEsperadoDeAccion()` estima el valor esperado en Gemas de
+  jugar o mover un personaje a un Portal propio, ajeno o central/neutral
+  (ponderado por quién cobraría esa Gema en cada caso, y con un bonus si la
+  jugada completa la invocación activa ahora mismo). La dificultad
+  `'dificil'` (`js/bot.js`) usa este motor tanto en Fase A (evalúa TODAS
+  las combinaciones carta×Portal por valor esperado, en vez del atajo
+  greedy de `'normal'`) como en Fase B (Ocultista/Cronista ponderados por
+  la distribución de probabilidad real del Portal oculto en cuestión, y
+  también la nueva habilidad activa del Maestro — determinista, ya que su
+  carta objetivo es una identidad conocida con certeza). La dificultad
+  `'normal'` sigue exactamente igual, sin tocar.
+- **Selector de dificultad de autómatas** en la pantalla de configuración
+  (`index.html`/`js/setup.js`, `#selDificultadBots`): "Normal" o "Difícil",
+  visible solo si se configura al menos un autómata. Decisión deliberada
+  de esta tarea: la dificultad es GLOBAL para todos los autómatas de la
+  partida, no una por autómata — evita complicar la fila de nombres por
+  jugadora con un selector adicional por fila.
+- Verificado manualmente en el navegador (consola, dos escenarios con
+  estado inyectado para eliminar el azar): (1) con `need =
+  ['Aprendiz','Pícaro','Centinela']`, Pícaro ya satisfecho en el tablero y
+  la propia carta CONOCIDA del bot siendo también Pícaro (duplicado
+  confirmado, valor esperado 0 en cualquier Portal), el bot en "Difícil"
+  jugó su carta OCULTA en vez del duplicado conocido — resultó ser
+  Aprendiz, avanzando de verdad la invocación en vez de desperdiciar el
+  turno, algo que la heurística "Normal" (que solo mira si hay un único
+  Portal bloqueante, no si la carta conocida ya es inútil) habría jugado
+  igualmente aunque fuera un duplicado confirmado. (2) Con Aprendiz y
+  Pícaro ya satisfechos y solo faltando Centinela, sabiendo que Ana lo
+  tenía oculto en su mano y con Maestro visible en un Portal central, el
+  bot activó Maestro, pagó la Gema del coste de Portal central y bajó el
+  Centinela de Ana a su propio Portal, reponiendo su mano correctamente.
+  Añadidos 6 casos a `tests/run-tests.mjs` cubriendo el conteo de cartas,
+  que la estimación nunca necesita ni acepta el estado real (mismo
+  resultado si el contenido real de un Portal oculto cambia, dado el mismo
+  `(vista, memoria)`), la deduplicación de memoria, y el valor esperado por
+  tipo de Portal destino.
+- **No implementado, documentado como decisión de alcance**: el desempate
+  opcional con la estimación de Gemas de rivales que sugería el diseño
+  original de esta tarea (señal débil, complejidad no justificada — ver el
+  comentario en `decidirJugadaFaseADificil`, `js/bot.js`), y la
+  consideración de "no tapar un Portal propio con una habilidad ya
+  visible" al elegir dónde jugar en Fase A (hoy el valor esperado de la
+  carta oculta es el mismo en cualquier Portal propio).
+
+---
+
 ## [1.14.0.72] - 2026-07-21
 
 ### Añadido

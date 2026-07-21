@@ -108,31 +108,56 @@ Implementado en el mismo bloque de trabajo que separó la Fase B del turno
 
 ---
 
-## Jugador autómata: niveles de dificultad
+## ~~Jugador autómata: niveles de dificultad~~ (resuelto 2026-07-21 — nivel 'dificil')
 
-El MVP (ver "Resuelto recientemente" arriba) implementa un único nivel de
-dificultad, `'normal'`, con una heurística sencilla: prioriza jugar su
-carta conocida allí donde complete la invocación activa, si no ayuda donde
-razonablemente puede, y solo activa Ocultista/Cronista (no Estratega,
-Cronomante, Aprendiz ni Metamorfo) cuando hay un objetivo "razonable"
-disponible. `player.dificultad` ya existe en el modelo de datos y
-`js/bot.js` ya despacha por ese campo
-(`HEURISTICAS_POR_DIFICULTAD`/`decidirYJugarTurno()`), así que añadir un
-nivel nuevo no debería requerir tocar `js/setup.js`/`js/game.js` — solo:
+Ya existen DOS niveles: `'normal'` (heurística greedy sin cambios) y
+`'dificil'`, nuevo módulo `js/bot-probabilidad.js` (conteo de cartas +
+valor esperado en Gemas, ver el prompt original "Bloque 3" de esta tarea).
+El punto de extensión de "memoria de lo visto públicamente en turnos
+anteriores" que quedaba comentado en `js/bot.js` es ahora una estructura de
+datos real: `window.memoriaBots[botIdx].portales`, un historial por Portal
+(clave absoluta `"playerIdx:portalIdx"`/`"n:k"`) de qué personaje se ha
+visto en su cima a lo largo de la partida, aunque ahora esté tapado —
+solo vive en memoria JS de la partida en curso, nunca se persiste.
 
-- Escribir una nueva función `decidirYJugarTurno<Nivel>()` en `js/bot.js`
-  con la misma firma que `decidirYJugarTurnoNormal()`, y añadirla a
-  `HEURISTICAS_POR_DIFICULTAD`.
-- Un selector de dificultad visible en la UI de configuración
-  (`js/setup.js`) — hoy queda fijo a `'normal'` para no añadir complejidad
-  al MVP.
-- Para un nivel más agresivo: aprovechar el punto de extensión ya dejado
-  comentado en `js/bot.js` (memoria de lo visto públicamente en turnos
-  anteriores — qué personaje pasó por un Portal antes de quedar tapado,
-  cómo han fluctuado las manos ajenas — información lícita según las
-  reglas, un "jugador muy inteligente" la recordaría) y ampliar la
-  heurística de Fase B a Estratega/Cronomante/Aprendiz/Metamorfo con
-  objetivos más elaborados que "cualquier Portal oculto disponible".
+- **Conteo de cartas**: `composicionMazoTotal(invocationSet)` (nueva en
+  `js/utils.js`, factorizada de la constante que antes vivía duplicada
+  dentro de `initGame()`) da la composición total pública del mazo;
+  `estimarProbabilidadesPersonajes()` resta lo ya contabilizado (Portales
+  vistos/memorizados, manos con carta pública, la propia carta conocida) y
+  reparte la probabilidad de cada personaje desconocido de forma uniforme
+  entre los huecos de ubicación desconocida restantes — simplificación
+  deliberada, documentada como tal en el propio código.
+- **Valor esperado**: `valorEsperadoDeAccion()` pondera si el Portal
+  destino es propio (Gema completa), ajeno (factor bajo — la Gema es para
+  esa jugadora, no para el bot) o central/neutral (factor 0: nadie cobra
+  esa Gema, ver `actions.js`, `arr[0] !== null`), más un bonus si la
+  acción, con certeza, deja la invocación activa completa ahora mismo.
+- **Fase A**: evalúa TODAS las combinaciones carta(conocida/oculta) ×
+  Portal por valor esperado, en vez del atajo greedy de `'normal'`.
+- **Fase B**: además de Ocultista/Cronista (ahora ponderados por la
+  distribución de probabilidad real del Portal oculto en cuestión, no un
+  "cualquiera vale"), el nivel `'dificil'` también sabe usar la nueva
+  habilidad activa del Maestro (Bloque 2) — determinista, porque la carta
+  objetivo (`cartaOcultaPublica`) ya es una identidad conocida con
+  certeza. Estratega/Cronomante/Aprendiz/Metamorfo siguen fuera de
+  ambos niveles (alcance no cubierto por esta tarea).
+- **UI**: selector de dificultad en `js/setup.js`/`index.html`
+  (`#selDificultadBots`), pero **GLOBAL para todos los autómatas de la
+  partida**, no uno por autómata — decisión deliberada de esta tarea para
+  no complicar la fila de nombres por jugadora, documentada en
+  `CHANGELOG.md`.
+- **No implementado, anotado como posible mejora futura**: el desempate
+  opcional con la estimación de Gemas de rivales (`contarGemasPorNivel`,
+  "para no facilitar en exceso a quien va ganando") que sugería el prompt
+  original — la señal es débil frente a la complejidad añadida, ver el
+  comentario en `decidirJugadaFaseADificil` (`js/bot.js`). Tampoco modela
+  todavía "evitar tapar un Portal propio con una carta útil (p. ej. un
+  Maestro o un Ocultista visible)" al decidir dónde jugar en Fase A — el
+  valor esperado de la carta oculta es hoy el mismo en cualquier Portal
+  propio, así que puede (al azar, en un empate) cubrir una habilidad ya
+  visible que convenía dejar libre para Fase B. Verificado manualmente que
+  esto no rompe nada — solo es una oportunidad de refinamiento futura.
 
 ## Ponerse al día con el reglamento actual
 

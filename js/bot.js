@@ -15,6 +15,10 @@ import {
 } from './utils.js';
 import { applyAbility } from './abilities.js';
 import { render } from './render.js';
+import {
+  actualizarMemoriaBot, estimarProbabilidadesPersonajes,
+  valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
+} from './bot-probabilidad.js';
 
 // ---------- Nombres de autómatas ----------
 // Pool temático "Invocadores", todos terminados en "bot", con margen de
@@ -89,12 +93,20 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
   };
 }
 
-// Punto de extensión para dificultades futuras más agresivas: memoria de lo
-// visto públicamente en turnos anteriores (qué personaje pasó por un
-// Portal antes de quedar tapado, cómo han fluctuado las manos ajenas...).
-// Es información lícita ("jugador muy inteligente" — ver prompt del bot),
-// pero el nivel único 'normal' de este MVP no la necesita.
-// const memoriaPorBot = new Map(); // botIdx -> { portalesVistos: [...], ... }
+/**
+ * Memoria propia de la bot `botIdx` (conteo de cartas de la dificultad
+ * 'dificil', ver `js/bot-probabilidad.js`): qué personaje ha visto pasar
+ * por cada Portal a lo largo de la partida, aunque ahora esté tapado.
+ * Vive en `window.memoriaBots[botIdx]`, inicializada/reseteada junto al
+ * resto del estado de partida en `initGame()`/`resetJuego()` (`game.js`) —
+ * solo en memoria JS de esta partida, nunca se persiste ni sale de la
+ * sesión de juego actual. La dificultad 'normal' no la usa.
+ */
+function obtenerMemoriaBot(botIdx) {
+  if (!window.memoriaBots) window.memoriaBots = [];
+  if (!window.memoriaBots[botIdx]) window.memoriaBots[botIdx] = { portales: {} };
+  return window.memoriaBots[botIdx];
+}
 
 // ---------- Utilidades de decisión (operan solo sobre la vista saneada) ----------
 
@@ -125,6 +137,23 @@ function listaPortalesConDestino(vista) {
   vista.neutrales.forEach((estado, idx) => {
     lista.push({ destKey: `n:${idx}`, esPropio: false, etiqueta: `Neutral ${idx + 1}`, estado });
   });
+  return lista;
+}
+
+/**
+ * Lista de todos los Portales con clave ABSOLUTA "playerIdx:portalIdx" /
+ * "n:k" — el mismo formato que usan `stackFrom()`/`portalesConEstado()`
+ * (utils.js) para el objetivo de una habilidad, distinto del formato
+ * relativo "p:"/"a:"/"n:" que usa `listaPortalesConDestino()` para JUGAR
+ * una carta. Necesaria para la dificultad 'dificil' (`decidirHabilidadFaseBDificil`,
+ * `js/bot-probabilidad.js`), que cruza esta clave con `memoriaBot.portales`.
+ */
+function listaPortalesFormatoHabilidad(vista) {
+  const lista = [];
+  vista.jugadoras.forEach(j => {
+    j.portales.forEach((estado, idx) => lista.push({ key: `${j.idx}:${idx}`, esPropio: j.esUnoMismo, estado }));
+  });
+  vista.neutrales.forEach((estado, idx) => lista.push({ key: `n:${idx}`, esPropio: false, estado }));
   return lista;
 }
 
@@ -172,6 +201,98 @@ function decidirJugadaFaseA(vista, need) {
     destKey: elegido.destKey,
     etiqueta: elegido.etiqueta,
     motivo: usaConocida ? 'jugada razonable con la carta conocida' : 'sin carta conocida disponible',
+  };
+}
+
+/**
+ * ¿Jugar `personaje` (identidad CIERTA) en `destKeyDestino` deja la
+ * invocación activa completa AHORA MISMO? Generaliza el atajo de
+ * `decidirJugadaFaseA` (que solo lo comprobaba para el caso "un único
+ * Portal bloqueante") a CUALQUIER Portal candidato — necesario para que la
+ * dificultad 'dificil' pueda comparar por valor esperado en vez de solo
+ * por ese atajo. Requiere que TODOS los Portales del tablero acaben
+ * ocupados y visibles (el destino lo estará tras esta jugada; el resto ya
+ * deben estarlo) y que los 3 personajes de `need` queden presentes.
+ */
+function completariaLaInvocacion(vista, need, personaje, destKeyDestino) {
+  if (!personaje) return false;
+  const portales = listaPortalesConDestino(vista);
+  const todosOcupados = portales.every(p =>
+    p.destKey === destKeyDestino || (p.estado !== null && !p.estado?.hidden)
+  );
+  if (!todosOcupados) return false;
+  const nombresFinal = personajesVisiblesActuales(vista).concat(personaje);
+  return need.every(k => nombresFinal.includes(k));
+}
+
+/**
+ * Heurística 'dificil' de Fase A (ver `js/bot-probabilidad.js` y el prompt
+ * original de esta tarea): en vez del atajo greedy de `decidirJugadaFaseA`,
+ * evalúa TODAS las combinaciones (carta conocida u oculta) × (Portal
+ * candidato) por valor esperado en Gemas (`valorEsperadoDeAccion()`) y
+ * elige la de mayor valor. Empate → prefiere la carta conocida (menos
+ * arriesgado que la oculta, cuya identidad ni el propio bot conoce) y,
+ * como último desempate, al azar (no 100% predecible, mismo criterio que
+ * 'normal').
+ */
+function decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl) {
+  const conocida = vista.propiaCartaConocida?.name ?? null;
+  const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet);
+  const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
+  const visibles = personajesVisiblesActuales(vista);
+  const cumplidos = need.filter(k => visibles.includes(k));
+  const contexto = { need, cumplidos, valorGemaNivel };
+
+  const candidatas = [];
+  listaPortalesConDestino(vista).forEach(p => {
+    const esCentral = p.destKey.startsWith('n:');
+    if (conocida) {
+      candidatas.push({
+        usaConocida: true,
+        destKey: p.destKey,
+        etiqueta: p.etiqueta,
+        ev: valorEsperadoDeAccion(
+          { personaje: conocida, esPropio: p.esPropio, esCentral, completaInvocacionSiSeJuega: completariaLaInvocacion(vista, need, conocida, p.destKey) },
+          probabilidades,
+          contexto
+        ),
+      });
+    }
+    // Carta oculta propia: identidad desconocida ni siquiera para el
+    // propio bot — se evalúa con la distribución de probabilidad completa,
+    // nunca con certeza de que complete la invocación.
+    candidatas.push({
+      usaConocida: false,
+      destKey: p.destKey,
+      etiqueta: p.etiqueta,
+      ev: valorEsperadoDeAccion(
+        { personaje: null, esPropio: p.esPropio, esCentral, completaInvocacionSiSeJuega: false },
+        probabilidades,
+        contexto
+      ),
+    });
+  });
+
+  // Desempate final: al azar entre las de mayor valor esperado (tras
+  // preferir la conocida). El prompt original de esta tarea permite además
+  // desempatar con la estimación de Gemas de rivales (`contarGemasPorNivel`,
+  // ya expuesta en `vista.jugadoras[i].gemasPorNivel`) "para no facilitar
+  // en exceso a quien va ganando" — deliberadamente NO implementado en esta
+  // ronda: el propio prompt lo marca como opcional ("puede seguir usando"),
+  // y la señal es débil (solo un recuento por nivel, no el valor exacto de
+  // Gema de cada rival) frente a la complejidad de comparar candidatas de
+  // "ajena A" vs. "ajena B". Queda anotado como posible mejora futura, no
+  // como un olvido.
+  const mejorEV = Math.max(...candidatas.map(c => c.ev));
+  const mejores = candidatas.filter(c => c.ev === mejorEV);
+  const mejoresConocidas = mejores.filter(c => c.usaConocida);
+  const elegido = elegirAlAzar(mejoresConocidas.length ? mejoresConocidas : mejores);
+
+  return {
+    usaConocida: elegido.usaConocida,
+    destKey: elegido.destKey,
+    etiqueta: elegido.etiqueta,
+    motivo: `valor esperado ${elegido.ev.toFixed(2)} Gemas`,
   };
 }
 
@@ -237,6 +358,67 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need) {
   return elegirAlAzar(candidatos);
 }
 
+/**
+ * Heurística 'dificil' de Fase B (ver `js/bot-probabilidad.js`): a
+ * diferencia de 'normal' (que solo comprueba "hay algún hueco Y algún
+ * Portal oculto"), estima el valor esperado de cada objetivo concreto:
+ * - **Ocultista/Cronista**: para cada Portal oculto legal, si la memoria
+ *   de este bot ya recuerda su última identidad conocida, la evaluación es
+ *   determinista; si no, usa la distribución de probabilidad completa.
+ *   Cronista se pondera a la baja (`* 0.5`): solo reposiciona la carta a
+ *   la propia mano, no la deja jugada de inmediato — su valor es a futuro,
+ *   un turno más tarde como mínimo.
+ * - **Maestro**: determinista siempre — la carta oculta-para-el-resto de
+ *   otra jugadora ya es una identidad CONOCIDA con certeza (mismo campo
+ *   `cartaOcultaPublica` que expone la vista saneada). Como la carta baja
+ *   al Portal de ESA jugadora (nunca al del propio Maestro, ver
+ *   REGLAMENTO.md), su Gema es para ella, no para el bot — se pondera como
+ *   destino "ajeno", pero sigue siendo positivo si desatasca un personaje
+ *   de `need` que de otro modo se queda inútil en una mano.
+ * Solo activa la habilidad si el mejor valor esperado encontrado es
+ * estrictamente positivo — si no, prefiere no gastar el turno de
+ * habilidad, igual que 'normal'.
+ */
+function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, memoriaBot, invocationSet, lvl) {
+  const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet);
+  const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
+  const visibles = personajesVisiblesActuales(vista);
+  const cumplidos = need.filter(k => visibles.includes(k));
+  const contexto = { need, cumplidos, valorGemaNivel };
+
+  let mejor = null;
+  const considerar = candidato => {
+    if (!mejor || candidato.ev > mejor.ev) mejor = candidato;
+  };
+
+  objetivosHabilidadDisponibles(players, neutrals, botIdx).forEach(c => {
+    if (c.name === 'Ocultista' || c.name === 'Cronista') {
+      listaPortalesFormatoHabilidad(vista).filter(p => p.estado?.hidden).forEach(p => {
+        const memorizado = personajeMemorizadoEnPortal(memoriaBot, p.key);
+        const ev = valorEsperadoDeAccion(
+          { personaje: memorizado, esPropio: p.esPropio, esCentral: p.key.startsWith('n:'), completaInvocacionSiSeJuega: false },
+          probabilidades,
+          contexto
+        ) * (c.name === 'Cronista' ? 0.5 : 1);
+        considerar({ ...c, ev, objetivoPreferido: p.key });
+      });
+    } else if (c.name === 'Maestro') {
+      vista.jugadoras.forEach(j => {
+        if (j.esUnoMismo || !j.cartaOcultaPublica) return;
+        const ev = valorEsperadoDeAccion(
+          { personaje: j.cartaOcultaPublica, esPropio: false, esCentral: false, completaInvocacionSiSeJuega: false },
+          probabilidades,
+          contexto
+        );
+        considerar({ ...c, ev, objetivoPreferido: j.idx });
+      });
+    }
+  });
+
+  if (!mejor || mejor.ev <= 0) return null;
+  return mejor;
+}
+
 function estaOcultoSegunVista(vista, val) {
   if (val.startsWith('n:')) return vista.neutrales[parseInt(val.slice(2), 10)]?.hidden === true;
   const [pi, pj] = val.split(':').map(Number);
@@ -245,28 +427,39 @@ function estaOcultoSegunVista(vista, val) {
 
 /**
  * Elige una opción no descartada del `<select>` del picker() actualmente
- * abierto. Para Ocultista/Cronista, prefiere un Portal oculto: Ocultista
- * porque revelar uno es lo único con sentido en este MVP; Cronista porque
+ * abierto. Si `preferido` coincide con alguna opción disponible (calculado
+ * de antemano por la heurística 'dificil' — un Portal concreto para
+ * Ocultista/Cronista, o el índice de una jugadora concreta para Maestro,
+ * ver `objetivoPreferido` en `decidirHabilidadFaseBDificil`), se usa ese.
+ * Si no, cae al criterio de 'normal': preferir un Portal oculto (Ocultista
+ * porque revelar uno es lo único con sentido en su MVP; Cronista porque
  * llevarse a la mano una carta desconocida no arriesga quitar del tablero
- * un personaje visible que sí interesara dejar. Si no hay ninguno oculto
- * entre las opciones legales, elige al azar.
+ * un personaje visible que sí interesara dejar), o al azar si ninguna
+ * opción es oculta.
  */
-function elegirOpcionPicker(nombreHabilidad, opcionesDom, vista, yaElegidos) {
+function elegirOpcionPicker(opcionesDom, vista, yaElegidos, preferido) {
   const disponibles = opcionesDom.filter(o => !yaElegidos.includes(o.value));
+  if (preferido !== undefined && preferido !== null) {
+    const match = disponibles.find(o => o.value === String(preferido));
+    if (match) return match;
+  }
   const ocultos = disponibles.filter(o => estaOcultoSegunVista(vista, o.value));
   return elegirAlAzar(ocultos.length ? ocultos : disponibles);
 }
 
 /**
  * Resuelve, por JS, el/los picker() modales que applyAbility() acaba de
- * abrir — Ocultista y Cronista necesitan solo un paso, pero el bucle
- * admite varios por si en el futuro se extiende la heurística a
- * habilidades con más de un picker (p. ej. Estratega). Mismo mecanismo que
- * usaría un clic humano en el modal (#pickerSelect + #pickerOk), no se
- * reimplementa ninguna regla de legalidad — las opciones ya vienen
- * filtradas por la propia habilidad en abilities.js.
+ * abrir — la mayoría de habilidades del MVP necesitan solo un paso, pero
+ * el bucle admite varios (p. ej. Maestro: jugadora, y si tiene más de un
+ * Portal propio, también el Portal). Mismo mecanismo que usaría un clic
+ * humano en el modal (#pickerSelect + #pickerOk), no se reimplementa
+ * ninguna regla de legalidad — las opciones ya vienen filtradas por la
+ * propia habilidad en abilities.js. `preferidoPrimerPaso` (si se indica)
+ * solo se aplica al PRIMER picker que se abra — los pasos siguientes (p.
+ * ej. el Portal de Maestro tras elegir jugadora) usan el criterio de
+ * respaldo, ver `elegirOpcionPicker`.
  */
-function resolverPickersAbiertos(nombreHabilidad, vista) {
+function resolverPickersAbiertos(vista, preferidoPrimerPaso) {
   const MAX_PASOS = 4;
   const yaElegidos = [];
   for (let paso = 0; paso < MAX_PASOS; paso++) {
@@ -278,7 +471,7 @@ function resolverPickersAbiertos(nombreHabilidad, vista) {
       document.querySelector('#pickerCancel')?.click();
       break;
     }
-    const elegida = elegirOpcionPicker(nombreHabilidad, opciones, vista, yaElegidos);
+    const elegida = elegirOpcionPicker(opciones, vista, yaElegidos, paso === 0 ? preferidoPrimerPaso : undefined);
     yaElegidos.push(elegida.value);
     selectEl.value = elegida.value;
     document.querySelector('#pickerOk').click();
@@ -286,7 +479,7 @@ function resolverPickersAbiertos(nombreHabilidad, vista) {
 }
 
 function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decision, vista) {
-  const { tipo, stack, name } = decision;
+  const { tipo, stack, name, objetivoPreferido } = decision;
   // Mismo onComplete que construye #btnAbility.onclick en actions.js: cobra
   // el coste de Portal central si aplica, marca la habilidad como usada,
   // refresca la UI.
@@ -296,7 +489,7 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
     render(players, neutrals, levelIdx);
   };
   applyAbility(name, botIdx, stack, players, neutrals, levelIdx, need, onComplete);
-  resolverPickersAbiertos(name, vista);
+  resolverPickersAbiertos(vista, objetivoPreferido);
 }
 
 // ---------- Resumen del turno (comunicación, sin desvelar la carta oculta) ----------
@@ -345,12 +538,55 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto) {
   document.querySelector('#btnEndTurn').click();
 }
 
-// Único nivel de dificultad implementado en este MVP. Para añadir más en el
-// futuro: crear una nueva función `decidirYJugarTurno<Nivel>` con la misma
-// firma y añadirla aquí — decidirYJugarTurno() ya despacha por
+/**
+ * Heurística 'dificil' (ver `js/bot-probabilidad.js`): mismas Fases A-E que
+ * 'normal', pero Fase A y Fase B deciden por valor esperado en Gemas
+ * (conteo de cartas + memoria propia de este bot) en vez de la heurística
+ * greedy. Actualiza la memoria del bot ANTES de decidir Fase A (con el
+ * tablero tal cual está al empezar el turno) y otra vez antes de decidir
+ * Fase B (tras la propia jugada de Fase A, que puede haber revelado un
+ * Portal nuevo) — así la memoria queda lo más al día posible en cada
+ * decisión, sin depender de que este bot mire fuera de sus propios turnos.
+ */
+function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto) {
+  const { levelIdx, invocationSet } = contexto;
+  const lvl = LEVELS[levelIdx];
+  const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
+  const memoriaBot = obtenerMemoriaBot(botIdx);
+
+  const vistaAntes = construirEstadoVisibleParaBot(players, neutrals, botIdx);
+  actualizarMemoriaBot(memoriaBot, vistaAntes);
+  const decisionA = decidirJugadaFaseADificil(vistaAntes, memoriaBot, need, invocationSet, lvl);
+  jugarCartaFaseA(players, botIdx, decisionA);
+
+  const resumen = {
+    jugadora: players[botIdx].name,
+    usoConocida: decisionA.usaConocida,
+    cartaJugada: vistaAntes.propiaCartaConocida?.name,
+    etiquetaPortal: decisionA.etiqueta,
+    habilidad: null,
+  };
+
+  const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, botIdx);
+  actualizarMemoriaBot(memoriaBot, vistaTrasA);
+  const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, botIdx, need, memoriaBot, invocationSet, lvl);
+  if (decisionB) {
+    activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
+    resumen.habilidad = decisionB.name;
+  }
+
+  mostrarResumenTurnoBot(resumen);
+  document.querySelector('#btnEndTurn').click();
+}
+
+// Dos niveles de dificultad implementados: 'normal' (heurística greedy) y
+// 'dificil' (conteo de cartas + valor esperado, ver arriba). Para añadir
+// más en el futuro: crear una nueva función `decidirYJugarTurno<Nivel>` con
+// la misma firma y añadirla aquí — decidirYJugarTurno() ya despacha por
 // `players[botIdx].dificultad`.
 const HEURISTICAS_POR_DIFICULTAD = {
   normal: decidirYJugarTurnoNormal,
+  dificil: decidirYJugarTurnoDificil,
 };
 
 /**

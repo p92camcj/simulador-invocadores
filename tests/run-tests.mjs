@@ -20,6 +20,10 @@ import {
   opcionesActivarHabilidad, generarVis,
 } from '../js/utils.js';
 import { ocultarOtrasCentinelas, candidatosObjetivoMaestro, bajarCartaMaestro } from '../js/abilities.js';
+import {
+  actualizarMemoriaBot, estimarProbabilidadesPersonajes,
+  valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
+} from '../js/bot-probabilidad.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
 // en Node no existen como globales, así que se stubean antes de importar
@@ -244,6 +248,93 @@ test('bajarCartaMaestro re-dispara el auto-giro de Centinela si la carta movida 
   bajarCartaMaestro([owner, target, otraJugadoraConCentinela], [], 1, 0);
   assert.equal(target.portals[0][0].vis.public, true, 'la Centinela recién bajada queda visible');
   assert.equal(otraJugadoraConCentinela.portals[0][0].vis.public, false, 'la otra Centinela debe ocultarse');
+});
+
+console.log('Motor probabilístico del autómata "dificil" (bot-probabilidad.js)');
+
+test('estimarProbabilidadesPersonajes: conteo de cartas (composición total - contabilizadas = desconocidas)', () => {
+  // Escenario reproducible a mano, modo 'normal' (32 cartas totales):
+  // memoria del bot ya vio un Ocultista y un Pícaro (aunque ahora tapados);
+  // otra jugadora tiene un Cronista público en la mano; el propio bot
+  // conoce su Aprendiz.
+  const memoria = { portales: { '0:0': ['Ocultista'], 'n:0': ['Pícaro'] } };
+  const vista = {
+    propiaCartaConocida: { name: 'Aprendiz' },
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [{ hidden: true }], cartaOcultaPublica: null },
+      { idx: 1, esUnoMismo: false, portales: [{ hidden: true }], cartaOcultaPublica: 'Cronista' },
+    ],
+    neutrales: [{ hidden: true }],
+  };
+  const r = estimarProbabilidadesPersonajes(vista, memoria, 'normal');
+  // Composición modo normal: Maestro2 Clarividente2 Ocultista2 Cronomante3
+  // Estratega3 Cronista4 Aprendiz4 Centinela4 Pícaro6 Metamorfo2 = 32.
+  assert.equal(r.contabilizadas.Ocultista, 1);
+  assert.equal(r.contabilizadas['Pícaro'], 1);
+  assert.equal(r.contabilizadas.Cronista, 1);
+  assert.equal(r.contabilizadas.Aprendiz, 1);
+  assert.equal(r.desconocidos.Ocultista, 1); // 2 - 1
+  assert.equal(r.desconocidos['Pícaro'], 5); // 6 - 1
+  assert.equal(r.desconocidos.Cronista, 3); // 4 - 1
+  assert.equal(r.desconocidos.Aprendiz, 3); // 4 - 1
+  assert.equal(r.desconocidos.Centinela, 4); // sin contabilizar, intacto
+  assert.equal(r.totalHuecosDesconocidos, 32 - 4); // 4 cartas contabilizadas en total
+  assert.equal(r.probabilidadPorNombre['Pícaro'], 5 / (32 - 4));
+});
+
+test('estimarProbabilidadesPersonajes: nunca necesita ni acepta el estado real, solo la vista saneada + memoria (mismo resultado si el contenido real de un Portal oculto cambia)', () => {
+  const memoria = { portales: {} }; // el bot nunca ha visto nada todavía
+  const base = {
+    propiaCartaConocida: { name: 'Aprendiz' },
+    neutrales: [],
+  };
+  // Un Portal marcado "oculto" (hay carta, pero no se sabe cuál) frente al
+  // mismo Portal simplemente vacío: como la memoria no registró nada en
+  // ninguno de los dos casos, el resultado debe ser IDÉNTICO — la función
+  // no puede estar mirando qué hay "de verdad" bajo la carta oculta, solo
+  // lo que este bot ya memorizó.
+  const vistaConPortalOculto = { ...base, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [{ hidden: true }], cartaOcultaPublica: null }] };
+  const vistaConPortalVacio = { ...base, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [null], cartaOcultaPublica: null }] };
+  const r1 = estimarProbabilidadesPersonajes(vistaConPortalOculto, memoria, 'normal');
+  const r2 = estimarProbabilidadesPersonajes(vistaConPortalVacio, memoria, 'normal');
+  assert.deepEqual(r1, r2);
+});
+
+test('actualizarMemoriaBot solo añade una entrada nueva si el nombre visible cambia (no duplica al alternar visibilidad de la misma carta)', () => {
+  const memoria = { portales: {} };
+  const vistaConOcultista = { jugadoras: [{ idx: 0, esUnoMismo: true, portales: [{ name: 'Ocultista' }], cartaOcultaPublica: null }], neutrales: [] };
+  actualizarMemoriaBot(memoria, vistaConOcultista);
+  actualizarMemoriaBot(memoria, vistaConOcultista); // se "vuelve a mirar" el mismo estado
+  assert.deepEqual(memoria.portales['0:0'], ['Ocultista']);
+  assert.equal(personajeMemorizadoEnPortal(memoria, '0:0'), 'Ocultista');
+
+  const vistaConCronista = { jugadoras: [{ idx: 0, esUnoMismo: true, portales: [{ name: 'Cronista' }], cartaOcultaPublica: null }], neutrales: [] };
+  actualizarMemoriaBot(memoria, vistaConCronista);
+  assert.deepEqual(memoria.portales['0:0'], ['Ocultista', 'Cronista']);
+});
+
+test('valorEsperadoDeAccion valora más un Portal propio que uno central o ajeno para un personaje necesario', () => {
+  const contexto = { need: ['Aprendiz', 'Pícaro', 'Centinela'], cumplidos: ['Pícaro'], valorGemaNivel: 3 };
+  const probabilidades = { probabilidadPorNombre: {} };
+  const evPropio = valorEsperadoDeAccion({ personaje: 'Aprendiz', esPropio: true, esCentral: false, completaInvocacionSiSeJuega: false }, probabilidades, contexto);
+  const evAjeno = valorEsperadoDeAccion({ personaje: 'Aprendiz', esPropio: false, esCentral: false, completaInvocacionSiSeJuega: false }, probabilidades, contexto);
+  const evCentral = valorEsperadoDeAccion({ personaje: 'Aprendiz', esPropio: false, esCentral: true, completaInvocacionSiSeJuega: false }, probabilidades, contexto);
+  assert.ok(evPropio > evAjeno);
+  assert.ok(evAjeno > evCentral);
+  assert.equal(evCentral, 0);
+});
+
+test('valorEsperadoDeAccion no otorga valor por un personaje ya cumplido (duplicado) ni por uno fuera de need', () => {
+  const contexto = { need: ['Aprendiz', 'Pícaro', 'Centinela'], cumplidos: ['Aprendiz'], valorGemaNivel: 3 };
+  const probabilidades = { probabilidadPorNombre: {} };
+  const evDuplicado = valorEsperadoDeAccion({ personaje: 'Aprendiz', esPropio: true, esCentral: false, completaInvocacionSiSeJuega: false }, probabilidades, contexto);
+  const evFueraDeNeed = valorEsperadoDeAccion({ personaje: 'Metamorfo', esPropio: true, esCentral: false, completaInvocacionSiSeJuega: false }, probabilidades, contexto);
+  assert.equal(evDuplicado, 0);
+  assert.equal(evFueraDeNeed, 0);
+});
+
+test('valorMedioGemaNivel calcula la media real de los 5 valores de Gema del nivel', () => {
+  assert.equal(valorMedioGemaNivel('normal', 'C'), (2 + 3 + 3 + 3 + 4) / 5);
 });
 
 console.log(`\n${pass} OK, ${fail} fallidos`);

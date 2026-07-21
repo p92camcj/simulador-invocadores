@@ -1,5 +1,5 @@
 // game.js
-import { shuffle, draw, PERSONAJES_NO_ANIMALES } from './utils.js';
+import { shuffle, draw, composicionMazoTotal } from './utils.js';
 import { render } from './render.js';
 import { initActions } from './actions.js';
 import { decidirYJugarTurno } from './bot.js';
@@ -19,17 +19,10 @@ export function initGame() {
   // (solo cambian nombre/combo de las cartas de invocación en
   // INVOCATION_SETS.floral), porque sus personajes requeridos (Ocultista,
   // Centinela, Maestro, Clarividente...) no existen en el mazo introductorio.
-  const cantidadesModoNormal = {
-    Maestro: 2, Clarividente: 2, Ocultista: 2, Cronomante: 3, Estratega: 3,
-    Cronista: 4, Aprendiz: 4, Centinela: 4, 'Pícaro': 6, Metamorfo: 2,
-  };
-  const charsBase = PERSONAJES_NO_ANIMALES.flatMap(
-    name => Array(cantidadesModoNormal[name]).fill(name)
+  const composicion = composicionMazoTotal(window.invocationSet);
+  const chars = Object.entries(composicion).flatMap(
+    ([name, cantidad]) => Array(cantidad).fill(name)
   );
-  const necesitaAnimales = window.invocationSet === 'introductorio';
-  const chars = necesitaAnimales
-    ? [...charsBase, ...Array(3).fill('Reena'), ...Array(3).fill('Sora'), ...Array(3).fill('Lumo')]
-    : charsBase;
 
   // El Metamorfo ya forma parte del mazo desde el principio (no se baraja
   // aparte). Se saca al azar 2 cartas sin mirarlas y se dejan en la caja.
@@ -52,6 +45,10 @@ export function initGame() {
   window.cronomantePortalInvestigado = null;
   window.cronomanteOnComplete = null;
   window.pickerObjetivoPortal = null;
+  // Memoria propia de cada autómata en dificultad 'dificil' (motor
+  // probabilístico, ver js/bot-probabilidad.js): vive solo en memoria JS de
+  // ESTA partida, nunca se persiste ni sale de la sesión de juego actual.
+  window.memoriaBots = [];
 
   // Configurar controladores de acciones
   initActions(window.players, window.neutrals);
@@ -155,6 +152,7 @@ export function resetJuego() {
   window.cronomanteOnComplete = null;
   window.pickerObjetivoPortal = null;
   window.juegoTerminado = false;
+  window.memoriaBots = [];
 
   // Volver al menú inicial
   initSetup();

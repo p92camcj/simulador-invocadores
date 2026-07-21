@@ -49,6 +49,40 @@ export const PERSONAJES_NO_ANIMALES = [
   'Cronista', 'Aprendiz', 'Centinela', 'Pícaro', 'Metamorfo'
 ];
 
+// Cantidades reales de "Modo normal" (docs/reglamento/REGLAMENTO.md,
+// "Preparación del mazo de personajes"): 32 cartas repartidas entre los 10
+// personajes no-animales. Única fuente — antes vivía como literal duplicado
+// dentro de `initGame()` (`game.js`); ahora también la usa
+// `composicionMazoTotal()` (más abajo), necesaria para el motor
+// probabilístico del autómata en dificultad 'dificil' (`js/bot-probabilidad.js`),
+// que necesita saber cuántas copias de cada personaje existen en total en el
+// mazo configurado — dato público de las reglas, no supone ninguna trampa.
+export const CANTIDADES_MODO_NORMAL = {
+  Maestro: 2, Clarividente: 2, Ocultista: 2, Cronomante: 3, Estratega: 3,
+  Cronista: 4, Aprendiz: 4, Centinela: 4, 'Pícaro': 6, Metamorfo: 2,
+};
+
+// Cantidades de los 3 Animales (Reena/Sora/Lumo), solo presentes en el mazo
+// cuando el set de invocación elegido es 'introductorio' (ver la nota de
+// alcance en CLAUDE.md: hoy es más bien "Modo Avanzado" por composición,
+// pendiente de separar — no se toca esa deuda en esta tarea).
+export const CANTIDADES_ANIMALES = { Reena: 3, Sora: 3, Lumo: 3 };
+
+/**
+ * Composición total del mazo configurado: `{ nombrePersonaje: cantidad }`,
+ * incluyendo los Animales solo si `invocationSet === 'introductorio'` (ver
+ * `CANTIDADES_ANIMALES` arriba). Es la MISMA información pública de las
+ * reglas que ya construía `initGame()` (`game.js`) a mano — factorizada aquí
+ * para que también la use el motor probabilístico del autómata (conteo de
+ * cartas: "cuántas copias hay en total" es dato de reglas, no del estado real
+ * de la partida).
+ */
+export function composicionMazoTotal(invocationSet) {
+  return invocationSet === 'introductorio'
+    ? { ...CANTIDADES_MODO_NORMAL, ...CANTIDADES_ANIMALES }
+    : { ...CANTIDADES_MODO_NORMAL };
+}
+
 // ---------- Iconos de personajes ----------
 export const iconos = {
   'Pícaro': '💎',
