@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.14.0.72 - 2026-07-21
+
+- **Nueva habilidad activa del Maestro**: hasta ahora el Maestro solo daba
+  su bonus de 3 Gemas. Ahora, en su turno, quien tenga al Maestro visible
+  en su Portal puede además coger la carta que le veas a otra jugadora (la
+  que ella tiene oculta para sí misma pero visible para el resto) y
+  bajarla directamente a uno de los Portales de **esa misma jugadora**; a
+  cambio, ella repone su mano robando una carta nueva del mazo. Si esa
+  jugadora tiene una Centinela visible, la habilidad no puede usarse contra
+  ella, igual que con el resto de habilidades.
+
 ## 1.13.11.67 - 2026-07-21
 
 - **Arreglado que se pudiera activar gratis la habilidad de un personaje

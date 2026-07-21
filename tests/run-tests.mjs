@@ -19,13 +19,17 @@ import {
   jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
   opcionesActivarHabilidad, generarVis,
 } from '../js/utils.js';
-import { ocultarOtrasCentinelas } from '../js/abilities.js';
+import { ocultarOtrasCentinelas, candidatosObjetivoMaestro, bajarCartaMaestro } from '../js/abilities.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
 // en Node no existen como globales, así que se stubean antes de importar
 // cualquier función que pueda llamarlos.
 global.alert = () => {};
 global.confirm = () => false;
+// draw() (utils.js) lee window.deck — se stubea un `window` mínimo; cada
+// test de Maestro que necesite que reponerManoSiFalta() robe con éxito fija
+// window.deck a un array no vacío antes de llamar.
+global.window = { deck: [] };
 
 let pass = 0;
 let fail = 0;
@@ -166,6 +170,80 @@ test('generarVis: carta robada del mazo respeta el parámetro visible', () => {
     generarVis('mano', { origen: 'mazo', visible: false }),
     { owner: false, others: true, public: false }
   );
+});
+
+console.log('Habilidad activa del Maestro (abilities.js)');
+
+test('candidatosObjetivoMaestro excluye a quien activa y respeta la protección de Centinela', () => {
+  const players = [
+    { name: 'Maestro-owner', hand: [], portals: [[]], gems: [] }, // idx 0, activa la habilidad
+    { // idx 1: protegida por su propia Centinela visible — excluida aunque tenga carta oculta pública
+      name: 'Protegida',
+      hand: [{ name: 'Aprendiz', vis: { owner: true, others: false, public: false } },
+             { name: 'Cronista', vis: { owner: false, others: true, public: false } }],
+      portals: [[{ name: 'Centinela', vis: { public: true } }]],
+      gems: [],
+    },
+    { // idx 2: candidata válida
+      name: 'Objetivo',
+      hand: [{ name: 'Pícaro', vis: { owner: true, others: false, public: false } },
+             { name: 'Estratega', vis: { owner: false, others: true, public: false } }],
+      portals: [[]],
+      gems: [],
+    },
+  ];
+  const candidatas = candidatosObjetivoMaestro(players, 0);
+  assert.deepEqual(candidatas.map(c => c.idx), [2]);
+  assert.equal(candidatas[0].cartaOculta.name, 'Estratega');
+});
+
+test('bajarCartaMaestro mueve la carta oculta-para-el-resto al Portal de la jugadora objetivo (no al del Maestro)', () => {
+  const owner = { name: 'Maestro-owner', hand: [], portals: [[]], gems: [] };
+  const target = {
+    name: 'Objetivo',
+    hand: [{ name: 'Aprendiz', vis: { owner: true, others: false, public: false } },
+           { name: 'Cronista', vis: { owner: false, others: true, public: false } }],
+    portals: [[]],
+    gems: [],
+  };
+  const players = [owner, target];
+  global.window.deck = []; // sin cartas: no repone mano en este test, solo se comprueba el movimiento
+  bajarCartaMaestro(players, [], 1, 0);
+  assert.equal(owner.portals[0].length, 0, 'la carta no debe acabar en el Portal del Maestro');
+  assert.equal(target.portals[0].length, 1);
+  assert.equal(target.portals[0][0].name, 'Cronista');
+  assert.equal(target.portals[0][0].vis.public, true);
+  assert.equal(target.hand.some(c => c.name === 'Cronista'), false, 'la carta ya no debe estar en la mano');
+});
+
+test('bajarCartaMaestro repone la mano de la jugadora objetivo: acaba con 2 cartas', () => {
+  const owner = { name: 'Maestro-owner', hand: [], portals: [[]], gems: [] };
+  const target = {
+    name: 'Objetivo',
+    hand: [{ name: 'Pícaro', vis: { owner: true, others: false, public: false } },
+           { name: 'Aprendiz', vis: { owner: false, others: true, public: false } }],
+    portals: [[]],
+    gems: [],
+  };
+  global.window.deck = [{ name: 'Cronomante' }];
+  bajarCartaMaestro([owner, target], [], 1, 0);
+  assert.equal(target.hand.length, 2);
+});
+
+test('bajarCartaMaestro re-dispara el auto-giro de Centinela si la carta movida es una Centinela', () => {
+  const owner = { name: 'Maestro-owner', hand: [], portals: [[]], gems: [] };
+  const target = {
+    name: 'Objetivo',
+    hand: [{ name: 'Pícaro', vis: { owner: true, others: false, public: false } },
+           { name: 'Centinela', vis: { owner: false, others: true, public: false } }],
+    portals: [[]],
+    gems: [],
+  };
+  const otraJugadoraConCentinela = { name: 'Otra', hand: [], portals: [[{ name: 'Centinela', vis: { public: true } }]], gems: [] };
+  global.window.deck = [{ name: 'Cronista' }];
+  bajarCartaMaestro([owner, target, otraJugadoraConCentinela], [], 1, 0);
+  assert.equal(target.portals[0][0].vis.public, true, 'la Centinela recién bajada queda visible');
+  assert.equal(otraJugadoraConCentinela.portals[0][0].vis.public, false, 'la otra Centinela debe ocultarse');
 });
 
 console.log(`\n${pass} OK, ${fail} fallidos`);

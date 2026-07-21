@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-21 01:45 (Europe/Madrid)
+> **Última actualización:** 2026-07-21 16:13 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -324,11 +324,21 @@ tres Gemas de valor 1 adicionales, además de las de la Invocación.
 
 > **Cambio respecto a versiones anteriores:** el Maestro tenía únicamente el
 > bonus pasivo de las tres Gemas; ahora tiene además una habilidad activa
-> (mover una carta visible de la mano de otro jugador directamente a su
-> propio Portal). Nótese que "la carta que veas en la mano de otro jugador"
-> son las cartas que ese jugador tiene ocultas para sí mismo pero visibles
-> para el resto — es la única carta de la mano de otro jugador que se puede
-> ver. El propio jugador seleccionado repone mano robando del mazo.
+> (mover una carta visible de la mano de otro jugador directamente al Portal
+> de **ese mismo jugador**, no al propio del Maestro — ver la corrección de
+> redacción más abajo). Nótese que "la carta que veas en la mano de otro
+> jugador" son las cartas que ese jugador tiene ocultas para sí mismo pero
+> visibles para el resto — es la única carta de la mano de otro jugador que
+> se puede ver. El propio jugador seleccionado repone mano robando del mazo.
+>
+> **Corrección de redacción 2026-07-21**: esta misma nota decía antes,
+> incorrectamente, que la carta bajaba "a su propio Portal" (el del
+> Maestro) — contradiciendo el párrafo principal de arriba ("al Portal de
+> ese mismo jugador seleccionado"). Verificado con el propietario del
+> proyecto: la lectura correcta es la del párrafo principal — la carta baja
+> al Portal de la jugadora AFECTADA (dueña de la mano), nunca al del
+> Maestro. Se corrige aquí para eliminar la contradicción; el código
+> (`js/abilities.js`, `case 'Maestro'`) implementa esta lectura.
 
 **Clarividente** — Mientras un jugador tenga a la Clarividente visible en su
 Portal, podrá ver ambas cartas de su mano (la visible y la que era oculta

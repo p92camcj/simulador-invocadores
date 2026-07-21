@@ -2,7 +2,7 @@
 import {
   stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria,
   PERSONAJES_NO_ANIMALES, jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
-  todosLosPortales
+  todosLosPortales, reponerManoSiFalta
 } from './utils.js';
 import { picker, pickerPortal } from './render.js';
 
@@ -18,12 +18,16 @@ const esCentinelaVisible = st =>
   st.length && st.at(-1).name === 'Centinela' && st.at(-1).vis?.public;
 
 /**
- * ¿Bloquea la Centinela que `jugadorIdx` sea elegido como una de las dos
- * jugadoras del intercambio del Aprendiz? Igual que con el resto de
- * habilidades, la protección exime a quien la activa cuando se elige a sí
- * misma (REGLAMENTO.md permite "puedes elegirte a ti").
+ * ¿Bloquea la Centinela que `jugadorIdx` sea elegido como objetivo de una
+ * habilidad que selecciona JUGADORAS en vez de Portales (Aprendiz: las dos
+ * jugadoras del intercambio; Maestro: la dueña de la mano de la que se
+ * coge una carta)? Igual que con el resto de habilidades, la protección
+ * exime a quien la activa cuando se elige a sí misma (REGLAMENTO.md
+ * permite "puedes elegirte a ti" — aunque Maestro no lo necesita, ver su
+ * propio `case`, que ya excluye a la propia dueña por otro motivo: la
+ * regla exige "otro jugador").
  */
-function jugadorProtegidoContraAprendiz(jugadorIdx, players, actingPlayerIdx) {
+function jugadorProtegidoComoObjetivo(jugadorIdx, players, actingPlayerIdx) {
   if (jugadorIdx === actingPlayerIdx) return false;
   return jugadoraProtegidaPorCentinela(players[jugadorIdx]);
 }
@@ -43,6 +47,52 @@ export function ocultarOtrasCentinelas(stackJugada, players, neutrals) {
       st.at(-1).vis.public = false;
     }
   });
+}
+
+/**
+ * Jugadoras candidatas como objetivo de la habilidad activa del Maestro:
+ * cualquiera que NO sea `ownerIdx` (REGLAMENTO.md: "otro jugador"), que
+ * tenga una carta oculta-para-sí-misma-pero-visible-para-el-resto
+ * (`vis.others === true` — el mismo campo que expone `cartaOcultaPublica`
+ * en `bot.js`), y que no esté protegida por una Centinela propia visible.
+ * Función pura (sin DOM) para que sea testable sin abrir ningún `picker()`
+ * real — ver `tests/run-tests.mjs`.
+ */
+export function candidatosObjetivoMaestro(players, ownerIdx) {
+  return players
+    .map((p, i) => ({ idx: i, cartaOculta: p.hand.find(c => c.vis?.others === true) }))
+    .filter(({ idx, cartaOculta }) =>
+      idx !== ownerIdx &&
+      cartaOculta &&
+      !jugadorProtegidoComoObjetivo(idx, players, ownerIdx)
+    );
+}
+
+/**
+ * Efecto real de la habilidad del Maestro, ya decidido el objetivo
+ * (`targetIdx`) y el Portal de destino (`portalIdx`, uno de los Portales
+ * PROPIOS de la jugadora objetivo — REGLAMENTO.md: "al Portal de ese mismo
+ * jugador seleccionado"): mueve su única carta oculta-para-el-resto de la
+ * mano al Portal, re-dispara el auto-giro de Centinela si la carta movida
+ * resulta ser una (mismo criterio que Fase A, ver `jugarCartaSeleccionadaEn`
+ * en `actions.js`), y repone la mano de la jugadora objetivo robando del
+ * mazo. Función pura (sin DOM, sin `alert`/`picker`) para que sea testable
+ * directamente — ver `tests/run-tests.mjs`.
+ */
+export function bajarCartaMaestro(players, neutrals, targetIdx, portalIdx) {
+  const target = players[targetIdx];
+  const cartaOculta = target.hand.find(c => c.vis?.others === true);
+  const idxEnMano = target.hand.indexOf(cartaOculta);
+  const carta = target.hand.splice(idxEnMano, 1)[0];
+  // Se propaga `.aspecto` (ítem 14 de DEUDA_TECNICA.md) por si esta carta
+  // ya era un Metamorfo transformado.
+  target.portals[portalIdx].push({ name: carta.name, aspecto: carta.aspecto, vis: generarVis('portal', {}) });
+  if (carta.name === 'Centinela') {
+    ocultarOtrasCentinelas(target.portals[portalIdx], players, neutrals);
+  }
+  // "A continuación, ese jugador roba una carta para reponer su mano"
+  // (REGLAMENTO.md) — misma función que ya usa el fin de turno.
+  reponerManoSiFalta(target);
 }
 
 /**
@@ -240,7 +290,7 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
     case 'Aprendiz': {
       const opcionesAprendiz = players
         .map((p, i) => ({ val: i, lbl: p.name }))
-        .filter(p => !jugadorProtegidoContraAprendiz(p.val, players, ownerIdx));
+        .filter(p => !jugadorProtegidoComoObjetivo(p.val, players, ownerIdx));
 
       picker('Primera jugadora', opcionesAprendiz, v1 => {
         v1 = parseInt(v1);
@@ -269,6 +319,54 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           onComplete();
         });
       });
+      break;
+    }
+
+    case 'Maestro': {
+      // REGLAMENTO.md, "Maestro": elige una carta que veas en la mano de
+      // OTRA jugadora para bajarla al Portal de esa MISMA jugadora (no al
+      // propio del Maestro, ver la corrección de redacción en
+      // REGLAMENTO.md de esta misma fecha). Toda la lógica pura vive en
+      // `candidatosObjetivoMaestro()`/`bajarCartaMaestro()` (exportadas más
+      // abajo, testables sin DOM) — aquí solo se orquestan los `picker()`.
+      const candidatas = candidatosObjetivoMaestro(players, ownerIdx);
+
+      if (!candidatas.length) {
+        alert('No hay ninguna jugadora con una carta visible-para-el-resto que puedas bajar.');
+        return;
+      }
+
+      const elegirPortalDestino = targetIdx => {
+        const target = players[targetIdx];
+        // Con 2 jugadoras cada una tiene 2 Portales propios, así que no
+        // siempre hay un único destino obvio: se pregunta salvo que solo
+        // exista un Portal. Paso no mencionado explícitamente en el diseño
+        // original de esta tarea, añadido para no asumir "Portal 1"
+        // arbitrariamente cuando la jugadora objetivo tiene más de uno.
+        if (target.portals.length === 1) {
+          bajarCartaMaestro(players, neutrals, targetIdx, 0);
+          onComplete();
+          return;
+        }
+        picker(
+          `¿En qué Portal de ${target.name} baja la carta?`,
+          target.portals.map((_, idx) => ({ val: idx, lbl: `Portal ${idx + 1}` })),
+          v => {
+            bajarCartaMaestro(players, neutrals, targetIdx, parseInt(v, 10));
+            onComplete();
+          }
+        );
+      };
+
+      if (candidatas.length === 1) {
+        elegirPortalDestino(candidatas[0].idx);
+      } else {
+        picker(
+          '¿De qué jugadora coges la carta?',
+          candidatas.map(({ idx }) => ({ val: idx, lbl: players[idx].name })),
+          v => elegirPortalDestino(parseInt(v, 10))
+        );
+      }
       break;
     }
 

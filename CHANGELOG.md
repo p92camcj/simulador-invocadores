@@ -4,6 +4,44 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.14.0.72] - 2026-07-21
+
+### Añadido
+- **Habilidad activa del Maestro (Bloque 2)**: hasta ahora el Maestro solo
+  tenía su bonus pasivo de 3 Gemas; se añade la habilidad activa que
+  introdujo la revisión del reglamento de 2026-07-19 — en su turno, quien
+  tenga a Maestro visible en su Portal puede elegir una carta que vea en la
+  mano de otra jugadora (la única carta de esa mano oculta para su dueña
+  pero visible para el resto) y bajarla directamente al Portal de **esa
+  misma jugadora** (nunca a uno propio del Maestro); la jugadora afectada
+  repone mano robando del mazo. Nuevo `case 'Maestro'` en `js/abilities.js`
+  (con la lógica pura de selección/movimiento extraída a
+  `candidatosObjetivoMaestro()`/`bajarCartaMaestro()`, testable sin DOM) y
+  `'Maestro'` añadido a `PERSONAJES_CON_HABILIDAD` (`js/utils.js`). Respeta
+  la protección de Centinela reutilizando el mismo helper que ya usaba
+  Aprendiz (renombrado de `jugadorProtegidoContraAprendiz` a
+  `jugadorProtegidoComoObjetivo`, ya no es específico de una sola
+  habilidad) y re-dispara el auto-giro de Centinela si la carta movida
+  resulta ser una. Se añade también `reponerManoSiFalta()` (`js/utils.js`),
+  factorizada de la lógica de robo que ya usaba el fin de turno en
+  `js/actions.js`, para no duplicarla. Corrección de paso: el propio
+  `docs/reglamento/REGLAMENTO.md` tenía una contradicción interna (su
+  párrafo principal decía que la carta baja al Portal de la jugadora
+  afectada; su nota de cambio decía "a su propio Portal" del Maestro) —
+  confirmado con el propietario del proyecto que la lectura correcta es la
+  del párrafo principal, se corrige la nota de cambio para eliminar la
+  contradicción. Verificado manualmente en el navegador (consola,
+  inyectando el estado exacto para evitar depender del azar del mazo): el
+  Maestro puede coger la carta oculta-para-el-resto de otra jugadora y
+  bajarla a un Portal propio de esa jugadora (eligiendo cuál si tiene más
+  de uno, caso de 2 jugadoras con 2 Portales cada una), la jugadora
+  afectada repone mano correctamente a 2 cartas, y si esa jugadora tiene
+  una Centinela visible la acción queda bloqueada (con aviso, sin marcar
+  la habilidad como usada). Añadidos 4 casos a `tests/run-tests.mjs`
+  cubriendo la lógica pura.
+
+---
+
 ## [1.13.11.67] - 2026-07-21
 
 ### Corregido

@@ -214,10 +214,12 @@ function objetivosHabilidadDisponibles(players, neutrals, botIdx) {
 
 /**
  * Heurística 'normal' de Fase B (ver prompt del bot): del MVP solo se
- * consideran Ocultista y Cronista — Estratega, Cronomante, Aprendiz y
- * Metamorfo quedan fuera a propósito (definir un objetivo "razonable" para
- * ellos es bastante más complejo; quedan disponibles para dificultades
- * futuras más agresivas). Ambas se consideran "útiles" solo si falta algún
+ * consideran Ocultista y Cronista — Estratega, Cronomante, Aprendiz,
+ * Metamorfo y Maestro quedan fuera a propósito (definir un objetivo
+ * "razonable" para ellos es bastante más complejo; Maestro en concreto
+ * necesita estimar qué carta ajena conviene mover, que es precisamente el
+ * motor de valor esperado del nivel 'dificil' — ver más abajo en este
+ * archivo). Ocultista/Cronista se consideran "útiles" solo si falta algún
  * personaje del combo activo por revelar Y existe al menos un Portal
  * oculto legal donde intentarlo — activar sin ningún hueco que llenar
  * gastaría el turno sin ganancia esperable.

@@ -164,25 +164,42 @@ convertir una Gema de mayor valor en unitarias).
   (penalización pasiva, junto al bloque de Pícaro/Maestro).
 - **Tamaño estimado**: **S–M**.
 
-### 2.2 Maestro: habilidad activa
+### 2.2 Maestro: habilidad activa (resuelto 2026-07-21)
 
 El bonus pasivo (3 Gemas si Maestro es requisito y no hay Pícaro visible
-en la mesa) ya está corregido desde una ronda anterior. Falta por
-completo la habilidad activa: elegir una carta visible-para-otros de la
-mano de otra jugadora y bajarla directamente a un Portal propio; la
-jugadora afectada repone mano robando del mazo. A diferencia de
-Ocultista/Cronista/Cronomante/Estratega, esta habilidad no elige un
-Portal como objetivo sino una **carta de una mano ajena** — mismo tipo de
-selección que Aprendiz (juega sobre jugadoras/manos, no sobre Portales),
-así que no encaja de forma natural con el mecanismo de clic-en-grid de
-`pickerPortal()` (Tarea D de esta ronda) — se quedaría con un `picker()`
-normal, igual que Aprendiz y Metamorfo.
+en la mesa) ya estaba corregido desde una ronda anterior. La habilidad
+activa (elegir una carta visible-para-otros de la mano de otra jugadora y
+bajarla al Portal de **esa misma jugadora** — no a uno propio del Maestro,
+ver la corrección de interpretación más abajo) ya está implementada:
+`case 'Maestro'` en `js/abilities.js`, con la lógica pura (selección de
+candidatas + movimiento de la carta) extraída a `candidatosObjetivoMaestro()`/
+`bajarCartaMaestro()`, testables sin DOM (`tests/run-tests.mjs`). Como en
+Aprendiz, esta habilidad selecciona una **jugadora** (y, si tiene más de un
+Portal propio, también el Portal destino), no un Portal ajeno como
+objetivo directo — se queda con `picker()` normal, no `pickerPortal()`.
+Respeta la protección de Centinela reutilizando el mismo helper que ya
+usaba Aprendiz (renombrado de `jugadorProtegidoContraAprendiz` a
+`jugadorProtegidoComoObjetivo`, ya no es específico de una sola
+habilidad).
 
-- **Archivos**: `js/abilities.js` (nuevo `case 'Maestro'`), `js/utils.js`
-  (añadir `'Maestro'` a `PERSONAJES_CON_HABILIDAD`).
-- **Tamaño estimado**: **S** — patrón ya establecido (similar en forma a
-  Cronista, que también mueve una carta entre mano y Portal), sin
-  necesidad de UI nueva.
+**Corrección de interpretación**: el borrador original de este hallazgo
+(y el de `docs/MEJORAS_FUTURAS.md`) decía que la carta bajaba "a un Portal
+propio" (del Maestro) — una lectura de una nota de cambio del reglamento
+que contradecía a su propio párrafo principal ("al Portal de ese mismo
+jugador seleccionado"). Confirmado con el propietario del proyecto: la
+lectura correcta es que la carta baja al Portal de la jugadora AFECTADA,
+nunca al del Maestro — corregido también en
+`docs/reglamento/REGLAMENTO.md` para eliminar la contradicción interna.
+
+- **Archivos**: `js/abilities.js` (`case 'Maestro'`,
+  `candidatosObjetivoMaestro()`, `bajarCartaMaestro()`), `js/utils.js`
+  (`'Maestro'` en `PERSONAJES_CON_HABILIDAD`, nuevo helper
+  `reponerManoSiFalta()` compartido con el fin de turno de `actions.js`).
+- **Tamaño real**: **S**, como se estimaba — patrón ya establecido (similar
+  en forma a Cronista), sin necesidad de UI nueva más allá de un tercer
+  picker opcional para elegir Portal cuando la jugadora objetivo tiene más
+  de uno (2 jugadoras → 2 Portales cada una), no anticipado en la
+  estimación original.
 
 ---
 
@@ -481,7 +498,7 @@ la sección 1.
 | Clarividente: pérdida de ambas cartas al robar (bug b, sin reproducir) | ❓ Sin confirmar | — |
 | Cronomante: reintento tras cancelar, mismo Portal | ✅ Implementado | — |
 | Maestro: bonus pasivo (3 Gemas) | ✅ Implementado | — |
-| Maestro: habilidad activa (mover carta de mano ajena) | ❌ Pendiente | Media |
+| Maestro: habilidad activa (mover carta de mano ajena a un Portal de la propia jugadora afectada) | ✅ Implementado (2026-07-21) | — |
 | Entusiasta: en el mazo + habilidad pasiva | ❌ Pendiente | Media |
 | Introductorio: variante completa de preparación de mazo | ❌ Pendiente | Media |
 | Modo Avanzado | ❌ Pendiente | Media |

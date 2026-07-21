@@ -35,7 +35,7 @@ export const INVOCATION_ASTERISCO = {
 // Personajes cuya habilidad se activa manualmente en la Fase B del turno
 // (ver docs/reglamento/REGLAMENTO.md, "Secuencia del turno"). Centinela y
 // Clarividente quedan fuera a propósito: sus efectos son pasivos/automáticos.
-export const PERSONAJES_CON_HABILIDAD = ['Ocultista', 'Cronista', 'Cronomante', 'Estratega', 'Aprendiz', 'Metamorfo'];
+export const PERSONAJES_CON_HABILIDAD = ['Ocultista', 'Cronista', 'Cronomante', 'Estratega', 'Aprendiz', 'Metamorfo', 'Maestro'];
 
 // Roster de personajes NO animales del mazo base ("Modo normal", ver
 // docs/reglamento/REGLAMENTO.md, "Preparación del mazo de personajes").
@@ -120,6 +120,20 @@ export function draw(player, visible) {
     const vis = generarVis('mano', { origen: 'mazo', visible, esPropietaria: true });
     player.hand.push({ name: cartaDelMazo.name, vis });
   }
+}
+
+/**
+ * Repone la mano de `player` a las 2 cartas habituales (una visible para su
+ * dueña, una oculta) robando del mazo lo que falte. Misma lógica que ya usaba
+ * `#btnEndTurn.onclick` (`actions.js`) al terminar el turno — centralizada
+ * aquí porque la habilidad activa del Maestro (`abilities.js`, "la jugadora
+ * afectada repone mano robando del mazo") necesita exactamente el mismo
+ * comportamiento, no una copia con matices distintos.
+ */
+export function reponerManoSiFalta(player) {
+  if (player.hand.length >= 2) return;
+  if (!player.hand.some(h => h.vis?.owner)) draw(player, true);
+  if (player.hand.filter(h => !h.vis?.owner).length < 1) draw(player, false);
 }
 
 /**

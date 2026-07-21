@@ -3,9 +3,9 @@ import { nextTurn, finalizarPartida } from './game.js';
 import { render, picker } from './render.js';
 import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
 import {
-  draw, generarVis, mostrarCarta,
+  generarVis, mostrarCarta,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
-  construirPoolGemas, todosLosPortales
+  construirPoolGemas, todosLosPortales, reponerManoSiFalta
 } from './utils.js';
 
 /**
@@ -279,12 +279,7 @@ export function initActions(players, neutrals) {
       return;
     }
     // Robo de cartas si <2
-    players.forEach(p => {
-      if (p.hand.length < 2) {
-        if (!p.hand.some(h => h.vis?.owner)) draw(p, true);
-        if (p.hand.filter(h => !h.vis?.owner).length < 1) draw(p, false);
-      }
-    });
+    players.forEach(reponerManoSiFalta);
 
     // Comprobación invocación
     const lvl = window.LEVELS[window.levelIdx];

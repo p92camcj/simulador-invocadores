@@ -161,21 +161,31 @@ mazo condicionalmente, y la penalización pasiva reutilizando
 `gastarGemaUnitaria()` (`js/utils.js`) para el "toma el cambio" — ver
 `docs/AUDITORIA_REGLAS.md`, sección 2.1.
 
-### Maestro: habilidad activa nueva
+### ~~Maestro: habilidad activa nueva~~ (resuelto 2026-07-21)
 
 El bonus pasivo del Maestro (3 Gemas unitarias si es requisito de la
-invocación activa y no hay ningún Pícaro visible en la mesa) ya está
-corregido. Falta por completo la **habilidad activa** que añadió la
-revisión del reglamento de 2026-07-19: elegir una carta que se vea en la
-mano de otra jugadora (la que esa jugadora tiene oculta para sí misma pero
-visible para el resto) y bajarla directamente al propio Portal del
-Maestro; la jugadora afectada repone mano robando del mazo. Esto es
-trabajo nuevo en `js/abilities.js` (nuevo `case 'Maestro'`) y en
-`PERSONAJES_CON_HABILIDAD` (`js/utils.js`, añadir `'Maestro'` a la lista
-de personajes con habilidad activable en Fase B). Tamaño **S** (patrón ya
-establecido, similar a Cronista) — selecciona una carta de una mano
-ajena, no un Portal, así que no encaja con el clic-en-grid de
-`pickerPortal()` (igual que Aprendiz), se queda con el `picker()` normal.
+invocación activa y no hay ningún Pícaro visible en la mesa) ya estaba
+corregido. La **habilidad activa** que añadió la revisión del reglamento de
+2026-07-19 (elegir una carta que se vea en la mano de otra jugadora —la que
+esa jugadora tiene oculta para sí misma pero visible para el resto— y
+bajarla al Portal de **esa misma jugadora**) ya está implementada:
+`case 'Maestro'` en `js/abilities.js`, con la lógica pura extraída a
+`candidatosObjetivoMaestro()`/`bajarCartaMaestro()` (testables sin DOM, ver
+`tests/run-tests.mjs`), y `'Maestro'` añadido a `PERSONAJES_CON_HABILIDAD`
+(`js/utils.js`).
+
+**Corrección de interpretación respecto a lo escrito aquí antes**: esta
+misma sección decía que la carta bajaba "directamente al propio Portal del
+Maestro" — eso resultó ser una lectura errónea de una nota de cambio
+contradictoria dentro del propio `docs/reglamento/REGLAMENTO.md` (su
+párrafo principal siempre dijo "al Portal de ese mismo jugador
+seleccionado"). Confirmado con el propietario del proyecto: la carta baja
+al Portal de la jugadora AFECTADA (dueña de la mano), nunca al del
+Maestro — se corrigió también la nota de cambio del reglamento para
+eliminar la contradicción. Como la jugadora objetivo puede tener más de un
+Portal propio (2 jugadoras → 2 Portales cada una), se añadió un tercer paso
+de selección de Portal destino cuando aplica, no contemplado explícitamente
+en el diseño original de esta tarea.
 
 ### Metamorfo: representación visual de la transformación
 

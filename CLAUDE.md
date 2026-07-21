@@ -60,11 +60,25 @@ the version that shipped this):
   `'Centinela'`, it calls `ocultarOtrasCentinelas()` too. Full repro and
   resolution note in `docs/AUDITORIA_REGLAS.md` §3.1 and
   `docs/DEUDA_TECNICA.md` (moved to "Resueltos").
-- Maestro is missing the rulebook's new **active** ability entirely (moving
-  a card another player can see — their hidden-to-self card — straight to
-  the Maestro's own Portal, then that player draws a replacement). The
-  passive three-Gem bonus exists and its condition bug is fixed (see
-  CHANGELOG), but the active ability is separate, unimplemented work.
+- **Fixed 2026-07-21**: Maestro's rulebook **active** ability (`case
+  'Maestro'` in `abilities.js`, now in `PERSONAJES_CON_HABILIDAD`) is
+  implemented — move a card another player can see (their hidden-to-self
+  card, `vis.others === true`) straight to **that same player's own
+  Portal** (not the Maestro's), then that player draws a replacement via
+  `reponerManoSiFalta()` (`utils.js`, factored out of the identical
+  end-of-turn draw logic in `actions.js`). Note the rulebook itself had an
+  internal contradiction here — its main paragraph said "to that same
+  selected player's Portal" but its own change-note said "to his own
+  Portal" (the Maestro's); confirmed with the project owner and fixed in
+  `docs/reglamento/REGLAMENTO.md` that the main paragraph was correct.
+  Respects Centinela protection via the same `jugadorProtegidoComoObjetivo()`
+  helper Aprendiz already used (renamed from
+  `jugadorProtegidoContraAprendiz` since it's no longer Aprendiz-specific).
+  The pure logic (`candidatosObjetivoMaestro()`, `bajarCartaMaestro()`,
+  both exported from `abilities.js`) is deliberately separated from the
+  `picker()` orchestration so it's testable in `tests/run-tests.mjs`
+  without a DOM. The passive three-Gem bonus (unaffected by this change)
+  already existed with its condition bug fixed (see CHANGELOG).
 - Metamorfo in `abilities.js` now matches the current rulebook: the old
   restriction ("only the character that completes the invocation") is gone
   — the picker offers all of `PERSONAJES_NO_ANIMALES` (`utils.js`) minus
@@ -187,7 +201,7 @@ in `nextTurn()`.
   `construirPoolGemas`).
 - **`js/abilities.js`** — `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need)`,
   one `switch` case per character ability activated via Fase B (Ocultista,
-  Cronista, Cronomante, Estratega, Aprendiz, Metamorfo — exactly
+  Cronista, Cronomante, Estratega, Aprendiz, Metamorfo, Maestro — exactly
   `PERSONAJES_CON_HABILIDAD` in `utils.js`). Centinela and Clarividente are
   deliberately **not** cases here: both are passive/automatic, so there's
   no reachable `case 'Centinela'`/`case 'Clarividente'` in this `switch` —
@@ -195,12 +209,19 @@ in `nextTurn()`.
   `ocultarOtrasCentinelas(stackJugada, players, neutrals)` (also in this
   file), called directly from `actions.js` right after `stack.push(...)` in
   Fase A, every time the played card is a Centinela — not through
-  `applyAbility()`. `need` is the active invocation's required-character
-  array; pass it explicitly from the caller, don't recompute it here from
-  globals. It's currently unused by every case (Metamorfo dropped its use
-  of it — see the rulebook-sync note above) but stays in the signature for
-  Modo Experto's future Asterisco invocation. Always call this with
-  `window.levelIdx` explicitly from outside the module.
+  `applyAbility()` (`case 'Maestro'` also calls it directly, since moving a
+  Centinela out of a hand into a Portal is functionally the same "a
+  Centinela just became visible" event as Fase A). `need` is the active
+  invocation's required-character array; pass it explicitly from the
+  caller, don't recompute it here from globals. It's currently unused by
+  every case (Metamorfo dropped its use of it — see the rulebook-sync note
+  above) but stays in the signature for Modo Experto's future Asterisco
+  invocation. Always call this with `window.levelIdx` explicitly from
+  outside the module. `candidatosObjetivoMaestro(players, ownerIdx)` and
+  `bajarCartaMaestro(players, neutrals, targetIdx, portalIdx)` are exported
+  separately from `case 'Maestro'` itself — pure functions with no DOM/
+  `picker()` dependency, so `tests/run-tests.mjs` can exercise the real
+  selection/movement logic directly.
 - **`js/render.js`** — pure-ish DOM rendering (`render()`, which draws the
   single interactive board grid into `#boardGrid` — one column per player
   in fixed index order plus a final "Neutrales" column, always with real
@@ -219,8 +240,11 @@ in `nextTurn()`.
 - **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,
   `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`,
   `PERSONAJES_NO_ANIMALES`, `iconos`) and
-  stateless helpers (`shuffle`, `draw`, visibility helpers, the Gem-economy
-  helpers `sumaGemas`/`gastarGemaUnitaria`/`gastarGemaAsterisco`/
+  stateless helpers (`shuffle`, `draw`, `reponerManoSiFalta` (draws to
+  restore the "1 owner-visible + 1 hidden" hand invariant — shared by the
+  end-of-turn draw in `actions.js` and Maestro's active ability in
+  `abilities.js`), visibility helpers, the Gem-economy helpers
+  `sumaGemas`/`gastarGemaUnitaria`/`gastarGemaAsterisco`/
   `pagarActivacionPortalCentral`/`construirPoolGemas`). This is where the
   rulebook gaps above are most visible — start here when bringing a rule up
   to date. `player.gems` is an array of `{ valor, nivel, esAsterisco? }`
