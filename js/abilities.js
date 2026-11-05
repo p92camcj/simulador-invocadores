@@ -51,6 +51,18 @@ export function ocultarOtrasCentinelas(stackJugada, players, neutrals) {
 }
 
 /**
+ * Si la cima de `stack` ha pasado a ser una Centinela REAL visible (por
+ * ejemplo, porque la Cronista se llevó la carta que la tapaba o el
+ * Cronomante la subió desde dentro de la pila), se giran las demás
+ * Centinelas visibles: REGLAMENTO.md, "Centinela": "si aparece otra
+ * Centinela visible en cualquier Portal, todas las demás se giran". Sin
+ * esto podían quedar dos Centinelas visibles a la vez.
+ */
+export function girarOtrasCentinelasSiAparece(stack, players, neutrals) {
+  if (esCentinelaVisible(stack)) ocultarOtrasCentinelas(stack, players, neutrals);
+}
+
+/**
  * Jugadoras candidatas como objetivo de la habilidad activa del Maestro:
  * cualquiera que NO sea `ownerIdx` (REGLAMENTO.md: "otro jugador"), que
  * tenga una carta oculta-para-sí-misma-pero-visible-para-el-resto
@@ -183,6 +195,8 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         // reserva al salir del Portal: a la mano llega como Metamorfo
         // original (REGLAMENTO.md, "Metamorfo"). Por eso no se copia `.aspecto`.
         owner.hand.push({ name: carta.name, vis });
+        // La carta que queda a la vista puede ser una Centinela.
+        girarOtrasCentinelasSiAparece(st, players, neutrals);
         onComplete();
       });
       break;
@@ -219,6 +233,8 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
             const seleccionada = st.splice(idx, 1)[0];
             // La carta que queda tapada pierde su ficha de Metamorfo si la tenía.
             apilarEnPortal(st, seleccionada);
+            // Si sube una Centinela visible, se giran las demás.
+            girarOtrasCentinelasSiAparece(st, players, neutrals);
             window.cronomantePortalInvestigado = null;
             onComplete();
           },

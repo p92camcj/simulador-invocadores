@@ -478,6 +478,48 @@ export function construirPoolGemas(valores) {
   return pool;
 }
 
+/**
+ * Bonus pasivos que se cobran al completarse una invocación (REGLAMENTO.md,
+ * "Pícaro" y "Maestro"). Se llama justo después de repartir las Gemas de la
+ * invocación.
+ *
+ * - Maestro: si es requisito de la invocación y no hay ningún Pícaro
+ *   visible en toda la mesa, la dueña del Maestro visible gana 3 Gemas de
+ *   valor 1. Se comprueba ANTES de voltear a los Pícaros: hacerlo después
+ *   escondía a los Pícaros de las jugadoras y el Maestro cobraba igualmente.
+ * - Pícaro: cada jugadora con un Pícaro visible en su Portal gana 1 Gema de
+ *   valor 1 y su Pícaro se voltea bocabajo. Los Portales centrales no tienen
+ *   dueña, así que su Pícaro ni cobra ni se voltea.
+ *
+ * Ambos miran la identidad real (`.name`), no la apariencia de un
+ * Metamorfo transformado (DEUDA_TECNICA.md ítem 14). Función pura, ver
+ * `tests/run-tests.mjs`.
+ */
+export function aplicarBonusPasivosInvocacion(players, neutrals, need) {
+  const portales = todosLosPortales(players, neutrals);
+  const cimaVisibleEs = (st, nombre) =>
+    st.length > 0 && st.at(-1).name === nombre && st.at(-1).vis?.public === true;
+
+  const hayPicaroVisible = portales.some(({ stack }) => cimaVisibleEs(stack, 'Pícaro'));
+  const maestros = portales.filter(({ stack }) => cimaVisibleEs(stack, 'Maestro'));
+  if (
+    need.includes('Maestro') &&
+    !hayPicaroVisible &&
+    maestros.length === 1 &&
+    maestros[0].playerIdx !== null
+  ) {
+    players[maestros[0].playerIdx].gems.push(
+      { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }
+    );
+  }
+
+  portales.forEach(({ stack, playerIdx }) => {
+    if (playerIdx === null || !cimaVisibleEs(stack, 'Pícaro')) return;
+    players[playerIdx].gems.push({ valor: 1, nivel: 'unitaria' });
+    stack.at(-1).vis.public = false;
+  });
+}
+
 
 /**
  * Clasificación final de la partida (REGLAMENTO.md, "Final de la

@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.26.1.90 - 2026-11-05
+
+- **El Maestro ya no gana sus 3 Gemas extra si hay un Pícaro a la vista**
+  al completarse la invocación, como dice el reglamento.
+- **Nunca hay dos Centinelas visibles a la vez.** Si la Cronista o el
+  Cronomante dejan a la vista una Centinela que estaba tapada, las demás
+  se giran, igual que al jugarla.
+
 ## 1.26.0.87 - 2026-11-05
 
 - **Nuevo modo espectáculo (prototipo)**: cuando alguien baja una carta,

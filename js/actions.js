@@ -5,7 +5,7 @@ import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
 import {
   generarVis, mostrarCarta,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
-  construirPoolGemas, todosLosPortales, reponerManoSiFalta, apilarEnPortal
+  construirPoolGemas, todosLosPortales, aplicarBonusPasivosInvocacion, reponerManoSiFalta, apilarEnPortal
 } from './utils.js';
 import {
   anunciarCartaJugada, envolverHabilidad, anunciarInvocacion, cuandoTermineEspectaculo,
@@ -323,40 +323,10 @@ export function initActions(players, neutrals) {
             if (gema) players[arr[0]].gems.push({ valor: gema.valor, nivel: lvl, esAsterisco: gema.esAsterisco });
           }
         });
-        // Habilidad Pícaro: siempre Gema unitaria (valor 1), independientemente
-        // de si el Pícaro era o no requisito de esta invocación. Solo Portales
-        // de jugadora (nunca centrales/neutrales) — mismo criterio que antes.
-        todosPortales.filter(t => t.playerIdx !== null).forEach(({ playerIdx, stack: st }) => {
-          if (st.length && st.at(-1).name === 'Pícaro' && st.at(-1).vis?.public) {
-            players[playerIdx].gems.push({ valor: 1, nivel: 'unitaria' });
-            if (st.at(-1).vis) {
-              st.at(-1).vis.public = false;
-            }
-          }
-        });
-        // Maestro: bonus pasivo de 3 Gemas unitarias si es requisito de la
-        // invocación (en cualquier nivel, no solo 'A') y no hay ningún Pícaro
-        // visible en ninguna parte de la mesa (no solo fuera del combo actual).
-        const hayPicaroVisible = allPortals.some(
-          st => st.length && st.at(-1).name === 'Pícaro' && st.at(-1).vis?.public
-        );
-        // Identidad real, no apariencia (ítem 14 de DEUDA_TECNICA.md): un
-        // Metamorfo transformado en Maestro cuenta para completar el combo
-        // de la invocación (map, arriba, usa .aspecto para eso) pero NO
-        // otorga este bonus pasivo, que es propio del Maestro real — por
-        // eso aquí no se reutiliza `map` (indexado por apariencia), se
-        // recorren los Portales buscando `.name === 'Maestro'` directamente.
-        let maestroOwnerIdx = null;
-        let maestrosRealesVisibles = 0;
-        todosPortales.forEach(({ stack: st, playerIdx }) => {
-          if (st.length && st.at(-1).vis?.public && st.at(-1).name === 'Maestro') {
-            maestrosRealesVisibles++;
-            if (playerIdx !== null) maestroOwnerIdx = playerIdx;
-          }
-        });
-        if (need.includes('Maestro') && maestrosRealesVisibles === 1 && maestroOwnerIdx !== null && !hayPicaroVisible) {
-          players[maestroOwnerIdx].gems.push({ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' });
-        }
+        // Bonus pasivos de Pícaro y Maestro (utils.js). El Maestro se
+        // evalúa ANTES de voltear a los Pícaros: si se volteaban primero,
+        // el Maestro cobraba aunque hubiera un Pícaro visible.
+        aplicarBonusPasivosInvocacion(players, neutrals, need);
         // En modo espectáculo la escena sustituye al aviso de texto.
         const escenificada = anunciarInvocacion({
           nivel: lvl,

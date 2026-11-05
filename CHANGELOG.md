@@ -4,6 +4,21 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.26.1.90] - 2026-11-05
+
+### Corregido
+- **El Maestro cobraba su bonus aunque hubiera un Pícaro visible.** Al
+  completar una invocación, `#btnEndTurn.onclick` (`js/actions.js`)
+  volteaba primero a los Pícaros de las jugadoras y solo después miraba si
+  quedaba alguno visible, así que no los veía. Los dos bonus pasivos pasan
+  a `aplicarBonusPasivosInvocacion()` (`js/utils.js`, función pura), que
+  evalúa el Maestro antes de voltear a los Pícaros.
+- **Podían quedar dos Centinelas visibles a la vez** si la Cronista se
+  llevaba la carta que tapaba una Centinela o el Cronomante subía una
+  Centinela enterrada en la pila. Nueva `girarOtrasCentinelasSiAparece()`
+  (`js/abilities.js`), llamada desde `case 'Cronista'` y `case 'Cronomante'`.
+- Tests nuevos en `tests/run-tests.mjs` para ambos casos.
+
 ## [1.26.0.87] - 2026-11-05
 
 ### Añadido

@@ -20,8 +20,11 @@ import {
   apilarEnPortal, transformacionesDisponiblesMetamorfo,
   jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
   opcionesActivarHabilidad, generarVis, calcularResultadoFinal,
+  aplicarBonusPasivosInvocacion,
 } from '../js/utils.js';
-import { ocultarOtrasCentinelas, candidatosObjetivoMaestro, bajarCartaMaestro } from '../js/abilities.js';
+import {
+  ocultarOtrasCentinelas, candidatosObjetivoMaestro, bajarCartaMaestro, girarOtrasCentinelasSiAparece,
+} from '../js/abilities.js';
 import {
   actualizarMemoriaBot, estimarProbabilidadesPersonajes,
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
@@ -884,6 +887,64 @@ test('valorEsperadoDeAccion (Bloque 3): el término adversarial permite preferir
   );
   assert.equal(evPropioSinValor, 0, 'Y ya está cumplido: jugarla de nuevo en un Portal propio no aporta nada');
   assert.ok(evTaparRival > evPropioSinValor, 'tapar el único Z visible de la rival aporta valor aunque Y no ayude ya a nadie');
+});
+
+console.log('Bonus pasivos de Pícaro y Maestro al completar una invocación (utils.js)');
+
+const visible = name => ({ name, vis: { public: true } });
+const unitarias = p => p.gems.filter(g => g.nivel === 'unitaria').length;
+
+test('Maestro no cobra su bonus si hay un Pícaro visible en el Portal de una jugadora', () => {
+  const conMaestro = { name: 'Ana', portals: [[visible('Maestro')]], gems: [] };
+  const conPicaro = { name: 'Bea', portals: [[visible('Pícaro')]], gems: [] };
+  aplicarBonusPasivosInvocacion([conMaestro, conPicaro], [], ['Aprendiz', 'Maestro', 'Estratega']);
+  assert.equal(unitarias(conMaestro), 0, 'el Pícaro estaba visible al completarse la invocación');
+  assert.equal(unitarias(conPicaro), 1, 'el Pícaro sí cobra su Gema');
+  assert.equal(conPicaro.portals[0][0].vis.public, false, 'y después se voltea');
+});
+
+test('Maestro cobra 3 Gemas de valor 1 si es requisito y no hay ningún Pícaro visible', () => {
+  const conMaestro = { name: 'Ana', portals: [[visible('Maestro')]], gems: [] };
+  const otra = { name: 'Bea', portals: [[visible('Cronista')]], gems: [] };
+  aplicarBonusPasivosInvocacion([conMaestro, otra], [], ['Aprendiz', 'Maestro', 'Estratega']);
+  assert.equal(unitarias(conMaestro), 3);
+});
+
+test('Maestro no cobra si un Pícaro visible está en un Portal central; ese Pícaro ni cobra ni se voltea', () => {
+  const conMaestro = { name: 'Ana', portals: [[visible('Maestro')]], gems: [] };
+  const neutrals = [[visible('Pícaro')]];
+  aplicarBonusPasivosInvocacion([conMaestro], neutrals, ['Aprendiz', 'Maestro', 'Estratega']);
+  assert.equal(unitarias(conMaestro), 0);
+  assert.equal(neutrals[0][0].vis.public, true);
+});
+
+test('Un Metamorfo transformado en Pícaro no bloquea el bonus del Maestro ni cobra como Pícaro', () => {
+  const conMaestro = { name: 'Ana', portals: [[visible('Maestro')]], gems: [] };
+  const conMetamorfo = { name: 'Bea', portals: [[{ name: 'Metamorfo', aspecto: 'Pícaro', vis: { public: true } }]], gems: [] };
+  aplicarBonusPasivosInvocacion([conMaestro, conMetamorfo], [], ['Aprendiz', 'Maestro', 'Estratega']);
+  assert.equal(unitarias(conMaestro), 3);
+  assert.equal(unitarias(conMetamorfo), 0);
+});
+
+console.log('Centinela que queda a la vista tras Cronista o Cronomante (abilities.js)');
+
+test('Si la cima pasa a ser una Centinela visible, se giran las demás Centinelas visibles', () => {
+  const enterrada = visible('Centinela');
+  const stack = [enterrada];
+  const otra = { name: 'Bea', portals: [[visible('Centinela')]], gems: [] };
+  girarOtrasCentinelasSiAparece(stack, [{ name: 'Ana', portals: [stack], gems: [] }, otra], []);
+  assert.equal(enterrada.vis.public, true);
+  assert.equal(otra.portals[0][0].vis.public, false, 'solo puede haber una Centinela visible en mesa');
+});
+
+test('Si la cima no es una Centinela real visible, no se gira nada', () => {
+  const otra = { name: 'Bea', portals: [[visible('Centinela')]], gems: [] };
+  const conMetamorfo = [{ name: 'Metamorfo', aspecto: 'Centinela', vis: { public: true } }];
+  const bocabajo = [{ name: 'Centinela', vis: { public: false } }];
+  const players = [{ name: 'Ana', portals: [conMetamorfo, bocabajo], gems: [] }, otra];
+  girarOtrasCentinelasSiAparece(conMetamorfo, players, []);
+  girarOtrasCentinelasSiAparece(bocabajo, players, []);
+  assert.equal(otra.portals[0][0].vis.public, true);
 });
 
 console.log(`\n${pass} OK, ${fail} fallidos`);
