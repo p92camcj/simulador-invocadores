@@ -95,8 +95,7 @@ the version that shipped this):
   and the Metamorfo's transformation are paid only with value-1 Gems (or,
   for central access only, by revealing an asterisk Gem) —
   `gastarGemaUnitaria()` no longer breaks larger Gems into ones. The
-  Entusiasta's "or larger and take change" text is still pending a
-  decision.
+  Entusiasta (not implemented yet) also loses only a value-1 Gem.
 - **Fixed 2026-07-21 (DEUDA_TECNICA.md item 14)**: the transformation used
   to overwrite `stack.at(-1).name = v` directly, so a transformed Metamorfo
   was treated as the real imitated character everywhere `.name` was
