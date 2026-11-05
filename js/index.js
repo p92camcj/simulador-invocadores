@@ -2,6 +2,7 @@
 import { initSetup } from './setup.js';
 import { initGame } from './game.js';
 import { LEVELS, INVOCATION_SETS } from './utils.js';
+import { initEspectaculo } from './espectaculo.js';
 
 // Variables de estado global
 window.players = [];
@@ -16,6 +17,7 @@ window.cronomantePortalInvestigado = null;
 window.cronomanteOnComplete = null;
 window.pickerObjetivoPortal = null;
 window.juegoTerminado = false;
+window.avanceTurnoPendiente = false;
 window.invocationSet = 'normal';
 
 
@@ -26,4 +28,5 @@ window.INVOCATION_SETS = INVOCATION_SETS;
 // Al cargar el DOM, iniciar el setup
 document.addEventListener('DOMContentLoaded', () => {
   initSetup();
+  initEspectaculo();
 });

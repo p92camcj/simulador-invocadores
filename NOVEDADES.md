@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.25.1.89 - 2026-11-05
+## 1.26.1.90 - 2026-11-05
 
 - **El Maestro ya no gana sus 3 Gemas extra si hay un Pícaro a la vista**
   al completarse la invocación, como dice el reglamento.
@@ -14,6 +14,27 @@ detalle técnico completo, mira `CHANGELOG.md`.
   Cronomante dejan a la vista una Centinela que estaba tapada, las demás
   se giran, igual que al jugarla.
 
+## 1.26.0.87 - 2026-11-05
+
+- **Nuevo modo espectáculo (prototipo)**: cuando alguien baja una carta,
+  el personaje aparece de cuerpo entero sobre su Portal, con el arte
+  original de Adrián.
+- **Cada habilidad tiene su escena**: el Metamorfo se transforma pero se
+  le sigue notando que es él, el Maestro hace bajar la carta de otra
+  jugadora a su Portal, la Cronomante trae una carta del pasado al
+  presente, y así con todas.
+- **Las invocaciones completadas se celebran**: los personajes se reúnen
+  en un círculo, aparece la criatura invocada (Cirelia, Baelorith y
+  Aelgorth) y cuántas Gemas se lleva cada jugadora.
+- En la vista de siempre, el panel de la invocación muestra ahora un
+  retrato de cada personaje que hace falta y de la criatura.
+- **Cartas con el diseño nuevo**: todas las cartas y su reverso se ven con
+  el diseño actualizado, y ya no tienen partes del dibujo tapadas.
+- Nunca se enseña una carta que esté oculta en la mesa.
+- Puedes saltar una escena tocando la pantalla, y apagar el modo con el
+  botón "✨ Escenas" o desde la configuración de la partida.
+
+---
 ## 1.25.0.86 - 2026-11-05
 
 - **Nuevo botón "Reglamento"** arriba del todo: abre el reglamento completo

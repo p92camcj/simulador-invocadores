@@ -20,6 +20,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/actions.js](#jsactionsjs)
 - [js/game.js](#jsgamejs)
 - [js/index.js](#jsindexjs)
+- [js/espectaculo.js](#jsespectaculojs)
 
 ---
 
@@ -250,4 +251,21 @@ document.addEventListener('DOMContentLoaded', () => {
 3. Pulsar **Continuar** y **Iniciar** reúne datos y llama a `initGame()`.  
 4. `initGame()` construye el mazo según el set elegido, reparte cartas y llama a `nextTurn()`.  
 5. Cada turno: Fase A (jugar carta, obligatoria), Fase B opcional (activar como mucho una habilidad, propia gratis o central pagando), comprobación de invocaciones y reparto real de Gemas, robo y cambio de turno.
+
+---
+
+## js/espectaculo.js
+**Propósito:** **Modo espectáculo**: capa de presentación que escenifica a pantalla completa lo que ya ha pasado en la partida (bajar una carta a un Portal, aplicar una habilidad, completar una invocación). No decide nada ni cambia reglas. Usa el arte original de `assets/personajes/*.svg` (personajes de cuerpo entero, la carta del Portal y las criaturas de Cirelia, Baelorith y Aelgorth), convertido con `node tools/rasterizar_svg.cjs && python3 tools/generar_figuras.py` en `assets/figuras/*.webp`, `assets/invocaciones/*.webp` y `assets/portal.jpg`, y los estilos de `espectaculo.css`. Solo muestra la cara de una carta si es pública en la mesa (o lo era antes de la acción); manos y cartas tapadas se dibujan siempre con el reverso. Las escenas van en cola, se aceleran si se acumulan (turnos seguidos de autómatas) y se saltan con un clic o Escape. Respeta `prefers-reduced-motion`.
+
+### Exportaciones
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `initEspectaculo()` | `función` | Conecta el interruptor de la cabecera (`#btnEspectaculo`) y la casilla de la configuración (`#chkEspectaculo`). La preferencia se guarda en `localStorage` (`invocadores.espectaculo`); por defecto está activado. Llamada desde `index.js`. |
+| `espectaculoActivo()` / `fijarEspectaculo(bool)` | `función` | Lee / cambia el interruptor. Al desactivarlo se descartan las escenas pendientes. |
+| `anunciarCartaJugada(jugadoraIdx, destKey)` | `función` | Fase A, llamada desde `jugarCartaSeleccionadaEn()` (`actions.js`) justo después de apilar la carta. Escena: el Portal se abre, el personaje sale de él y lo que había antes encima "pasa al pasado". Centinela añade su onda de escudo. |
+| `envolverHabilidad(name, ownerIdx, stack, onComplete)` | `función` | Fase B. Devuelve un `onComplete` envuelto: hace una foto pública de la mesa al activar y, cuando la habilidad se aplica de verdad, la compara con la de después y lanza la escena propia de cada personaje (Metamorfo se transforma conservando su humo y su silueta; Maestro hace bajar la carta de la otra jugadora a su Portal; Cronomante trae una carta de la pila —el pasado— al Portal —el presente—; Cronista, Ocultista, Estratega, Aprendiz). Si se cancela un picker, no hay escena. La usan `actions.js` y `bot.js`. |
+| `anunciarInvocacion({ nivel, nombre, need, recompensas })` | `función` | Escena de invocación completada (los personajes requeridos convergen en el círculo y aparece el nombre de la invocación con las Gemas que recibe cada jugadora, solo el número, nunca el valor). Devuelve `true` si se escenificó, en cuyo caso `actions.js` no muestra el `alert()` de texto. |
+| `rutaFigura(nombre)` / `rutaCriatura(nombreInvocacion)` | `función` | Ruta del arte de cuerpo entero de un personaje, o de la criatura de una invocación (solo Cirelia, Baelorith y Aelgorth tienen); `null` si no hay. Las usa también `render.js` para los retratos pequeños del panel de la invocación activa. |
+| `hayEspectaculoEnCurso()` / `cuandoTermineEspectaculo()` | `función` | Para esperar a la cola de escenas: `#btnEndTurn` retrasa el avance de turno (y su aviso "Turno de ...") hasta que terminan, con `window.avanceTurnoPendiente` como guarda contra un doble clic; la última invocación espera antes de mostrar el marcador final. |
 
