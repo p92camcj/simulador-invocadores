@@ -261,7 +261,18 @@ in `nextTurn()`.
   short `setTimeout`, calls `bot.js`'s `decidirYJugarTurno()` — which ends
   its own turn by clicking `#btnEndTurn`, so consecutive bot turns chain
   automatically until a human player is up.
-- **`js/actions.js`** — wires up the UI controls: card selection, playing a
+- **`js/motor/acciones.js`** — (phase 2 of the engine/UI split, 1.26.4)
+  the turn rules as pure functions over `estado.partida`: `jugarCarta`,
+  `terminarTurno` (refill hands + `resolverInvocacion`: combo check, real
+  Gem distribution, Pícaro/Maestro bonuses, new central Portal, level up,
+  game end after the last one), `pasarTurno`, `comprobarFinPorManoVacia`,
+  `validarFaseB`/`opcionesFaseB`/`completarActivacion`. Each returns a list
+  of events (`accionInvalida`, `cartaJugada`, `invocacionCompletada`,
+  `partidaTerminada`...) and never touches the DOM or `window`. Change turn
+  rules HERE, not in `actions.js`.
+- **`js/actions.js`** — UI adapter for the turn (since 1.26.4 it holds no
+  rules: it calls `js/motor/acciones.js` and turns the returned events into
+  `alert()`, `render()` and espectáculo scenes). Wires up the UI controls: card selection, playing a
   card onto a Portal (Fase A only — the one exception is Centinela's
   passive auto-hide effect, see below, which fires right here as a direct
   side effect of `stack.push(...)`, not as an ability), the "Activar
@@ -435,6 +446,7 @@ The engine modules under `js/motor/` have their own file:
 
 ```bash
 node tests/motor-estado.mjs
+node tests/motor-acciones.mjs
 ```
 
 ```bash

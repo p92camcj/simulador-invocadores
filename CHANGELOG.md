@@ -4,6 +4,24 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.26.4.103] - 2026-11-05
+
+### Cambiado
+- **Fase 2 de la separación motor / interfaz** (plan en
+  `docs/ARQUITECTURA_MOTOR.md`). Nuevo `js/motor/acciones.js`: las reglas
+  del turno pasan a funciones puras sobre `estado.partida` que devuelven
+  eventos (`jugarCarta`, `terminarTurno` con `resolverInvocacion`,
+  `pasarTurno`, `comprobarFinPorManoVacia`, `validarFaseB`,
+  `opcionesFaseB`, `completarActivacion`). Sin DOM ni `window`.
+- `js/actions.js` deja de contener reglas: jugar carta, activar habilidad
+  y terminar turno llaman al motor y traducen sus eventos a avisos,
+  `render()` y escenas del modo espectáculo. `js/game.js` pregunta al
+  motor si la partida acaba por mano vacía.
+- `draw()` y `reponerManoSiFalta()` (`js/utils.js`) aceptan el mazo como
+  argumento (por defecto `window.deck`).
+- `service-worker.js` cachea `js/motor/acciones.js`.
+- Tests nuevos: `node tests/motor-acciones.mjs` (16).
+
 ## [1.26.3.99] - 2026-11-05
 
 ### Mejorado

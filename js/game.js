@@ -6,7 +6,8 @@ import { decidirYJugarTurno } from './bot.js';
 
 import { initSetup } from './setup.js';
 import { $ } from './utils.js';
-import { reiniciarCamposDeTurno, reiniciarPartida } from './motor/estado.js';
+import { estado, reiniciarCamposDeTurno, reiniciarPartida } from './motor/estado.js';
+import { comprobarFinPorManoVacia } from './motor/acciones.js';
 
 /**
  * Inicia la partida: prepara el mazo, reparte cartas, y lanza el primer turno.
@@ -67,9 +68,10 @@ export function initGame() {
 export function nextTurn() {
   reiniciarCamposDeTurno();
   const current = window.players[window.turn];
-  //Se comprueba si hay condición de fin de partida, sin cartas en mano
-  if (current.hand.length === 0) {
-    finalizarPartida(`${current.name} no tiene cartas en la mano. Fin de la partida.`);
+  // Fin de partida si la jugadora activa no tiene cartas (regla en el motor).
+  const fin = comprobarFinPorManoVacia(estado.partida)[0];
+  if (fin) {
+    finalizarPartida(fin.motivo);
     return;
   }
   

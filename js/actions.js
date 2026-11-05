@@ -1,12 +1,12 @@
 // actions.js
 import { nextTurn, finalizarPartida } from './game.js';
 import { render, picker } from './render.js';
-import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
+import { applyAbility } from './abilities.js';
+import { mostrarCarta } from './utils.js';
+import { estado } from './motor/estado.js';
 import {
-  generarVis, mostrarCarta,
-  opcionesActivarHabilidad, pagarActivacionPortalCentral,
-  construirPoolGemas, todosLosPortales, aplicarBonusPasivosInvocacion, reponerManoSiFalta, apilarEnPortal
-} from './utils.js';
+  jugarCarta, terminarTurno, pasarTurno, validarFaseB, opcionesFaseB, completarActivacion,
+} from './motor/acciones.js';
 import {
   anunciarCartaJugada, envolverHabilidad, anunciarInvocacion, cuandoTermineEspectaculo,
   hayEspectaculoEnCurso
@@ -39,40 +39,21 @@ export function initActions(players, neutrals) {
   // No activa ninguna habilidad automáticamente — eso es Fase B, ver
   // btnAbility.
   function jugarCartaSeleccionadaEn(destKey) {
-    if (window.juegoTerminado) return;
-    if (window.played) return;
     if (window.selectedCardIdx === null || window.selectedCardIdx === undefined) return;
+    // Las reglas (validar, apilar, Centinela) están en el motor. Si la
+    // jugada no es válida no se avisa, igual que antes: la selección se
+    // queda como estaba.
+    const eventos = jugarCarta(estado.partida, { cartaIdx: window.selectedCardIdx, destino: destKey });
+    const jugada = eventos.find(e => e.tipo === 'cartaJugada');
+    if (!jugada) return;
 
-    const pl = players[window.turn];
-    const cardIdx = window.selectedCardIdx;
-    if (!pl.hand[cardIdx]) return;
-    const card = pl.hand.splice(cardIdx, 1)[0];
-
-    const [tp, a, b] = destKey.split(':');
-    const stack = tp === 'p'
-      ? pl.portals[+a]
-      : tp === 'n'
-        ? neutrals[+a]
-        : players[+a].portals[+b];
-    // Una carta que viene de la mano nunca trae ficha de Metamorfo (la ficha
-    // vuelve a la reserva al salir del Portal). apilarEnPortal() además
-    // retira la ficha de un Metamorfo transformado que quede tapado.
-    apilarEnPortal(stack, { name: card.name, vis: generarVis('portal', {}) });
-    // Efecto pasivo/automático de Centinela (REGLAMENTO.md: "solo puede
-    // haber una Centinela visible en mesa"), no requiere Fase B.
-    if (card.name === 'Centinela') {
-      ocultarOtrasCentinelas(stack, players, neutrals);
-    }
-
-    window.played = true;
     window.selectedCardIdx = null;
     // Modo espectáculo (solo presentación, ver js/espectaculo.js).
-    anunciarCartaJugada(window.turn, destKey);
+    anunciarCartaJugada(jugada.jugadora, jugada.destino);
 
     // render() ya dispara, si aplica, la elección inmediata de Clarividente
     // (gestionarTransicionesClarividente en render.js) para CUALQUIER
-    // jugadora afectada por esta jugada, no solo `pl` — sin periodo de
-    // gracia que limpiar aquí.
+    // jugadora afectada por esta jugada.
     render(players, neutrals, window.levelIdx);
   }
 
@@ -216,12 +197,9 @@ export function initActions(players, neutrals) {
   // personaje visible en un portal central (pagando, ver utils.js).
   document.querySelector('#btnAbility').onclick = () => {
     if (window.juegoTerminado) return;
-    if (!window.played) {
-      alert('Primero debes jugar una carta.');
-      return;
-    }
-    if (window.habilidadUsadaEsteTurno) {
-      alert('Ya has activado una habilidad este turno.');
+    const invalida = validarFaseB(estado.partida)[0];
+    if (invalida) {
+      alert(invalida.motivo);
       return;
     }
 
@@ -238,9 +216,9 @@ export function initActions(players, neutrals) {
       return;
     }
 
-    const opciones = opcionesActivarHabilidad(window.turn, players, neutrals);
-    if (!opciones.length) {
-      alert('No tienes ninguna habilidad activable ahora mismo.');
+    const { opciones, eventos } = opcionesFaseB(estado.partida);
+    if (!opciones) {
+      alert(eventos[0].motivo);
       return;
     }
 
@@ -259,10 +237,7 @@ export function initActions(players, neutrals) {
       // envolverHabilidad() solo añade la escena del modo espectáculo
       // cuando la habilidad se aplica de verdad (js/espectaculo.js).
       const onComplete = envolverHabilidad(name, window.turn, stack, () => {
-        if (tipo === 'central') {
-          pagarActivacionPortalCentral(players[window.turn]);
-        }
-        window.habilidadUsadaEsteTurno = true;
+        completarActivacion(estado.partida, { origen: key, personaje: name });
         render(players, neutrals, window.levelIdx);
       });
 
@@ -282,82 +257,34 @@ export function initActions(players, neutrals) {
   document.querySelector('#btnEndTurn').onclick = () => {
     if (window.juegoTerminado) return;
     if (window.avanceTurnoPendiente) return;
-    if (!window.played) {
-      alert('Juega una carta');
+    // Reponer manos y comprobar la invocación: reglas en el motor.
+    const eventos = terminarTurno(estado.partida);
+    const invalida = eventos.find(e => e.tipo === 'accionInvalida');
+    if (invalida) {
+      alert(invalida.motivo);
       return;
     }
-    // Robo de cartas si <2
-    players.forEach(reponerManoSiFalta);
-
-    // Comprobación invocación
-    const lvl = window.LEVELS[window.levelIdx];
-    if (lvl) {
-      const invocacion = window.INVOCATION_SETS[window.invocationSet][lvl];
-      const need = invocacion.need;
-      const map = new Map();
-      const add = (idx, s) => {
-        if (s.length && s.at(-1).vis?.public) {
-          // Apariencia, no identidad (ítem 14 de DEUDA_TECNICA.md): un
-          // Metamorfo transformado cuenta como el personaje imitado a
-          // efectos de cumplir la combinación de la invocación y repartir
-          // sus Gemas (REGLAMENTO.md, "Metamorfo").
-          const nombre = s.at(-1).aspecto || s.at(-1).name;
-          if (need.includes(nombre)) {
-            if (!map.has(nombre)) map.set(nombre, []);
-            map.get(nombre).push(idx);
-          }
-        }
-      };
-
-      const todosPortales = todosLosPortales(players, neutrals);
-      todosPortales.forEach(({ stack, playerIdx }) => add(playerIdx, stack));
-      const allPortals = todosPortales.map(t => t.stack);
-      const puedeInvocar = allPortals.every(p => p.length && p.at(-1).vis?.public);
-      if (puedeInvocar && need.every(k => map.get(k))) {
-        const gemasAntes = players.map(p => p.gems.length);
-        const pool = construirPoolGemas(invocacion.gemas);
-        need.forEach(k => {
-          const arr = map.get(k);
-          if (arr.length === 1 && arr[0] !== null) {
-            const gema = pool.shift();
-            if (gema) players[arr[0]].gems.push({ valor: gema.valor, nivel: lvl, esAsterisco: gema.esAsterisco });
-          }
-        });
-        // Bonus pasivos de Pícaro y Maestro (utils.js). El Maestro se
-        // evalúa ANTES de voltear a los Pícaros: si se volteaban primero,
-        // el Maestro cobraba aunque hubiera un Pícaro visible.
-        aplicarBonusPasivosInvocacion(players, neutrals, need);
-        // En modo espectáculo la escena sustituye al aviso de texto.
-        const escenificada = anunciarInvocacion({
-          nivel: lvl,
-          nombre: invocacion.nombre,
-          need,
-          recompensas: players.map((p, i) => ({ jugadora: p.name, gemas: p.gems.length - gemasAntes[i] })),
-        });
-        if (!escenificada) alert(`Invocación ${lvl} (${invocacion.nombre}) completa`);
-
-        // Orden REAL de invocaciones completadas en esta partida —
-        // necesario para el desempate del marcador final (ver
-        // calcularResultadoFinal() en utils.js, y game.js/finalizarPartida).
-        window.invocacionesCompletadas.push(lvl);
-
-        neutrals.push([]);
-        window.levelIdx++;
-        const esUltimaInvocacion = window.levelIdx >= window.LEVELS.length;
-        if (esUltimaInvocacion) {
-          // Se deja terminar la escena antes del marcador final (que usa
-          // un confirm() bloqueante).
-          cuandoTermineEspectaculo().then(() =>
-            finalizarPartida(`Se ha completado la invocación ${lvl}. Fin de la partida.`));
-          return;
-        }
-      }
+    const invocacion = eventos.find(e => e.tipo === 'invocacionCompletada');
+    if (invocacion) {
+      // En modo espectáculo la escena sustituye al aviso de texto.
+      const { nivel, nombre, need, recompensas } = invocacion;
+      const escenificada = anunciarInvocacion({ nivel, nombre, need, recompensas });
+      if (!escenificada) alert(`Invocación ${nivel} (${nombre}) completa`);
+    }
+    const fin = eventos.find(e => e.tipo === 'partidaTerminada');
+    if (fin) {
+      // Se deja terminar la escena antes del marcador final (que usa un
+      // confirm() bloqueante).
+      cuandoTermineEspectaculo().then(() => finalizarPartida(fin.motivo));
+      return;
     }
 
+    // El turno se pasa después de las escenas, para no enseñar antes de
+    // tiempo la mano de la siguiente jugadora. Si no tiene cartas, nextTurn()
+    // termina la partida.
     const avanzarTurno = () => {
-      window.turn = (window.turn + 1) % players.length;
+      pasarTurno(estado.partida);
       nextTurn();
-      window.played = false;
     };
     // Si hay escenas del modo espectáculo en pantalla, el turno siguiente
     // (y su aviso "Turno de ...") espera a que terminen o se salten.

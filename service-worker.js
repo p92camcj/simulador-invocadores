@@ -73,6 +73,7 @@ const urlsToCache = [
   './js/version-check.js',
   './js/pwa-install.js',
   './js/motor/estado.js',
+  './js/motor/acciones.js',
   './assets/cards/maestro.png',
   './assets/cards/clarividente.png',
   './assets/cards/ocultista.png',

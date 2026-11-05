@@ -1,6 +1,6 @@
 # Separación del motor de juego y la interfaz
 
-> **Última actualización:** 2026-11-05 18:40 (Europe/Madrid)
+> **Última actualización:** 2026-11-05 19:36 (Europe/Madrid)
 
 Plan acordado con Julio el 2026-11-05. Objetivo: que las reglas de
 Invocadores vivan en un núcleo puro (sin DOM, sin `window`, testable en
@@ -38,22 +38,44 @@ Cada fase deja el juego funcionando igual que antes y con tests.
 Limitación conocida: `initActions(players, neutrals)` guarda las
 referencias a los arrays al empezar la partida. `cargarPartida()` a mitad
 de una partida en curso dejaría esos cierres apuntando a los arrays viejos.
-Se resuelve en la fase 2, cuando las acciones lean siempre del estado.
+Las reglas del turno ya leen siempre de `estado.partida` (fase 2), pero
+`render()` y las habilidades siguen recibiendo esos arrays: se resuelve del
+todo en la fase 4, al convertir `actions.js` en adaptador.
 
-### Fase 2: acciones y eventos
+### Fase 2: acciones y eventos (hecha, 1.26.4)
 
-- Un módulo `js/motor/` con funciones `aplicarAccion(partida, accion)` para
-  `jugarCarta`, `activarHabilidad`, `terminarTurno`. Validan, mutan el
-  estado y devuelven una lista de eventos (`cartaJugada`,
-  `habilidadAplicada`, `invocacionCompletada`, `gemasRepartidas`,
-  `partidaTerminada`, `accionInvalida` con su motivo).
-- Se mueve aquí la lógica que hoy vive en los `onclick` de `actions.js`
-  (validar Fase A, comprobar invocación, repartir Gemas, robar, pasar
-  turno).
-- La UI y el modo espectáculo se suscriben a los eventos en vez de que el
-  motor los llame (`anunciarCartaJugada`, `anunciarInvocacion`...).
-- Los `alert()` de error pasan a ser eventos `accionInvalida`; la web los
-  sigue mostrando como hoy.
+- `js/motor/acciones.js`: funciones puras sobre `partida` que validan,
+  cambian el estado y devuelven una lista de eventos. No tocan el DOM ni
+  `window` (los tests lo comprueban: corren sin `window`).
+  - `jugarCarta(partida, { cartaIdx, destino })`: Fase A, incluido el
+    efecto pasivo de Centinela.
+  - `terminarTurno(partida)`: repone manos y resuelve la invocación
+    (`resolverInvocacion`: combinación, Gemas, bonus de Pícaro y Maestro,
+    Portal central nuevo, subida de nivel, fin de partida tras la última).
+  - `pasarTurno(partida)`: siguiente jugadora y limpieza de campos de
+    turno; fin de partida si no tiene cartas (`comprobarFinPorManoVacia`).
+    Va separado de `terminarTurno` para que la interfaz pueda esperar a
+    que acaben las escenas antes de enseñar la mano de la siguiente.
+  - `validarFaseB`, `opcionesFaseB`, `completarActivacion`: límites de la
+    Fase B (haber jugado, una habilidad por turno) y cobro del acceso a un
+    Portal central. Lo que hace cada habilidad sigue en `abilities.js`
+    hasta la fase 3.
+- Eventos: `accionInvalida { motivo }`, `cartaJugada`, `manosRepuestas`,
+  `invocacionCompletada { nivel, nombre, need, recompensas }`,
+  `partidaTerminada { motivo }`, `habilidadAplicada`.
+- `js/actions.js` ya no contiene reglas: llama al motor y traduce los
+  eventos a `alert()`, `render()` y escenas del modo espectáculo.
+  `js/game.js` pregunta al motor si la partida acaba por mano vacía.
+- `draw()` y `reponerManoSiFalta()` (`utils.js`) aceptan el mazo como
+  argumento (por defecto, `window.deck`), para que el motor robe del mazo
+  de la partida que recibe.
+- Se descartó un bus de eventos con suscripciones: devolver la lista de
+  eventos es más simple y basta para una sola interfaz. Si el multijugador
+  en red lo necesita, se añade encima sin cambiar el motor.
+- Tests: `node tests/motor-acciones.mjs`.
+- Pendiente para la fase 4: el autómata (`bot.js`) sigue pulsando
+  `#btnEndTurn` y cobra él mismo el acceso central en su Fase B en vez de
+  llamar a `completarActivacion`.
 
 ### Fase 3: decisiones como peticiones
 
