@@ -281,6 +281,18 @@ in `nextTurn()`.
   button, which also runs the invocation-success check and the real Gem
   distribution (drawing from `INVOCATION_SETS[...].gemas` via
   `construirPoolGemas`).
+- **`js/motor/habilidades.js`** — (phase 3, 1.26.5) the ability rules
+  described below for `abilities.js` now live here as pure code:
+  `aplicarHabilidad(partida, { personaje, jugadora, pila }, ui, alAplicar)`
+  asks for choices through an injected `ui.pedir(peticion, responder,
+  cancelar)` (synchronous callbacks, not promises, so the bot can answer
+  the DOM pickers right after `applyAbility()`) and reports errors through
+  `ui.avisar()`. Also holds the Centinela helpers, the Maestro helpers and
+  `aplicarEleccionClarividente`. Change ability rules HERE; `abilities.js`
+  is now only the web adapter (`uiNavegador` → `picker()`/`pickerPortal()`/
+  `alert()`), with `applyAbility()`'s signature kept for `actions.js` and
+  `bot.js`. Everything below about the `case`s still describes the rules,
+  now in this file.
 - **`js/abilities.js`** — `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need)`,
   one `switch` case per character ability activated via Fase B (Ocultista,
   Cronista, Cronomante, Estratega, Aprendiz, Metamorfo, Maestro — exactly
@@ -447,6 +459,7 @@ The engine modules under `js/motor/` have their own file:
 ```bash
 node tests/motor-estado.mjs
 node tests/motor-acciones.mjs
+node tests/motor-habilidades.mjs
 ```
 
 ```bash

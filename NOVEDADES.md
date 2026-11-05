@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.26.5.105 - 2026-11-05
+
+- **Cambio interno, sin diferencias al jugar.** Ahora las habilidades de
+  los personajes también funcionan separadas de la pantalla. Cuando hay que
+  elegir algo (un Portal, una jugadora o una carta), se pregunta como
+  siempre, pero las reglas ya no dependen de esas ventanas.
+
 ## 1.26.4.103 - 2026-11-05
 
 - **Cambio interno, sin diferencias al jugar.** Las reglas del turno (jugar

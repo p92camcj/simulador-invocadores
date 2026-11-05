@@ -74,6 +74,7 @@ const urlsToCache = [
   './js/pwa-install.js',
   './js/motor/estado.js',
   './js/motor/acciones.js',
+  './js/motor/habilidades.js',
   './assets/cards/maestro.png',
   './assets/cards/clarividente.png',
   './assets/cards/ocultista.png',
