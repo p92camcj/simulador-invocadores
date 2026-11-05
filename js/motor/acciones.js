@@ -17,15 +17,14 @@
 // - 'partidaTerminada'      { motivo }
 // - 'habilidadAplicada'     { jugadora, origen, personaje }
 //
-// Las habilidades en sí (los `case` de abilities.js, que piden elecciones
-// con picker()) se pasan al motor en la fase 3.
+// Lo que hace cada habilidad está en js/motor/habilidades.js (fase 3).
 
 import {
   LEVELS, INVOCATION_SETS, apilarEnPortal, generarVis, reponerManoSiFalta,
   todosLosPortales, construirPoolGemas, aplicarBonusPasivosInvocacion,
   pagarActivacionPortalCentral, opcionesActivarHabilidad,
 } from '../utils.js';
-import { ocultarOtrasCentinelas } from '../abilities.js';
+import { ocultarOtrasCentinelas } from './habilidades.js';
 
 const invalida = motivo => [{ tipo: 'accionInvalida', motivo }];
 

@@ -24,6 +24,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/espectaculo.js](#jsespectaculojs)
 - [js/motor/estado.js](#jsmotorestadojs)
 - [js/motor/acciones.js](#jsmotoraccionesjs)
+- [js/motor/habilidades.js](#jsmotorhabilidadesjs)
 
 ---
 
@@ -99,17 +100,16 @@ transformada vuelve a una mano y se rejuega.
 ---
 
 ## js/abilities.js
-**Propósito:** Implementa la lógica de las habilidades especiales de los personajes, aislando el `switch` de cada caso.
+**Propósito:** Adaptador web de las habilidades (fase 3 de la separación motor / interfaz). Las reglas están en `js/motor/habilidades.js`; este módulo solo contesta sus peticiones con los `picker()` del navegador y sus avisos con `alert()`.
 
 ### Exportaciones
 
-| Nombre             | Tipo      | Descripción                                                                                                                   |
-|--------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------|
-| `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [])` | `función` | Aplica la habilidad de `name` al portal `stack` propiedad de `players[ownerIdx]`, con acceso a `players`, `neutrals` y `levelIdx`. `need` es el array de personajes requeridos por la invocación activa — pásalo explícitamente desde quien llame, no lo recalcules dentro del módulo. Actualmente ningún `case` lo usa (Metamorfo dejó de necesitarlo tras la revisión de reglamento de 2026-07-19); se mantiene en la firma para el futuro Modo Experto/invocación Asterisco. Incluye casos solo para las habilidades activables en Fase B (`PERSONAJES_CON_HABILIDAD`): **Ocultista** (tras alternar visibilidad, si la carta revelada es una Centinela real —`.name`, no apariencia— re-dispara `ocultarOtrasCentinelas()`, ver DEUDA_TECNICA.md ítem 12), Cronista (la carta llega a la mano sin `.aspecto`; si la que queda a la vista es una Centinela, gira a las demás con `girarOtrasCentinelasSiAparece()`), Cronomante (ídem con la carta que sube a la cima), Estratega, Aprendiz, **Maestro** (elige jugadora objetivo y, si tiene más de un Portal propio, también el Portal — delega la lógica pura en `candidatosObjetivoMaestro()`/`bajarCartaMaestro()`, ver abajo) y **Metamorfo** (transformación libre en cualquier personaje de `PERSONAJES_NO_ANIMALES` menos el propio Metamorfo, persistente hasta que la carta se tape o se vuelva a transformar; escribe `stack.at(-1).aspecto`, NUNCA `.name` — ver "Modelo de datos de cartas" más abajo y DEUDA_TECNICA.md ítem 14). No hay `case 'Centinela'` ni `case 'Clarividente'`: ambas son pasivas/automáticas, ver `ocultarOtrasCentinelas` abajo y `actualizarClarividente` en `utils.js`. |
-| `ocultarOtrasCentinelas(stackJugada, players, neutrals)` | `función` | Oculta (`vis.public = false`) cualquier otra Centinela visible en el top de cualquier Portal (de cualquier jugadora o central) distinto de `stackJugada`, según la regla "solo puede haber una Centinela visible en mesa". Llamada desde `actions.js` en Fase A, justo tras `stack.push(...)`, cuando la carta jugada es una Centinela, y desde `case 'Maestro'`/`bajarCartaMaestro()` cuando la carta movida resulta ser una Centinela — en ninguno de los dos casos es una habilidad de Fase B en sí misma. |
-| `candidatosObjetivoMaestro(players, ownerIdx)` | `función` | Jugadoras candidatas como objetivo del Maestro: cualquiera que no sea `ownerIdx`, tenga una carta oculta-para-sí-visible-para-el-resto (`vis.others === true`) y no esté protegida por su propia Centinela visible (reutiliza `jugadorProtegidoComoObjetivo()`, antes `jugadorProtegidoContraAprendiz`, renombrada porque ahora la usan dos habilidades). Función pura, sin DOM — testable directamente en `tests/run-tests.mjs`. Excluye también a quien tenga la Clarividente visible (su mano entera está oculta al resto). |
-| `bajarCartaMaestro(players, neutrals, targetIdx, portalIdx)` | `función` | Efecto real de la habilidad del Maestro: mueve la carta oculta-para-el-resto de `players[targetIdx]` al `portalIdx` de sus PROPIOS Portales (nunca a un Portal del Maestro), re-dispara `ocultarOtrasCentinelas()` si la carta movida es una Centinela, y repone la mano de la jugadora objetivo con `reponerManoSiFalta()` (`utils.js`). Función pura, sin DOM — testable directamente. |
-| `girarOtrasCentinelasSiAparece(stack, players, neutrals)` | `función` | Si la cima de `stack` es una Centinela real visible, llama a `ocultarOtrasCentinelas()`. La usan `case 'Cronista'` (la carta que queda a la vista al llevarse la de arriba) y `case 'Cronomante'` (la carta que sube a la cima), para que nunca queden dos Centinelas visibles. Función pura, testable. |
+| Nombre             | Tipo      | Descripción |
+|--------------------|-----------|-------------|
+| `applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [], onComplete)` | `función` | Aplica la habilidad de `name` desde el Portal `stack` de `players[ownerIdx]` llamando a `aplicarHabilidad()` del motor con `estado.partida` y `uiNavegador`. `onComplete` se llama una sola vez, cuando la habilidad tiene efecto de verdad. Firma sin cambios por compatibilidad con `actions.js` y `bot.js` (`players`, `neutrals`, `levelIdx` y `need` ya no se usan: el motor lee `estado.partida`, que son los mismos arrays). |
+| `uiNavegador` | `objeto` | Interfaz web para el motor: `pedir()` abre `pickerPortal()` para peticiones de tipo `'portal'` (también se puede clicar el Portal en el tablero) y `picker()` para `'eleccion'`; `avisar()` muestra el motivo de un `accionInvalida` con `alert()`. |
+| `ocultarOtrasCentinelas`, `girarOtrasCentinelasSiAparece`, `candidatosObjetivoMaestro` | `funciones` | Re-exportadas de `js/motor/habilidades.js` (ver allí). |
+| `bajarCartaMaestro(players, neutrals, targetIdx, portalIdx, mazo = window.deck)` | `función` | La de `js/motor/habilidades.js`, pero si no se le pasa mazo roba de `window.deck`. |
 
 ---
 
@@ -328,4 +328,22 @@ document.addEventListener('DOMContentLoaded', () => {
 | `validarFaseB(partida)` | `función` | `[]` si la jugadora activa puede activar una habilidad (ha jugado carta y no ha usado ninguna este turno), o `accionInvalida` con el motivo. |
 | `opcionesFaseB(partida)` | `función` | `{ opciones }` (de `opcionesActivarHabilidad()`, `utils.js`) o `{ eventos }` con `accionInvalida` si no se puede o no hay ninguna. |
 | `completarActivacion(partida, { origen, personaje })` | `función` | Tras aplicar una habilidad: cobra el acceso con `pagarActivacionPortalCentral()` si `origen` es `'central:<k>'` y marca `habilidadUsadaEsteTurno`. |
+
+---
+
+## js/motor/habilidades.js
+**Propósito:** Fase 3 de la separación motor / interfaz (ver `docs/ARQUITECTURA_MOTOR.md`). Lo que hace cada habilidad activable en Fase B y los efectos pasivos de Centinela y Clarividente, sin DOM, sin `window` y sin avisos. Las elecciones se piden a una interfaz inyectada: `ui.pedir({ tipo: 'portal' | 'eleccion', pregunta, opciones: [{ val, lbl, disabled? }] }, responder, cancelar)`; los errores llegan por `ui.avisar({ tipo: 'accionInvalida', motivo })`. Las respuestas son callbacks, no promesas, para que una interfaz que contesta en el acto (autómata, tests) recorra todos los pasos de forma síncrona.
+
+### Exportaciones
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `aplicarHabilidad(partida, { personaje, jugadora, pila }, ui, alAplicar)` | `función` | Aplica la habilidad de `personaje` para la jugadora `jugadora`. `pila` es el Portal de origen (solo lo usa Metamorfo; puede ser `null` al retomar un Cronomante). `alAplicar()` se llama una vez, solo si la habilidad tiene efecto: cancelar un paso no cuesta nada. Devuelve `false` si el personaje no tiene habilidad activable (Centinela, Clarividente...). Habilidades: **Ocultista** (gira la carta de arriba de un Portal no vacío y no protegido, nunca una Centinela visible; revelar una Centinela real gira las demás; tapar un Metamorfo le quita la ficha), **Cronista** (se lleva a la mano la carta de arriba, con la orientación que le falte a la mano y sin `.aspecto`), **Cronomante** (elige Portal con más de una carta y luego qué carta sube; si se cancela el segundo paso, el Portal queda en `partida.cronomantePortalInvestigado` y al volver a activar se retoma directamente), **Estratega** (intercambia dos Portales enteros, respetando la protección de Centinela), **Aprendiz** (intercambia las manos de dos jugadoras no protegidas e invierte quién ve cada carta), **Maestro** (baja la carta que el resto ve de otra jugadora a un Portal propio de esa jugadora; pregunta el Portal si tiene más de uno), **Metamorfo** (cobra una Gema de 1 y escribe solo `.aspecto`, nunca `.name`). |
+| `esCentinelaVisible(stack)` | `función` | ¿La carta de arriba es una Centinela visible? |
+| `jugadorProtegidoComoObjetivo(jugadorIdx, players, actingPlayerIdx)` | `función` | ¿Protege su Centinela a esa jugadora como objetivo de Aprendiz o Maestro? Nunca bloquea a quien activa. |
+| `ocultarOtrasCentinelas(stackJugada, players, neutrals)` | `función` | Gira cualquier otra Centinela visible distinta de `stackJugada` ("solo puede haber una Centinela visible en mesa"). La usan `jugarCarta()` (Fase A), Ocultista y el Maestro. |
+| `girarOtrasCentinelasSiAparece(stack, players, neutrals)` | `función` | Si la cima de `stack` es una Centinela real visible, gira las demás. La usan Cronista y Cronomante. |
+| `candidatosObjetivoMaestro(players, ownerIdx)` | `función` | Jugadoras objetivo del Maestro: otra jugadora con una carta que el resto ve (`vis.others`), sin Clarividente visible y sin Centinela que la proteja. |
+| `bajarCartaMaestro(players, neutrals, targetIdx, portalIdx, mazo = [])` | `función` | Efecto del Maestro ya decidido: mueve la carta al Portal propio `portalIdx` de esa jugadora, re-dispara Centinela si hace falta y repone su mano desde `mazo`. |
+| `aplicarEleccionClarividente(player, idxElegida)` | `función` | Al dejar de ver su Clarividente, la jugadora se queda viendo la carta `idxElegida` (0 o 1) y la otra la ve el resto. Devuelve `false` si no tiene dos cartas. La decisión (picker humano o heurística del autómata) está en `render.js`. |
 

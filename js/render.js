@@ -2,6 +2,7 @@
 import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG, escapeHtml } from './utils.js';
 import { rutaFigura, rutaCriatura } from './espectaculo.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
+import { aplicarEleccionClarividente } from './motor/habilidades.js';
 
 /**
  * Resuelve, para una jugadora que acaba de perder la visibilidad de su
@@ -27,10 +28,8 @@ function resolverEleccionClarividente(player) {
   }
 
   const aplicarEleccion = idxElegida => {
-    const elegida = idxElegida === 0 ? c0 : c1;
-    const otra = idxElegida === 0 ? c1 : c0;
-    elegida.vis = { owner: true, others: false, public: false };
-    otra.vis = { owner: false, others: true, public: false };
+    // La regla (qué carta ve cada quien) está en el motor.
+    aplicarEleccionClarividente(player, idxElegida);
     player._clariEligiendo = false;
     player._clariVisiblePrev = false;
     render(window.players, window.neutrals, window.levelIdx);

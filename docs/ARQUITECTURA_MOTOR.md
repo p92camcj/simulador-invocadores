@@ -1,6 +1,6 @@
 # Separación del motor de juego y la interfaz
 
-> **Última actualización:** 2026-11-05 19:36 (Europe/Madrid)
+> **Última actualización:** 2026-11-05 19:43 (Europe/Madrid)
 
 Plan acordado con Julio el 2026-11-05. Objetivo: que las reglas de
 Invocadores vivan en un núcleo puro (sin DOM, sin `window`, testable en
@@ -77,16 +77,34 @@ todo en la fase 4, al convertir `actions.js` en adaptador.
   `#btnEndTurn` y cobra él mismo el acceso central en su Fase B en vez de
   llamar a `completarActivacion`.
 
-### Fase 3: decisiones como peticiones
+### Fase 3: decisiones como peticiones (hecha, 1.26.5)
 
-- Cuando una habilidad necesita una elección (Portal, jugadora, carta,
-  transformación), el motor no abre ventanas: emite una petición
-  `{ tipo, pregunta, opciones }` y espera la respuesta (promesa o paso de
-  máquina de estados).
-- Quien conteste da igual: el `picker()` del navegador, el teclado en una
-  terminal o el autómata.
-- Afecta a todos los `case` de `abilities.js` y a la elección inmediata de
-  Clarividente.
+- `js/motor/habilidades.js`: lo que hace cada habilidad activable
+  (Ocultista, Cronista, Cronomante, Estratega, Aprendiz, Maestro,
+  Metamorfo), los efectos pasivos de Centinela y la elección de la
+  Clarividente al perderla (`aplicarEleccionClarividente`). Sin DOM, sin
+  `window`, sin avisos.
+- `aplicarHabilidad(partida, { personaje, jugadora, pila }, ui, alAplicar)`.
+  Cuando hace falta elegir, el motor llama a
+  `ui.pedir({ tipo: 'portal' | 'eleccion', pregunta, opciones }, responder, cancelar)`;
+  los errores llegan por `ui.avisar({ tipo: 'accionInvalida', motivo })`.
+  `alAplicar()` se llama una vez y solo si la habilidad tiene efecto.
+- Callbacks en vez de promesas, a propósito: una interfaz que contesta en el
+  acto (el autómata, los tests) recorre todos los pasos de forma síncrona.
+  El autómata sigue contestando los `picker()` del DOM justo después de
+  llamar a `applyAbility()`, y con promesas el segundo picker aún no
+  estaría abierto. Un cliente de red puede envolver `pedir` en una promesa
+  por fuera.
+- `js/abilities.js` queda como adaptador web: `uiNavegador` contesta las
+  peticiones con `picker()`/`pickerPortal()` y los avisos con `alert()`, y
+  `applyAbility()` mantiene su firma (la usan `actions.js` y `bot.js`).
+  Sigue re-exportando las funciones puras de siempre.
+- El Cronomante pendiente vive en `partida.cronomantePortalInvestigado`.
+- La decisión del autómata ante la Clarividente (`render.js`) sigue en la
+  interfaz: es estrategia, no regla. La regla de qué carta ve cada quien
+  está en el motor.
+- Tests: `node tests/motor-habilidades.mjs` (guion de respuestas, sin
+  `window`).
 
 ### Fase 4: adaptadores
 

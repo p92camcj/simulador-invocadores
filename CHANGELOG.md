@@ -4,6 +4,26 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.26.5.105] - 2026-11-05
+
+### Cambiado
+- **Fase 3 de la separación motor / interfaz** (plan en
+  `docs/ARQUITECTURA_MOTOR.md`). Nuevo `js/motor/habilidades.js`: lo que
+  hace cada habilidad (Ocultista, Cronista, Cronomante, Estratega,
+  Aprendiz, Maestro, Metamorfo), los efectos de Centinela y la elección de
+  la Clarividente, sin DOM ni `window`. Cuando hace falta elegir, el motor
+  pide la elección a una interfaz inyectada
+  (`ui.pedir(peticion, responder, cancelar)`) en vez de abrir un `picker()`.
+- `js/abilities.js` pasa a ser el adaptador web (`uiNavegador`):
+  `applyAbility()` mantiene su firma, así que `actions.js` y los autómatas
+  no cambian.
+- `bajarCartaMaestro()` del motor recibe el mazo como argumento; la de
+  `abilities.js` sigue usando `window.deck` por defecto.
+- `render.js` aplica la elección de la Clarividente con
+  `aplicarEleccionClarividente()` del motor.
+- `service-worker.js` cachea `js/motor/habilidades.js`.
+- Tests nuevos: `node tests/motor-habilidades.mjs` (16).
+
 ## [1.26.4.103] - 2026-11-05
 
 ### Cambiado
