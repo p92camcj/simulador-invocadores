@@ -52,9 +52,10 @@ Todas las versiones importantes del simulador de Invocadores.
   regeneran con `node tools/rasterizar_svg.cjs cartas && python3
   tools/generar_cartas.py`. Mismos nombres de archivo y tamaño (362x504),
   así que no cambia nada en el código. El número de copias impreso en
-  varias cartas nuevas no coincide con `CANTIDADES_MODO_NORMAL` /
-  `CANTIDADES_ANIMALES` (`utils.js`); el mazo no se ha tocado, pendiente
-  de confirmar.
+  varias cartas es el de una versión antigua del mazo (más de 60 cartas);
+  el simulador sigue las reglas actuales (`CANTIDADES_MODO_NORMAL` /
+  `CANTIDADES_ANIMALES` en `utils.js`) y no se ha tocado, confirmado por
+  el propietario del proyecto.
 - `service-worker.js`: cachea los archivos nuevos y también
   `js/bot-probabilidad.js`, que faltaba en la lista.
 
