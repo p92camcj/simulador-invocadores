@@ -555,3 +555,16 @@ select {
      igual en móvil que en escritorio. */
 }
 
+/* Retratos del arte original en el panel de la invocación activa */
+.mini-fig {
+  height: 34px;
+  width: auto;
+  vertical-align: middle;
+}
+.mini-criatura {
+  height: 64px;
+  width: auto;
+  vertical-align: middle;
+  margin-left: 6px;
+  filter: drop-shadow(0 0 4px rgba(108, 78, 182, 0.6));
+}

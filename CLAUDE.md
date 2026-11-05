@@ -303,6 +303,30 @@ in `nextTurn()`.
   to date. `player.gems` is an array of `{ valor, nivel, esAsterisco? }`
   objects, not a plain number — see the Gem-economy helpers for how to
   read/spend it.
+- **`js/espectaculo.js`** + **`espectaculo.css`** — "Modo espectáculo"
+  (added 2026-11-05): a presentation-only layer that stages, full screen,
+  what the engine already did (card played on a Portal, ability applied,
+  invocation completed). Never decides anything or touches rules. Hooks:
+  `anunciarCartaJugada()` in `actions.js`, `envolverHabilidad()` wrapping
+  the Fase-B `onComplete` in both `actions.js` and `bot.js` (snapshots the
+  public table before/after and diffs it), `anunciarInvocacion()` replacing
+  the invocation `alert()`. While scenes are playing, `#btnEndTurn` defers
+  the turn advance (`hayEspectaculoEnCurso()`/`cuandoTermineEspectaculo()`,
+  guard `window.avanceTurnoPendiente`). Same hidden-info rule as
+  `render.js`: a card's face is only shown if it is public on the table.
+  Art comes from the original SVGs in `assets/personajes/` (full-body
+  characters, the Portal card, and the creatures for Cirelia/Baelorith/
+  Aelgorth), turned into `assets/figuras/*.webp`, `assets/invocaciones/*.webp`
+  and `assets/portal.jpg` by `node tools/rasterizar_svg.cjs && python3
+  tools/generar_figuras.py` (re-run both if the SVGs change; `build/` is
+  ignored) — the project owner explicitly asked not to invent new
+  character art. `render.js` also uses `rutaFigura()`/`rutaCriatura()` for
+  small portraits in the active-invocation panel of the classic view. The
+  classic card images (`assets/cards/*.png`, incl. the `carta-oculta-reverso.png`
+  back from `portal.svg`) are generated from the full-card SVGs in
+  `assets/cartas/` by `node tools/rasterizar_svg.cjs cartas && python3
+  tools/generar_cartas.py` (same file names and 362x504 size). Toggle: `#btnEspectaculo` (header) /
+  `#chkEspectaculo` (setup), stored in `localStorage`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current

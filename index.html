@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Simulador Invocadores</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="espectaculo.css" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#6c4eb6">
 
@@ -27,6 +28,7 @@
       <button id="btnPlayCancel" class="btn secondary cancel hidden">Cancelar selección</button>
       <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
+      <button id="btnEspectaculo" class="btn secondary" type="button" aria-pressed="true" title="Activa o desactiva las escenas animadas">✨ Escenas: sí</button>
       <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">Ver ayuda</button>
       <a id="btnReglamento" class="btn secondary" href="docs/reglamento/reglamento-invocadores.pdf" target="_blank" rel="noopener">Reglamento</a>
     </div>
@@ -64,6 +66,9 @@
           <option value="floral">Floral (Caisis / Brose / Aures)</option>
         </select>
       </label>
+
+      <label class="check-espectaculo"><input id="chkEspectaculo" type="checkbox" checked />
+        Modo espectáculo: ver a cada personaje aparecer en su Portal y una escena por habilidad</label>
 
       <button id="cfgNext" class="btn primary">Continuar</button>
       <div id="nameWrap" class="hidden">

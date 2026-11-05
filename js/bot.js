@@ -15,6 +15,7 @@ import {
   contarGemasUnitarias, tieneClarividenteVisible, todosLosPortales,
 } from './utils.js';
 import { applyAbility } from './abilities.js';
+import { envolverHabilidad } from './espectaculo.js';
 import { render } from './render.js';
 import {
   actualizarMemoriaBot, estimarProbabilidadesPersonajes,
@@ -1160,13 +1161,13 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
   // Mismo onComplete que construye #btnAbility.onclick en actions.js: cobra
   // el coste de Portal central si aplica, marca la habilidad como usada,
   // refresca la UI.
-  const onComplete = () => {
+  const onComplete = envolverHabilidad(name, botIdx, stack, () => {
     // usarAsterisco: false → el autómata paga con una Gema de valor 1 si la
     // tiene (sin diálogo) y solo revela el asterisco si no le queda otra.
     if (tipo === 'central') pagarActivacionPortalCentral(players[botIdx], { usarAsterisco: false });
     window.habilidadUsadaEsteTurno = true;
     render(players, neutrals, levelIdx);
-  };
+  });
   applyAbility(name, botIdx, stack, players, neutrals, levelIdx, need, onComplete);
   const yaElegidos = resolverPickersAbiertos(vista, objetivoPreferido);
   return describirObjetivoHabilidad(name, yaElegidos, vista);

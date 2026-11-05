@@ -4,6 +4,62 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.26.0.87] - 2026-11-05
+
+### Añadido
+- **Modo espectáculo (prototipo)**: nueva capa de presentación
+  (`js/espectaculo.js` + `espectaculo.css`) que escenifica a pantalla
+  completa lo que pasa en la partida, sin tocar ninguna regla.
+  - Fase A: al bajar una carta, el Portal se abre y el personaje sale de
+    él; lo que había antes encima "pasa al pasado". Centinela añade su
+    onda de escudo.
+  - Fase B, una escena por habilidad: Metamorfo se transforma conservando
+    rasgos propios (borde iridiscente, su humo y su silueta, que se
+    transparenta); Maestro hace bajar la carta de la otra jugadora a su
+    Portal; Cronomante trae una carta de la pila (el pasado) al Portal (el
+    presente); Cronista, Ocultista, Estratega y Aprendiz también tienen la
+    suya. Se detecta qué ha cambiado comparando una foto pública de la mesa
+    antes y después (`envolverHabilidad()`), igual para humanas y autómatas.
+  - Invocación completada: los personajes requeridos convergen en un
+    círculo y aparece el nombre de la invocación con cuántas Gemas recibe
+    cada jugadora (nunca su valor). Sustituye al `alert()` de texto.
+  - Solo se muestra la cara de una carta si es pública en la mesa; manos y
+    cartas tapadas, siempre con reverso.
+  - Cola de escenas que se acelera si se acumulan, se salta con un clic o
+    Escape, y respeta "reducir movimiento" del sistema. El avance de turno
+    espera a que terminen (`window.avanceTurnoPendiente` evita un doble
+    clic en "Terminar turno").
+  - Interruptor "✨ Escenas" en la cabecera y casilla en la configuración
+    (se recuerda en el navegador).
+- Arte original de Adrián en `assets/personajes/*.svg`: los 14 personajes
+  de cuerpo entero, la carta del Portal y las criaturas de Cirelia,
+  Baelorith y Aelgorth. `tools/rasterizar_svg.cjs` (Playwright) y
+  `tools/generar_figuras.py` (Pillow) los convierten en
+  `assets/figuras/*.webp`, `assets/invocaciones/*.webp` y
+  `assets/portal.jpg`: quitan la pastilla del nombre y el fondo blanco
+  (Aprendiz y Ocultista) y los pasan a WebP (1,1 MB los 14 personajes). No
+  se ha dibujado ningún personaje nuevo.
+  - En las escenas, cada personaje aparece de cuerpo entero, de pie sobre
+    la ilustración del Portal, y al completar Cirelia, Baelorith o
+    Aelgorth aparece la criatura invocada tras el destello.
+  - Versión de siempre: el panel de la invocación activa muestra un
+    retrato pequeño de cada personaje requerido y de la criatura (si
+    tiene arte).
+- **Cartas nuevas**: los SVG de las cartas completas (`assets/cartas/`,
+  nuevo diseño con fondo claro) sustituyen a `assets/cards/*.png`, que
+  tenían rectángulos negros tapando parte del dibujo. El reverso
+  (`carta-oculta-reverso.png`) sale de `assets/cartas/portal.svg`. Se
+  regeneran con `node tools/rasterizar_svg.cjs cartas && python3
+  tools/generar_cartas.py`. Mismos nombres de archivo y tamaño (362x504),
+  así que no cambia nada en el código. El número de copias impreso en
+  varias cartas es el de una versión antigua del mazo (más de 60 cartas);
+  el simulador sigue las reglas actuales (`CANTIDADES_MODO_NORMAL` /
+  `CANTIDADES_ANIMALES` en `utils.js`) y no se ha tocado, confirmado por
+  el propietario del proyecto.
+- `service-worker.js`: cachea los archivos nuevos y también
+  `js/bot-probabilidad.js`, que faltaba en la lista.
+
+---
 ## [1.25.0.86] - 2026-11-05
 
 ### Añadido
