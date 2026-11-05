@@ -387,9 +387,13 @@ git commit -m "..."
 git push
 ```
 
-Deployment is presumed to be GitHub Pages serving directly from `main` (no
-build step needed) — confirm this with the project owner if setting up CI,
-since there's no workflow file in the repo yet.
+Deployment is GitHub Pages serving directly from `main` (no build step,
+no workflow file — GitHub's built-in "pages build and deployment" runs on
+each push to `main`; confirmed 2026-11-05). Site:
+https://p92camcj.github.io/simulador-invocadores/ — the rulebook PDF is at
+`docs/reglamento/reglamento-invocadores.pdf` under it. If a merge doesn't
+trigger a Pages run (it happened once after a merge that returned a 5xx),
+any new push to `main` does.
 
 ## Version bump + changelog (mandatory on every shipped code change)
 
