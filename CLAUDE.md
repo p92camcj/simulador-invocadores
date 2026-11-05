@@ -313,9 +313,13 @@ in `nextTurn()`.
 ## Docs worth reading before larger changes
 
 - **`docs/reglamento/REGLAMENTO.md`** — the current rulebook, source of
-  truth for game rules. Images in `docs/reglamento/img/` are rasterized
-  pages from the original PDF, kept for visual reference; the Markdown text
-  is what's authoritative and editable.
+  truth for game rules. The laid-out player PDF (maintained by the owner in
+  Canva) lives next to it as `docs/reglamento/reglamento-invocadores.pdf` —
+  always the same file name, so the in-app "Reglamento" button
+  (`#btnReglamento` in `index.html`) always opens the latest one. Images in
+  `docs/reglamento/img/` are rasterized pages of that PDF (150 dpi,
+  `pdftoppm`), kept for visual reference and regenerated whenever a new PDF
+  arrives; the Markdown text is what's authoritative and editable.
 - **`Documentacion_Simulador_Invocadores.md`** — function-level reference
   for each `js/` module (what each export does). Update it when you add,
   rename, or remove an exported function/constant.

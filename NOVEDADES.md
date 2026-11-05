@@ -6,6 +6,11 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.25.0.86 - 2026-11-05
+
+- **Nuevo botón "Reglamento"** arriba del todo: abre el reglamento completo
+  en PDF, con las ilustraciones de las cartas y las últimas reglas.
+
 ## 1.24.2.85 - 2026-11-05
 
 - **Revelar tu Gema con asterisco ya no te hace perder sus puntos.** Se

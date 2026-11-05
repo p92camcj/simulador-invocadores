@@ -1,14 +1,19 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-11-05 14:41 (Europe/Madrid)
+> **Última actualización:** 2026-11-05 16:55 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
 > reciente. Está en Markdown para que sea fácil de editar directamente en
 > GitHub cuando cambie alguna regla — no hace falta tocar el PDF original.
 >
-> Las imágenes de cada sección (`img/`) son las páginas originales del PDF,
-> incluidas como referencia visual. Si el texto de una sección cambia, la
+> **PDF maquetado (versión para jugadores):**
+> [`reglamento-invocadores.pdf`](reglamento-invocadores.pdf), exportado de
+> Canva el 2026-11-05. Se publica siempre con el mismo nombre, así que el
+> enlace del simulador (botón "Reglamento") apunta a la última versión.
+>
+> Las imágenes de cada sección (`img/`) son las páginas de ese PDF
+> (regeneradas el 2026-11-05), incluidas como referencia visual. Si el texto de una sección cambia, la
 > imagen correspondiente puede quedar desactualizada — no hay que asumir que
 > coinciden si ves un commit que solo toca el texto.
 >
@@ -445,7 +450,7 @@ También puede transformarse en otro personaje pagando de nuevo su coste.
 > la representación visual (ficha superpuesta con transparencia), ver
 > `docs/MEJORAS_FUTURAS.md`.
 
-![Habilidades: Entusiasta y final de partida](img/12-habilidades-entusiasta-final-partida.jpg)
+![Habilidades: Metamorfo (continuación), Entusiasta y final de partida](img/12-habilidades-entusiasta-final-partida.jpg)
 
 **Entusiasta** *(expansión, ver [Variantes](#variantes-y-modos-de-juego))* —
 Si se ejecuta una invocación con éxito y un Entusiasta está bocarriba en un

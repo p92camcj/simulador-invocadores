@@ -4,6 +4,21 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.25.0.86] - 2026-11-05
+
+### Añadido
+- **Botón "Reglamento"** en la barra superior (`#btnReglamento`,
+  `index.html`, estilo `a.btn` en `style.css`): abre en una pestaña nueva
+  el PDF maquetado `docs/reglamento/reglamento-invocadores.pdf`.
+- PDF del reglamento exportado de Canva el 2026-11-05, con las reglas
+  confirmadas con el autor (sin cambio de Gemas, Gema de asterisco que se
+  conserva, ficha del Metamorfo, Maestro frente a Clarividente,
+  Entusiasta). Se publica siempre con el mismo nombre de archivo.
+
+### Cambiado
+- Las 18 imágenes de `docs/reglamento/img/` se han regenerado desde el
+  PDF nuevo. `REGLAMENTO.md` enlaza el PDF.
+
 ## [1.24.2.85] - 2026-11-05
 
 ### Cambiado (confirmado con el autor)
