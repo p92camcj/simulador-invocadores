@@ -69,6 +69,7 @@ const urlsToCache = [
   './js/render.js',
   './js/espectaculo.js',
   './js/bot-probabilidad.js',
+  './js/bot-estrategia.js',
   './js/version-check.js',
   './js/pwa-install.js',
   './js/motor/estado.js',

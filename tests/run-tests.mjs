@@ -38,7 +38,11 @@ import {
   decidirAprendizNormal, decidirAprendizPropioDificil, decidirAprendizAjenoAjenoDificil,
   decidirMetamorfoNormal, decidirMetamorfoDificil,
   decidirMaestroNormal, completariaLaInvocacionConMaestro,
+  decidirJugadaFaseADificil,
 } from '../js/bot.js';
+import {
+  tableroDesdeVista, recompensasSiCierra, valorAmenazaSiguiente, evaluarJugadasFaseA,
+} from '../js/bot-estrategia.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
 // en Node no existen como globales, así que se stubean antes de importar
@@ -945,6 +949,75 @@ test('Si la cima no es una Centinela real visible, no se gira nada', () => {
   girarOtrasCentinelasSiAparece(conMetamorfo, players, []);
   girarOtrasCentinelasSiAparece(bocabajo, players, []);
   assert.equal(otra.portals[0][0].vis.public, true);
+});
+
+console.log('Evaluación estratégica de Fase A (bot-estrategia.js)');
+
+// Vista mínima: bot = jugadora 0. `portales` por jugadora y neutrales con el
+// mismo formato que construirEstadoVisibleParaBot() (null | {hidden} | {name}).
+function vistaEstrategia(portalesPorJugadora, neutrales, conocida) {
+  return {
+    botIdx: 0,
+    propiaCartaConocida: conocida ? { name: conocida } : null,
+    jugadoras: portalesPorJugadora.map((portales, i) => ({
+      idx: i, nombre: `J${i}`, esUnoMismo: i === 0, portales, cartaOcultaPublica: null, gemasPorNivel: {},
+    })),
+    neutrales,
+  };
+}
+
+test('recompensasSiCierra: Gema solo para requisitos únicos en Portal con dueña; duplicados y centrales no cobran', () => {
+  const vista = vistaEstrategia([[{ name: 'X' }], [{ name: 'Y' }], [{ name: 'Y' }]], [{ name: 'Z' }]);
+  const g = recompensasSiCierra(tableroDesdeVista(vista), ['X', 'Y', 'Z'], 3, 3);
+  assert.deepEqual(g, [3, 0, 0]);
+});
+
+test('recompensasSiCierra: Pícaro da 1 a su dueña; Maestro requisito y sin Pícaro da 3 extra', () => {
+  const conPicaro = vistaEstrategia([[{ name: 'Maestro' }], [{ name: 'Pícaro' }]], [{ name: 'Z' }]);
+  assert.deepEqual(recompensasSiCierra(tableroDesdeVista(conPicaro), ['Maestro', 'Z', 'W'], 9, 2), [9, 1]);
+  const sinPicaro = vistaEstrategia([[{ name: 'Maestro' }], [{ name: 'W' }]], [{ name: 'Z' }]);
+  assert.deepEqual(recompensasSiCierra(tableroDesdeVista(sinPicaro), ['Maestro', 'Z', 'W'], 9, 2), [12, 9]);
+});
+
+test('Fase A Difícil: NO cierra la invocación en un Portal central si solo cobran las rivales', () => {
+  // La rival tiene X e Y en exclusiva; la bot tiene Z en la mano y el único
+  // hueco es el central. Cerrar le da 0 a la bot y 2 Gemas a la rival.
+  const vista = vistaEstrategia([[{ name: 'W' }], [{ name: 'X' }, { name: 'Y' }]], [null], 'Z');
+  const memoria = { portales: {} };
+  for (let i = 0; i < 20; i++) {
+    const d = decidirJugadaFaseADificil(vista, memoria, ['X', 'Y', 'Z'], 'normal', 'C');
+    assert.ok(!(d.usaConocida && d.destKey === 'n:0'), `no debe regalar el cierre (eligió ${d.destKey})`);
+  }
+});
+
+test('Fase A Difícil: SÍ cierra la invocación cuando es quien más cobra', () => {
+  const vista = vistaEstrategia([[null, { name: 'X' }], [{ name: 'Y' }]], [{ name: 'W' }], 'Z');
+  const d = decidirJugadaFaseADificil(vista, { portales: {} }, ['X', 'Y', 'Z'], 'normal', 'C');
+  assert.equal(d.usaConocida, true);
+  assert.equal(d.destKey, 'p:0');
+});
+
+test('Fase A Difícil: no tapa su propio requisito único sin motivo', () => {
+  const vista = vistaEstrategia([[{ name: 'X' }, { name: 'W' }], [{ name: 'V' }]], [{ name: 'U' }], 'T');
+  const candidatas = evaluarJugadasFaseA(vista, ['X', 'Y', 'Z'], 3, { Y: 0.5, Q: 0.5 });
+  const taparX = candidatas.find(c => c.usaConocida && c.destKey === 'p:0');
+  const taparW = candidatas.find(c => c.usaConocida && c.destKey === 'p:1');
+  assert.ok(taparX.valor < taparW.valor);
+});
+
+test('Fase A Difícil: sin carta oculta en la mano (final de partida) nunca elige jugar la oculta', () => {
+  const vista = vistaEstrategia([[null], [{ name: 'X' }]], [{ name: 'W' }], 'Q');
+  vista.tieneCartaOcultaPropia = false;
+  for (let i = 0; i < 20; i++) {
+    assert.equal(decidirJugadaFaseADificil(vista, { portales: {} }, ['X', 'Y', 'Z'], 'normal', 'C').usaConocida, true);
+  }
+});
+
+test('valorAmenazaSiguiente: negativo si la siguiente jugadora puede cerrar y cobrar más que la bot', () => {
+  // Queda un hueco central; si la siguiente (J1) juega Z ahí, cobra X e Y (suyos).
+  const vista = vistaEstrategia([[{ name: 'W' }], [{ name: 'X' }, { name: 'Y' }]], [null]);
+  const amenaza = valorAmenazaSiguiente(tableroDesdeVista(vista), ['X', 'Y', 'Z'], 3, 2, 0, 1, { Z: 0.5, Q: 0.5 });
+  assert.ok(amenaza < 0);
 });
 
 console.log(`\n${pass} OK, ${fail} fallidos`);
