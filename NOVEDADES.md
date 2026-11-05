@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.26.4.103 - 2026-11-05
+
+- **Cambio interno, sin diferencias al jugar.** Las reglas del turno (jugar
+  carta, completar invocaciones, repartir Gemas, pasar turno) ya funcionan
+  por su cuenta, separadas de la pantalla. Es otro paso hacia guardar
+  partidas, jugar en red o tener otras formas de ver el juego.
+
 ## 1.26.3.99 - 2026-11-05
 
 - **Los autómatas en Difícil juegan con más cabeza.** Antes de cerrar una

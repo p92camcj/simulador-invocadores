@@ -148,9 +148,9 @@ export function shuffle(array) {
   }
 }
 
-export function draw(player, visible) {
-  if (window.deck && window.deck.length) {
-    const cartaDelMazo = window.deck.shift();
+export function draw(player, visible, mazo = globalThis.window?.deck) {
+  if (mazo && mazo.length) {
+    const cartaDelMazo = mazo.shift();
     const vis = generarVis('mano', { origen: 'mazo', visible, esPropietaria: true });
     player.hand.push({ name: cartaDelMazo.name, vis });
   }
@@ -164,10 +164,10 @@ export function draw(player, visible) {
  * afectada repone mano robando del mazo") necesita exactamente el mismo
  * comportamiento, no una copia con matices distintos.
  */
-export function reponerManoSiFalta(player) {
+export function reponerManoSiFalta(player, mazo = globalThis.window?.deck) {
   if (player.hand.length >= 2) return;
-  if (!player.hand.some(h => h.vis?.owner)) draw(player, true);
-  if (player.hand.filter(h => !h.vis?.owner).length < 1) draw(player, false);
+  if (!player.hand.some(h => h.vis?.owner)) draw(player, true, mazo);
+  if (player.hand.filter(h => !h.vis?.owner).length < 1) draw(player, false, mazo);
 }
 
 /**
