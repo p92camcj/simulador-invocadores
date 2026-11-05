@@ -3,22 +3,12 @@ import { initSetup } from './setup.js';
 import { initGame } from './game.js';
 import { LEVELS, INVOCATION_SETS } from './utils.js';
 import { initEspectaculo } from './espectaculo.js';
+import { instalarAliasGlobales } from './motor/estado.js';
 
-// Variables de estado global
-window.players = [];
-window.neutrals = [];
-window.deck = [];
-window.levelIdx = 0;
-window.turn = 0;
-window.played = false;
-window.habilidadUsadaEsteTurno = false;
-window.selectedCardIdx = null;
-window.cronomantePortalInvestigado = null;
-window.cronomanteOnComplete = null;
-window.pickerObjetivoPortal = null;
-window.juegoTerminado = false;
-window.avanceTurnoPendiente = false;
-window.invocationSet = 'normal';
+// Estado global: vive en un único objeto serializable (js/motor/estado.js).
+// window.players, window.turn, etc. son alias de ese objeto, para que el
+// resto de módulos siga funcionando sin cambios.
+instalarAliasGlobales(window);
 
 
 // Exponer constantes globales para legacy actions.js

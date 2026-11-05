@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.26.2.98] - 2026-11-05
+## [1.26.3.99] - 2026-11-05
 
 ### Mejorado
 - **Autómatas en dificultad Difícil: jugada de Fase A con criterio
@@ -32,6 +32,25 @@ Todas las versiones importantes del simulador de Invocadores.
   sí/no) y esa jugada ya no se propone.
 - `service-worker.js` cachea el módulo nuevo. Tests nuevos en
   `tests/run-tests.mjs`.
+
+## [1.26.2.98] - 2026-11-05
+
+### Cambiado
+- **Fase 1 de la separación motor / interfaz** (plan en
+  `docs/ARQUITECTURA_MOTOR.md`). Todo el estado de partida pasa a un único
+  objeto serializable, `estado.partida`, en el nuevo `js/motor/estado.js`
+  (sin DOM ni `window`). El estado de interfaz (carta seleccionada, picker
+  abierto, callbacks) va aparte en `estado.ui` y nunca se serializa.
+- Nuevas `serializarPartida()` / `cargarPartida()` (base para guardar
+  partidas y para el futuro multijugador en red).
+- `window.players`, `window.turn`, etc. siguen funcionando: ahora son alias
+  getter/setter de ese objeto (`instalarAliasGlobales()`, llamada desde
+  `js/index.js`). Ningún otro módulo cambia de comportamiento.
+- `js/game.js`: los bloques repetidos que limpiaban el estado en
+  `initGame()`, `nextTurn()` y `resetJuego()` pasan a
+  `reiniciarCamposDeTurno()` / `reiniciarPartida()`.
+- `service-worker.js` cachea `js/motor/estado.js`.
+- Tests nuevos: `node tests/motor-estado.mjs`.
 
 ## [1.26.1.90] - 2026-11-05
 

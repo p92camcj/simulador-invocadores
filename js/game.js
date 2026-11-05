@@ -6,6 +6,7 @@ import { decidirYJugarTurno } from './bot.js';
 
 import { initSetup } from './setup.js';
 import { $ } from './utils.js';
+import { reiniciarCamposDeTurno, reiniciarPartida } from './motor/estado.js';
 
 /**
  * Inicia la partida: prepara el mazo, reparte cartas, y lanza el primer turno.
@@ -39,12 +40,7 @@ export function initGame() {
   // Inicializar estado de turnos
   window.levelIdx = 0;
   window.turn = 0;
-  window.played = false;
-  window.habilidadUsadaEsteTurno = false;
-  window.selectedCardIdx = null;
-  window.cronomantePortalInvestigado = null;
-  window.cronomanteOnComplete = null;
-  window.pickerObjetivoPortal = null;
+  reiniciarCamposDeTurno();
   // Memoria propia de cada autómata en dificultad 'dificil' (motor
   // probabilístico, ver js/bot-probabilidad.js): vive solo en memoria JS de
   // ESTA partida, nunca se persiste ni sale de la sesión de juego actual.
@@ -69,12 +65,7 @@ export function initGame() {
  * Ejecuta el cambio de turno: alerta, actualiza etiqueta y renderiza.
  */
 export function nextTurn() {
-  window.played = false;
-  window.habilidadUsadaEsteTurno = false;
-  window.selectedCardIdx = null;
-  window.cronomantePortalInvestigado = null;
-  window.cronomanteOnComplete = null;
-  window.pickerObjetivoPortal = null;
+  reiniciarCamposDeTurno();
   const current = window.players[window.turn];
   //Se comprueba si hay condición de fin de partida, sin cartas en mano
   if (current.hand.length === 0) {
@@ -163,21 +154,8 @@ export function resetJuego() {
   $('#mainTitle')?.classList.remove('hidden');
   $('#mainSubtitle')?.classList.remove('hidden');
 
-  // Limpiar variables globales
-  window.players = [];
-  window.deck = [];
-  window.neutrals = [];
-  window.levelIdx = 0;
-  window.turn = 0;
-  window.played = false;
-  window.habilidadUsadaEsteTurno = false;
-  window.selectedCardIdx = null;
-  window.cronomantePortalInvestigado = null;
-  window.cronomanteOnComplete = null;
-  window.pickerObjetivoPortal = null;
-  window.juegoTerminado = false;
-  window.memoriaBots = [];
-  window.invocacionesCompletadas = [];
+  // Limpiar el estado de partida (conserva el set de invocación elegido)
+  reiniciarPartida();
 
   // Volver al menú inicial
   initSetup();

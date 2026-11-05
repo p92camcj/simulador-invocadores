@@ -22,7 +22,7 @@ mundo (PIMC, ISMCTS). Los pesos se afinan jugando la IA contra sí misma.
 Todo esto cabe en el navegador sin hacer trampa, siempre que los "mundos"
 se generen solo a partir de la vista saneada.
 
-1. ~~**Evaluación estratégica de Fase A**~~ (hecho en 1.26.2,
+1. ~~**Evaluación estratégica de Fase A**~~ (hecho en 1.26.3,
    `js/bot-estrategia.js`): reparto real de Gemas al cerrar (propio menos
    la mejor rival), riesgo de dejar el cierre servido a la siguiente
    jugadora, valor de posición; carta oculta como media sobre sus

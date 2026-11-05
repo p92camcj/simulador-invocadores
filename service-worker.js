@@ -72,6 +72,7 @@ const urlsToCache = [
   './js/bot-estrategia.js',
   './js/version-check.js',
   './js/pwa-install.js',
+  './js/motor/estado.js',
   './assets/cards/maestro.png',
   './assets/cards/clarividente.png',
   './assets/cards/ocultista.png',

@@ -339,7 +339,7 @@ export function completariaLaInvocacionConMaestro(vista, need, personaje) {
  * identidades posibles (conteo de cartas de `estimarProbabilidadesPersonajes()`).
  * Empate → prefiere la carta conocida y, después, al azar.
  *
- * Antes (hasta 1.26.1) se usaba `valorEsperadoDeAccion()`, que premiaba
+ * Antes (hasta 1.26.2) se usaba `valorEsperadoDeAccion()`, que premiaba
  * cerrar la invocación aunque solo cobrasen las rivales y no miraba qué
  * quedaba para el turno siguiente. Esa función se mantiene para Fase B.
  */

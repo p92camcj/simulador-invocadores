@@ -22,6 +22,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/game.js](#jsgamejs)
 - [js/index.js](#jsindexjs)
 - [js/espectaculo.js](#jsespectaculojs)
+- [js/motor/estado.js](#jsmotorestadojs)
 
 ---
 
@@ -137,7 +138,7 @@ duplica ninguna lógica de reglas.
 | `decidirMetamorfoNormal(vista, need)` / `decidirMetamorfoDificil(vista, need, esPropio, probabilidades, contexto)` | `función` | (Bloque 4, 4.6, exportadas solo para tests) El Metamorfo visible se transforma pagando 1 Gema unitaria (`COSTE_GEMA_METAMORFO`, interna). `'normal'`: SOLO beneficio propio, se transforma en el primer requisito de `need` aún no cumplido en la mesa, si `vista.gemasPropiasTotalExacto > 0` (proxy de "tiene con qué pagar"). `'dificil'`: evalúa CADA personaje de `need` restando siempre el coste de la Gema — reutiliza `valorEsperadoDeAccion()` sin ningún parámetro nuevo: si el personaje aún no está cumplido, el mecanismo normal de beneficio propio ya lo valora; si SÍ lo está porque una rival lo tiene como único ejemplar visible, el mecanismo de "denegación por duplicado" de esa misma función ya aplica (transformar el Metamorfo crea un segundo ejemplar en un Portal distinto al suyo) — el matiz adversarial sale solo de reusar la misma maquinaria con `need` completo, sin caso especial. Solo se activa con al menos una Gema de valor 1 (`vista.gemasUnitariasPropias`) y nunca elige una ficha ya ocupada (`vista.transformacionesOcupadas`). |
 | `decidirOcultistaAdversarialNormal(vista, need)` | `función` | (Bloque 4, 4.5, exportada solo para tests) Ocultista puede alternar la visibilidad de un Portal YA VISIBLE (excepto una Centinela visible, restricción ya aplicada en `abilities.js`), no solo revelar uno oculto — heurística `'normal'` ADICIONAL a la compartida con Cronista: denegación GRATUITA, esconde el único ejemplar visible en toda la mesa de un requisito que hoy tiene una RIVAL. Comparte el criterio de selección de objetivo con `decidirCronistaAdversarialNormal` (interna `primerRequisitoUnicoDeRivalComoClaveHabilidad`) — solo cambia el efecto real, que decide `abilities.js`. `'dificil'` (dentro de `decidirHabilidadFaseBDificil`) evalúa el mismo uso adversarial sobre Portales visibles, sin el descuento `* 0.5` de Cronista (esconder deniega de inmediato, no a futuro). |
 | `decidirAprendizNormal(vista, need)` / `decidirAprendizPropioDificil(vista, need, cumplidos, valorGemaNivel)` / `decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGemaNivel)` | `función` | (Bloque 4, 4.4, exportadas solo para tests) Aprendiz intercambia manos COMPLETAS de dos jugadoras, manteniendo la orientación de cada carta. `'normal'`: SOLO beneficio propio incluyéndose a sí mismo — si su propia carta conocida ya es útil no la cambia a ciegas; si no, busca una rival cuya carta pública conocida sí lo sea. `'dificil'` combina dos casos independientes (el de mayor valor esperado gana): (a) `decidirAprendizPropioDificil`, incluyéndose, comparando el valor de recibir la carta pública de cada rival frente a ceder la propia (`valorCartaEnManoPropia`, interna — mismo descuento "a futuro, en mano" `* 0.5` que ya usa Cronista; deliberadamente NO reutiliza `valorEsperadoDeAccion()`, pensada para cartas que acaban VISIBLES en un Portal, no para un simple cambio de mano); (b) `decidirAprendizAjenoAjenoDificil`, intercambio puramente adversarial de las manos de DOS RIVALES (el bot no se incluye) para desbaratar a la que va mejor posicionada, estimada por el recuento de Gemas por nivel (`gemasPorNivel`, nunca el valor exacto) — solo con al menos 2 rivales y si a la líder se le puede quitar algo que de verdad le convenía. |
-| `decidirJugadaFaseA(vista, need)` / `decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl)` | `función` | (exportadas solo para tests) Decisión de Fase A por dificultad. `'normal'` prioriza completar la invocación activa con un único Portal bloqueante; si no, aplica el ajuste adversarial de bajo coste del Bloque 3 (`decidirJugadaAdversarialNormal`, interna): (1) denegación GRATUITA por duplicado si la carta conocida es requisito activo, ya está visible en Portal AJENO, y el propio bot no la tiene ya (no pierde nada); (2) si no, tapar un Portal ajeno que muestre, como única copia visible en toda la mesa, un requisito de la invocación activa. Solo con información visible ahora mismo, nunca memoria/probabilidad. `'dificil'` (desde 1.26.2) evalúa TODAS las combinaciones carta×Portal con `evaluarJugadasFaseA()` (`js/bot-estrategia.js`): reparto real de Gemas si la jugada cierra la invocación (propio menos la mejor rival), riesgo de dejar el cierre servido a la siguiente jugadora y valor de posición. Nunca propone jugar la carta oculta si `vista.tieneCartaOcultaPropia === false` (final de partida). |
+| `decidirJugadaFaseA(vista, need)` / `decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl)` | `función` | (exportadas solo para tests) Decisión de Fase A por dificultad. `'normal'` prioriza completar la invocación activa con un único Portal bloqueante; si no, aplica el ajuste adversarial de bajo coste del Bloque 3 (`decidirJugadaAdversarialNormal`, interna): (1) denegación GRATUITA por duplicado si la carta conocida es requisito activo, ya está visible en Portal AJENO, y el propio bot no la tiene ya (no pierde nada); (2) si no, tapar un Portal ajeno que muestre, como única copia visible en toda la mesa, un requisito de la invocación activa. Solo con información visible ahora mismo, nunca memoria/probabilidad. `'dificil'` (desde 1.26.3) evalúa TODAS las combinaciones carta×Portal con `evaluarJugadasFaseA()` (`js/bot-estrategia.js`): reparto real de Gemas si la jugada cierra la invocación (propio menos la mejor rival), riesgo de dejar el cierre servido a la siguiente jugadora y valor de posición. Nunca propone jugar la carta oculta si `vista.tieneCartaOcultaPropia === false` (final de partida). |
 | `decidirYJugarTurno(players, neutrals, botIdx, contexto)` | `función` | Punto de entrada único: despacha por `players[botIdx].dificultad` (`HEURISTICAS_POR_DIFICULTAD`: `'normal'` o `'dificil'`) y ejecuta el turno completo (Fases A-E) de la bot. `contexto = { levelIdx, invocationSet }`. Desde el Bloque 4, la MEMORIA (`window.memoriaBots[botIdx]`, historial bruto de nombres vistos por Portal) la mantienen AMBAS dificultades (antes solo `'dificil'`) — la necesita Cronomante para decidir con sentido en cualquier nivel; el conteo de cartas/probabilidad (`js/bot-probabilidad.js`) sigue siendo exclusivo de `'dificil'`. Fase B: desde el Bloque 4, AMBAS dificultades saben usar las 7 habilidades activas (`PERSONAJES_CON_HABILIDAD`, `utils.js`). `'normal'` con una condición simple y de bajo riesgo por habilidad (solo información visible ahora mismo o memoria bruta, nunca probabilidad): Ocultista/Cronista comparten la comprobación "falta algo del combo Y hay un Portal oculto legal", y cada una además por su cuenta puede denegar gratis el único requisito visible de una rival (`decidirOcultistaAdversarialNormal`/`decidirCronistaAdversarialNormal`, ambas actúan también sobre un Portal YA VISIBLE, no solo oculto); Cronomante (`decidirCronomanteNormal`), Estratega (`decidirEstrategaNormal`), Aprendiz (`decidirAprendizNormal`), Metamorfo (`decidirMetamorfoNormal`) y Maestro (`decidirMaestroNormal`) — todas arriba — solo por beneficio propio, nunca el matiz adversarial más elaborado (reservado a `'dificil'`). `'dificil'` decide por valor esperado en Gemas: además del beneficio propio, cada habilidad incorpora su propio matiz adversarial (denegar/tapar/duplicar el único requisito visible de una rival, con el mismo mecanismo `cubreNecesarioUnicoRival`/`necesariosUnicosDeRivales` que ya usa Fase A) salvo Aprendiz, que además puede intercambiar las manos de DOS rivales sin beneficio propio directo. Ambos niveles resuelven los `picker()`/`pickerPortal()` que abre `applyAbility()` programáticamente (mismo `#pickerSelect`/`#pickerOk` que usaría un clic humano; el objetivo ya calculado se pasa como `objetivoPreferido` — un único valor o un ARRAY alineado por paso, para habilidades de varios pasos como Cronomante) y el resumen de turno (`alert()`) siempre se redacta en tercera persona, incluyendo de quién es el Portal/mano afectado por la habilidad activada (`describirObjetivoHabilidad`, arriba). Termina simulando el clic en `#btnEndTurn`, que ya comprueba invocación, reparte Gemas, roba y avanza turno con la misma lógica que una jugadora humana. |
 
 ---
@@ -164,7 +165,7 @@ memoria propia del bot, para que quede auditable que no puede hacer trampa.
 
 ## js/bot-estrategia.js
 **Propósito:** Evaluación estratégica de las jugadas de Fase A para la
-dificultad `'dificil'` (desde 1.26.2). Funciones PURAS sobre la vista
+dificultad `'dificil'` (desde 1.26.3). Funciones PURAS sobre la vista
 saneada (`construirEstadoVisibleParaBot()`) y la distribución del conteo de
 cartas (`estimarProbabilidadesPersonajes()`); nunca leen el estado real.
 Pesos ajustables exportados: `PESO_RIVAL` (0,75), `FACTOR_POSICION` (0,4),
@@ -233,9 +234,9 @@ Pesos ajustables exportados: `PESO_RIVAL` (0,75), `FACTOR_POSICION` (0,4),
 | Nombre          | Tipo      | Descripción                                                                                                     |
 |-----------------|-----------|-----------------------------------------------------------------------------------------------------------------|
 | `initGame()`    | `función` | - Construye el mazo `window.deck` a partir de `composicionMazoTotal(window.invocationSet)` (`utils.js`): las cantidades reales de "Modo normal" (32 cartas), añadiendo los 9 Animales solo si `window.invocationSet` es `introductorio` (41 cartas) — `floral` reutiliza el mismo mazo de 32 cartas que `normal`, no es una tercera variante; baraja y aparta 2 al azar sin mirar. <br>- Reparte 1 carta visible + 1 oculta a cada jugador. <br>- Inicializa `window.levelIdx`, `window.turn`, `window.played`, `window.habilidadUsadaEsteTurno`, `window.selectedCardIdx`, `window.cronomantePortalInvestigado`, `window.pickerObjetivoPortal`, `window.memoriaBots` (array vacío — memoria del autómata en dificultad `'dificil'`, ver `js/bot-probabilidad.js`), `window.invocacionesCompletadas` (array vacío — orden real en que se completan las invocaciones en esta partida, necesario para el desempate del marcador final, ver `calcularResultadoFinal()` en `utils.js`). <br>- Llama a `initActions()`. <br>- Inicia primer turno con `nextTurn()`. |
-| `nextTurn()`    | `función` | - `window.played = false`, `window.habilidadUsadaEsteTurno = false`, `window.selectedCardIdx = null`, `window.cronomantePortalInvestigado = null` (una investigación de Cronomante pendiente no sobrevive a un cambio de turno). <br>- Si la jugadora activa no tiene cartas en mano, termina la partida vía `finalizarPartida()`. <br>- Si `players[turn].tipo === 'auto'`, oculta `#btnCtrlPlay`/`#btnAbility`/`#btnEndTurn` (para que ninguna humana interfiera a mitad del turno del bot) y alerta "🤖 {nombre} está pensando…"; si no, los muestra y alerta "Turno de X" como siempre. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`. <br>- Si es autómata, tras un `setTimeout` de 500ms llama a `decidirYJugarTurno()` (`js/bot.js`), que ejecuta el turno completo y termina simulando el clic en `#btnEndTurn` — eso ya vuelve a llamar a `nextTurn()` internamente (mismo mecanismo que un clic humano), encadenando automáticamente turnos de autómatas consecutivos hasta que le toque a una jugadora humana. |
+| `nextTurn()`    | `función` | - Llama a `reiniciarCamposDeTurno()` (`js/motor/estado.js`): `played`, `habilidadUsadaEsteTurno`, `selectedCardIdx`, `cronomantePortalInvestigado`, `cronomanteOnComplete` y `pickerObjetivoPortal` vuelven a su valor inicial (una investigación de Cronomante pendiente no sobrevive a un cambio de turno). <br>- Si la jugadora activa no tiene cartas en mano, termina la partida vía `finalizarPartida()`. <br>- Si `players[turn].tipo === 'auto'`, oculta `#btnCtrlPlay`/`#btnAbility`/`#btnEndTurn` (para que ninguna humana interfiera a mitad del turno del bot) y alerta "🤖 {nombre} está pensando…"; si no, los muestra y alerta "Turno de X" como siempre. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`. <br>- Si es autómata, tras un `setTimeout` de 500ms llama a `decidirYJugarTurno()` (`js/bot.js`), que ejecuta el turno completo y termina simulando el clic en `#btnEndTurn` — eso ya vuelve a llamar a `nextTurn()` internamente (mismo mecanismo que un clic humano), encadenando automáticamente turnos de autómatas consecutivos hasta que le toque a una jugadora humana. |
 | `finalizarPartida(motivo)` | `función` | Construye el recuento final de Gemas y el veredicto (ganadora, o empate compartido con el motivo del desempate) con la función interna `construirMensajeResultadoFinal()`, que llama a `calcularResultadoFinal()` (`utils.js`) sobre `window.players`/`window.invocacionesCompletadas`, y lo muestra junto al `motivo` en el mismo `alert()`/`confirm()` de "¿Quieres jugar otra vez?" (REGLAMENTO.md, "Final de la partida" — sin pantalla de resultados dedicada, ver `docs/MEJORAS_FUTURAS.md`). Si sí, llama a `resetJuego()`; si no, bloquea la interfaz con un mensaje de cierre. Llamada desde `game.js` (mano vacía) y desde `actions.js` (última invocación completada) — por eso debe permanecer `export`ada. |
-| `resetJuego()`  | `función` | Oculta la UI de juego, muestra la de configuración, limpia el estado global (`window.players`, `window.deck`, `window.invocacionesCompletadas`, etc.) y vuelve a llamar a `initSetup()`. |
+| `resetJuego()`  | `función` | Oculta la UI de juego, muestra la de configuración, vacía el estado de partida con `reiniciarPartida()` (`js/motor/estado.js`, conserva el set de invocación elegido) y vuelve a llamar a `initSetup()`. |
 
 ---
 
@@ -245,26 +246,19 @@ Pesos ajustables exportados: `PESO_RIVAL` (0,75), `FACTOR_POSICION` (0,4),
 ### Contenido principal
 
 ```js
-import { initSetup } from './setup.js';
-import { LEVELS, INVOCATION_SETS } from './utils.js';
+import { instalarAliasGlobales } from './motor/estado.js';
 
-// Estado global
-window.players = [];
-window.neutrals = [];
-window.deck = [];
-window.levelIdx = 0;
-window.turn = 0;
-window.played = false;
-window.habilidadUsadaEsteTurno = false;
-window.invocationSet = 'normal';
+// Estado global: un único objeto serializable (js/motor/estado.js).
+// window.players, window.turn, etc. son alias (getter/setter) de ese objeto.
+instalarAliasGlobales(window);
 
 // Exponer constantes
 window.LEVELS = LEVELS;
 window.INVOCATION_SETS = INVOCATION_SETS;
 
-// Arrancar UI
 document.addEventListener('DOMContentLoaded', () => {
   initSetup();
+  initEspectaculo();
 });
 ```
 
@@ -293,4 +287,24 @@ document.addEventListener('DOMContentLoaded', () => {
 | `anunciarInvocacion({ nivel, nombre, need, recompensas })` | `función` | Escena de invocación completada (los personajes requeridos convergen en el círculo y aparece el nombre de la invocación con las Gemas que recibe cada jugadora, solo el número, nunca el valor). Devuelve `true` si se escenificó, en cuyo caso `actions.js` no muestra el `alert()` de texto. |
 | `rutaFigura(nombre)` / `rutaCriatura(nombreInvocacion)` | `función` | Ruta del arte de cuerpo entero de un personaje, o de la criatura de una invocación (solo Cirelia, Baelorith y Aelgorth tienen); `null` si no hay. Las usa también `render.js` para los retratos pequeños del panel de la invocación activa. |
 | `hayEspectaculoEnCurso()` / `cuandoTermineEspectaculo()` | `función` | Para esperar a la cola de escenas: `#btnEndTurn` retrasa el avance de turno (y su aviso "Turno de ...") hasta que terminan, con `window.avanceTurnoPendiente` como guarda contra un doble clic; la última invocación espera antes de mostrar el marcador final. |
+
+---
+
+## js/motor/estado.js
+**Propósito:** Fase 1 de la separación motor / interfaz (ver `docs/ARQUITECTURA_MOTOR.md`). Reúne todo el estado de una partida en un único objeto plano y serializable (`estado.partida`) y separa aparte el estado propio de la interfaz (`estado.ui`). Sin DOM ni `window`: funciona igual en Node. Los nombres antiguos (`window.players`, `window.turn`...) siguen funcionando como alias.
+
+### Exportaciones
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `estado` | `objeto` | Contenedor único: `estado.partida` (reglas, serializable) y `estado.ui` (interfaz, puede contener funciones). Accesible también como `window.estado`. |
+| `CLAVES_PARTIDA` | `constante` | Claves de `estado.partida`: `players`, `neutrals`, `deck`, `levelIdx`, `turn`, `played`, `habilidadUsadaEsteTurno`, `invocationSet`, `juegoTerminado`, `cronomantePortalInvestigado`, `invocacionesCompletadas`, `memoriaBots`. |
+| `CLAVES_UI` | `constante` | Claves de `estado.ui`: `selectedCardIdx`, `cronomanteOnComplete`, `pickerObjetivoPortal`, `avanceTurnoPendiente`. Nunca se serializan. |
+| `crearEstadoPartida(invocationSet)` | `función` | Devuelve un estado de partida vacío. |
+| `crearEstadoUi()` | `función` | Devuelve un estado de interfaz vacío. |
+| `reiniciarCamposDeTurno()` | `función` | Restablece los campos que se limpian al empezar cada turno (usada por `initGame()` y `nextTurn()`). |
+| `reiniciarPartida()` | `función` | Vacía la partida y la interfaz, conservando `invocationSet` (usada por `resetJuego()`). |
+| `serializarPartida(partida?)` | `función` | Devuelve `estado.partida` como texto JSON. |
+| `cargarPartida(json)` | `función` | Sustituye el estado de partida por un JSON (o un objeto) generado con `serializarPartida`; rellena claves que falten, descarta las desconocidas y reinicia la interfaz. |
+| `instalarAliasGlobales(destino)` | `función` | Define en `destino` (en el navegador, `window`) una propiedad getter/setter por cada clave de partida y de interfaz, que lee y escribe en `estado`. Llamada desde `index.js`. Los tests la usan con un objeto cualquiera. |
 

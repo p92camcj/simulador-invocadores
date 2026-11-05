@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.26.2.98 - 2026-11-05
+## 1.26.3.99 - 2026-11-05
 
 - **Los autómatas en Difícil juegan con más cabeza.** Antes de cerrar una
   invocación miran quién se lleva las Gemas, y ya no la cierran si casi
@@ -16,6 +16,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 - **Arreglado un bloqueo al final de la partida:** con autómatas en
   Difícil, la partida podía quedarse parada cuando a una de ellas solo le
   quedaba una carta.
+
+## 1.26.2.98 - 2026-11-05
+
+- **Cambio interno, sin diferencias al jugar.** Hemos empezado a separar
+  las reglas del juego de lo que se ve en pantalla. Es la base para, más
+  adelante, poder guardar partidas, jugar en red desde varios móviles o
+  tener otras formas de ver el juego.
 
 ## 1.26.1.90 - 2026-11-05
 
