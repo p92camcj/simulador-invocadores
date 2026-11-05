@@ -4,9 +4,10 @@
 // decide nada ni cambia ninguna regla: solo escucha lo que ya ha pasado
 // (una carta bajada a un Portal, una habilidad aplicada, una invocación
 // completada) y lo escenifica a pantalla completa con el arte de las propias
-// cartas (assets/figuras/*.png, recortes sin fondo de assets/cards/*.png
-// generados con tools/generar_figuras.py — no se dibuja ningún personaje
-// nuevo).
+// personajes (assets/figuras/*.webp, preparados con tools/generar_figuras.py
+// a partir de los SVG originales de assets/personajes/ — no se dibuja ningún
+// personaje nuevo), la ilustración del Portal (assets/portal.jpg) y la de
+// las criaturas invocadas que la tienen (assets/invocaciones/*.webp).
 //
 // Reglas de información oculta (igual que render.js): una escena solo
 // muestra la cara de una carta si esa carta es PÚBLICA en la mesa en ese
@@ -49,6 +50,8 @@ const COLORES = {
   'Sora': ['#ff9b3d', '#ffe08b'],
   'Lumo': ['#ffe58b', '#3f9b4b'],
 };
+// Criaturas invocadas con arte propio (assets/invocaciones/<nombre>.webp).
+const CRIATURAS_CON_ARTE = new Set(['Cirelia', 'Baelorith', 'Aelgorth']);
 const COLOR_NIVEL = { C: '#f2c94c', B: '#e0533a', A: '#9b59d0' };
 
 // ---------- Preferencia on/off ----------
@@ -244,10 +247,24 @@ function vars(nombre) {
   return `--c1:${c1};--c2:${c2};`;
 }
 
+/** Ruta del arte de cuerpo entero de un personaje (o null). También la usa
+ *  render.js para los retratos pequeños de la versión de siempre. */
+export function rutaFigura(nombre) {
+  const archivo = ARCHIVO_FIGURA[nombre];
+  return archivo ? `assets/figuras/${archivo}.webp` : null;
+}
+
+/** Ruta del arte de una criatura invocada (o null si no tiene). */
+export function rutaCriatura(nombreInvocacion) {
+  return CRIATURAS_CON_ARTE.has(nombreInvocacion)
+    ? `assets/invocaciones/${nombreInvocacion.toLowerCase()}.webp`
+    : null;
+}
+
 function figura(nombre, clase = '') {
   const archivo = ARCHIVO_FIGURA[nombre];
   if (!archivo) return '';
-  return `<img class="esp-fig ${clase}" src="assets/figuras/${archivo}.png" alt="${esc(nombre)}" draggable="false">`;
+  return `<img class="esp-fig ${clase}" src="assets/figuras/${archivo}.webp" alt="${esc(nombre)}" draggable="false">`;
 }
 
 function reverso(clase = '') {
@@ -260,19 +277,14 @@ function carta(nombre, clase = '') {
   return `<img class="esp-carta ${clase}" src="assets/cards/${archivo}.png" alt="${esc(nombre)}" draggable="false">`;
 }
 
-/** El Portal: el mismo arco con espiral de los iconos de las cartas. */
+/** El Portal: la ilustración de la carta de Portal (assets/portal.jpg), con
+ *  la luz del personaje que lo atraviesa. */
 function portal(etiqueta, clase = '') {
   return `
     <div class="esp-portal ${clase}">
-      <svg viewBox="0 0 200 230" aria-hidden="true">
-        <ellipse class="esp-portal-base" cx="100" cy="214" rx="96" ry="14"/>
-        <path class="esp-portal-hueco" d="M34 214 V104 A66 66 0 0 1 166 104 V214 Z"/>
-        <g class="esp-portal-espiral">
-          <path d="M100 150 m0 -6 a6 6 0 1 1 -6 6 a12 12 0 1 1 12 12 a20 20 0 1 1 -20 -20 a30 30 0 1 1 30 30 a42 42 0 1 1 -42 -42"/>
-        </g>
-        <path class="esp-portal-arco" d="M24 216 V104 A76 76 0 0 1 176 104 V216"/>
-        <path class="esp-portal-arco-luz" d="M24 216 V104 A76 76 0 0 1 176 104 V216"/>
-      </svg>
+      <img class="esp-portal-img" src="assets/portal.jpg" alt="" draggable="false">
+      <div class="esp-portal-luz" aria-hidden="true"></div>
+      <div class="esp-portal-espiral" aria-hidden="true"></div>
       ${etiqueta ? `<div class="esp-portal-etiqueta">${esc(etiqueta)}</div>` : ''}
     </div>`;
 }
@@ -588,7 +600,8 @@ export function anunciarInvocacion({ nivel, nombre, need, recompensas }) {
       <div class="esp-circulo" aria-hidden="true" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'}"></div>
       ${figuras}
       <div class="esp-destello" aria-hidden="true"></div>
-      <div class="esp-titulo-invocacion" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'}">
+      ${CRIATURAS_CON_ARTE.has(nombre) ? `<div class="esp-criatura" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'}"><img src="assets/invocaciones/${esc(nombre.toLowerCase())}.webp" alt="${esc(nombre)}" draggable="false"></div>` : ''}
+      <div class="esp-titulo-invocacion ${CRIATURAS_CON_ARTE.has(nombre) ? 'esp-titulo-invocacion--abajo' : ''}" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'}">
         <small>Invocación ${esc(nivel)} completada</small>
         <strong>${esc(nombre)}</strong>
         ${lista ? `<ul>${lista}</ul>` : ''}

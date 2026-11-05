@@ -1,5 +1,6 @@
 // render.js
 import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG, escapeHtml } from './utils.js';
+import { rutaFigura, rutaCriatura } from './espectaculo.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 
 /**
@@ -440,7 +441,11 @@ export function render(players, neutrals, levelIdx) {
   }
   const invocacion = INVOCATION_SETS[window.invocationSet][lvl];
   const need = invocacion.need;
-  lblInv.textContent = `${lvl} — ${invocacion.nombre}`;
+  // Arte original de la criatura invocada, si lo tiene (Cirelia, Baelorith,
+  // Aelgorth): mismo recurso que usa el modo espectáculo.
+  const criatura = rutaCriatura(invocacion.nombre);
+  lblInv.innerHTML = `${lvl} — ${invocacion.nombre}`
+    + (criatura ? ` <img class="mini-criatura" src="${criatura}" alt="">` : '');
   const cnt = {};
   need.forEach(n => cnt[n] = 0);
   // aspecto || name (ítem 14 de DEUDA_TECNICA.md): este recuento debe
@@ -462,6 +467,8 @@ export function render(players, neutrals, levelIdx) {
   });
   invStatus.innerHTML = need.map(n => {
     const cls = cnt[n] === 0 ? 'missing' : cnt[n] === 1 ? 'present' : 'duplicate';
-    return `<span class="${cls}">${mostrarCarta({ name: n })}</span>`;
+    const fig = rutaFigura(n);
+    const retrato = fig ? `<img class="mini-fig" src="${fig}" alt=""> ` : '';
+    return `<span class="${cls}">${retrato}${mostrarCarta({ name: n })}</span>`;
   }).join(' , ');
 }

@@ -1,107 +1,132 @@
 #!/usr/bin/env python3
-"""Recorta la ilustración de cada carta (assets/cards/*.png) y le quita el
-fondo negro liso, para el modo espectáculo (js/espectaculo.js).
+"""Prepara el arte de los personajes para el modo espectáculo (js/espectaculo.js).
 
-No se dibuja nada nuevo: es el mismo arte de las cartas, sin el marco ni el
-fondo. El fondo de la ilustración es negro puro (0,0,0) y los contornos del
-dibujo son casi negros (8-20), así que basta un relleno por inundación del
-negro puro desde los bordes del recorte para separar la figura sin comerse
-sus líneas.
+Origen: assets/personajes/*.svg, el arte original de cada personaje (exportado
+de Canva, una ilustración de cuerpo entero con el nombre en una pastilla
+arriba). No se dibuja nada nuevo: solo se rasteriza, se quita la pastilla del
+nombre y el fondo blanco donde lo haya, y se recorta.
 
-Uso (requiere Pillow):  python3 tools/generar_figuras.py
-Escribe assets/figuras/<personaje>.png. Vuelve a ejecutarlo si cambian las
-cartas.
+Requiere Pillow y Playwright (Chromium) para rasterizar los SVG:
+    node tools/rasterizar_svg.cjs        # SVG -> PNG en build/personajes/
+    python3 tools/generar_figuras.py     # PNG -> assets/figuras/*.webp, assets/invocaciones/*.webp, assets/portal.jpg
 """
 from collections import deque
 from pathlib import Path
 from PIL import Image
 
 RAIZ = Path(__file__).resolve().parent.parent
-ORIGEN = RAIZ / 'assets' / 'cards'
-DESTINO = RAIZ / 'assets' / 'figuras'
+RASTER = RAIZ / 'build' / 'personajes'
 PERSONAJES = ['maestro', 'clarividente', 'ocultista', 'cronomante', 'estratega',
               'cronista', 'aprendiz', 'centinela', 'picaro', 'metamorfo',
               'entusiasta', 'reena', 'sora', 'lumo']
-# Zona de la ilustración dentro de la carta (362x504), por debajo del
-# título y por encima del recuadro de la habilidad.
-CAJA = (12, 84, 342, 362)
-UMBRAL = 4  # suma R+G+B máxima para considerar "fondo negro puro"
+INVOCACIONES = ['cirelia', 'baelorith', 'aelgorth']
+ALTO_MAX = 900
+# Exportados con un rectángulo de fondo blanco (el resto ya viene sin fondo;
+# aplicarlo a todos se comería detalles blancos del dibujo, como el halo de
+# Cirelia).
+CON_FONDO_BLANCO = {'aprendiz', 'ocultista'}
 
 
-def _inundar(px, w, h, semillas, pasa, quitado):
-    cola = deque(semillas)
+def es_pastilla(p):
+    r, g, b, a = p
+    return a > 200 and max(r, g, b) - min(r, g, b) < 18 and 35 < r < 95
+
+
+def quitar_pastilla(im):
+    """Borra todo lo que hay por encima de la pastilla gris con el nombre."""
+    w, h = im.size
+    px = im.load()
+    fondo = 0
+    for y in range(min(h, int(h * 0.22))):
+        if sum(es_pastilla(px[x, y]) for x in range(0, w, 2)) > w * 0.12:
+            fondo = y
+    if fondo:
+        for y in range(fondo + 6):
+            for x in range(w):
+                px[x, y] = (0, 0, 0, 0)
+    return fondo
+
+
+def quitar_fondo_blanco(im):
+    """Relleno por inundación del blanco (o casi) conectado a los bordes."""
+    w, h = im.size
+    px = im.load()
+    pasa = lambda p: p[3] < 20 or (min(p[:3]) > 222 and max(p[:3]) - min(p[:3]) < 26)
+    visto = bytearray(w * h)
+    cola = deque([(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)]
+                 + [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)])
     while cola:
         x, y = cola.popleft()
-        if x < 0 or y < 0 or x >= w or y >= h or quitado[y * w + x]:
+        if x < 0 or y < 0 or x >= w or y >= h or visto[y * w + x]:
             continue
+        visto[y * w + x] = 1
         if not pasa(px[x, y]):
             continue
-        quitado[y * w + x] = 1
+        px[x, y] = (0, 0, 0, 0)
         cola.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
 
 
-def _quitar_iconos_sueltos(px, w, h, franja=60):
-    """Borra islas opacas que empiezan en la franja inferior del recorte:
-    son los iconos de habilidad de la carta, no parte de la figura."""
-    visto = bytearray(w * h)
-    for y0 in range(h):
+def quitar_restos_arriba(im, limite, minimo=600):
+    """Borra islas pequeñas en la franja superior (restos del borde de la
+    pastilla del nombre)."""
+    w, h = im.size
+    px = im.load()
+    visto = bytearray(w * limite)
+    for y0 in range(limite):
         for x0 in range(w):
-            if visto[y0 * w + x0] or px[x0, y0][3] == 0:
+            if visto[y0 * w + x0] or px[x0, y0][3] <= 24:
                 continue
-            isla, cola = [], deque([(x0, y0)])
+            isla, cola, toca_abajo = [], deque([(x0, y0)]), False
             visto[y0 * w + x0] = 1
             while cola:
                 x, y = cola.popleft()
                 isla.append((x, y))
                 for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-                    if 0 <= nx < w and 0 <= ny < h and not visto[ny * w + nx] and px[nx, ny][3]:
-                        visto[ny * w + nx] = 1
-                        cola.append((nx, ny))
-            if min(y for _, y in isla) > h - franja or len(isla) < 6:
+                    if 0 <= nx < w and 0 <= ny < h and px[nx, ny][3] > 24:
+                        if ny >= limite:
+                            toca_abajo = True
+                            continue
+                        if not visto[ny * w + nx]:
+                            visto[ny * w + nx] = 1
+                            cola.append((nx, ny))
+            # Solo islas grises oscuras/blancas (borde y letras de la
+            # pastilla), nunca destellos de color del propio dibujo.
+            colores = [px[x, y] for x, y in isla]
+            desaturada = sum(max(c[:3]) - min(c[:3]) < 30 for c in colores) > len(colores) * 0.8
+            if not toca_abajo and len(isla) < minimo and desaturada:
                 for x, y in isla:
                     px[x, y] = (0, 0, 0, 0)
 
 
-def recortar(nombre):
-    carta = Image.open(ORIGEN / f'{nombre}.png').convert('RGBA')
-    im = carta.crop(CAJA)
+def preparar(nombre, destino):
+    im = Image.open(RASTER / f'{nombre}.png').convert('RGBA')
+    fondo_pastilla = quitar_pastilla(im)
+    if nombre in CON_FONDO_BLANCO:
+        quitar_fondo_blanco(im)
+    if fondo_pastilla:
+        quitar_restos_arriba(im, min(im.height, fondo_pastilla + 40))
+    caja = im.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()
+    im = im.crop(caja)
+    if im.height > ALTO_MAX:
+        im = im.resize((round(im.width * ALTO_MAX / im.height), ALTO_MAX), Image.LANCZOS)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    # WebP con transparencia: una décima parte de lo que ocupa el PNG.
+    im.save(destino, 'WEBP', quality=86, method=6)
+    return im.size
+
+
+def preparar_portal():
+    """La ilustración del Portal sin el marco de la carta."""
+    im = Image.open(RASTER / 'portal.png').convert('RGB')
     w, h = im.size
-    px = im.load()
-    quitado = bytearray(w * h)
-    borde = [(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)] \
-        + [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]
-    # 1) Marco gris de la carta (desaturado, no negro puro), solo desde los
-    #    laterales y el borde superior: por abajo hay figuras (p. ej. Reena)
-    #    que llegan al límite del recorte con zonas blancas.
-    laterales = [(x, 0) for x in range(w)] + [(0, y) for y in range(h)] \
-        + [(w - 1, y) for y in range(h)]
-    es_marco = lambda p: max(p[:3]) - min(p[:3]) < 45 and sum(p[:3]) > UMBRAL
-    _inundar(px, w, h, laterales, es_marco, quitado)
-    # 2) Fondo negro puro, sembrado desde los bordes y desde todo lo quitado.
-    semillas = list(borde)
-    for y in range(h):
-        for x in range(w):
-            if quitado[y * w + x]:
-                semillas.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
-    marcado = bytearray(quitado)
-    for y in range(h):
-        for x in range(w):
-            if quitado[y * w + x]:
-                marcado[y * w + x] = 0
-    es_fondo = lambda p: sum(p[:3]) <= UMBRAL
-    _inundar(px, w, h, semillas, es_fondo, marcado)
-    for i in range(w * h):
-        if quitado[i] or marcado[i]:
-            px[i % w, i // w] = (0, 0, 0, 0)
-    _quitar_iconos_sueltos(px, w, h)
-    caja = im.getbbox()
-    if caja:
-        im = im.crop(caja)
-    DESTINO.mkdir(parents=True, exist_ok=True)
-    im.save(DESTINO / f'{nombre}.png', optimize=True)
+    im = im.crop((round(w * 0.095), round(h * 0.17), round(w * 0.905), round(h * 0.925)))
+    im.save(RAIZ / 'assets' / 'portal.jpg', quality=86, optimize=True)
     return im.size
 
 
 if __name__ == '__main__':
     for n in PERSONAJES:
-        print(n, recortar(n))
+        print(n, preparar(n, RAIZ / 'assets' / 'figuras' / f'{n}.webp'))
+    for n in INVOCACIONES:
+        print(n, preparar(n, RAIZ / 'assets' / 'invocaciones' / f'{n}.webp'))
+    print('portal', preparar_portal())

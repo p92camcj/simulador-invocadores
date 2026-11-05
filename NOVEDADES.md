@@ -6,18 +6,20 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.25.0.83 - 2026-11-05
+## 1.25.0.84 - 2026-11-05
 
 - **Nuevo modo espectáculo (prototipo)**: cuando alguien baja una carta,
-  el personaje aparece saliendo de su Portal, con el mismo arte de las
-  cartas.
+  el personaje aparece de cuerpo entero sobre su Portal, con el arte
+  original de Adrián.
 - **Cada habilidad tiene su escena**: el Metamorfo se transforma pero se
   le sigue notando que es él, el Maestro hace bajar la carta de otra
   jugadora a su Portal, la Cronomante trae una carta del pasado al
   presente, y así con todas.
 - **Las invocaciones completadas se celebran**: los personajes se reúnen
-  en un círculo y aparece el nombre de la invocación y cuántas Gemas se
-  lleva cada jugadora.
+  en un círculo, aparece la criatura invocada (Cirelia, Baelorith y
+  Aelgorth) y cuántas Gemas se lleva cada jugadora.
+- En la vista de siempre, el panel de la invocación muestra ahora un
+  retrato de cada personaje que hace falta y de la criatura.
 - Nunca se enseña una carta que esté oculta en la mesa.
 - Puedes saltar una escena tocando la pantalla, y apagar el modo con el
   botón "✨ Escenas" o desde la configuración de la partida.

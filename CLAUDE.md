@@ -305,10 +305,15 @@ in `nextTurn()`.
   the turn advance (`hayEspectaculoEnCurso()`/`cuandoTermineEspectaculo()`,
   guard `window.avanceTurnoPendiente`). Same hidden-info rule as
   `render.js`: a card's face is only shown if it is public on the table.
-  Character art is the cards' own art with the background removed
-  (`assets/figuras/*.png`, regenerate with `python3 tools/generar_figuras.py`
-  if `assets/cards/` changes) — the project owner explicitly asked not to
-  invent new character art. Toggle: `#btnEspectaculo` (header) /
+  Art comes from the original SVGs in `assets/personajes/` (full-body
+  characters, the Portal card, and the creatures for Cirelia/Baelorith/
+  Aelgorth), turned into `assets/figuras/*.webp`, `assets/invocaciones/*.webp`
+  and `assets/portal.jpg` by `node tools/rasterizar_svg.cjs && python3
+  tools/generar_figuras.py` (re-run both if the SVGs change; `build/` is
+  ignored) — the project owner explicitly asked not to invent new
+  character art. `render.js` also uses `rutaFigura()`/`rutaCriatura()` for
+  small portraits in the active-invocation panel of the classic view. The
+  classic card images (`assets/cards/*.png`) are unchanged. Toggle: `#btnEspectaculo` (header) /
   `#chkEspectaculo` (setup), stored in `localStorage`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.

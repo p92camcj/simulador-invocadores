@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.25.0.83] - 2026-11-05
+## [1.25.0.84] - 2026-11-05
 
 ### Añadido
 - **Modo espectáculo (prototipo)**: nueva capa de presentación
@@ -31,9 +31,20 @@ Todas las versiones importantes del simulador de Invocadores.
     clic en "Terminar turno").
   - Interruptor "✨ Escenas" en la cabecera y casilla en la configuración
     (se recuerda en el navegador).
-- `assets/figuras/*.png`: el arte de cada carta recortado sin marco ni
-  fondo, generado con `tools/generar_figuras.py` (Pillow) a partir de
-  `assets/cards/*.png`. No se ha dibujado ningún personaje nuevo.
+- Arte original de Adrián en `assets/personajes/*.svg`: los 14 personajes
+  de cuerpo entero, la carta del Portal y las criaturas de Cirelia,
+  Baelorith y Aelgorth. `tools/rasterizar_svg.cjs` (Playwright) y
+  `tools/generar_figuras.py` (Pillow) los convierten en
+  `assets/figuras/*.webp`, `assets/invocaciones/*.webp` y
+  `assets/portal.jpg`: quitan la pastilla del nombre y el fondo blanco
+  (Aprendiz y Ocultista) y los pasan a WebP (1,1 MB los 14 personajes). No
+  se ha dibujado ningún personaje nuevo.
+  - En las escenas, cada personaje aparece de cuerpo entero, de pie sobre
+    la ilustración del Portal, y al completar Cirelia, Baelorith o
+    Aelgorth aparece la criatura invocada tras el destello.
+  - Versión de siempre: el panel de la invocación activa muestra un
+    retrato pequeño de cada personaje requerido y de la criatura (si
+    tiene arte). Las cartas del tablero no cambian.
 - `service-worker.js`: cachea los archivos nuevos y también
   `js/bot-probabilidad.js`, que faltaba en la lista.
 
