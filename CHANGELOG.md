@@ -4,6 +4,40 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.24.1.83] - 2026-11-05
+
+### Cambiado (reglas confirmadas por el dueño del proyecto)
+- **No se da cambio de Gemas.** `gastarGemaUnitaria()` (`js/utils.js`) ya
+  no parte una Gema de valor superior en unidades: sin Gema de valor 1
+  suelta devuelve `false`. Nuevas `contarGemasUnitarias()` y
+  `puedePagarActivacionCentral()`. `opcionesActivarHabilidad()` solo ofrece
+  un Portal central si se puede pagar sin cambio (1 Gema de valor 1 o un
+  asterisco; Metamorfo central: 2 de valor 1, o asterisco + 1 de valor 1).
+  `pagarActivacionPortalCentral()` usa el asterisco directamente si es lo
+  único que hay y acepta `opciones.usarAsterisco` para decidir sin
+  `confirm()`. El autómata pasa `false`, así que ya no abre un diálogo en
+  su turno.
+- **Ficha de transformación del Metamorfo.** `.aspecto` se borra cuando el
+  Metamorfo queda tapado (nueva `apilarEnPortal()`, usada en Fase A,
+  Maestro y Cronomante), cuando el Ocultista lo pone bocabajo
+  (`retirarFichaMetamorfo()`) y cuando la Cronista se lo lleva a la mano.
+  Si se destapa después, vuelve a ser un Metamorfo original. Estratega lo
+  conserva. Nueva `transformacionesDisponiblesMetamorfo()`: dos Metamorfos
+  no pueden tener la misma transformación a la vez. La transformación solo
+  se paga con una Gema de valor 1.
+- **Maestro + Clarividente.** `candidatosObjetivoMaestro()` excluye a la
+  jugadora que tenga la Clarividente visible, porque su mano está oculta
+  al resto. Nueva `tieneClarividenteVisible()`.
+- **Autómata.** `construirEstadoVisibleParaBot()` ya no expone
+  `cartaOcultaPublica` de una jugadora con la Clarividente visible (antes
+  la bot "veía" una carta que nadie ve en mesa). Añade
+  `gemasUnitariasPropias` y `transformacionesOcupadas`, que usan
+  `decidirMetamorfoNormal/Dificil`.
+- Reglamento (fase B, nota del Metamorfo, FAQ de pago, Maestro, Entusiasta
+  pendiente), `Documentacion_Simulador_Invocadores.md` y `CLAUDE.md`
+  actualizados. 7 tests nuevos o reescritos en `tests/run-tests.mjs`
+  (71 en total).
+
 ## [1.24.0.83] - 2026-07-21
 
 ### Añadido

@@ -6,6 +6,20 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.24.1.83 - 2026-11-05
+
+- **Ya no se da cambio de Gemas.** Para usar un personaje de un Portal
+  central necesitas una Gema azul de valor 1 o revelar tu Gema con
+  asterisco. Una Gema de color ya no se cambia por unidades.
+- **Metamorfo del centro:** cuesta dos Gemas de valor 1, o tu Gema con
+  asterisco más una Gema de valor 1.
+- **La transformación del Metamorfo se pierde al taparlo.** Si le juegan
+  una carta encima, lo ponen bocabajo o se lo llevan a la mano, vuelve a
+  ser un Metamorfo normal aunque luego se destape.
+- **Dos Metamorfos no pueden imitar al mismo personaje** a la vez.
+- **El Maestro no puede elegir a quien tiene la Clarividente visible**,
+  porque en ese momento nadie ve su mano. Los autómatas tampoco la ven.
+
 ## 1.24.0.83 - 2026-07-21
 
 - **Los autómatas ya usan a Maestro con criterio propio, y con esto
