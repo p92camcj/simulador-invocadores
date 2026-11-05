@@ -4,6 +4,41 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.25.0.83] - 2026-11-05
+
+### Añadido
+- **Modo espectáculo (prototipo)**: nueva capa de presentación
+  (`js/espectaculo.js` + `espectaculo.css`) que escenifica a pantalla
+  completa lo que pasa en la partida, sin tocar ninguna regla.
+  - Fase A: al bajar una carta, el Portal se abre y el personaje sale de
+    él; lo que había antes encima "pasa al pasado". Centinela añade su
+    onda de escudo.
+  - Fase B, una escena por habilidad: Metamorfo se transforma conservando
+    rasgos propios (borde iridiscente, su humo y su silueta, que se
+    transparenta); Maestro hace bajar la carta de la otra jugadora a su
+    Portal; Cronomante trae una carta de la pila (el pasado) al Portal (el
+    presente); Cronista, Ocultista, Estratega y Aprendiz también tienen la
+    suya. Se detecta qué ha cambiado comparando una foto pública de la mesa
+    antes y después (`envolverHabilidad()`), igual para humanas y autómatas.
+  - Invocación completada: los personajes requeridos convergen en un
+    círculo y aparece el nombre de la invocación con cuántas Gemas recibe
+    cada jugadora (nunca su valor). Sustituye al `alert()` de texto.
+  - Solo se muestra la cara de una carta si es pública en la mesa; manos y
+    cartas tapadas, siempre con reverso.
+  - Cola de escenas que se acelera si se acumulan, se salta con un clic o
+    Escape, y respeta "reducir movimiento" del sistema. El avance de turno
+    espera a que terminen (`window.avanceTurnoPendiente` evita un doble
+    clic en "Terminar turno").
+  - Interruptor "✨ Escenas" en la cabecera y casilla en la configuración
+    (se recuerda en el navegador).
+- `assets/figuras/*.png`: el arte de cada carta recortado sin marco ni
+  fondo, generado con `tools/generar_figuras.py` (Pillow) a partir de
+  `assets/cards/*.png`. No se ha dibujado ningún personaje nuevo.
+- `service-worker.js`: cachea los archivos nuevos y también
+  `js/bot-probabilidad.js`, que faltaba en la lista.
+
+---
+
 ## [1.24.0.83] - 2026-07-21
 
 ### Añadido

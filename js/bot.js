@@ -14,6 +14,7 @@ import {
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
 } from './utils.js';
 import { applyAbility } from './abilities.js';
+import { envolverHabilidad } from './espectaculo.js';
 import { render } from './render.js';
 import {
   actualizarMemoriaBot, estimarProbabilidadesPersonajes,
@@ -1144,11 +1145,11 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
   // Mismo onComplete que construye #btnAbility.onclick en actions.js: cobra
   // el coste de Portal central si aplica, marca la habilidad como usada,
   // refresca la UI.
-  const onComplete = () => {
+  const onComplete = envolverHabilidad(name, botIdx, stack, () => {
     if (tipo === 'central') pagarActivacionPortalCentral(players[botIdx]);
     window.habilidadUsadaEsteTurno = true;
     render(players, neutrals, levelIdx);
-  };
+  });
   applyAbility(name, botIdx, stack, players, neutrals, levelIdx, need, onComplete);
   const yaElegidos = resolverPickersAbiertos(vista, objetivoPreferido);
   return describirObjetivoHabilidad(name, yaElegidos, vista);

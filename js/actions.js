@@ -7,6 +7,10 @@ import {
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
   construirPoolGemas, todosLosPortales, reponerManoSiFalta
 } from './utils.js';
+import {
+  anunciarCartaJugada, envolverHabilidad, anunciarInvocacion, cuandoTermineEspectaculo,
+  hayEspectaculoEnCurso
+} from './espectaculo.js';
 
 /**
  * Etiqueta entre paréntesis de lo que hay en el top de un Portal, con el
@@ -63,6 +67,8 @@ export function initActions(players, neutrals) {
 
     window.played = true;
     window.selectedCardIdx = null;
+    // Modo espectáculo (solo presentación, ver js/espectaculo.js).
+    anunciarCartaJugada(window.turn, destKey);
 
     // render() ya dispara, si aplica, la elección inmediata de Clarividente
     // (gestionarTransicionesClarividente en render.js) para CUALQUIER
@@ -251,13 +257,15 @@ export function initActions(players, neutrals) {
       // usada, luego refresca la UI. El coste propio del Metamorfo (si lo
       // hay) ya se cobra dentro de su propio case en abilities.js, antes de
       // llegar aquí.
-      const onComplete = () => {
+      // envolverHabilidad() solo añade la escena del modo espectáculo
+      // cuando la habilidad se aplica de verdad (js/espectaculo.js).
+      const onComplete = envolverHabilidad(name, window.turn, stack, () => {
         if (tipo === 'central') {
           pagarActivacionPortalCentral(players[window.turn]);
         }
         window.habilidadUsadaEsteTurno = true;
         render(players, neutrals, window.levelIdx);
-      };
+      });
 
       // Guardado aparte para que, si la jugadora cancela el segundo picker
       // de Cronomante y vuelve a pulsar "Activar habilidad" más tarde, se
@@ -274,6 +282,7 @@ export function initActions(players, neutrals) {
   // Botón terminar turno
   document.querySelector('#btnEndTurn').onclick = () => {
     if (window.juegoTerminado) return;
+    if (window.avanceTurnoPendiente) return;
     if (!window.played) {
       alert('Juega una carta');
       return;
@@ -306,6 +315,7 @@ export function initActions(players, neutrals) {
       const allPortals = todosPortales.map(t => t.stack);
       const puedeInvocar = allPortals.every(p => p.length && p.at(-1).vis?.public);
       if (puedeInvocar && need.every(k => map.get(k))) {
+        const gemasAntes = players.map(p => p.gems.length);
         const pool = construirPoolGemas(invocacion.gemas);
         need.forEach(k => {
           const arr = map.get(k);
@@ -348,7 +358,14 @@ export function initActions(players, neutrals) {
         if (need.includes('Maestro') && maestrosRealesVisibles === 1 && maestroOwnerIdx !== null && !hayPicaroVisible) {
           players[maestroOwnerIdx].gems.push({ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' });
         }
-        alert(`Invocación ${lvl} (${invocacion.nombre}) completa`);
+        // En modo espectáculo la escena sustituye al aviso de texto.
+        const escenificada = anunciarInvocacion({
+          nivel: lvl,
+          nombre: invocacion.nombre,
+          need,
+          recompensas: players.map((p, i) => ({ jugadora: p.name, gemas: p.gems.length - gemasAntes[i] })),
+        });
+        if (!escenificada) alert(`Invocación ${lvl} (${invocacion.nombre}) completa`);
 
         // Orden REAL de invocaciones completadas en esta partida —
         // necesario para el desempate del marcador final (ver
@@ -359,15 +376,31 @@ export function initActions(players, neutrals) {
         window.levelIdx++;
         const esUltimaInvocacion = window.levelIdx >= window.LEVELS.length;
         if (esUltimaInvocacion) {
-          finalizarPartida(`Se ha completado la invocación ${lvl}. Fin de la partida.`);
+          // Se deja terminar la escena antes del marcador final (que usa
+          // un confirm() bloqueante).
+          cuandoTermineEspectaculo().then(() =>
+            finalizarPartida(`Se ha completado la invocación ${lvl}. Fin de la partida.`));
           return;
         }
       }
     }
 
-    window.turn = (window.turn + 1) % players.length;
-    nextTurn();
-    window.played = false;
+    const avanzarTurno = () => {
+      window.turn = (window.turn + 1) % players.length;
+      nextTurn();
+      window.played = false;
+    };
+    // Si hay escenas del modo espectáculo en pantalla, el turno siguiente
+    // (y su aviso "Turno de ...") espera a que terminen o se salten.
+    if (hayEspectaculoEnCurso()) {
+      window.avanceTurnoPendiente = true;
+      cuandoTermineEspectaculo().then(() => {
+        window.avanceTurnoPendiente = false;
+        avanzarTurno();
+      });
+    } else {
+      avanzarTurno();
+    }
   };
 
 }

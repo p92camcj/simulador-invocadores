@@ -6,6 +6,24 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.25.0.83 - 2026-11-05
+
+- **Nuevo modo espectáculo (prototipo)**: cuando alguien baja una carta,
+  el personaje aparece saliendo de su Portal, con el mismo arte de las
+  cartas.
+- **Cada habilidad tiene su escena**: el Metamorfo se transforma pero se
+  le sigue notando que es él, el Maestro hace bajar la carta de otra
+  jugadora a su Portal, la Cronomante trae una carta del pasado al
+  presente, y así con todas.
+- **Las invocaciones completadas se celebran**: los personajes se reúnen
+  en un círculo y aparece el nombre de la invocación y cuántas Gemas se
+  lleva cada jugadora.
+- Nunca se enseña una carta que esté oculta en la mesa.
+- Puedes saltar una escena tocando la pantalla, y apagar el modo con el
+  botón "✨ Escenas" o desde la configuración de la partida.
+
+---
+
 ## 1.24.0.83 - 2026-07-21
 
 - **Los autómatas ya usan a Maestro con criterio propio, y con esto
