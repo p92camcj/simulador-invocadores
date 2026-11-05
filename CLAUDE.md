@@ -217,16 +217,27 @@ in `nextTurn()`.
   player's = discounted, central/neutral = zero — matching the real rule
   that a central-portal-only match on a required character forfeits its
   Gem, see `actions.js`'s `arr[0] !== null` check), plus a bonus if the
-  play deterministically completes the invocation right now. `bot.js`'s
-  `'dificil'` heuristic evaluates every (card × Portal) combination this
-  way for Fase A, and Ocultista/Cronista/**Maestro** for Fase B (Maestro's
-  evaluation is deterministic, since its target card's identity is already
-  known with certainty via `cartaOcultaPublica`) — not implemented: an
-  optional tiebreak against rivals' estimated Gems the original task
-  description allowed but didn't require (see the comment in
-  `decidirJugadaFaseADificil`, `js/bot.js`), and any awareness of "don't
-  cover your own visible ability card" when choosing a destination Portal
-  in Fase A.
+  play deterministically completes the invocation right now. Since
+  1.26.2 that function is only used for Fase B (Ocultista/Cronista/
+  **Maestro**, etc.); Fase A of `'dificil'` is scored by
+  **`js/bot-estrategia.js`** instead (see below).
+- **`js/bot-estrategia.js`** — strategic Fase A evaluation for `'dificil'`,
+  added 1.26.2 (2026-11-05). Pure, same sanitized `vista` + the
+  card-counting distribution. For every (known/hidden card × Portal) it
+  simulates the resulting board: if it closes the invocation, it computes
+  the real Gem split (unique required character on an owned Portal,
+  Pícaro +1, Maestro +3) and scores *own gain − `PESO_RIVAL` × best
+  rival's gain* — so the bot no longer hands a closing play to rivals; if
+  it doesn't close, it adds a positional value (unique required characters
+  already placed) and the expected outcome of the **next player** closing
+  with her private card (only if it's good for her). The hidden card is
+  scored as the probability-weighted average over its possible identities
+  (exhaustive determinization). The vista now also carries
+  `tieneCartaOcultaPropia` (yes/no only): without it, at the very end of
+  the game with one card left, `'dificil'` could choose "play the hidden
+  card" without having one and freeze the match. Not yet done (see
+  `docs/MEJORAS_FUTURAS.md`): scoring Fase A + Fase B as one combined turn,
+  using the same evaluator in Fase B, and tuning the weights by self-play.
 - **`js/game.js`** — builds the character deck (`initGame`, via
   `composicionMazoTotal(window.invocationSet)` in `utils.js` — see the gap
   above), turn advancement and the "no cards left" end condition

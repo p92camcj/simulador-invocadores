@@ -22,6 +22,7 @@ import {
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
   calcularNecesariosUnicosDeRivales, PESO_ADVERSARIAL,
 } from './bot-probabilidad.js';
+import { evaluarJugadasFaseA } from './bot-estrategia.js';
 
 // ---------- Nombres de autómatas ----------
 // Pool temático "Invocadores", todos terminados en "bot", con margen de
@@ -81,6 +82,12 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
     // La carta oculta propia NUNCA se expone — ni siquiera como `null` con
     // nombre: directamente no existe ningún campo para ella en esta vista.
     propiaCartaConocida: propiaVisible ? { name: propiaVisible.name } : null,
+    // ¿Le queda una carta oculta en la mano? Solo el SÍ/NO (cuántas cartas
+    // tiene en la mano lo ve cualquiera), nunca cuál es. Al final de la
+    // partida, sin mazo, puede quedarle solo la carta que ve: sin este dato
+    // la dificultad 'dificil' podía elegir "jugar la oculta" sin tenerla y
+    // la partida se quedaba bloqueada.
+    tieneCartaOcultaPropia: yo.hand.some(c => c.vis?.owner !== true),
     gemasPropiasTotalExacto: yo.gems.length ? yo.gems.reduce((a, g) => a + (g.valor || 0), 0) : 0,
     // Gemas de valor 1 propias: las únicas con las que se puede pagar un
     // coste (no se da cambio, REGLAMENTO.md fase B).
@@ -305,28 +312,7 @@ export function decidirJugadaFaseA(vista, need) {
 }
 
 /**
- * ¿Jugar `personaje` (identidad CIERTA) en `destKeyDestino` deja la
- * invocación activa completa AHORA MISMO? Generaliza el atajo de
- * `decidirJugadaFaseA` (que solo lo comprobaba para el caso "un único
- * Portal bloqueante") a CUALQUIER Portal candidato — necesario para que la
- * dificultad 'dificil' pueda comparar por valor esperado en vez de solo
- * por ese atajo. Requiere que TODOS los Portales del tablero acaben
- * ocupados y visibles (el destino lo estará tras esta jugada; el resto ya
- * deben estarlo) y que los 3 personajes de `need` queden presentes.
- */
-function completariaLaInvocacion(vista, need, personaje, destKeyDestino) {
-  if (!personaje) return false;
-  const portales = listaPortalesConDestino(vista);
-  const todosOcupados = portales.every(p =>
-    p.destKey === destKeyDestino || (p.estado !== null && !p.estado?.hidden)
-  );
-  if (!todosOcupados) return false;
-  const nombresFinal = personajesVisiblesActuales(vista).concat(personaje);
-  return need.every(k => nombresFinal.includes(k));
-}
-
-/**
- * Variante de `completariaLaInvocacion()` para la habilidad activa del
+ * Comprobación de cierre para la habilidad activa del
  * Maestro (Bloque 4, 4.7): baja `personaje` (la carta pública conocida de
  * la jugadora objetivo) a UNO de sus Portales propios — el índice exacto
  * no se conoce hasta un segundo picker interno de `abilities.js` (si tiene
@@ -344,82 +330,38 @@ export function completariaLaInvocacionConMaestro(vista, need, personaje) {
 }
 
 /**
- * Heurística 'dificil' de Fase A (ver `js/bot-probabilidad.js` y el prompt
- * original de esta tarea): en vez del atajo greedy de `decidirJugadaFaseA`,
- * evalúa TODAS las combinaciones (carta conocida u oculta) × (Portal
- * candidato) por valor esperado en Gemas (`valorEsperadoDeAccion()`) y
- * elige la de mayor valor. Empate → prefiere la carta conocida (menos
- * arriesgado que la oculta, cuya identidad ni el propio bot conoce) y,
- * como último desempate, al azar (no 100% predecible, mismo criterio que
- * 'normal').
+ * Heurística 'dificil' de Fase A: puntúa TODAS las combinaciones (carta
+ * conocida u oculta) × (Portal) con la evaluación estratégica de
+ * `js/bot-estrategia.js` — reparto real de Gemas si la jugada cierra la
+ * invocación (lo que gana la bot menos lo que gana la mejor rival), riesgo
+ * de dejarle el cierre servido a la siguiente jugadora, y valor de los
+ * requisitos ya colocados. La carta oculta se evalúa como media sobre sus
+ * identidades posibles (conteo de cartas de `estimarProbabilidadesPersonajes()`).
+ * Empate → prefiere la carta conocida y, después, al azar.
+ *
+ * Antes (hasta 1.26.1) se usaba `valorEsperadoDeAccion()`, que premiaba
+ * cerrar la invocación aunque solo cobrasen las rivales y no miraba qué
+ * quedaba para el turno siguiente. Esa función se mantiene para Fase B.
  */
 export function decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl) {
-  const conocida = vista.propiaCartaConocida?.name ?? null;
   const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet);
-  const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
-  const visibles = personajesVisiblesActuales(vista);
-  const cumplidos = need.filter(k => visibles.includes(k));
-  // Bloque 3 — término adversarial: personajes de `need` que hoy solo tiene
-  // visible una rival (denegárselos, por duplicado en otro sitio o tapando
-  // directamente su Portal, la perjudica) — ver `valorEsperadoDeAccion()`.
-  const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
-  const destKeysRivalesVulnerables = new Set(Object.values(necesariosUnicosDeRivales));
-  const contexto = { need, cumplidos, valorGemaNivel, necesariosUnicosDeRivales };
+  const valorGemaNivel = lvl ? valorMedioGemaNivel(invocationSet, lvl) : 0;
+  const etiquetas = new Map(listaPortalesConDestino(vista).map(p => [p.destKey, p.etiqueta]));
+  const candidatas = evaluarJugadasFaseA(vista, need, valorGemaNivel, probabilidades.probabilidadPorNombre);
 
-  const candidatas = [];
-  listaPortalesConDestino(vista).forEach(p => {
-    const esCentral = p.destKey.startsWith('n:');
-    const cubreNecesarioUnicoRival = destKeysRivalesVulnerables.has(p.destKey);
-    if (conocida) {
-      candidatas.push({
-        usaConocida: true,
-        destKey: p.destKey,
-        etiqueta: p.etiqueta,
-        ev: valorEsperadoDeAccion(
-          {
-            personaje: conocida, esPropio: p.esPropio, esCentral, destKey: p.destKey, cubreNecesarioUnicoRival,
-            completaInvocacionSiSeJuega: completariaLaInvocacion(vista, need, conocida, p.destKey),
-          },
-          probabilidades,
-          contexto
-        ),
-      });
-    }
-    // Carta oculta propia: identidad desconocida ni siquiera para el
-    // propio bot — se evalúa con la distribución de probabilidad completa,
-    // nunca con certeza de que complete la invocación.
-    candidatas.push({
-      usaConocida: false,
-      destKey: p.destKey,
-      etiqueta: p.etiqueta,
-      ev: valorEsperadoDeAccion(
-        { personaje: null, esPropio: p.esPropio, esCentral, destKey: p.destKey, cubreNecesarioUnicoRival, completaInvocacionSiSeJuega: false },
-        probabilidades,
-        contexto
-      ),
-    });
-  });
-
-  // Desempate final: al azar entre las de mayor valor esperado (tras
-  // preferir la conocida). El prompt original de esta tarea permite además
-  // desempatar con la estimación de Gemas de rivales (`contarGemasPorNivel`,
-  // ya expuesta en `vista.jugadoras[i].gemasPorNivel`) "para no facilitar
-  // en exceso a quien va ganando" — deliberadamente NO implementado en esta
-  // ronda: el propio prompt lo marca como opcional ("puede seguir usando"),
-  // y la señal es débil (solo un recuento por nivel, no el valor exacto de
-  // Gema de cada rival) frente a la complejidad de comparar candidatas de
-  // "ajena A" vs. "ajena B". Queda anotado como posible mejora futura, no
-  // como un olvido.
-  const mejorEV = Math.max(...candidatas.map(c => c.ev));
-  const mejores = candidatas.filter(c => c.ev === mejorEV);
+  // Margen pequeño para que diferencias de redondeo cuenten como empate.
+  const mejorValor = Math.max(...candidatas.map(c => c.valor));
+  const mejores = candidatas.filter(c => c.valor >= mejorValor - 1e-9);
   const mejoresConocidas = mejores.filter(c => c.usaConocida);
   const elegido = elegirAlAzar(mejoresConocidas.length ? mejoresConocidas : mejores);
 
   return {
     usaConocida: elegido.usaConocida,
     destKey: elegido.destKey,
-    etiqueta: elegido.etiqueta,
-    motivo: `valor esperado ${elegido.ev.toFixed(2)} Gemas`,
+    etiqueta: etiquetas.get(elegido.destKey),
+    motivo: elegido.cierra
+      ? `cierra la invocación (valor ${elegido.valor.toFixed(2)})`
+      : `valor estratégico ${elegido.valor.toFixed(2)}`,
   };
 }
 

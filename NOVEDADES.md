@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.26.2.98 - 2026-11-05
+
+- **Los autómatas en Difícil juegan con más cabeza.** Antes de cerrar una
+  invocación miran quién se lleva las Gemas, y ya no la cierran si casi
+  todo el premio es para otra jugadora. También evitan dejarle la
+  invocación a punto a quien juega después, y la preparan cuando el premio
+  es sobre todo suyo.
+- **Arreglado un bloqueo al final de la partida:** con autómatas en
+  Difícil, la partida podía quedarse parada cuando a una de ellas solo le
+  quedaba una carta.
+
 ## 1.26.1.90 - 2026-11-05
 
 - **El Maestro ya no gana sus 3 Gemas extra si hay un Pícaro a la vista**

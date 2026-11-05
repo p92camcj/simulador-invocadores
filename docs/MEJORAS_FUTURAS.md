@@ -12,6 +12,34 @@
 
 ---
 
+## Autómatas más estratégicos — plan por fases (2026-11-05)
+
+Investigación previa: las IA de juegos de cartas con información oculta
+suelen combinar una **función de evaluación** (heurística/utilidad) con
+**búsqueda sobre "mundos posibles"**: se rellenan las cartas que no se ven
+de forma coherente con lo observado (determinización) y se busca en cada
+mundo (PIMC, ISMCTS). Los pesos se afinan jugando la IA contra sí misma.
+Todo esto cabe en el navegador sin hacer trampa, siempre que los "mundos"
+se generen solo a partir de la vista saneada.
+
+1. ~~**Evaluación estratégica de Fase A**~~ (hecho en 1.26.2,
+   `js/bot-estrategia.js`): reparto real de Gemas al cerrar (propio menos
+   la mejor rival), riesgo de dejar el cierre servido a la siguiente
+   jugadora, valor de posición; carta oculta como media sobre sus
+   identidades posibles.
+2. **Turno completo A+B**: puntuar cada pareja (jugada de Fase A,
+   habilidad de Fase B) con el mismo evaluador, en vez de decidir A y
+   luego B por separado. Requiere un modelo puro de cada habilidad sobre
+   el tablero simplificado (o el motor de reglas separado de la UI).
+3. **Búsqueda con determinización (PIMC / ISMCTS ligero)**: muestrear
+   repartos de las cartas desconocidas coherentes con la memoria del bot y
+   simular 1-2 turnos de rivales en cada uno. Nivel nuevo ("Experto") con
+   presupuesto de tiempo por turno (p. ej. 200 ms).
+4. **Afinado por autojuego**: un script de Node que enfrente versiones del
+   bot en miles de partidas y ajuste `PESO_RIVAL`, `FACTOR_POSICION`,
+   `FACTOR_AMENAZA` (y los de `bot-probabilidad.js`) por búsqueda aleatoria
+   o evolutiva. Depende de poder ejecutar partidas sin DOM (motor separado).
+
 ## Resuelto recientemente (2026-07-21, Bloque 3 — estrategia adversarial en Fase A)
 
 Hasta ahora el autómata jugaba bien para sí mismo pero nunca tenía en

@@ -4,6 +4,35 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.26.2.98] - 2026-11-05
+
+### Mejorado
+- **Autómatas en dificultad Difícil: jugada de Fase A con criterio
+  estratégico.** Nuevo módulo puro `js/bot-estrategia.js`, usado por
+  `decidirJugadaFaseADificil()` (`js/bot.js`) en lugar de
+  `valorEsperadoDeAccion()`. Para cada carta × Portal simula el tablero
+  resultante y:
+  - si cierra la invocación, calcula el reparto real de Gemas (requisito
+    único en Portal con dueña, Pícaro +1, Maestro +3) y puntúa lo que gana
+    la bot menos 0,75 × lo que gana la mejor rival. Antes cerrar siempre
+    sumaba un bonus, aunque solo cobrasen las rivales;
+  - si no cierra, suma el valor de posición (requisitos únicos ya
+    colocados, propios menos la mejor rival) y el resultado esperado de que
+    la siguiente jugadora cierre con su carta privada si le conviene;
+  - la carta oculta se puntúa como media sobre sus identidades posibles
+    (conteo de cartas).
+- Plan por fases para seguir mejorando los autómatas en
+  `docs/MEJORAS_FUTURAS.md`.
+
+### Corregido
+- **La partida podía quedarse bloqueada al final con autómatas en
+  Difícil.** Sin mazo y con una sola carta (la que ve), la bot podía elegir
+  "jugar la carta oculta" sin tenerla; la jugada fallaba y nunca terminaba
+  el turno. La vista saneada incluye ahora `tieneCartaOcultaPropia` (solo
+  sí/no) y esa jugada ya no se propone.
+- `service-worker.js` cachea el módulo nuevo. Tests nuevos en
+  `tests/run-tests.mjs`.
+
 ## [1.26.1.90] - 2026-11-05
 
 ### Corregido
