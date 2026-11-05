@@ -12,7 +12,7 @@
 import {
   LEVELS, INVOCATION_SETS, shuffle, contarGemasPorNivel,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
-  contarGemasUnitarias, tieneClarividenteVisible, todosLosPortales,
+  contarGemasUnitarias, tieneClarividenteVisible, todosLosPortales, jugadoraProtegidaPorCentinela,
 } from './utils.js';
 import { applyAbility } from './abilities.js';
 import { envolverHabilidad } from './espectaculo.js';
@@ -111,6 +111,10 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
         ? null
         : (p.hand.find(c => c.vis?.others === true)?.name ?? null),
       gemasPorNivel: contarGemasPorNivel(p.gems),
+      // Público: una Centinela real visible en sus Portales la protege de
+      // las habilidades de las demás (Maestro, Aprendiz...). Nunca aplica a
+      // la propia bot frente a sí misma.
+      protegidaPorCentinela: i !== botIdx && jugadoraProtegidaPorCentinela(p),
     })),
     neutrales: neutrals.map(estadoPortalVisible),
   };
@@ -187,6 +191,9 @@ export function listaPortalesConDestino(vista) {
 function listaPortalesFormatoHabilidad(vista) {
   const lista = [];
   vista.jugadoras.forEach(j => {
+    // Los Portales de una rival protegida por su Centinela no son objetivo
+    // legal de ninguna habilidad (REGLAMENTO.md, "Centinela").
+    if (j.protegidaPorCentinela) return;
     j.portales.forEach((estado, idx) => lista.push({ key: `${j.idx}:${idx}`, esPropio: j.esUnoMismo, estado }));
   });
   vista.neutrales.forEach((estado, idx) => lista.push({ key: `n:${idx}`, esPropio: false, estado }));
@@ -629,7 +636,7 @@ function decidirHabilidadFaseB(vista, players, neutrals, botIdx, need, memoriaBo
 export function decidirMaestroNormal(vista, need) {
   const visibles = personajesVisiblesActuales(vista);
   const candidata = vista.jugadoras.find(j =>
-    !j.esUnoMismo && j.cartaOcultaPublica && need.includes(j.cartaOcultaPublica) && !visibles.includes(j.cartaOcultaPublica)
+    !j.esUnoMismo && !j.protegidaPorCentinela && j.cartaOcultaPublica && need.includes(j.cartaOcultaPublica) && !visibles.includes(j.cartaOcultaPublica)
   );
   return candidata ? candidata.idx : null;
 }
@@ -645,7 +652,9 @@ export function decidirMaestroNormal(vista, need) {
  */
 function primerRequisitoUnicoDeRivalComoClaveHabilidad(vista, need) {
   const necesariosUnicosDeRivales = calcularNecesariosUnicosDeRivales(vista, need);
-  const [clave] = Object.values(necesariosUnicosDeRivales);
+  const protegidas = new Set(vista.jugadoras.filter(j => j.protegidaPorCentinela).map(j => j.idx));
+  const clave = Object.values(necesariosUnicosDeRivales)
+    .find(k => !protegidas.has(parseInt(k.split(':')[1], 10)));
   return clave ? clave.slice(2) : null; // "a:i:j" -> "i:j" (formato de habilidad)
 }
 
@@ -702,7 +711,7 @@ export function decidirAprendizNormal(vista, need) {
 
   const propia = vista.jugadoras.find(j => j.esUnoMismo);
   const candidata = vista.jugadoras.find(j =>
-    !j.esUnoMismo && j.cartaOcultaPublica && need.includes(j.cartaOcultaPublica) && !visibles.includes(j.cartaOcultaPublica)
+    !j.esUnoMismo && !j.protegidaPorCentinela && j.cartaOcultaPublica && need.includes(j.cartaOcultaPublica) && !visibles.includes(j.cartaOcultaPublica)
   );
   if (!candidata) return null;
   return { idx1: propia.idx, idx2: candidata.idx };
@@ -737,7 +746,7 @@ export function decidirAprendizPropioDificil(vista, need, cumplidos, valorGemaNi
 
   let mejor = null;
   vista.jugadoras.forEach(j => {
-    if (j.esUnoMismo || !j.cartaOcultaPublica) return;
+    if (j.esUnoMismo || j.protegidaPorCentinela || !j.cartaOcultaPublica) return;
     const ev = valorCartaEnManoPropia(j.cartaOcultaPublica, need, cumplidos, valorGemaNivel) - valorCedido;
     if (!mejor || ev > mejor.ev) mejor = { idx1: propia.idx, idx2: j.idx, ev };
   });
@@ -759,7 +768,7 @@ export function decidirAprendizPropioDificil(vista, need, cumplidos, valorGemaNi
  * sin el bot" no es posible).
  */
 export function decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGemaNivel) {
-  const rivales = vista.jugadoras.filter(j => !j.esUnoMismo);
+  const rivales = vista.jugadoras.filter(j => !j.esUnoMismo && !j.protegidaPorCentinela);
   if (rivales.length < 2) return null;
 
   const totalGemas = j => Object.values(j.gemasPorNivel || {}).reduce((a, b) => a + b, 0);
@@ -918,7 +927,7 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
       // `valorEsperadoDeAccion()` ya se aplica sin caso especial (no se le
       // pasa `destKey`, así que nunca coincide con el de esa rival).
       vista.jugadoras.forEach(j => {
-        if (j.esUnoMismo || !j.cartaOcultaPublica) return;
+        if (j.esUnoMismo || j.protegidaPorCentinela || !j.cartaOcultaPublica) return;
         const ev = valorEsperadoDeAccion(
           {
             personaje: j.cartaOcultaPublica, esPropio: false, esCentral: false,

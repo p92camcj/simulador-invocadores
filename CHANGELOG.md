@@ -4,6 +4,22 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.26.6.107] - 2026-11-05
+
+### Corregido
+- **Las autómatas elegían como objetivo a rivales protegidas por su
+  Centinela.** El Maestro (en Normal y en Difícil), el Aprendiz y las
+  habilidades que apuntan a un Portal (Estratega, Cronomante, Cronista,
+  Ocultista) no miraban esa protección. Cuando la rival elegida no era un
+  objetivo legal, la habilidad acababa en otro objetivo o daba el aviso
+  "No hay ninguna jugadora con una carta visible-para-el-resto que puedas
+  bajar". La vista saneada de `js/bot.js` incluye ahora
+  `protegidaPorCentinela` por jugadora, que es información pública.
+  `decidirMaestroNormal`, la evaluación del Maestro en Difícil, las tres
+  decisiones del Aprendiz y `listaPortalesFormatoHabilidad` descartan a las
+  rivales protegidas.
+- Tests nuevos en `tests/run-tests.mjs`.
+
 ## [1.26.5.105] - 2026-11-05
 
 ### Cambiado

@@ -1020,5 +1020,34 @@ test('valorAmenazaSiguiente: negativo si la siguiente jugadora puede cerrar y co
   assert.ok(amenaza < 0);
 });
 
+console.log('Protección de Centinela en las decisiones de la autómata (bot.js)');
+
+test('Maestro y Aprendiz (Normal) no eligen a una rival protegida por su Centinela', () => {
+  const need = ['X', 'Y', 'Z'];
+  const vista = {
+    botIdx: 0, propiaCartaConocida: { name: 'W' },
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [null], cartaOcultaPublica: null },
+      { idx: 1, esUnoMismo: false, portales: [{ name: 'Centinela' }], cartaOcultaPublica: 'X', protegidaPorCentinela: true },
+    ],
+    neutrales: [],
+  };
+  assert.equal(decidirMaestroNormal(vista, need), null);
+  assert.equal(decidirAprendizNormal(vista, need), null);
+  vista.jugadoras[1].protegidaPorCentinela = false;
+  assert.equal(decidirMaestroNormal(vista, need), 1);
+});
+
+test('Estratega (Normal) no propone intercambiar un Portal de una rival protegida', () => {
+  const vista = {
+    jugadoras: [
+      { idx: 0, esUnoMismo: true, portales: [null] },
+      { idx: 1, esUnoMismo: false, portales: [{ name: 'X' }], protegidaPorCentinela: true },
+    ],
+    neutrales: [],
+  };
+  assert.equal(decidirEstrategaNormal(vista, ['X', 'Y', 'Z']), null);
+});
+
 console.log(`\n${pass} OK, ${fail} fallidos`);
 process.exit(fail ? 1 : 0);
