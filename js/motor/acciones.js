@@ -190,12 +190,14 @@ export function opcionesFaseB(partida) {
 
 /**
  * Fase B, después de aplicar la habilidad: cobra el acceso al Portal central
- * si hacía falta y marca la habilidad del turno como usada.
- * `origen` es la clave de opcionesActivarHabilidad ('own:<j>' | 'central:<k>').
+ * si hacía falta (con la Gema de asterisco si `usarAsterisco`) y marca la
+ * habilidad del turno como usada. `origen` es la clave de opcionesActivarHabilidad ('own:<j>' | 'central:<k>').
  */
-export function completarActivacion(partida, { origen, personaje }) {
+export function completarActivacion(partida, { origen, personaje, usarAsterisco = false }) {
   if (String(origen).startsWith('central:')) {
-    pagarActivacionPortalCentral(partida.players[partida.turn]);
+    // `usarAsterisco` solo cuenta si la jugadora tiene a la vez Gemas de 1 y
+    // una de asterisco: preguntarlo es cosa de la interfaz, no del motor.
+    pagarActivacionPortalCentral(partida.players[partida.turn], { usarAsterisco });
   }
   partida.habilidadUsadaEsteTurno = true;
   return [{ tipo: 'habilidadAplicada', jugadora: partida.turn, origen, personaje }];

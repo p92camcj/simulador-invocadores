@@ -54,7 +54,7 @@ export function initGame() {
   window.invocacionesCompletadas = [];
 
   // Configurar controladores de acciones
-  initActions(window.players, window.neutrals);
+  initActions();
 
   // Iniciar primer turno
   nextTurn();

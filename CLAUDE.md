@@ -196,12 +196,14 @@ in `nextTurn()`.
   auditable at a glance that the bot can't cheat even as the heuristic
   changes. `decidirYJugarTurno(players, neutrals, botIdx, contexto)` is the
   single entry point, dispatching on `players[botIdx].dificultad`
-  (`HEURISTICAS_POR_DIFICULTAD`: `'normal'` or `'dificil'`) — it reuses
-  the exact same legal actions a human uses (`window.tryPlayOnPortal`,
-  `applyAbility()`, a simulated click on `#btnEndTurn`), including
-  programmatically resolving whatever `picker()`/`pickerPortal()` modal
-  `applyAbility()` opens (same `#pickerSelect`/`#pickerOk` a human click
-  would use) — it never duplicates rules logic. The `'normal'` heuristic
+  (`HEURISTICAS_POR_DIFICULTAD`: `'normal'` or `'dificil'`). Since 1.26.7
+  (phase 4 of the engine/UI split) it never touches DOM buttons or
+  pickers: it plays and ends its turn through `ejecutarJugada()` /
+  `ejecutarFinDeTurno()` (`actions.js`, the same functions human clicks
+  use), and runs Fase B abilities through the engine's `aplicarHabilidad()`
+  answered by `crearUiAutomata(vista, objetivoPreferido)`, charging with
+  `completarActivacion(..., { usarAsterisco: false })`. Its memory lives in
+  `estado.partida.memoriaBots`. It never duplicates rules logic. The `'normal'` heuristic
   only ever activates Ocultista or Cronista in Fase B (Estratega,
   Cronomante, Aprendiz, Metamorfo, Maestro are deliberately left out of
   this level — Maestro specifically needs the expected-value engine to
@@ -259,7 +261,7 @@ in `nextTurn()`.
   see `js/bot-probabilidad.js`). `nextTurn()` also branches on
   `current.tipo === 'auto'`: hides the human action buttons and, after a
   short `setTimeout`, calls `bot.js`'s `decidirYJugarTurno()` — which ends
-  its own turn by clicking `#btnEndTurn`, so consecutive bot turns chain
+  its own turn with `ejecutarFinDeTurno()`, so consecutive bot turns chain
   automatically until a human player is up.
 - **`js/motor/acciones.js`** — (phase 2 of the engine/UI split, 1.26.4)
   the turn rules as pure functions over `estado.partida`: `jugarCarta`,
@@ -406,8 +408,8 @@ in `nextTurn()`.
   code, this summary is prose that can drift.
 - **`docs/ARQUITECTURA_MOTOR.md`** — phased plan (agreed with the owner
   2026-11-05) to split the rules engine from the UI: serializable state
-  (phase 1, done), actions/events, decisions as async requests, UI
-  adapters, optional terminal UI. Read it before touching how state,
+  (phase 1), actions/events (phase 2), decisions as requests (phase 3) and
+  UI adapters (phase 4) are done; optional terminal UI (phase 5) is next. Read it before touching how state,
   abilities or turn flow are wired.
 - **`CHANGELOG.md`** — full version history.
 
@@ -460,6 +462,7 @@ The engine modules under `js/motor/` have their own file:
 node tests/motor-estado.mjs
 node tests/motor-acciones.mjs
 node tests/motor-habilidades.mjs
+node tests/motor-adaptadores.mjs
 ```
 
 ```bash

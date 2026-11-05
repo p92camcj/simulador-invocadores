@@ -1,6 +1,6 @@
 # Separación del motor de juego y la interfaz
 
-> **Última actualización:** 2026-11-05 19:43 (Europe/Madrid)
+> **Última actualización:** 2026-11-06 00:10 (Europe/Madrid)
 
 Plan acordado con Julio el 2026-11-05. Objetivo: que las reglas de
 Invocadores vivan en un núcleo puro (sin DOM, sin `window`, testable en
@@ -106,13 +106,35 @@ todo en la fase 4, al convertir `actions.js` en adaptador.
 - Tests: `node tests/motor-habilidades.mjs` (guion de respuestas, sin
   `window`).
 
-### Fase 4: adaptadores
+### Fase 4: adaptadores (hecha, 1.26.7)
 
-- La web actual se convierte en un adaptador más (`render.js`,
-  `actions.js` solo traducen clics a acciones y peticiones a `picker()`).
-- El autómata llama al motor directamente, sin pulsar botones. Coordinar
-  con el trabajo en `js/bot.js` / `js/bot-estrategia.js`.
-- Se quitan los alias `window.*`.
+- El autómata ya no pulsa botones ni contesta `picker()` del DOM:
+  - Fase A y fin de turno: llama a `ejecutarJugada(cartaIdx, destKey)` y
+    `ejecutarFinDeTurno()` (`actions.js`), las mismas acciones que los
+    clics humanos: el motor decide y la interfaz presenta (render,
+    escenas, avisos).
+  - Fase B: llama a `aplicarHabilidad()` del motor con
+    `crearUiAutomata(vista, objetivoPreferido)` (`bot.js`), una interfaz que
+    contesta cada petición en el acto con la elección de la heurística, y
+    cobra con `completarActivacion(..., { usarAsterisco: false })`.
+  - Su memoria vive en `estado.partida.memoriaBots`.
+- `actions.js` es un adaptador: `initActions()` ya no recibe arrays y lee
+  siempre `estado.partida`, así que `cargarPartida()` a mitad de partida ya
+  no deja referencias viejas en los botones.
+- La pregunta "¿revelar la Gema de asterisco?" al activar un Portal central
+  sale del motor: `completarActivacion` recibe `usarAsterisco` y la web lo
+  pregunta con `confirm()` antes de llamar.
+- Tests: `node tests/motor-adaptadores.mjs`.
+- Pendiente (no bloquea la fase 5):
+  - Los alias `window.players`, `window.turn`... siguen existiendo. Los
+    usan `render.js`, `game.js`, `setup.js` y el resto de la web. Quitarlos
+    es mecánico pero toca casi todos los archivos; se hará cuando haga
+    falta, por ejemplo al montar el multijugador.
+  - `utils.js` aún tiene un `alert()`/`confirm()` de respaldo dentro de
+    `pagarActivacionPortalCentral()` (solo si se llama sin `usarAsterisco`
+    o sin Gemas para pagar, cosa que `opcionesActivarHabilidad` ya evita).
+  - El turno del autómata sigue orquestado desde `game.js` (`nextTurn` con
+    `setTimeout`) y su resumen sale con `alert()`: es presentación.
 
 ### Fase 5 (opcional): interfaz de terminal
 

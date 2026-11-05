@@ -4,6 +4,24 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.26.7.109] - 2026-11-05
+
+### Cambiado
+- **Fase 4 de la separación motor / interfaz** (plan en
+  `docs/ARQUITECTURA_MOTOR.md`). Los autómatas ya no pulsan botones ni
+  contestan `picker()` del DOM:
+  - Fase A y fin de turno con `ejecutarJugada()` y `ejecutarFinDeTurno()`,
+    nuevas funciones exportadas de `js/actions.js` que también usan los
+    clics humanos.
+  - Fase B con `aplicarHabilidad()` del motor contestada por
+    `crearUiAutomata()` (`js/bot.js`) y `completarActivacion()`. Desaparece
+    `resolverPickersAbiertos()`.
+  - Su memoria pasa a `estado.partida.memoriaBots`.
+- `initActions()` ya no recibe arrays: lee siempre `estado.partida`.
+- `completarActivacion()` recibe `usarAsterisco`; la pregunta de revelar la
+  Gema de asterisco la hace la web antes de llamar al motor.
+- Tests nuevos: `node tests/motor-adaptadores.mjs` (7).
+
 ## [1.26.6.107] - 2026-11-05
 
 ### Corregido
