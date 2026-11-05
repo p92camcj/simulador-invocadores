@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.26.7.109 - 2026-11-05
+
+- **Cambio interno, sin diferencias al jugar.** Los autómatas ya juegan
+  directamente con las reglas del juego, sin "pulsar" los botones de la
+  pantalla. Juegan igual que antes, pero así podrán jugar también en otras
+  versiones del simulador (por ejemplo, en una terminal o en red).
+
 ## 1.26.6.107 - 2026-11-05
 
 - **Las autómatas respetan la Centinela.** Ya no intentan usar el Maestro,

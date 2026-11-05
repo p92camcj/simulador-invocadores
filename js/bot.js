@@ -5,16 +5,21 @@
 // que quede auditable de un vistazo que el bot nunca hace trampa, aunque
 // cambie la heurística en el futuro. Las acciones en sí (jugar carta,
 // activar habilidad, terminar turno) reutilizan exactamente las mismas
-// funciones/controles que usa una jugadora humana (window.tryPlayOnPortal,
-// applyAbility(), el propio botón #btnEndTurn) — el bot nunca duplica
-// lógica de reglas, solo decide los parámetros por heurística en vez de
-// por clic.
+// acciones que usa una jugadora humana: ejecutarJugada() y
+// ejecutarFinDeTurno() (actions.js, que llaman al motor y presentan el
+// resultado) y aplicarHabilidad() del motor (js/motor/habilidades.js), con
+// una "interfaz de autómata" que contesta las peticiones del motor en vez
+// de abrir picker(). El bot nunca duplica lógica de reglas ni pulsa botones
+// del DOM: solo decide los parámetros por heurística en vez de por clic.
 import {
   LEVELS, INVOCATION_SETS, shuffle, contarGemasPorNivel,
-  opcionesActivarHabilidad, pagarActivacionPortalCentral,
+  opcionesActivarHabilidad,
   contarGemasUnitarias, tieneClarividenteVisible, todosLosPortales, jugadoraProtegidaPorCentinela,
 } from './utils.js';
-import { applyAbility } from './abilities.js';
+import { estado } from './motor/estado.js';
+import { aplicarHabilidad } from './motor/habilidades.js';
+import { completarActivacion } from './motor/acciones.js';
+import { ejecutarJugada, ejecutarFinDeTurno } from './actions.js';
 import { envolverHabilidad } from './espectaculo.js';
 import { render } from './render.js';
 import {
@@ -123,7 +128,7 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
 /**
  * Memoria propia de la bot `botIdx`: qué personaje ha visto pasar por cada
  * Portal a lo largo de la partida, aunque ahora esté tapado. Vive en
- * `window.memoriaBots[botIdx]`, inicializada/reseteada junto al resto del
+ * `estado.partida.memoriaBots[botIdx]` (js/motor/estado.js), inicializada/reseteada junto al resto del
  * estado de partida en `initGame()`/`resetJuego()` (`game.js`) — solo en
  * memoria JS de esta partida, nunca se persiste ni sale de la sesión de
  * juego actual. Desde el Bloque 4 de esta tarea, AMBAS dificultades la
@@ -134,9 +139,9 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
  * necesita para tener una decisión con sentido en cualquier nivel.
  */
 function obtenerMemoriaBot(botIdx) {
-  if (!window.memoriaBots) window.memoriaBots = [];
-  if (!window.memoriaBots[botIdx]) window.memoriaBots[botIdx] = { portales: {} };
-  return window.memoriaBots[botIdx];
+  const memorias = estado.partida.memoriaBots;
+  if (!memorias[botIdx]) memorias[botIdx] = { portales: {} };
+  return memorias[botIdx];
 }
 
 // ---------- Utilidades de decisión (operan solo sobre la vista saneada) ----------
@@ -382,12 +387,9 @@ function jugarCartaFaseA(players, botIdx, decision) {
   const idx = decision.usaConocida
     ? mano.findIndex(c => c.vis?.owner === true)
     : mano.findIndex(c => c.vis?.owner !== true);
-  // Mismo estado y misma función interna que usan clic/drag&drop/panel
-  // humanos (ver actions.js, jugarCartaSeleccionadaEn) — se invoca a
-  // través del punto de entrada global window.tryPlayOnPortal, no se
-  // duplica ninguna validación.
-  window.selectedCardIdx = idx;
-  window.tryPlayOnPortal(decision.destKey);
+  // La misma acción que usan clic/arrastrar/panel humanos (actions.js):
+  // el motor valida y aplica, la interfaz presenta.
+  ejecutarJugada(idx, decision.destKey);
 }
 
 // ---------- Fase B: activar habilidad (opcional) ----------
@@ -986,26 +988,24 @@ function estaOcultoSegunVista(vista, val) {
 }
 
 /**
- * Elige una opción no descartada del `<select>` del picker() actualmente
- * abierto. Si `preferido` coincide con el VALOR de alguna opción disponible
- * (calculado de antemano por la heurística — un Portal concreto para
+ * Elige una opción habilitada de una petición del motor (`opciones` con
+ * `{ val, lbl, disabled? }`, ver js/motor/habilidades.js) que no se haya
+ * elegido ya en un paso anterior. Si `preferido` coincide con el VALOR de
+ * alguna (calculado de antemano por la heurística: un Portal concreto para
  * Ocultista/Cronista/Cronomante/Estratega, el índice de una jugadora para
- * Maestro/Aprendiz, ver `objetivoPreferido` de cada decisión), se usa ese.
- * Si no coincide por valor, se prueba por TEXTO de la etiqueta (necesario
- * para el segundo picker de Cronomante: sus opciones son índices dentro de
- * la pila, no claves de Portal, así que solo el nombre del personaje en la
- * etiqueta — visible para el bot igual que lo sería en pantalla para una
- * jugadora humana, ver `case 'Cronomante'` en `abilities.js` — identifica
- * cuál es; o para Metamorfo, cuyo valor YA es el nombre del personaje, así
- * que en la práctica coincide por valor). Si nada de eso aplica, cae al
- * criterio de respaldo de 'normal': preferir un Portal oculto (Ocultista
- * porque revelar uno es lo único con sentido en su MVP; Cronista porque
- * llevarse a la mano una carta desconocida no arriesga quitar del tablero
- * un personaje visible que sí interesara dejar), o al azar si ninguna
- * opción es oculta.
+ * Maestro/Aprendiz, ver `objetivoPreferido` de cada decisión), se usa esa.
+ * Si no, se prueba por TEXTO de la etiqueta (segundo paso de Cronomante:
+ * sus valores son índices dentro de la pila y solo el nombre visible en la
+ * etiqueta identifica la carta, igual que en pantalla para una humana).
+ * Si nada aplica, criterio de respaldo de 'normal': preferir un Portal
+ * oculto, o al azar.
  */
-function elegirOpcionPicker(opcionesDom, vista, yaElegidos, preferido) {
-  const disponibles = opcionesDom.filter(o => !yaElegidos.includes(o.value));
+function elegirOpcionPeticion(opciones, vista, yaElegidos, preferido) {
+  const disponibles = opciones
+    .filter(o => !o.disabled)
+    .map(o => ({ value: String(o.val), text: o.lbl }))
+    .filter(o => !yaElegidos.includes(o.value));
+  if (!disponibles.length) return null;
   if (preferido !== undefined && preferido !== null) {
     const porValor = disponibles.find(o => o.value === String(preferido));
     if (porValor) return porValor;
@@ -1017,42 +1017,34 @@ function elegirOpcionPicker(opcionesDom, vista, yaElegidos, preferido) {
 }
 
 /**
- * Resuelve, por JS, el/los picker() modales que applyAbility() acaba de
- * abrir — la mayoría de habilidades solo necesitan un paso, pero el bucle
- * admite varios (p. ej. Maestro: jugadora y, si tiene más de un Portal
- * propio, también el Portal; Estratega: dos Portales; Aprendiz: dos
- * jugadoras). Mismo mecanismo que usaría un clic humano en el modal
- * (#pickerSelect + #pickerOk), no se reimplementa ninguna regla de
- * legalidad — las opciones ya vienen filtradas por la propia habilidad en
- * abilities.js. `preferidosPorPaso` puede ser un único valor (se aplica
- * solo al PRIMER picker, compatibilidad con el uso original de esta
- * función) o un array alineado por índice de paso (necesario para
- * habilidades de varios pasos donde la heurística 'dificil' ya sabe de
- * antemano los dos objetivos, p. ej. las dos claves de Estratega o los dos
- * índices de Aprendiz) — los pasos sin preferencia (`undefined`) usan el
- * criterio de respaldo, ver `elegirOpcionPicker`. Devuelve el array de
- * valores REALMENTE elegidos, en orden — lo necesita quien llama para
- * construir un resumen de turno legible (ver `describirObjetivoHabilidad`).
+ * Interfaz de autómata para el motor de habilidades: contesta cada
+ * petición en el acto (las respuestas son síncronas, así que una
+ * habilidad de varios pasos se resuelve entera dentro de la llamada a
+ * aplicarHabilidad). `preferidosPorPaso` puede ser un único valor (solo el
+ * primer paso) o un array alineado por paso (Estratega, Aprendiz). Los
+ * valores elegidos se acumulan en `elegidos`, para el resumen del turno.
+ * Sin opciones habilitadas, cancela.
  */
-function resolverPickersAbiertos(vista, preferidosPorPaso) {
+export function crearUiAutomata(vista, preferidosPorPaso) {
   const preferidos = Array.isArray(preferidosPorPaso) ? preferidosPorPaso : [preferidosPorPaso];
-  const MAX_PASOS = 4;
-  const yaElegidos = [];
-  for (let paso = 0; paso < MAX_PASOS; paso++) {
-    const pickerEl = document.querySelector('#picker');
-    if (!pickerEl || pickerEl.classList.contains('hidden')) break;
-    const selectEl = document.querySelector('#pickerSelect');
-    const opciones = [...selectEl.options].filter(o => !o.disabled);
-    if (!opciones.length) {
-      document.querySelector('#pickerCancel')?.click();
-      break;
-    }
-    const elegida = elegirOpcionPicker(opciones, vista, yaElegidos, preferidos[paso]);
-    yaElegidos.push(elegida.value);
-    selectEl.value = elegida.value;
-    document.querySelector('#pickerOk').click();
-  }
-  return yaElegidos;
+  const elegidos = [];
+  const avisos = [];
+  return {
+    elegidos,
+    avisos,
+    pedir(peticion, responder, cancelar) {
+      const elegida = elegirOpcionPeticion(peticion.opciones, vista, elegidos, preferidos[elegidos.length]);
+      if (!elegida) {
+        cancelar?.();
+        return;
+      }
+      elegidos.push(elegida.value);
+      responder(elegida.value);
+    },
+    avisar(evento) {
+      avisos.push(evento);
+    },
+  };
 }
 
 /** Etiqueta EN TERCERA PERSONA de un Portal identificado con clave "playerIdx:portalIdx"/"n:k" (formato de habilidad, ver `listaPortalesFormatoHabilidad`) — usada para describir en el resumen del turno sobre qué Portal actuó una habilidad. */
@@ -1076,7 +1068,7 @@ function conDe(etiqueta) {
 
 /**
  * Traduce los valores REALMENTE elegidos en el/los picker() de una
- * activación de habilidad (ver `resolverPickersAbiertos`) a una frase EN
+ * activación de habilidad (ver `crearUiAutomata`) a una frase EN
  * TERCERA PERSONA para el resumen del turno — identificando siempre de
  * quién es cada Portal/mano afectada (Bloque 1 de esta tarea). Cubre las
  * habilidades a las que la Fase B del autómata ya da uso real, ampliado a
@@ -1108,20 +1100,22 @@ export function describirObjetivoHabilidad(name, valores, vista) {
 }
 
 function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decision, vista) {
-  const { tipo, stack, name, objetivoPreferido } = decision;
-  // Mismo onComplete que construye #btnAbility.onclick en actions.js: cobra
-  // el coste de Portal central si aplica, marca la habilidad como usada,
-  // refresca la UI.
-  const onComplete = envolverHabilidad(name, botIdx, stack, () => {
-    // usarAsterisco: false → el autómata paga con una Gema de valor 1 si la
-    // tiene (sin diálogo) y solo revela el asterisco si no le queda otra.
-    if (tipo === 'central') pagarActivacionPortalCentral(players[botIdx], { usarAsterisco: false });
-    window.habilidadUsadaEsteTurno = true;
+  const { val, stack, name, objetivoPreferido } = decision;
+  // Igual que la Fase B humana (actions.js): cobra el acceso central si
+  // aplica y marca la habilidad como usada (completarActivacion, motor), y
+  // refresca la UI. usarAsterisco: false → el autómata paga con una Gema de
+  // valor 1 si la tiene y solo revela el asterisco si no le queda otra.
+  const alAplicar = envolverHabilidad(name, botIdx, stack, () => {
+    completarActivacion(estado.partida, { origen: val, personaje: name, usarAsterisco: false });
     render(players, neutrals, levelIdx);
   });
-  applyAbility(name, botIdx, stack, players, neutrals, levelIdx, need, onComplete);
-  const yaElegidos = resolverPickersAbiertos(vista, objetivoPreferido);
-  return describirObjetivoHabilidad(name, yaElegidos, vista);
+  const ui = crearUiAutomata(vista, objetivoPreferido);
+  aplicarHabilidad(estado.partida, { personaje: name, jugadora: botIdx, pila: stack }, ui, alAplicar);
+  // Un Cronomante del autómata que se cancelara a medias (no debería: sus
+  // opciones vienen de la misma partida) no puede quedar pendiente para la
+  // siguiente jugadora.
+  estado.partida.cronomantePortalInvestigado = null;
+  return describirObjetivoHabilidad(name, ui.elegidos, vista);
 }
 
 // ---------- Resumen del turno (comunicación, sin desvelar la carta oculta) ----------
@@ -1180,9 +1174,8 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto) {
   mostrarResumenTurnoBot(resumen);
 
   // Fase C/D/E (comprobar invocación, repartir Gemas, robar, avanzar
-  // turno): se reutiliza el MISMO botón que usa una jugadora humana — el
-  // bot no duplica ninguna lógica de reglas, solo simula el clic.
-  document.querySelector('#btnEndTurn').click();
+  // turno): la misma acción que el botón de una jugadora humana.
+  ejecutarFinDeTurno();
 }
 
 /**
@@ -1223,7 +1216,7 @@ function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto) {
   }
 
   mostrarResumenTurnoBot(resumen);
-  document.querySelector('#btnEndTurn').click();
+  ejecutarFinDeTurno();
 }
 
 // Dos niveles de dificultad implementados: 'normal' (heurística greedy) y
