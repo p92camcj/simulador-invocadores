@@ -139,7 +139,14 @@ function gemDotsHtml(gems, { mostrarValorReal }) {
       const valorTxt = mostrarValorReal ? ` (${suma})` : '';
       return `<span class="gem-dot ${NIVEL_CLASE_GEMA[nivel]}" title="Gemas de nivel ${nivel}"></span>×${count}${valorTxt}`;
     })
-    .join(' ');
+    .join(' ') + reveladasTxt(gems);
+}
+
+// Gemas de asterisco ya reveladas (bocarriba): su valor es público para
+// todas, aunque el desglose normal de las ajenas no muestre valores.
+function reveladasTxt(gems) {
+  const valores = gems.filter(g => g.esAsterisco && g.revelada).map(g => `${g.valor}*`);
+  return valores.length ? ` · reveladas: ${valores.join(', ')}` : '';
 }
 
 /**

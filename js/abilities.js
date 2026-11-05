@@ -1,8 +1,9 @@
 // abilities.js
 import {
   stackFrom, portalesConEstado, mostrarCarta, generarVis, gastarGemaUnitaria,
-  PERSONAJES_NO_ANIMALES, jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
-  todosLosPortales, reponerManoSiFalta
+  contarGemasUnitarias, transformacionesDisponiblesMetamorfo, apilarEnPortal, retirarFichaMetamorfo,
+  jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
+  todosLosPortales, reponerManoSiFalta, tieneClarividenteVisible
 } from './utils.js';
 import { picker, pickerPortal } from './render.js';
 
@@ -64,6 +65,9 @@ export function candidatosObjetivoMaestro(players, ownerIdx) {
     .filter(({ idx, cartaOculta }) =>
       idx !== ownerIdx &&
       cartaOculta &&
+      // Con la Clarividente visible su mano entera está oculta al resto:
+      // el Maestro no ve ninguna carta suya que pueda bajar.
+      !tieneClarividenteVisible(players[idx]) &&
       !jugadorProtegidoComoObjetivo(idx, players, ownerIdx)
     );
 }
@@ -84,9 +88,9 @@ export function bajarCartaMaestro(players, neutrals, targetIdx, portalIdx) {
   const cartaOculta = target.hand.find(c => c.vis?.others === true);
   const idxEnMano = target.hand.indexOf(cartaOculta);
   const carta = target.hand.splice(idxEnMano, 1)[0];
-  // Se propaga `.aspecto` (ítem 14 de DEUDA_TECNICA.md) por si esta carta
-  // ya era un Metamorfo transformado.
-  target.portals[portalIdx].push({ name: carta.name, aspecto: carta.aspecto, vis: generarVis('portal', {}) });
+  // La carta viene de la mano: nunca trae ficha de Metamorfo. Si tapa a un
+  // Metamorfo transformado, este pierde la suya (apilarEnPortal).
+  apilarEnPortal(target.portals[portalIdx], { name: carta.name, vis: generarVis('portal', {}) });
   if (carta.name === 'Centinela') {
     ocultarOtrasCentinelas(target.portals[portalIdx], players, neutrals);
   }
@@ -130,6 +134,9 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
         const st = stackFrom(key, players, neutrals);
         const carta = st.at(-1);
         carta.vis.public = !carta.vis.public;
+        // Poner bocabajo a un Metamorfo transformado cuenta como taparlo: la
+        // ficha vuelve a la reserva (REGLAMENTO.md, "Metamorfo").
+        if (!carta.vis.public) retirarFichaMetamorfo(carta);
         // Corrección DEUDA_TECNICA.md ítem 12: si lo que acaba de revelarse
         // es una Centinela REAL (identidad, no apariencia de Metamorfo — ver
         // case 'Metamorfo' más abajo), hay que re-disparar el auto-giro. Sin
@@ -172,10 +179,10 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           visible,
           esPropietaria: true
         });
-        // Se propaga `.aspecto` si la carta era un Metamorfo transformado
-        // (ítem 14 de DEUDA_TECNICA.md) — de lo contrario se perdería la
-        // apariencia silenciosamente al reconstruir el objeto para la mano.
-        owner.hand.push({ name: carta.name, aspecto: carta.aspecto, vis });
+        // Si la carta era un Metamorfo transformado, su ficha vuelve a la
+        // reserva al salir del Portal: a la mano llega como Metamorfo
+        // original (REGLAMENTO.md, "Metamorfo"). Por eso no se copia `.aspecto`.
+        owner.hand.push({ name: carta.name, vis });
         onComplete();
       });
       break;
@@ -210,7 +217,8 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
           opcionesCarta,
           idx => {
             const seleccionada = st.splice(idx, 1)[0];
-            st.push(seleccionada);
+            // La carta que queda tapada pierde su ficha de Metamorfo si la tenía.
+            apilarEnPortal(st, seleccionada);
             window.cronomantePortalInvestigado = null;
             onComplete();
           },
@@ -381,15 +389,20 @@ export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx,
       // de applyAbility por si Modo Experto lo necesita más adelante para la
       // invocación Asterisco, que exige que el Metamorfo conserve su aspecto
       // natural — ver docs/MEJORAS_FUTURAS.md, no conectado todavía).
-      if (owner.gems.length === 0) {
-        alert('No tienes ninguna Gema con la que pagar la transformación.');
+      // Sin cambio: la transformación solo se paga con una Gema de valor 1.
+      if (contarGemasUnitarias(owner) === 0) {
+        alert('No tienes ninguna Gema de valor 1 con la que pagar la transformación (no se da cambio).');
         return;
       }
 
-      // Se excluye 'Metamorfo' de las opciones: transformarse en sí mismo no
-      // tendría efecto observable. Es una asunción razonable, no una regla
-      // explícita del reglamento.
-      const opciones = PERSONAJES_NO_ANIMALES.filter(n => n !== 'Metamorfo');
+      // Se excluye 'Metamorfo' (transformarse en sí mismo no tendría efecto)
+      // y cualquier personaje que ya esté imitando OTRO Metamorfo en mesa:
+      // cada ficha es única (REGLAMENTO.md, "Metamorfo").
+      const opciones = transformacionesDisponiblesMetamorfo(players, neutrals, stack.at(-1));
+      if (!opciones.length) {
+        alert('No queda ninguna ficha de transformación disponible.');
+        return;
+      }
 
       picker(
         'Metamorfo cambia a',

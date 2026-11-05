@@ -5,7 +5,7 @@ import { applyAbility, ocultarOtrasCentinelas } from './abilities.js';
 import {
   generarVis, mostrarCarta,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
-  construirPoolGemas, todosLosPortales, reponerManoSiFalta
+  construirPoolGemas, todosLosPortales, reponerManoSiFalta, apilarEnPortal
 } from './utils.js';
 import {
   anunciarCartaJugada, envolverHabilidad, anunciarInvocacion, cuandoTermineEspectaculo,
@@ -54,11 +54,10 @@ export function initActions(players, neutrals) {
       : tp === 'n'
         ? neutrals[+a]
         : players[+a].portals[+b];
-    // Se propaga `.aspecto` (ítem 14 de DEUDA_TECNICA.md) por si esta carta
-    // ya era un Metamorfo transformado que había vuelto a la mano (p. ej.
-    // vía Cronista) — de lo contrario se perdería la apariencia al
-    // reconstruir el objeto para el nuevo Portal.
-    stack.push({ name: card.name, aspecto: card.aspecto, vis: generarVis('portal', {}) });
+    // Una carta que viene de la mano nunca trae ficha de Metamorfo (la ficha
+    // vuelve a la reserva al salir del Portal). apilarEnPortal() además
+    // retira la ficha de un Metamorfo transformado que quede tapado.
+    apilarEnPortal(stack, { name: card.name, vis: generarVis('portal', {}) });
     // Efecto pasivo/automático de Centinela (REGLAMENTO.md: "solo puede
     // haber una Centinela visible en mesa"), no requiere Fase B.
     if (card.name === 'Centinela') {

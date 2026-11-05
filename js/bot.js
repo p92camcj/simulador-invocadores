@@ -12,6 +12,7 @@
 import {
   LEVELS, INVOCATION_SETS, shuffle, contarGemasPorNivel,
   opcionesActivarHabilidad, pagarActivacionPortalCentral,
+  contarGemasUnitarias, tieneClarividenteVisible, todosLosPortales,
 } from './utils.js';
 import { applyAbility } from './abilities.js';
 import { envolverHabilidad } from './espectaculo.js';
@@ -81,6 +82,14 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
     // nombre: directamente no existe ningún campo para ella en esta vista.
     propiaCartaConocida: propiaVisible ? { name: propiaVisible.name } : null,
     gemasPropiasTotalExacto: yo.gems.length ? yo.gems.reduce((a, g) => a + (g.valor || 0), 0) : 0,
+    // Gemas de valor 1 propias: las únicas con las que se puede pagar un
+    // coste (no se da cambio, REGLAMENTO.md fase B).
+    gemasUnitariasPropias: contarGemasUnitarias(yo),
+    // Fichas de transformación de Metamorfo en uso en la mesa (información
+    // pública: la ficha está físicamente encima de la carta). Cada ficha es
+    // única, así que ningún Metamorfo puede tomar una de estas.
+    transformacionesOcupadas: todosLosPortales(players, neutrals)
+      .flatMap(({ stack }) => stack.filter(c => c.aspecto).map(c => c.aspecto)),
     jugadoras: players.map((p, i) => ({
       idx: i,
       nombre: p.name,
@@ -88,7 +97,12 @@ export function construirEstadoVisibleParaBot(players, neutrals, botIdx) {
       portales: p.portals.map(estadoPortalVisible),
       // Carta oculta de cualquier OTRA jugadora: pública por reglamento
       // ("Carta oculta": el resto de jugadores sí puede verla).
-      cartaOcultaPublica: i === botIdx ? null : (p.hand.find(c => c.vis?.others === true)?.name ?? null),
+      // Excepción: con la Clarividente visible, su mano completa queda oculta
+      // para el resto (decisión de mesa, REGLAMENTO.md), así que tampoco se
+      // expone aquí.
+      cartaOcultaPublica: (i === botIdx || tieneClarividenteVisible(p))
+        ? null
+        : (p.hand.find(c => c.vis?.others === true)?.name ?? null),
       gemasPorNivel: contarGemasPorNivel(p.gems),
     })),
     neutrales: neutrals.map(estadoPortalVisible),
@@ -830,17 +844,18 @@ const COSTE_GEMA_METAMORFO = 1;
  * Heurística 'normal' de Metamorfo (Bloque 4, 4.6): SOLO beneficio propio,
  * pagando su coste — se transforma en el primer personaje de `need` que
  * todavía no esté cumplido en ningún sitio de la mesa, si tiene con qué
- * pagar (`vista.gemasPropiasTotalExacto > 0`, proxy fiable de "tiene al
- * menos una Gema": `gastarGemaUnitaria()` siempre puede pagar con
- * cualquier Gema, cambiándola si hace falta). Nunca el uso adversarial
+ * pagar (`vista.gemasUnitariasPropias > 0`: solo se paga con Gemas de
+ * valor 1, no se da cambio) y si esa ficha de transformación no la tiene
+ * ya otro Metamorfo (`vista.transformacionesOcupadas`). Nunca el uso adversarial
  * (duplicar a propósito el requisito visible de una rival sin beneficio
  * propio) — reservado a 'dificil', que sí puede justificarlo con valor
  * esperado frente al coste real de la Gema pagada.
  */
 export function decidirMetamorfoNormal(vista, need) {
-  if (!vista.gemasPropiasTotalExacto) return null;
+  if (!vista.gemasUnitariasPropias) return null;
   const visibles = personajesVisiblesActuales(vista);
-  return need.find(k => !visibles.includes(k)) ?? null;
+  const ocupadas = vista.transformacionesOcupadas || [];
+  return need.find(k => !visibles.includes(k) && !ocupadas.includes(k)) ?? null;
 }
 
 /**
@@ -860,9 +875,10 @@ export function decidirMetamorfoNormal(vista, need) {
  * adversarial: sale solo de reusar la misma maquinaria con `need` completo.
  */
 export function decidirMetamorfoDificil(vista, need, esPropio, probabilidades, contexto) {
-  if (!vista.gemasPropiasTotalExacto) return null;
+  if (!vista.gemasUnitariasPropias) return null;
+  const ocupadas = vista.transformacionesOcupadas || [];
   let mejor = null;
-  need.forEach(nombre => {
+  need.filter(nombre => !ocupadas.includes(nombre)).forEach(nombre => {
     const ev = valorEsperadoDeAccion(
       { personaje: nombre, esPropio, esCentral: false, completaInvocacionSiSeJuega: false },
       probabilidades,
@@ -1146,7 +1162,9 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
   // el coste de Portal central si aplica, marca la habilidad como usada,
   // refresca la UI.
   const onComplete = envolverHabilidad(name, botIdx, stack, () => {
-    if (tipo === 'central') pagarActivacionPortalCentral(players[botIdx]);
+    // usarAsterisco: false → el autómata paga con una Gema de valor 1 si la
+    // tiene (sin diálogo) y solo revela el asterisco si no le queda otra.
+    if (tipo === 'central') pagarActivacionPortalCentral(players[botIdx], { usarAsterisco: false });
     window.habilidadUsadaEsteTurno = true;
     render(players, neutrals, levelIdx);
   });

@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.25.0.85 - 2026-11-05
+## 1.26.0.87 - 2026-11-05
 
 - **Nuevo modo espectáculo (prototipo)**: cuando alguien baja una carta,
   el personaje aparece de cuerpo entero sobre su Portal, con el arte
@@ -27,6 +27,30 @@ detalle técnico completo, mira `CHANGELOG.md`.
   botón "✨ Escenas" o desde la configuración de la partida.
 
 ---
+## 1.25.0.86 - 2026-11-05
+
+- **Nuevo botón "Reglamento"** arriba del todo: abre el reglamento completo
+  en PDF, con las ilustraciones de las cartas y las últimas reglas.
+
+## 1.24.2.85 - 2026-11-05
+
+- **Revelar tu Gema con asterisco ya no te hace perder sus puntos.** Se
+  queda bocarriba delante de ti y sigue contando al final, pero solo sirve
+  una vez y el resto de jugadoras ve su valor.
+
+## 1.24.1.83 - 2026-11-05
+
+- **Ya no se da cambio de Gemas.** Para usar un personaje de un Portal
+  central necesitas una Gema azul de valor 1 o revelar tu Gema con
+  asterisco. Una Gema de color ya no se cambia por unidades.
+- **Metamorfo del centro:** cuesta dos Gemas de valor 1, o tu Gema con
+  asterisco más una Gema de valor 1.
+- **La transformación del Metamorfo se pierde al taparlo.** Si le juegan
+  una carta encima, lo ponen bocabajo o se lo llevan a la mano, vuelve a
+  ser un Metamorfo normal aunque luego se destape.
+- **Dos Metamorfos no pueden imitar al mismo personaje** a la vez.
+- **El Maestro no puede elegir a quien tiene la Clarividente visible**,
+  porque en ese momento nadie ve su mano. Los autómatas tampoco la ven.
 
 ## 1.24.0.83 - 2026-07-21
 
