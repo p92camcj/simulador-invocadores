@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.26.6.107 - 2026-11-05
+
+- **Las autómatas respetan la Centinela.** Ya no intentan usar el Maestro,
+  el Aprendiz ni otras habilidades contra una jugadora protegida por su
+  Centinela. Antes, a veces la habilidad acababa sobre otro objetivo o
+  salía un aviso de que no había a quién bajar una carta.
+
 ## 1.26.5.105 - 2026-11-05
 
 - **Cambio interno, sin diferencias al jugar.** Ahora las habilidades de
