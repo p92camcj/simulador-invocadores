@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.25.0.84] - 2026-11-05
+## [1.25.0.85] - 2026-11-05
 
 ### Añadido
 - **Modo espectáculo (prototipo)**: nueva capa de presentación
@@ -44,7 +44,17 @@ Todas las versiones importantes del simulador de Invocadores.
     Aelgorth aparece la criatura invocada tras el destello.
   - Versión de siempre: el panel de la invocación activa muestra un
     retrato pequeño de cada personaje requerido y de la criatura (si
-    tiene arte). Las cartas del tablero no cambian.
+    tiene arte).
+- **Cartas nuevas**: los SVG de las cartas completas (`assets/cartas/`,
+  nuevo diseño con fondo claro) sustituyen a `assets/cards/*.png`, que
+  tenían rectángulos negros tapando parte del dibujo. El reverso
+  (`carta-oculta-reverso.png`) sale de `assets/cartas/portal.svg`. Se
+  regeneran con `node tools/rasterizar_svg.cjs cartas && python3
+  tools/generar_cartas.py`. Mismos nombres de archivo y tamaño (362x504),
+  así que no cambia nada en el código. El número de copias impreso en
+  varias cartas nuevas no coincide con `CANTIDADES_MODO_NORMAL` /
+  `CANTIDADES_ANIMALES` (`utils.js`); el mazo no se ha tocado, pendiente
+  de confirmar.
 - `service-worker.js`: cachea los archivos nuevos y también
   `js/bot-probabilidad.js`, que faltaba en la lista.
 

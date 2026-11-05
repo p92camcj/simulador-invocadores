@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.25.0.84 - 2026-11-05
+## 1.25.0.85 - 2026-11-05
 
 - **Nuevo modo espectáculo (prototipo)**: cuando alguien baja una carta,
   el personaje aparece de cuerpo entero sobre su Portal, con el arte
@@ -20,6 +20,8 @@ detalle técnico completo, mira `CHANGELOG.md`.
   Aelgorth) y cuántas Gemas se lleva cada jugadora.
 - En la vista de siempre, el panel de la invocación muestra ahora un
   retrato de cada personaje que hace falta y de la criatura.
+- **Cartas con el diseño nuevo**: todas las cartas y su reverso se ven con
+  el diseño actualizado, y ya no tienen partes del dibujo tapadas.
 - Nunca se enseña una carta que esté oculta en la mesa.
 - Puedes saltar una escena tocando la pantalla, y apagar el modo con el
   botón "✨ Escenas" o desde la configuración de la partida.

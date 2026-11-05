@@ -313,7 +313,10 @@ in `nextTurn()`.
   ignored) — the project owner explicitly asked not to invent new
   character art. `render.js` also uses `rutaFigura()`/`rutaCriatura()` for
   small portraits in the active-invocation panel of the classic view. The
-  classic card images (`assets/cards/*.png`) are unchanged. Toggle: `#btnEspectaculo` (header) /
+  classic card images (`assets/cards/*.png`, incl. the `carta-oculta-reverso.png`
+  back from `portal.svg`) are generated from the full-card SVGs in
+  `assets/cartas/` by `node tools/rasterizar_svg.cjs cartas && python3
+  tools/generar_cartas.py` (same file names and 362x504 size). Toggle: `#btnEspectaculo` (header) /
   `#chkEspectaculo` (setup), stored in `localStorage`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
