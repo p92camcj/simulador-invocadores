@@ -21,6 +21,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/game.js](#jsgamejs)
 - [js/index.js](#jsindexjs)
 - [js/espectaculo.js](#jsespectaculojs)
+- [js/motor/estado.js](#jsmotorestadojs)
 
 ---
 
@@ -208,9 +209,9 @@ memoria propia del bot, para que quede auditable que no puede hacer trampa.
 | Nombre          | Tipo      | Descripción                                                                                                     |
 |-----------------|-----------|-----------------------------------------------------------------------------------------------------------------|
 | `initGame()`    | `función` | - Construye el mazo `window.deck` a partir de `composicionMazoTotal(window.invocationSet)` (`utils.js`): las cantidades reales de "Modo normal" (32 cartas), añadiendo los 9 Animales solo si `window.invocationSet` es `introductorio` (41 cartas) — `floral` reutiliza el mismo mazo de 32 cartas que `normal`, no es una tercera variante; baraja y aparta 2 al azar sin mirar. <br>- Reparte 1 carta visible + 1 oculta a cada jugador. <br>- Inicializa `window.levelIdx`, `window.turn`, `window.played`, `window.habilidadUsadaEsteTurno`, `window.selectedCardIdx`, `window.cronomantePortalInvestigado`, `window.pickerObjetivoPortal`, `window.memoriaBots` (array vacío — memoria del autómata en dificultad `'dificil'`, ver `js/bot-probabilidad.js`), `window.invocacionesCompletadas` (array vacío — orden real en que se completan las invocaciones en esta partida, necesario para el desempate del marcador final, ver `calcularResultadoFinal()` en `utils.js`). <br>- Llama a `initActions()`. <br>- Inicia primer turno con `nextTurn()`. |
-| `nextTurn()`    | `función` | - `window.played = false`, `window.habilidadUsadaEsteTurno = false`, `window.selectedCardIdx = null`, `window.cronomantePortalInvestigado = null` (una investigación de Cronomante pendiente no sobrevive a un cambio de turno). <br>- Si la jugadora activa no tiene cartas en mano, termina la partida vía `finalizarPartida()`. <br>- Si `players[turn].tipo === 'auto'`, oculta `#btnCtrlPlay`/`#btnAbility`/`#btnEndTurn` (para que ninguna humana interfiera a mitad del turno del bot) y alerta "🤖 {nombre} está pensando…"; si no, los muestra y alerta "Turno de X" como siempre. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`. <br>- Si es autómata, tras un `setTimeout` de 500ms llama a `decidirYJugarTurno()` (`js/bot.js`), que ejecuta el turno completo y termina simulando el clic en `#btnEndTurn` — eso ya vuelve a llamar a `nextTurn()` internamente (mismo mecanismo que un clic humano), encadenando automáticamente turnos de autómatas consecutivos hasta que le toque a una jugadora humana. |
+| `nextTurn()`    | `función` | - Llama a `reiniciarCamposDeTurno()` (`js/motor/estado.js`): `played`, `habilidadUsadaEsteTurno`, `selectedCardIdx`, `cronomantePortalInvestigado`, `cronomanteOnComplete` y `pickerObjetivoPortal` vuelven a su valor inicial (una investigación de Cronomante pendiente no sobrevive a un cambio de turno). <br>- Si la jugadora activa no tiene cartas en mano, termina la partida vía `finalizarPartida()`. <br>- Si `players[turn].tipo === 'auto'`, oculta `#btnCtrlPlay`/`#btnAbility`/`#btnEndTurn` (para que ninguna humana interfiera a mitad del turno del bot) y alerta "🤖 {nombre} está pensando…"; si no, los muestra y alerta "Turno de X" como siempre. <br>- Actualiza `#lblTurn`. <br>- Llama a `render()`. <br>- Si es autómata, tras un `setTimeout` de 500ms llama a `decidirYJugarTurno()` (`js/bot.js`), que ejecuta el turno completo y termina simulando el clic en `#btnEndTurn` — eso ya vuelve a llamar a `nextTurn()` internamente (mismo mecanismo que un clic humano), encadenando automáticamente turnos de autómatas consecutivos hasta que le toque a una jugadora humana. |
 | `finalizarPartida(motivo)` | `función` | Construye el recuento final de Gemas y el veredicto (ganadora, o empate compartido con el motivo del desempate) con la función interna `construirMensajeResultadoFinal()`, que llama a `calcularResultadoFinal()` (`utils.js`) sobre `window.players`/`window.invocacionesCompletadas`, y lo muestra junto al `motivo` en el mismo `alert()`/`confirm()` de "¿Quieres jugar otra vez?" (REGLAMENTO.md, "Final de la partida" — sin pantalla de resultados dedicada, ver `docs/MEJORAS_FUTURAS.md`). Si sí, llama a `resetJuego()`; si no, bloquea la interfaz con un mensaje de cierre. Llamada desde `game.js` (mano vacía) y desde `actions.js` (última invocación completada) — por eso debe permanecer `export`ada. |
-| `resetJuego()`  | `función` | Oculta la UI de juego, muestra la de configuración, limpia el estado global (`window.players`, `window.deck`, `window.invocacionesCompletadas`, etc.) y vuelve a llamar a `initSetup()`. |
+| `resetJuego()`  | `función` | Oculta la UI de juego, muestra la de configuración, vacía el estado de partida con `reiniciarPartida()` (`js/motor/estado.js`, conserva el set de invocación elegido) y vuelve a llamar a `initSetup()`. |
 
 ---
 
@@ -220,26 +221,19 @@ memoria propia del bot, para que quede auditable que no puede hacer trampa.
 ### Contenido principal
 
 ```js
-import { initSetup } from './setup.js';
-import { LEVELS, INVOCATION_SETS } from './utils.js';
+import { instalarAliasGlobales } from './motor/estado.js';
 
-// Estado global
-window.players = [];
-window.neutrals = [];
-window.deck = [];
-window.levelIdx = 0;
-window.turn = 0;
-window.played = false;
-window.habilidadUsadaEsteTurno = false;
-window.invocationSet = 'normal';
+// Estado global: un único objeto serializable (js/motor/estado.js).
+// window.players, window.turn, etc. son alias (getter/setter) de ese objeto.
+instalarAliasGlobales(window);
 
 // Exponer constantes
 window.LEVELS = LEVELS;
 window.INVOCATION_SETS = INVOCATION_SETS;
 
-// Arrancar UI
 document.addEventListener('DOMContentLoaded', () => {
   initSetup();
+  initEspectaculo();
 });
 ```
 
@@ -268,4 +262,24 @@ document.addEventListener('DOMContentLoaded', () => {
 | `anunciarInvocacion({ nivel, nombre, need, recompensas })` | `función` | Escena de invocación completada (los personajes requeridos convergen en el círculo y aparece el nombre de la invocación con las Gemas que recibe cada jugadora, solo el número, nunca el valor). Devuelve `true` si se escenificó, en cuyo caso `actions.js` no muestra el `alert()` de texto. |
 | `rutaFigura(nombre)` / `rutaCriatura(nombreInvocacion)` | `función` | Ruta del arte de cuerpo entero de un personaje, o de la criatura de una invocación (solo Cirelia, Baelorith y Aelgorth tienen); `null` si no hay. Las usa también `render.js` para los retratos pequeños del panel de la invocación activa. |
 | `hayEspectaculoEnCurso()` / `cuandoTermineEspectaculo()` | `función` | Para esperar a la cola de escenas: `#btnEndTurn` retrasa el avance de turno (y su aviso "Turno de ...") hasta que terminan, con `window.avanceTurnoPendiente` como guarda contra un doble clic; la última invocación espera antes de mostrar el marcador final. |
+
+---
+
+## js/motor/estado.js
+**Propósito:** Fase 1 de la separación motor / interfaz (ver `docs/ARQUITECTURA_MOTOR.md`). Reúne todo el estado de una partida en un único objeto plano y serializable (`estado.partida`) y separa aparte el estado propio de la interfaz (`estado.ui`). Sin DOM ni `window`: funciona igual en Node. Los nombres antiguos (`window.players`, `window.turn`...) siguen funcionando como alias.
+
+### Exportaciones
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `estado` | `objeto` | Contenedor único: `estado.partida` (reglas, serializable) y `estado.ui` (interfaz, puede contener funciones). Accesible también como `window.estado`. |
+| `CLAVES_PARTIDA` | `constante` | Claves de `estado.partida`: `players`, `neutrals`, `deck`, `levelIdx`, `turn`, `played`, `habilidadUsadaEsteTurno`, `invocationSet`, `juegoTerminado`, `cronomantePortalInvestigado`, `invocacionesCompletadas`, `memoriaBots`. |
+| `CLAVES_UI` | `constante` | Claves de `estado.ui`: `selectedCardIdx`, `cronomanteOnComplete`, `pickerObjetivoPortal`, `avanceTurnoPendiente`. Nunca se serializan. |
+| `crearEstadoPartida(invocationSet)` | `función` | Devuelve un estado de partida vacío. |
+| `crearEstadoUi()` | `función` | Devuelve un estado de interfaz vacío. |
+| `reiniciarCamposDeTurno()` | `función` | Restablece los campos que se limpian al empezar cada turno (usada por `initGame()` y `nextTurn()`). |
+| `reiniciarPartida()` | `función` | Vacía la partida y la interfaz, conservando `invocationSet` (usada por `resetJuego()`). |
+| `serializarPartida(partida?)` | `función` | Devuelve `estado.partida` como texto JSON. |
+| `cargarPartida(json)` | `función` | Sustituye el estado de partida por un JSON (o un objeto) generado con `serializarPartida`; rellena claves que falten, descarta las desconocidas y reinicia la interfaz. |
+| `instalarAliasGlobales(destino)` | `función` | Define en `destino` (en el navegador, `window`) una propiedad getter/setter por cada clave de partida y de interfaz, que lee y escribe en `estado`. Llamada desde `index.js`. Los tests la usan con un objeto cualquiera. |
 

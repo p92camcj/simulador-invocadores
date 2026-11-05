@@ -130,11 +130,22 @@ rulebook text itself changes, the rulebook doc in the same commit.
 
 ## Architecture
 
-No backend, no database — all state lives in memory in the browser tab as
-plain JS objects hung off `window` (`window.players`, `window.neutrals`,
-`window.deck`, `window.levelIdx`, `window.turn`, `window.played`,
-`window.habilidadUsadaEsteTurno`, `window.invocationSet`, `window.LEVELS`,
-`window.INVOCATION_SETS`). Refreshing the page loses the game. This
+No backend, no database — all state lives in memory in the browser tab.
+Since 1.26.2 (phase 1 of the engine/UI split, plan in
+`docs/ARQUITECTURA_MOTOR.md`) the game state is one plain, JSON-serializable
+object, `estado.partida` in **`js/motor/estado.js`** (`players`, `neutrals`,
+`deck`, `levelIdx`, `turn`, `played`, `habilidadUsadaEsteTurno`,
+`invocationSet`, `juegoTerminado`, `cronomantePortalInvestigado`,
+`invocacionesCompletadas`, `memoriaBots`), with UI-only state
+(`selectedCardIdx`, `cronomanteOnComplete`, `pickerObjetivoPortal`,
+`avanceTurnoPendiente`) kept apart in `estado.ui` and never serialized.
+`window.players`, `window.turn`, etc. still work everywhere: `index.js`
+calls `instalarAliasGlobales(window)`, which turns each of them into a
+getter/setter alias of that object. New per-game state goes into
+`CLAVES_PARTIDA` (or `CLAVES_UI`) there, never as a bare new `window.*`.
+`js/motor/` is the future home of the pure rules engine: nothing in it may
+touch the DOM or `window`. `window.LEVELS`/`window.INVOCATION_SETS` are
+plain constants. Refreshing the page loses the game. This
 global-state pattern is deliberate for a small single-file-per-concern app,
 but it means **module-local variables of the same name (e.g. a bare
 `levelIdx`) do not exist unless explicitly imported — always reference
@@ -359,6 +370,11 @@ in `nextTurn()`.
   other abilities, Clarividente + Aprendiz). Where it disagrees with a
   summary above, trust the audit — it was produced by reading the actual
   code, this summary is prose that can drift.
+- **`docs/ARQUITECTURA_MOTOR.md`** — phased plan (agreed with the owner
+  2026-11-05) to split the rules engine from the UI: serializable state
+  (phase 1, done), actions/events, decisions as async requests, UI
+  adapters, optional terminal UI. Read it before touching how state,
+  abilities or turn flow are wired.
 - **`CHANGELOG.md`** — full version history.
 
 ## Regla de prioridad: deuda técnica antes que alcance nuevo
@@ -404,6 +420,11 @@ Deliberately narrow scope (see `docs/DEUDA_TECNICA.md` ítem 6): does not
 cover `actions.js`/`game.js`/`render.js` (DOM-dependent) or the `case`s of
 `abilities.js` that open a real UI `picker()`. Run it after touching any of
 the functions it covers, but it does not replace manual browser testing.
+The engine modules under `js/motor/` have their own file:
+
+```bash
+node tests/motor-estado.mjs
+```
 
 ```bash
 git add -A
