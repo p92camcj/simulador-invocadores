@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-11-05 14:37 (Europe/Madrid)
+> **Última actualización:** 2026-11-05 14:41 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -238,7 +238,9 @@ Cada jugador, en su turno, debe seguir estas fases:
 - Si de una invocación realizada anteriormente obtuviste la Gema de menor
   valor de esa invocación (el valor va acompañado de un asterisco `*`),
   puedes revelarla para hacer de forma gratuita la habilidad de un
-  personaje central.
+  personaje central. La Gema se queda bocarriba delante de ti y sigue
+  contando para tu puntuación, pero ya no puedes volver a usarla, y el
+  resto de jugadores conoce ahora su valor.
 
 **C. Comprobar invocación**
 - Se revisa si se cumplen las condiciones de la invocación activa: están
@@ -448,12 +450,12 @@ También puede transformarse en otro personaje pagando de nuevo su coste.
 **Entusiasta** *(expansión, ver [Variantes](#variantes-y-modos-de-juego))* —
 Si se ejecuta una invocación con éxito y un Entusiasta está bocarriba en un
 Portal, el jugador que lo tenga en su Portal pierde una Gema de valor 1. No
-se da cambio: si no tiene ninguna Gema de valor 1, no pierde nada.
+se da cambio: si no tiene ninguna Gema de valor 1, el efecto no se aplica y
+no pierde ninguna Gema.
 
 > **Cambio respecto a versiones anteriores (confirmado con el autor,
-> 2026-11-05):** antes decía "(o mayor y toma el cambio)". El caso de no
-> tener ninguna Gema de valor 1 es una interpretación pendiente de
-> confirmar. El Entusiasta todavía no está en el simulador.
+> 2026-11-05):** antes decía "(o mayor y toma el cambio)". El Entusiasta
+> todavía no está en el simulador.
 
 ---
 

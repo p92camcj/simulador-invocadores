@@ -100,10 +100,12 @@ test('puedePagarActivacionCentral: Gema de 1 o asterisco; Metamorfo necesita ade
   const unaUnitaria = { gems: [{ valor: 1 }] };
   const soloAsterisco = { gems: [{ valor: 8, esAsterisco: true }] };
   const asteriscoMasUna = { gems: [{ valor: 8, esAsterisco: true }, { valor: 1 }] };
+  const asteriscoRevelado = { gems: [{ valor: 8, esAsterisco: true, revelada: true }] };
   const dosUnitarias = { gems: [{ valor: 1 }, { valor: 1 }] };
   assert.equal(puedePagarActivacionCentral(soloMayor), false);
   assert.equal(puedePagarActivacionCentral(unaUnitaria), true);
   assert.equal(puedePagarActivacionCentral(soloAsterisco), true);
+  assert.equal(puedePagarActivacionCentral(asteriscoRevelado), false);
   assert.equal(puedePagarActivacionCentral(unaUnitaria, true), false);
   assert.equal(puedePagarActivacionCentral(soloAsterisco, true), false);
   assert.equal(puedePagarActivacionCentral(asteriscoMasUna, true), true);
@@ -116,7 +118,8 @@ test('pagarActivacionPortalCentral no da cambio y usa el asterisco si es lo úni
   assert.deepEqual(soloMayor.gems, [{ valor: 5 }]);
   const soloAsterisco = { name: 'B', gems: [{ valor: 8, esAsterisco: true }, { valor: 3 }] };
   assert.equal(pagarActivacionPortalCentral(soloAsterisco), true);
-  assert.deepEqual(soloAsterisco.gems, [{ valor: 3 }]);
+  assert.deepEqual(soloAsterisco.gems, [{ valor: 8, esAsterisco: true, revelada: true }, { valor: 3 }]);
+  assert.equal(pagarActivacionPortalCentral(soloAsterisco), false); // ya revelada: no se reutiliza
   const ambas = { name: 'C', gems: [{ valor: 8, esAsterisco: true }, { valor: 1 }] };
   assert.equal(pagarActivacionPortalCentral(ambas, { usarAsterisco: false }), true);
   assert.deepEqual(ambas.gems, [{ valor: 8, esAsterisco: true }]);
@@ -149,11 +152,13 @@ test('gastarGemaUnitaria falla si no hay ninguna Gema con la que pagar', () => {
   assert.equal(gastarGemaUnitaria(player), false);
 });
 
-test('gastarGemaAsterisco solo gasta la Gema marcada como tal', () => {
+test('gastarGemaAsterisco revela la Gema (se conserva y sigue sumando) y no se puede reutilizar', () => {
   const player = { gems: [{ valor: 2, esAsterisco: true }, { valor: 3 }] };
   assert.equal(tieneGemaAsterisco(player), true);
   assert.equal(gastarGemaAsterisco(player), true);
-  assert.deepEqual(player.gems, [{ valor: 3 }]);
+  assert.deepEqual(player.gems, [{ valor: 2, esAsterisco: true, revelada: true }, { valor: 3 }]);
+  assert.equal(sumaGemas(player.gems), 5);
+  assert.equal(tieneGemaAsterisco(player), false);
   assert.equal(gastarGemaAsterisco(player), false);
 });
 

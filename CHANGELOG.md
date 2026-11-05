@@ -4,6 +4,19 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.24.2.85] - 2026-11-05
+
+### Cambiado (confirmado con el autor)
+- **La Gema de asterisco ya no se descarta al revelarla.** `gastarGemaAsterisco()`
+  (`js/utils.js`) la marca `revelada: true`: la jugadora se la queda y sigue
+  sumando sus puntos, pero no puede volver a usarla
+  (`tieneGemaAsterisco()` solo cuenta las no reveladas). `render.js`
+  muestra a todas las jugadoras el valor de las Gemas de asterisco reveladas
+  (`reveladasTxt()`), porque ya están bocarriba en mesa.
+- Reglamento: fase B (qué pasa con la Gema revelada) y Entusiasta (sin Gema
+  de valor 1 no se aplica el efecto).
+- Tests actualizados (71 en total).
+
 ## [1.24.1.83] - 2026-11-05
 
 ### Cambiado (reglas confirmadas por el dueño del proyecto)

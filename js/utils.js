@@ -358,7 +358,8 @@ export function opcionesActivarHabilidad(playerIdx, players, neutrals) {
 }
 
 // ---------- Economía de Gemas ----------
-// player.gems es un array de { valor: number, nivel: 'C'|'B'|'A'|'experto'|'unitaria', esAsterisco?: boolean }
+// player.gems es un array de { valor: number, nivel: 'C'|'B'|'A'|'experto'|'unitaria', esAsterisco?: boolean, revelada?: boolean }
+// `revelada`: Gema de asterisco ya usada (bocarriba, valor público, no reutilizable).
 
 export function sumaGemas(gems) {
   return gems.reduce((acc, g) => acc + (g.valor || 0), 0);
@@ -378,15 +379,22 @@ export function contarGemasPorNivel(gems) {
   }, {});
 }
 
+/** ¿Tiene el jugador alguna Gema de asterisco todavía sin revelar? */
 export function tieneGemaAsterisco(player) {
-  return player.gems.some(g => g.esAsterisco);
+  return player.gems.some(g => g.esAsterisco && !g.revelada);
 }
 
-/** Revela y descarta la Gema de asterisco del jugador. Devuelve true si había alguna. */
+/**
+ * Revela (bocarriba) una Gema de asterisco sin revelar del jugador para
+ * activar gratis una habilidad de un Portal central. La Gema NO se descarta:
+ * el jugador se la queda y sigue sumando sus puntos, pero su valor pasa a
+ * ser público y ya no puede volver a usarse (REGLAMENTO.md, fase B —
+ * confirmado con el autor, 2026-11-05). Devuelve true si había alguna.
+ */
 export function gastarGemaAsterisco(player) {
-  const idx = player.gems.findIndex(g => g.esAsterisco);
-  if (idx === -1) return false;
-  player.gems.splice(idx, 1);
+  const gema = player.gems.find(g => g.esAsterisco && !g.revelada);
+  if (!gema) return false;
+  gema.revelada = true;
   return true;
 }
 
@@ -427,8 +435,8 @@ export function puedePagarActivacionCentral(player, esMetamorfo = false) {
 
 /**
  * Cobra el coste de activar la habilidad de un personaje visible en un
- * Portal central: gratis si el jugador revela una Gema de asterisco
- * (se descarta), o 1 Gema unitaria en caso contrario — nunca se da cambio.
+ * Portal central: gratis si el jugador revela una Gema de asterisco (se la
+ * queda, ver gastarGemaAsterisco), o 1 Gema unitaria — nunca se da cambio.
  * Si el jugador tiene ambas opciones se le pregunta, salvo que el llamante
  * pase `opciones.usarAsterisco` (true/false) para decidir sin diálogo (lo
  * usa el autómata). Si solo tiene una de las dos, se usa esa.

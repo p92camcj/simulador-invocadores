@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.24.2.85 - 2026-11-05
+
+- **Revelar tu Gema con asterisco ya no te hace perder sus puntos.** Se
+  queda bocarriba delante de ti y sigue contando al final, pero solo sirve
+  una vez y el resto de jugadoras ve su valor.
+
 ## 1.24.1.83 - 2026-11-05
 
 - **Ya no se da cambio de Gemas.** Para usar un personaje de un Portal
