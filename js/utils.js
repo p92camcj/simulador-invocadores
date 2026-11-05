@@ -191,6 +191,46 @@ export function todosLosPortales(players, neutrals) {
   return arr;
 }
 
+// ---------- Ficha de transformación del Metamorfo ----------
+// REGLAMENTO.md, "Metamorfo" (confirmado por el dueño del proyecto,
+// 2026-11-05): la transformación es una ficha con la cara del personaje
+// colocada sobre la carta. Se mantiene solo mientras el Metamorfo siga
+// visible en la cima de su Portal: en cuanto se tapa con otra carta, se
+// pone bocabajo o sale del Portal, la ficha vuelve a la reserva y, si
+// después se destapa (Cronista, Cronomante...), vuelve a ser un Metamorfo
+// original. En el modelo de datos la ficha es `carta.aspecto`.
+
+/** Devuelve la ficha de transformación a la reserva (borra `.aspecto`). */
+export function retirarFichaMetamorfo(carta) {
+  if (carta && 'aspecto' in carta) delete carta.aspecto;
+}
+
+/**
+ * Apila `carta` encima de `stack`. Si la carta que queda tapada es un
+ * Metamorfo transformado, pierde su ficha. Úsese para TODA carta que llegue
+ * a la cima de un Portal tapando a otra (Fase A, Maestro, Cronomante...).
+ */
+export function apilarEnPortal(stack, carta) {
+  retirarFichaMetamorfo(stack.at(-1));
+  stack.push(carta);
+}
+
+/**
+ * Personajes en los que puede transformarse `cartaMetamorfo`: cualquiera no
+ * animal salvo el propio Metamorfo y salvo los que ya estén siendo imitados
+ * por OTRO Metamorfo en mesa (cada ficha es única: dos Metamorfos no pueden
+ * tener a la vez la misma transformación).
+ */
+export function transformacionesDisponiblesMetamorfo(players, neutrals, cartaMetamorfo) {
+  const ocupadas = new Set();
+  todosLosPortales(players, neutrals).forEach(({ stack }) => {
+    stack.forEach(c => {
+      if (c !== cartaMetamorfo && c.aspecto) ocupadas.add(c.aspecto);
+    });
+  });
+  return PERSONAJES_NO_ANIMALES.filter(n => n !== 'Metamorfo' && !ocupadas.has(n));
+}
+
 export function listPortals(players, neutrals) {
   const arr = [];
   players.forEach((p, pi) => {
@@ -300,30 +340,26 @@ export function opcionesActivarHabilidad(playerIdx, players, neutrals) {
       opciones.push({ val: `own:${idx}`, lbl: `Tu portal ${idx + 1}: ${etiqueta(top)} (gratis)` });
     }
   });
-  // Solo se ofrece si la jugadora puede pagar el coste real: 1 Gema unitaria
-  // por activar el Portal central, o gratis revelando una de asterisco (ver
-  // pagarActivacionPortalCentral()) — y 2 en total si el personaje es el
-  // propio Metamorfo, cuya transformación cuesta otra Gema unitaria
-  // independiente (case 'Metamorfo' en abilities.js). El coste se cobra
-  // DESPUÉS de que el efecto ya se haya aplicado (dentro de onComplete, ver
-  // actions.js) y su valor de retorno nunca se comprobaba, así que sin esta
-  // comprobación previa una jugadora sin Gemas suficientes podía activar la
-  // habilidad igualmente: el fallo de pago no revertía nada, quedaba gratis
-  // pese al alert() de "no tienes Gemas". `sumaGemas` (no solo `.length`)
-  // porque una única Gema de valor≥2 puede cubrir un coste de 2 partiendo
-  // el cambio (ver gastarGemaUnitaria).
+  // Solo se ofrece si la jugadora puede pagar el coste real SIN cambio
+  // (puedePagarActivacionCentral): 1 Gema unitaria o revelar una de
+  // asterisco por activar el Portal central, y si el personaje es el propio
+  // Metamorfo, otra Gema unitaria aparte por su transformación (case
+  // 'Metamorfo' en abilities.js). El coste se cobra DESPUÉS de que el efecto
+  // ya se haya aplicado (dentro de onComplete, ver actions.js), así que esta
+  // comprobación previa es la que impide activar gratis sin poder pagar.
   neutrals.forEach((stack, idx) => {
     const top = stack.at(-1);
     if (!top || !top.vis?.public || !PERSONAJES_CON_HABILIDAD.includes(top.name)) return;
-    const costeTotal = top.name === 'Metamorfo' ? 2 : 1;
-    if (sumaGemas(players[playerIdx].gems) < costeTotal) return;
-    opciones.push({ val: `central:${idx}`, lbl: `Neutral ${idx + 1}: ${etiqueta(top)} (cuesta 1 Gema)` });
+    if (!puedePagarActivacionCentral(players[playerIdx], top.name === 'Metamorfo')) return;
+    const coste = top.name === 'Metamorfo' ? '1 Gema de valor 1 o un *, más 1 Gema de valor 1' : '1 Gema de valor 1 o un *';
+    opciones.push({ val: `central:${idx}`, lbl: `Neutral ${idx + 1}: ${etiqueta(top)} (cuesta ${coste})` });
   });
   return opciones;
 }
 
 // ---------- Economía de Gemas ----------
-// player.gems es un array de { valor: number, nivel: 'C'|'B'|'A'|'experto'|'unitaria', esAsterisco?: boolean }
+// player.gems es un array de { valor: number, nivel: 'C'|'B'|'A'|'experto'|'unitaria', esAsterisco?: boolean, revelada?: boolean }
+// `revelada`: Gema de asterisco ya usada (bocarriba, valor público, no reutilizable).
 
 export function sumaGemas(gems) {
   return gems.reduce((acc, g) => acc + (g.valor || 0), 0);
@@ -343,60 +379,83 @@ export function contarGemasPorNivel(gems) {
   }, {});
 }
 
+/** ¿Tiene el jugador alguna Gema de asterisco todavía sin revelar? */
 export function tieneGemaAsterisco(player) {
-  return player.gems.some(g => g.esAsterisco);
+  return player.gems.some(g => g.esAsterisco && !g.revelada);
 }
 
-/** Revela y descarta la Gema de asterisco del jugador. Devuelve true si había alguna. */
+/**
+ * Revela (bocarriba) una Gema de asterisco sin revelar del jugador para
+ * activar gratis una habilidad de un Portal central. La Gema NO se descarta:
+ * el jugador se la queda y sigue sumando sus puntos, pero su valor pasa a
+ * ser público y ya no puede volver a usarse (REGLAMENTO.md, fase B —
+ * confirmado con el autor, 2026-11-05). Devuelve true si había alguna.
+ */
 export function gastarGemaAsterisco(player) {
-  const idx = player.gems.findIndex(g => g.esAsterisco);
-  if (idx === -1) return false;
-  player.gems.splice(idx, 1);
+  const gema = player.gems.find(g => g.esAsterisco && !g.revelada);
+  if (!gema) return false;
+  gema.revelada = true;
   return true;
 }
 
 /**
- * Gasta una Gema unitaria (valor 1). Si el jugador no tiene ninguna suelta,
- * cambia su Gema de menor valor por N Gemas unitarias (N = valor de la Gema
- * cambiada) y ya paga una de ellas en el propio cambio, dejando N-1 sueltas.
- * Devuelve false solo si el jugador no tiene ninguna Gema con la que pagar.
+ * Número de Gemas unitarias (valor 1, sin asterisco) que tiene el jugador.
+ * Son las únicas con las que se puede pagar un coste en Gemas: en
+ * Invocadores NO se da cambio (REGLAMENTO.md, "Secuencia del turno", fase B
+ * — decisión del dueño del proyecto, 2026-11-05).
+ */
+export function contarGemasUnitarias(player) {
+  return player.gems.filter(g => g.valor === 1 && !g.esAsterisco).length;
+}
+
+/**
+ * Gasta una Gema unitaria (valor 1). NO se da cambio: si el jugador no tiene
+ * ninguna Gema de valor 1 suelta, no puede pagar aunque tenga Gemas de valor
+ * superior (REGLAMENTO.md, fase B). Devuelve false (sin tocar nada) en ese caso.
  */
 export function gastarGemaUnitaria(player) {
-  const idxUnitaria = player.gems.findIndex(g => g.valor === 1);
-  if (idxUnitaria !== -1) {
-    player.gems.splice(idxUnitaria, 1);
-    return true;
-  }
-  if (player.gems.length === 0) return false;
-
-  let menorIdx = 0;
-  player.gems.forEach((g, i) => {
-    if (g.valor < player.gems[menorIdx].valor) menorIdx = i;
-  });
-  const gemaCambiada = player.gems.splice(menorIdx, 1)[0];
-  const nuevasUnitarias = Array.from({ length: gemaCambiada.valor - 1 }, () => ({ valor: 1, nivel: 'unitaria' }));
-  player.gems.push(...nuevasUnitarias);
+  const idxUnitaria = player.gems.findIndex(g => g.valor === 1 && !g.esAsterisco);
+  if (idxUnitaria === -1) return false;
+  player.gems.splice(idxUnitaria, 1);
   return true;
+}
+
+/**
+ * ¿Puede el jugador pagar la activación de un personaje de un Portal
+ * central? Acceso al centro: 1 Gema unitaria o revelar una Gema de
+ * asterisco. Si el personaje es el Metamorfo, además 1 Gema unitaria por la
+ * transformación (no se puede pagar con asterisco). Sin cambio.
+ */
+export function puedePagarActivacionCentral(player, esMetamorfo = false) {
+  const unitarias = contarGemasUnitarias(player);
+  const asterisco = tieneGemaAsterisco(player);
+  if (esMetamorfo) return unitarias >= 2 || (asterisco && unitarias >= 1);
+  return unitarias >= 1 || asterisco;
 }
 
 /**
  * Cobra el coste de activar la habilidad de un personaje visible en un
- * Portal central: gratis si el jugador revela una Gema de asterisco
- * (se descarta), o 1 Gema unitaria en caso contrario.
+ * Portal central: gratis si el jugador revela una Gema de asterisco (se la
+ * queda, ver gastarGemaAsterisco), o 1 Gema unitaria — nunca se da cambio.
+ * Si el jugador tiene ambas opciones se le pregunta, salvo que el llamante
+ * pase `opciones.usarAsterisco` (true/false) para decidir sin diálogo (lo
+ * usa el autómata). Si solo tiene una de las dos, se usa esa.
  * Devuelve false (y no cobra nada) si el jugador no puede pagar.
  */
-export function pagarActivacionPortalCentral(player) {
-  if (tieneGemaAsterisco(player)) {
-    const usarAsterisco = confirm(
-      `${player.name}: tienes una Gema de asterisco. ¿Revelarla para activar la habilidad gratis? (Cancelar para pagar 1 Gema unitaria)`
-    );
-    if (usarAsterisco) return gastarGemaAsterisco(player);
-  }
-  if (player.gems.length === 0) {
-    alert(`${player.name} no tiene Gemas con las que pagar la activación.`);
+export function pagarActivacionPortalCentral(player, opciones = {}) {
+  const asterisco = tieneGemaAsterisco(player);
+  const unitarias = contarGemasUnitarias(player);
+  if (!asterisco && unitarias === 0) {
+    alert(`${player.name} no tiene Gemas de valor 1 ni Gema de asterisco con las que pagar la activación (no se da cambio).`);
     return false;
   }
-  return gastarGemaUnitaria(player);
+  let usarAsterisco = asterisco && unitarias === 0;
+  if (asterisco && unitarias > 0) {
+    usarAsterisco = typeof opciones.usarAsterisco === 'boolean'
+      ? opciones.usarAsterisco
+      : confirm(`${player.name}: tienes una Gema de asterisco. ¿Revelarla para activar la habilidad gratis? (Cancelar para pagar 1 Gema de valor 1)`);
+  }
+  return usarAsterisco ? gastarGemaAsterisco(player) : gastarGemaUnitaria(player);
 }
 
 /**
@@ -555,10 +614,22 @@ export function generarVis(destino, { origen, visible, esPropietaria }) {
  */
 export function actualizarClarividente(players) {
   players.forEach(player => {
-    player.hasClariActivo = player.portals.some(
-      stack => stack.length &&
-        stack.at(-1).name === 'Clarividente' &&
-        stack.at(-1).vis?.public === true
-    );
+    player.hasClariActivo = tieneClarividenteVisible(player);
   });
+}
+
+/**
+ * ¿Tiene la jugadora una Clarividente REAL visible en la cima de alguno de
+ * sus Portales? Mientras sea así, su mano completa queda oculta para el
+ * resto (decisión de mesa, ver REGLAMENTO.md), así que nadie puede "ver"
+ * su carta oculta: ni el Maestro puede elegirla ni el autómata conocerla.
+ * Se calcula en el momento, sin depender de `hasClariActivo` (que solo se
+ * refresca en render()).
+ */
+export function tieneClarividenteVisible(player) {
+  return player.portals.some(
+    stack => stack.length &&
+      stack.at(-1).name === 'Clarividente' &&
+      stack.at(-1).vis?.public === true
+  );
 }

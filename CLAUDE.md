@@ -83,10 +83,19 @@ the version that shipped this):
   restriction ("only the character that completes the invocation") is gone
   — the picker offers all of `PERSONAJES_NO_ANIMALES` (`utils.js`) minus
   Metamorfo itself, any time on the player's turn, independent of `need` or
-  what's still in the deck. The transformation was already persistent in
-  practice (nothing in the codebase ever reverted `stack.at(-1).name` back),
-  it just hadn't been exercised because the old restriction made most
-  transformations unreachable.
+  what's still in the deck. **Updated 2026-11-05:** the transformation
+  (`.aspecto`, the physical token) lasts only while the Metamorfo stays
+  visible on top of its Portal — covering it (`apilarEnPortal()` in
+  `utils.js`), flipping it face down (Ocultista) or taking it to a hand
+  (Cronista) returns the token to the reserve, so it comes back as a plain
+  Metamorfo if uncovered later. Estratega swapping whole Portals keeps it.
+  Two Metamorfos can never hold the same token at once
+  (`transformacionesDisponiblesMetamorfo()`).
+- **Updated 2026-11-05: no change is ever given for Gems.** Central Portals
+  and the Metamorfo's transformation are paid only with value-1 Gems (or,
+  for central access only, by revealing an asterisk Gem) —
+  `gastarGemaUnitaria()` no longer breaks larger Gems into ones. The
+  Entusiasta (not implemented yet) also loses only a value-1 Gem.
 - **Fixed 2026-07-21 (DEUDA_TECNICA.md item 14)**: the transformation used
   to overwrite `stack.at(-1).name = v` directly, so a transformed Metamorfo
   was treated as the real imitated character everywhere `.name` was
@@ -304,9 +313,13 @@ in `nextTurn()`.
 ## Docs worth reading before larger changes
 
 - **`docs/reglamento/REGLAMENTO.md`** — the current rulebook, source of
-  truth for game rules. Images in `docs/reglamento/img/` are rasterized
-  pages from the original PDF, kept for visual reference; the Markdown text
-  is what's authoritative and editable.
+  truth for game rules. The laid-out player PDF (maintained by the owner in
+  Canva) lives next to it as `docs/reglamento/reglamento-invocadores.pdf` —
+  always the same file name, so the in-app "Reglamento" button
+  (`#btnReglamento` in `index.html`) always opens the latest one. Images in
+  `docs/reglamento/img/` are rasterized pages of that PDF (150 dpi,
+  `pdftoppm`), kept for visual reference and regenerated whenever a new PDF
+  arrives; the Markdown text is what's authoritative and editable.
 - **`Documentacion_Simulador_Invocadores.md`** — function-level reference
   for each `js/` module (what each export does). Update it when you add,
   rename, or remove an exported function/constant.

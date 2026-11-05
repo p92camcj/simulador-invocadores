@@ -1,14 +1,19 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-07-21 16:13 (Europe/Madrid)
+> **Última actualización:** 2026-11-05 16:55 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
 > reciente. Está en Markdown para que sea fácil de editar directamente en
 > GitHub cuando cambie alguna regla — no hace falta tocar el PDF original.
 >
-> Las imágenes de cada sección (`img/`) son las páginas originales del PDF,
-> incluidas como referencia visual. Si el texto de una sección cambia, la
+> **PDF maquetado (versión para jugadores):**
+> [`reglamento-invocadores.pdf`](reglamento-invocadores.pdf), exportado de
+> Canva el 2026-11-05. Se publica siempre con el mismo nombre, así que el
+> enlace del simulador (botón "Reglamento") apunta a la última versión.
+>
+> Las imágenes de cada sección (`img/`) son las páginas de ese PDF
+> (regeneradas el 2026-11-05), incluidas como referencia visual. Si el texto de una sección cambia, la
 > imagen correspondiente puede quedar desactualizada — no hay que asumir que
 > coinciden si ves un commit que solo toca el texto.
 >
@@ -43,8 +48,9 @@
 > intención real era otra, corregir esta nota y `estaProtegidoParaActivar`
 > en `js/utils.js`.
 >
-> ⚠️ **Decisión de mesa, más estricta que el texto literal — indicación
-> directa del dueño del proyecto:** el glosario de "Carta oculta" (más
+> ✅ **Confirmado con el autor el 2026-11-05 e incorporado al texto de la
+> Clarividente.** Nota original: **Decisión de mesa, más estricta que el
+> texto literal — indicación directa del dueño del proyecto:** el glosario de "Carta oculta" (más
 > abajo) dice que la carta que la Clarividente revela a su dueña ya era
 > visible para el resto de jugadoras desde antes — el texto no dice
 > explícitamente que **deje** de serlo mientras la Clarividente está
@@ -231,13 +237,15 @@ Cada jugador, en su turno, debe seguir estas fases:
 
 **B. Activar la habilidad de un personaje (opcional)**
 - Puedes activar la habilidad del Personaje visible en tu Portal.
-- O paga una Gema azul de valor 1 (sí puedes cambiar Gemas de valores
-  superiores) para activar la habilidad de un Personaje visible en un
-  Portal central.
+- O paga una Gema azul de valor 1 para activar la habilidad de un Personaje
+  visible en un Portal central. **No se da cambio:** las Gemas de valores
+  superiores no sirven para pagar.
 - Si de una invocación realizada anteriormente obtuviste la Gema de menor
   valor de esa invocación (el valor va acompañado de un asterisco `*`),
   puedes revelarla para hacer de forma gratuita la habilidad de un
-  personaje central.
+  personaje central. La Gema se queda bocarriba delante de ti y sigue
+  contando para tu puntuación, pero ya no puedes volver a usarla, y el
+  resto de jugadores conoce ahora su valor.
 
 **C. Comprobar invocación**
 - Se revisa si se cumplen las condiciones de la invocación activa: están
@@ -315,12 +323,15 @@ adorables.
 
 ### Modo normal
 
-**Maestro** — Elige una de las cartas que veas en la mano de otro jugador
-para bajarla instantáneamente al Portal de ese mismo jugador seleccionado;
-a continuación, ese jugador roba una carta para reponer su mano. Además, si
-el Maestro es requisito de la Invocación y no hay ningún Pícaro visible **en
-toda la mesa**, el jugador que tiene visible al Maestro en su Portal gana
-tres Gemas de valor 1 adicionales, además de las de la Invocación.
+**Maestro** — Elige la carta que veas en la mano de otro jugador (la que
+ese jugador tiene oculta para sí) y bájala instantáneamente a un Portal de
+**ese mismo jugador**, nunca al tuyo. A continuación, ese jugador roba una
+carta para reponer su mano. No puedes elegir a un jugador que tenga a la
+Clarividente visible, porque no hay ninguna carta de su mano que puedas
+ver. Además, si el Maestro es requisito de la Invocación y no hay ningún
+Pícaro visible **en toda la mesa**, el jugador que tiene visible al Maestro
+en su Portal gana tres Gemas de valor 1 adicionales, además de las de la
+Invocación.
 
 > **Cambio respecto a versiones anteriores:** el Maestro tenía únicamente el
 > bonus pasivo de las tres Gemas; ahora tiene además una habilidad activa
@@ -339,12 +350,17 @@ tres Gemas de valor 1 adicionales, además de las de la Invocación.
 > al Portal de la jugadora AFECTADA (dueña de la mano), nunca al del
 > Maestro. Se corrige aquí para eliminar la contradicción; el código
 > (`js/abilities.js`, `case 'Maestro'`) implementa esta lectura.
+>
+> **Aclaración 2026-11-05, confirmada con el autor:** el Maestro no puede
+> elegir a una jugadora con la Clarividente visible, porque su mano entera
+> está oculta para el resto.
 
 **Clarividente** — Mientras un jugador tenga a la Clarividente visible en su
 Portal, podrá ver ambas cartas de su mano (la visible y la que era oculta
-para él). Cuando se deje de tener visible a la Clarividente, el jugador debe
-voltear una carta a su elección, que pasará a estar oculta para él y visible
-para los demás.
+para él), y los demás jugadores no verán ninguna de ellas. Cuando se deje de
+tener visible a la Clarividente, el jugador debe voltear inmediatamente una
+carta a su elección, que pasará a estar oculta para él y visible para los
+demás.
 
 ![Habilidades: Ocultista, Centinela, Metamorfo](img/11-habilidades-ocultista-centinela-metamorfo.jpg)
 
@@ -363,13 +379,18 @@ puede jugar una carta sobre una Centinela visible.
 **Metamorfo** — Si el Metamorfo está visible en el Portal de un jugador,
 este en su turno puede pagar una Gema de valor 1 para que adopte la
 identidad de cualquier personaje (no animal). Toma una ficha con la cara del
-personaje en quien se transforma y la coloca encima de su carta. Esta
-transformación no le permite ejecutar la habilidad del personaje imitado,
-pero cuenta como dicho personaje a todos los efectos de la invocación,
-incluyendo el cumplimiento de la combinación requerida y el reparto de
-Gemas. La transformación se mantiene hasta que el Metamorfo sea tapado por
-otra carta, o vuelva a transformarse en otro personaje pagando de nuevo su
-coste.
+personaje en quien se transforma y la coloca encima de su carta. No puede
+elegir una ficha que ya esté sobre otro Metamorfo: dos Metamorfos no pueden
+tener a la vez la misma transformación. Esta transformación no le permite
+ejecutar la habilidad del personaje imitado, pero cuenta como dicho
+personaje a todos los efectos de la invocación, incluyendo el cumplimiento
+de la combinación requerida y el reparto de Gemas. La transformación se
+mantiene hasta que el Metamorfo sea tapado por otra carta, volteado
+bocabajo o retirado de su Portal: en ese momento la ficha vuelve a la
+reserva y, si más adelante el Metamorfo vuelve a quedar visible, es de nuevo
+un Metamorfo sin transformar. Si se intercambian Portales completos
+(Estratega), la carta no se tapa ni se voltea y conserva su transformación.
+También puede transformarse en otro personaje pagando de nuevo su coste.
 
 > **Cambios respecto a versiones anteriores:**
 > 1. Antes solo podía transformarse en el personaje concreto que faltase
@@ -388,9 +409,15 @@ coste.
 >    nombre internamente sin dejar rastro de que es "en realidad" un
 >    Metamorfo).
 
-> **Nota:** si el Metamorfo está en un Portal central costará 2 Gemas, una
-> por el coste de usar una habilidad de un Portal central y otra por la
-> habilidad propia de transformarse.
+> **Nota:** si el Metamorfo está en un Portal central costará 2 Gemas de
+> valor 1: una por usar una habilidad de un Portal central (o revelando una
+> Gema con asterisco) y otra por la habilidad propia de transformarse.
+
+> **Cambio respecto a versiones anteriores (confirmado con el autor,
+> 2026-11-05):** antes no se decía qué pasaba con la ficha al voltear o
+> retirar el Metamorfo, ni si dos Metamorfos podían imitar al mismo
+> personaje. Físicamente, al voltear la carta la ficha cae a la mesa; al
+> deslizar un Portal con la Estratega, no.
 
 > **Nota de interpretación — indicación directa del dueño del proyecto:**
 > la transformación del Metamorfo es **puramente de apariencia a efectos de
@@ -423,12 +450,17 @@ coste.
 > la representación visual (ficha superpuesta con transparencia), ver
 > `docs/MEJORAS_FUTURAS.md`.
 
-![Habilidades: Entusiasta y final de partida](img/12-habilidades-entusiasta-final-partida.jpg)
+![Habilidades: Metamorfo (continuación), Entusiasta y final de partida](img/12-habilidades-entusiasta-final-partida.jpg)
 
 **Entusiasta** *(expansión, ver [Variantes](#variantes-y-modos-de-juego))* —
 Si se ejecuta una invocación con éxito y un Entusiasta está bocarriba en un
-Portal, el jugador que lo tenga en su Portal pierde una Gema de valor 1 (o
-mayor y toma el cambio).
+Portal, el jugador que lo tenga en su Portal pierde una Gema de valor 1. No
+se da cambio: si no tiene ninguna Gema de valor 1, el efecto no se aplica y
+no pierde ninguna Gema.
+
+> **Cambio respecto a versiones anteriores (confirmado con el autor,
+> 2026-11-05):** antes decía "(o mayor y toma el cambio)". El Entusiasta
+> todavía no está en el simulador.
 
 ---
 
@@ -578,7 +610,7 @@ Portal. En ese caso, la criatura invocada no otorga Gemas por ese personaje.
 Solo los personajes únicos visibles reciben la recompensa.
 
 **Metamorfo** — Personaje especial que puede adoptar la identidad de otro
-personaje pagando una Gema, sin copiar la habilidad del personaje en que se
+personaje pagando una Gema de valor 1, sin copiar la habilidad del personaje en que se
 transforma.
 
 **Norma de visibilidad** — Siempre que una carta cambie de mano (por
@@ -628,16 +660,20 @@ personajes únicos visibles implicados en la invocación.
 
 **¿El Metamorfo puede copiar a cualquier personaje en cualquier momento?**
 No, solamente en el turno del jugador y siempre que esté visible en su
-Portal y este decida pagar una Gema. Toma una ficha con la cara del
+Portal y este decida pagar una Gema de valor 1. Toma una ficha con la cara del
 personaje en quien se transforma y la coloca sobre su cara. No ejecuta la
 habilidad del personaje imitado, pero cuenta como tal para cumplir la
 invocación y recibir Gemas si corresponde.
 
 **¿Puedo pagar con Gemas que no sean de valor 1?**
-Sí, pero en ese caso antes debes mostrar el valor de la Gema de color (no
-azul) y hacer el correspondiente cambio por Gemas unitarias que sumen su
-valor. Ejemplo: una Gema de valor 3 se cambia por tres Gemas de valor 1
-(azules).
+No. En el juego no se da cambio: todos los pagos (Portales centrales,
+Metamorfo y Entusiasta) se hacen con Gemas azules de valor 1. Para activar
+la habilidad de un Portal central también puedes revelar tu Gema con
+asterisco.
+
+> **Cambio respecto a versiones anteriores (decisión del dueño del
+> proyecto, 2026-11-05):** antes esta respuesta decía que sí, mostrando la
+> Gema de color y cambiándola por Gemas unitarias que sumasen su valor.
 
 **¿Puedo usar habilidades sobre una carta oculta sobre un Portal que no veo
 cuál es?**

@@ -4,6 +4,68 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.25.0.86] - 2026-11-05
+
+### Añadido
+- **Botón "Reglamento"** en la barra superior (`#btnReglamento`,
+  `index.html`, estilo `a.btn` en `style.css`): abre en una pestaña nueva
+  el PDF maquetado `docs/reglamento/reglamento-invocadores.pdf`.
+- PDF del reglamento exportado de Canva el 2026-11-05, con las reglas
+  confirmadas con el autor (sin cambio de Gemas, Gema de asterisco que se
+  conserva, ficha del Metamorfo, Maestro frente a Clarividente,
+  Entusiasta). Se publica siempre con el mismo nombre de archivo.
+
+### Cambiado
+- Las 18 imágenes de `docs/reglamento/img/` se han regenerado desde el
+  PDF nuevo. `REGLAMENTO.md` enlaza el PDF.
+
+## [1.24.2.85] - 2026-11-05
+
+### Cambiado (confirmado con el autor)
+- **La Gema de asterisco ya no se descarta al revelarla.** `gastarGemaAsterisco()`
+  (`js/utils.js`) la marca `revelada: true`: la jugadora se la queda y sigue
+  sumando sus puntos, pero no puede volver a usarla
+  (`tieneGemaAsterisco()` solo cuenta las no reveladas). `render.js`
+  muestra a todas las jugadoras el valor de las Gemas de asterisco reveladas
+  (`reveladasTxt()`), porque ya están bocarriba en mesa.
+- Reglamento: fase B (qué pasa con la Gema revelada) y Entusiasta (sin Gema
+  de valor 1 no se aplica el efecto).
+- Tests actualizados (71 en total).
+
+## [1.24.1.83] - 2026-11-05
+
+### Cambiado (reglas confirmadas por el dueño del proyecto)
+- **No se da cambio de Gemas.** `gastarGemaUnitaria()` (`js/utils.js`) ya
+  no parte una Gema de valor superior en unidades: sin Gema de valor 1
+  suelta devuelve `false`. Nuevas `contarGemasUnitarias()` y
+  `puedePagarActivacionCentral()`. `opcionesActivarHabilidad()` solo ofrece
+  un Portal central si se puede pagar sin cambio (1 Gema de valor 1 o un
+  asterisco; Metamorfo central: 2 de valor 1, o asterisco + 1 de valor 1).
+  `pagarActivacionPortalCentral()` usa el asterisco directamente si es lo
+  único que hay y acepta `opciones.usarAsterisco` para decidir sin
+  `confirm()`. El autómata pasa `false`, así que ya no abre un diálogo en
+  su turno.
+- **Ficha de transformación del Metamorfo.** `.aspecto` se borra cuando el
+  Metamorfo queda tapado (nueva `apilarEnPortal()`, usada en Fase A,
+  Maestro y Cronomante), cuando el Ocultista lo pone bocabajo
+  (`retirarFichaMetamorfo()`) y cuando la Cronista se lo lleva a la mano.
+  Si se destapa después, vuelve a ser un Metamorfo original. Estratega lo
+  conserva. Nueva `transformacionesDisponiblesMetamorfo()`: dos Metamorfos
+  no pueden tener la misma transformación a la vez. La transformación solo
+  se paga con una Gema de valor 1.
+- **Maestro + Clarividente.** `candidatosObjetivoMaestro()` excluye a la
+  jugadora que tenga la Clarividente visible, porque su mano está oculta
+  al resto. Nueva `tieneClarividenteVisible()`.
+- **Autómata.** `construirEstadoVisibleParaBot()` ya no expone
+  `cartaOcultaPublica` de una jugadora con la Clarividente visible (antes
+  la bot "veía" una carta que nadie ve en mesa). Añade
+  `gemasUnitariasPropias` y `transformacionesOcupadas`, que usan
+  `decidirMetamorfoNormal/Dificil`.
+- Reglamento (fase B, nota del Metamorfo, FAQ de pago, Maestro, Entusiasta
+  pendiente), `Documentacion_Simulador_Invocadores.md` y `CLAUDE.md`
+  actualizados. 7 tests nuevos o reescritos en `tests/run-tests.mjs`
+  (71 en total).
+
 ## [1.24.0.83] - 2026-07-21
 
 ### Añadido

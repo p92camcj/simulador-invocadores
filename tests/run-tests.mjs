@@ -16,6 +16,8 @@ import assert from 'node:assert/strict';
 import {
   sumaGemas, contarGemasPorNivel, tieneGemaAsterisco, gastarGemaAsterisco,
   gastarGemaUnitaria, construirPoolGemas, todosLosPortales,
+  contarGemasUnitarias, puedePagarActivacionCentral, pagarActivacionPortalCentral,
+  apilarEnPortal, transformacionesDisponiblesMetamorfo,
   jugadoraProtegidaPorCentinela, estaProtegidoParaActivar,
   opcionesActivarHabilidad, generarVis, calcularResultadoFinal,
 } from '../js/utils.js';
@@ -82,10 +84,67 @@ test('gastarGemaUnitaria gasta una Gema unitaria suelta si existe', () => {
   assert.deepEqual(player.gems, [{ valor: 3, nivel: 'C' }]);
 });
 
-test('gastarGemaUnitaria cambia la Gema de menor valor si no hay unitaria suelta', () => {
+test('gastarGemaUnitaria NO da cambio: sin Gema de valor 1 suelta, no paga aunque tenga Gemas mayores', () => {
   const player = { gems: [{ valor: 3, nivel: 'C' }] };
-  assert.equal(gastarGemaUnitaria(player), true);
-  assert.deepEqual(player.gems, [{ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }]);
+  assert.equal(gastarGemaUnitaria(player), false);
+  assert.deepEqual(player.gems, [{ valor: 3, nivel: 'C' }]);
+});
+
+test('contarGemasUnitarias solo cuenta Gemas de valor 1 sin asterisco', () => {
+  const player = { gems: [{ valor: 1 }, { valor: 1 }, { valor: 8, esAsterisco: true }, { valor: 3 }] };
+  assert.equal(contarGemasUnitarias(player), 2);
+});
+
+test('puedePagarActivacionCentral: Gema de 1 o asterisco; Metamorfo necesita además otra Gema de 1', () => {
+  const soloMayor = { gems: [{ valor: 5 }] };
+  const unaUnitaria = { gems: [{ valor: 1 }] };
+  const soloAsterisco = { gems: [{ valor: 8, esAsterisco: true }] };
+  const asteriscoMasUna = { gems: [{ valor: 8, esAsterisco: true }, { valor: 1 }] };
+  const asteriscoRevelado = { gems: [{ valor: 8, esAsterisco: true, revelada: true }] };
+  const dosUnitarias = { gems: [{ valor: 1 }, { valor: 1 }] };
+  assert.equal(puedePagarActivacionCentral(soloMayor), false);
+  assert.equal(puedePagarActivacionCentral(unaUnitaria), true);
+  assert.equal(puedePagarActivacionCentral(soloAsterisco), true);
+  assert.equal(puedePagarActivacionCentral(asteriscoRevelado), false);
+  assert.equal(puedePagarActivacionCentral(unaUnitaria, true), false);
+  assert.equal(puedePagarActivacionCentral(soloAsterisco, true), false);
+  assert.equal(puedePagarActivacionCentral(asteriscoMasUna, true), true);
+  assert.equal(puedePagarActivacionCentral(dosUnitarias, true), true);
+});
+
+test('pagarActivacionPortalCentral no da cambio y usa el asterisco si es lo único que hay', () => {
+  const soloMayor = { name: 'A', gems: [{ valor: 5 }] };
+  assert.equal(pagarActivacionPortalCentral(soloMayor), false);
+  assert.deepEqual(soloMayor.gems, [{ valor: 5 }]);
+  const soloAsterisco = { name: 'B', gems: [{ valor: 8, esAsterisco: true }, { valor: 3 }] };
+  assert.equal(pagarActivacionPortalCentral(soloAsterisco), true);
+  assert.deepEqual(soloAsterisco.gems, [{ valor: 8, esAsterisco: true, revelada: true }, { valor: 3 }]);
+  assert.equal(pagarActivacionPortalCentral(soloAsterisco), false); // ya revelada: no se reutiliza
+  const ambas = { name: 'C', gems: [{ valor: 8, esAsterisco: true }, { valor: 1 }] };
+  assert.equal(pagarActivacionPortalCentral(ambas, { usarAsterisco: false }), true);
+  assert.deepEqual(ambas.gems, [{ valor: 8, esAsterisco: true }]);
+});
+
+test('apilarEnPortal: tapar un Metamorfo transformado le quita la ficha (vuelve a original al destaparse)', () => {
+  const metamorfo = { name: 'Metamorfo', aspecto: 'Pícaro', vis: { public: true } };
+  const stack = [metamorfo];
+  apilarEnPortal(stack, { name: 'Cronista', vis: { public: true } });
+  assert.equal('aspecto' in metamorfo, false);
+  stack.pop(); // p. ej. Cronista se lleva la carta de encima
+  assert.equal(stack.at(-1).name, 'Metamorfo');
+  assert.equal(stack.at(-1).aspecto, undefined);
+});
+
+test('transformacionesDisponiblesMetamorfo excluye las fichas que ya usa otro Metamorfo', () => {
+  const m1 = { name: 'Metamorfo', aspecto: 'Pícaro', vis: { public: true } };
+  const m2 = { name: 'Metamorfo', vis: { public: true } };
+  const players = [{ portals: [[m1]] }, { portals: [[m2]] }];
+  const opciones = transformacionesDisponiblesMetamorfo(players, [], m2);
+  assert.equal(opciones.includes('Pícaro'), false);
+  assert.equal(opciones.includes('Metamorfo'), false);
+  assert.equal(opciones.includes('Centinela'), true);
+  // El propio Metamorfo puede volver a elegir su ficha actual (no la tiene "otro").
+  assert.equal(transformacionesDisponiblesMetamorfo(players, [], m1).includes('Pícaro'), true);
 });
 
 test('gastarGemaUnitaria falla si no hay ninguna Gema con la que pagar', () => {
@@ -93,11 +152,13 @@ test('gastarGemaUnitaria falla si no hay ninguna Gema con la que pagar', () => {
   assert.equal(gastarGemaUnitaria(player), false);
 });
 
-test('gastarGemaAsterisco solo gasta la Gema marcada como tal', () => {
+test('gastarGemaAsterisco revela la Gema (se conserva y sigue sumando) y no se puede reutilizar', () => {
   const player = { gems: [{ valor: 2, esAsterisco: true }, { valor: 3 }] };
   assert.equal(tieneGemaAsterisco(player), true);
   assert.equal(gastarGemaAsterisco(player), true);
-  assert.deepEqual(player.gems, [{ valor: 3 }]);
+  assert.deepEqual(player.gems, [{ valor: 2, esAsterisco: true, revelada: true }, { valor: 3 }]);
+  assert.equal(sumaGemas(player.gems), 5);
+  assert.equal(tieneGemaAsterisco(player), false);
   assert.equal(gastarGemaAsterisco(player), false);
 });
 
@@ -155,12 +216,23 @@ test('opcionesActivarHabilidad no ofrece un Portal central sin Gemas suficientes
   assert.equal(r.some(o => o.val.startsWith('central')), false);
 });
 
-test('opcionesActivarHabilidad exige el doble de valor en Gemas para Metamorfo central', () => {
+test('opcionesActivarHabilidad exige dos Gemas de valor 1 (o asterisco + una de 1) para Metamorfo central, sin cambio', () => {
   const neutrals = [[{ name: 'Metamorfo', vis: { public: true } }]];
   const players = [{ portals: [], gems: [{ valor: 1, nivel: 'unitaria' }] }];
-  assert.equal(opcionesActivarHabilidad(0, players, neutrals).some(o => o.val.startsWith('central')), false);
+  const ofreceCentral = () => opcionesActivarHabilidad(0, players, neutrals).some(o => o.val.startsWith('central'));
+  assert.equal(ofreceCentral(), false);
   players[0].gems = [{ valor: 2, nivel: 'C' }];
-  assert.equal(opcionesActivarHabilidad(0, players, neutrals).some(o => o.val.startsWith('central')), true);
+  assert.equal(ofreceCentral(), false); // una Gema de 2 no se puede cambiar
+  players[0].gems = [{ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }];
+  assert.equal(ofreceCentral(), true);
+  players[0].gems = [{ valor: 8, nivel: 'C', esAsterisco: true }, { valor: 1, nivel: 'unitaria' }];
+  assert.equal(ofreceCentral(), true);
+});
+
+test('opcionesActivarHabilidad no ofrece un Portal central si solo hay Gemas de valor superior a 1', () => {
+  const players = [{ portals: [], gems: [{ valor: 5, nivel: 'B' }] }];
+  const neutrals = [[{ name: 'Ocultista', vis: { public: true } }]];
+  assert.equal(opcionesActivarHabilidad(0, players, neutrals).some(o => o.val.startsWith('central')), false);
 });
 
 test('opcionesActivarHabilidad siempre ofrece los Portales propios, aunque no haya Gemas', () => {
@@ -209,6 +281,20 @@ test('candidatosObjetivoMaestro excluye a quien activa y respeta la protección 
   const candidatas = candidatosObjetivoMaestro(players, 0);
   assert.deepEqual(candidatas.map(c => c.idx), [2]);
   assert.equal(candidatas[0].cartaOculta.name, 'Estratega');
+});
+
+test('candidatosObjetivoMaestro excluye a una jugadora con la Clarividente visible (nadie ve su mano)', () => {
+  const players = [
+    { name: 'Maestro-owner', hand: [], portals: [[]], gems: [] },
+    {
+      name: 'Con Clarividente',
+      hand: [{ name: 'Aprendiz', vis: { owner: true, others: false, public: false } },
+             { name: 'Cronista', vis: { owner: false, others: true, public: false } }],
+      portals: [[{ name: 'Clarividente', vis: { public: true } }]],
+      gems: [],
+    },
+  ];
+  assert.deepEqual(candidatosObjetivoMaestro(players, 0), []);
 });
 
 test('bajarCartaMaestro mueve la carta oculta-para-el-resto al Portal de la jugadora objetivo (no al del Maestro)', () => {
@@ -534,19 +620,19 @@ console.log('Uso estratégico de habilidades activas — 4.6 Metamorfo (bot.js) 
 
 test('Metamorfo (Normal): se transforma en el primer requisito activo aún no cumplido, si tiene con qué pagar', () => {
   const need = ['X', 'Y', 'Z'];
-  const vista = { gemasPropiasTotalExacto: 3, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [] }], neutrales: [] };
+  const vista = { gemasUnitariasPropias: 3, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [] }], neutrales: [] };
   assert.equal(decidirMetamorfoNormal(vista, need), 'X');
 });
 
 test('Metamorfo (Normal): no activa sin ninguna Gema con la que pagar la transformación', () => {
   const need = ['X', 'Y', 'Z'];
-  const vista = { gemasPropiasTotalExacto: 0, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [] }], neutrales: [] };
+  const vista = { gemasUnitariasPropias: 0, jugadoras: [{ idx: 0, esUnoMismo: true, portales: [] }], neutrales: [] };
   assert.equal(decidirMetamorfoNormal(vista, need), null);
 });
 
 test('Metamorfo (Difícil): prefiere el beneficio propio (crédito completo) sobre la denegación cuando ambos están disponibles', () => {
   const need = ['X', 'Y', 'Z'];
-  const vista = { gemasPropiasTotalExacto: 1 };
+  const vista = { gemasUnitariasPropias: 1 };
   const contexto = { need, cumplidos: [], valorGemaNivel: 4, necesariosUnicosDeRivales: {} };
   const decision = decidirMetamorfoDificil(vista, need, true, { probabilidadPorNombre: {} }, contexto);
   assert.deepEqual(decision, { nombreDeseado: 'X', ev: 3 }); // 4*1 (beneficio propio) - 1 (coste de la Gema)
@@ -554,14 +640,14 @@ test('Metamorfo (Difícil): prefiere el beneficio propio (crédito completo) sob
 
 test('Metamorfo (Difícil): transformarse en el requisito que una rival tiene en exclusiva sigue mereciendo la pena tras pagar la Gema, aunque no haya beneficio propio', () => {
   const need = ['Z'];
-  const vista = { gemasPropiasTotalExacto: 1 };
+  const vista = { gemasUnitariasPropias: 1 };
   const contexto = { need, cumplidos: ['Z'], valorGemaNivel: 4, necesariosUnicosDeRivales: { Z: 'a:1:0' } };
   const decision = decidirMetamorfoDificil(vista, need, true, { probabilidadPorNombre: {} }, contexto);
   assert.deepEqual(decision, { nombreDeseado: 'Z', ev: 1 }); // 4*0.5 (denegación) - 1 (coste de la Gema)
 });
 
 test('Metamorfo (Difícil): no activa sin ninguna Gema con la que pagar la transformación', () => {
-  const vista = { gemasPropiasTotalExacto: 0 };
+  const vista = { gemasUnitariasPropias: 0 };
   const contexto = { need: ['X'], cumplidos: [], valorGemaNivel: 4, necesariosUnicosDeRivales: {} };
   assert.equal(decidirMetamorfoDificil(vista, ['X'], true, { probabilidadPorNombre: {} }, contexto), null);
 });
