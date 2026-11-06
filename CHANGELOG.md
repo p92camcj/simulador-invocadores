@@ -4,6 +4,47 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.29.0.115] - 2026-11-06
+
+### Añadido
+- **Nueva dificultad de autómatas: Experta** (`js/bot-busqueda.js`). En
+  cada turno genera 8 "mundos posibles": copias de la partida en las que
+  todo lo que la autómata no puede saber (su carta oculta, las cartas
+  privadas de las rivales, el mazo y el valor de las Gemas ajenas) se
+  reparte al azar entre los personajes que aún no ha visto. En cada mundo
+  prueba cada carta × Portal seguida de cada habilidad con cada objetivo,
+  usando el motor de reglas real (`jugarCarta`, `aplicarHabilidad`,
+  `terminarTurno`), y elige la jugada con mejor media. Puntúa con las Gemas
+  ganadas menos las de la mejor rival, más el valor de posición y la
+  amenaza de la siguiente jugadora (`bot-estrategia.js`). Tarda entre 30 y
+  300 ms por turno. Se elige en `#selDificultadBots`.
+- **Simulador de partidas sin navegador** (`tools/arena.mjs`): juega
+  partidas completas de autómatas en Node con el motor (cientos por
+  segundo con Normal y Difícil), con azar con semilla y asientos rotados.
+  `tools/ajustar-pesos.mjs` busca pesos mejores para `bot-estrategia.js`
+  enfrentando cada candidata a los actuales.
+- `js/bot.js`: las decisiones se separan de quién las ejecuta
+  (`decidirYJugarTurno(..., ejecutor)`). Por defecto se usa el ejecutor de
+  la web, y `crearEjecutorMotor()` juega solo con el motor.
+  `elegirOpcionPeticion` respeta un objetivo preferido aunque repita el
+  valor de un paso anterior (Maestro con dos Portales).
+- `js/bot-estrategia.js`: los pesos pasan al objeto `PESOS`
+  (`rival`, `posicion`, `amenaza`), con los mismos valores.
+- Tests nuevos en `tests/bot-busqueda.mjs`. Entre ellos, uno comprueba que
+  dos partidas que solo difieren en información oculta producen los mismos
+  mundos posibles, es decir, que la Experta no hace trampa.
+
+### Medido con el simulador
+- Experta contra dos Difíciles: gana el 60 % de las partidas (lo esperado
+  por azar sería el 33 %). Mano a mano contra Difícil gana el 67 %, y
+  contra tres Difíciles el 51 %.
+- Difícil contra dos Normales: 46 %.
+- Ajuste de pesos: 15 candidatas de 2.000 partidas en 2 y 3 jugadoras.
+  La mejor (+1-2 %) no mejoró al validarla con 5.000 partidas por mesa
+  (50,3 %, 32,8 % y 25,6 %), así que los pesos actuales se mantienen.
+- Con autómatas se completan pocas invocaciones: entre 0,3 y 0,8 de 3 por
+  partida con 3-4 jugadoras.
+
 ## [1.28.0.113] - 2026-11-06
 
 ### Añadido

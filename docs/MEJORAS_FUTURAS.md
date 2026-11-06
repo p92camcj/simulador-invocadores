@@ -27,18 +27,25 @@ se generen solo a partir de la vista saneada.
    la mejor rival), riesgo de dejar el cierre servido a la siguiente
    jugadora, valor de posición; carta oculta como media sobre sus
    identidades posibles.
-2. **Turno completo A+B**: puntuar cada pareja (jugada de Fase A,
-   habilidad de Fase B) con el mismo evaluador, en vez de decidir A y
-   luego B por separado. Requiere un modelo puro de cada habilidad sobre
-   el tablero simplificado (o el motor de reglas separado de la UI).
-3. **Búsqueda con determinización (PIMC / ISMCTS ligero)**: muestrear
-   repartos de las cartas desconocidas coherentes con la memoria del bot y
-   simular 1-2 turnos de rivales en cada uno. Nivel nuevo ("Experto") con
-   presupuesto de tiempo por turno (p. ej. 200 ms).
-4. **Afinado por autojuego**: un script de Node que enfrente versiones del
-   bot en miles de partidas y ajuste `PESO_RIVAL`, `FACTOR_POSICION`,
-   `FACTOR_AMENAZA` (y los de `bot-probabilidad.js`) por búsqueda aleatoria
-   o evolutiva. Depende de poder ejecutar partidas sin DOM (motor separado).
+2. ~~**Turno completo A+B**~~ y 3. ~~**Búsqueda con determinización**~~
+   (hecho en 1.29.0, nivel "Experta", `js/bot-busqueda.js`): en cada uno
+   de 8 mundos posibles prueba cada carta × Portal seguida de cada
+   habilidad con cada objetivo, usando el motor real, y elige la mejor
+   media. Pendiente: simular también 1-2 turnos de las rivales (hoy solo se
+   estima la amenaza de la siguiente con `bot-estrategia.js`), y un
+   presupuesto de tiempo en vez de un número fijo de mundos.
+4. ~~**Afinado por autojuego**~~ (herramienta hecha en 1.29.0):
+   `tools/arena.mjs` juega partidas completas sin navegador (cientos por
+   segundo con Normal/Difícil) y `tools/ajustar-pesos.mjs` busca los
+   `PESOS` de `bot-estrategia.js` enfrentando cada candidata a los pesos
+   actuales. Pendiente: afinar también los pesos de `bot-probabilidad.js`
+   (Fase B de Difícil).
+5. **Partidas más vivas**: con autómatas se completan muy pocas
+   invocaciones (0,3-0,8 de 3 por partida en 3-4 jugadoras, medido con la
+   arena), así que la mayoría de partidas acaban sin apenas Gemas. Merece
+   la pena mirar si es así también entre personas (puede ser un dato útil
+   para el diseño del juego) o si es un efecto de las autómatas
+   bloqueándose entre sí.
 
 ## Resuelto recientemente (2026-07-21, Bloque 3 — estrategia adversarial en Fase A)
 
