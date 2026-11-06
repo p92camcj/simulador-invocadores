@@ -913,6 +913,7 @@ function abrirMenu() {
       <button type="button" class="m-opcion" data-menu="ayuda">❓ Carta de ayuda</button>
       <a class="m-opcion" href="docs/reglamento/reglamento-invocadores.pdf" target="_blank" rel="noopener">📖 Reglamento</a>
       <button type="button" class="m-opcion" data-menu="clasica">▦ Cambiar a la vista clásica</button>
+      <button type="button" class="m-opcion" data-menu="salir">🚪 Salir al menú de inicio</button>
     </div>`,
   });
 }
@@ -934,6 +935,7 @@ function accionMenu(opcion) {
     return;
   }
   if (opcion === 'clasica') { cerrarHoja(); fijarVista('clasica'); }
+  if (opcion === 'salir') { cerrarHoja(); document.querySelector('#btnSalir')?.click(); }
 }
 
 /** Aviso público de cuántos Portales impiden aún la invocación (vacíos o boca abajo). */

@@ -455,6 +455,16 @@ in `nextTurn()`.
   so hidden names never reach the DOM. Seat rule: the active human sits at
   the bottom; during a bot's turn the last human stays there; a lone human
   sees her own owner-visible card all the time.
+- **`js/partida-guardada.js`** — (1.31.0) leave and resume a game. At the
+  start of every turn `nextTurn()` saves `serializarPartida()` to
+  `localStorage['invocadores.partidaGuardada']`; `#btnSalir` (classic
+  header) and "Salir al menú de inicio" (Mesa 3D ☰ menu) call
+  `salirAlMenu()` (`game.js`), and the setup screen's `#panelRetomar`
+  offers `retomarPartida()`, which replays that turn from its start.
+  Saving at turn start is deliberate: no pickers, scenes or abilities half
+  done. `finalizarPartida()` deletes the save. Leaving bumps a counter in
+  `game.js` so a pending bot `setTimeout` doesn't play on, and calls
+  `detenerEspectaculo()` so queued scenes don't advance the turn.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current

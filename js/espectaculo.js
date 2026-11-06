@@ -174,6 +174,17 @@ export function cuandoTermineEspectaculo() {
   return new Promise(res => esperando.push(res));
 }
 
+/**
+ * Corta las escenas en curso al salir de la partida. Las esperas pendientes
+ * (cuandoTermineEspectaculo) se descartan sin resolverse: eran avances de
+ * turno de una partida que ya no está en pantalla.
+ */
+export function detenerEspectaculo() {
+  esperando = [];
+  cola.length = 0;
+  if (saltarActual) saltarActual();
+}
+
 function encolar(escena) {
   if (!espectaculoActivo()) return;
   cola.push(escena);

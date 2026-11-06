@@ -4,6 +4,29 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.31.0.75] - 2026-11-06
+
+### Añadido
+- **Salir de la partida y retomarla.** Nuevo botón `#btnSalir` ("🚪 Salir")
+  en la cabecera de la vista clásica y opción "Salir al menú de inicio" en
+  el menú ☰ de la Mesa 3D (`salirAlMenu()` en `game.js`, con confirmación).
+  Vuelve al menú de inicio, que muestra `#panelRetomar` ("Tienes una partida
+  a medias") con "Retomar partida" (`retomarPartida()`) o "Descartar"; la
+  configuración de siempre debajo empieza una nueva, que sustituye a la
+  guardada.
+- Nuevo `js/partida-guardada.js`: `nextTurn()` guarda una foto de
+  `estado.partida` (`serializarPartida()`) en
+  `localStorage['invocadores.partidaGuardada']` al empezar cada turno, así
+  que la partida también se puede retomar tras recargar o cerrar la página.
+  Se retoma desde el principio del turno guardado (si se sale a mitad de
+  turno, se avisa de que esa jugada se repite). `finalizarPartida()` borra
+  la foto.
+- Al salir se invalida el `setTimeout` pendiente de una autómata (contador
+  de generación en `game.js`) y se cortan las escenas con el nuevo
+  `detenerEspectaculo()` (`espectaculo.js`), cuyas esperas se descartan sin
+  avanzar el turno de la partida abandonada.
+- `mostrarTablero()` (`game.js`) reúne lo que hacía el botón Iniciar para
+  mostrar el tablero; `service-worker.js` cachea el módulo nuevo.
 ## [1.30.2.74] - 2026-11-06
 
 ### Corregido

@@ -579,3 +579,4 @@ body.vista-mesa.mesa-en-partida #mesa3d { display: flex; }
 @media (prefers-reduced-motion: reduce) {
   #mesa3d *, .m-hoja, .m-aviso, .m-rotulo, .m-telon, .m-efectos * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+body.vista-mesa .panel-retomar { border-color: #b48cff; background: rgba(123, 92, 255, .16); color: #fff; border-radius: 18px; }

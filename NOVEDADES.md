@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.31.0.75 - 2026-11-06
+
+- **Salir y retomar la partida.** Durante la partida hay un botón
+  "🚪 Salir" (en la Mesa 3D, dentro del menú ☰) que te lleva al menú de
+  inicio. Allí puedes retomar la partida donde la dejaste o empezar una
+  nueva.
+- La partida se guarda sola al empezar cada turno, así que también la
+  recuperas si recargas o cierras la página. Al retomar, el turno en curso
+  empieza de nuevo desde el principio.
 ## 1.30.2.74 - 2026-11-06
 
 - **La explicación de la invocación ya está completa.** En la Mesa 3D
