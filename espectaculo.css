@@ -52,7 +52,15 @@
   transform: translateX(-50%);
 }
 .esp-ranura--lado { width: clamp(110px, 21vmin, 190px); opacity: 0.95; }
-.esp-ranura--par { width: clamp(140px, 27vmin, 240px); }
+.esp-ranura--par {
+  --ancho: clamp(140px, 27vmin, 240px);
+  width: var(--ancho);
+  /* Sin transform: así la ranura no crea su propio contexto de apilamiento
+     y los personajes que cruzan (Estratega) quedan por delante de los dos
+     Portales, no detrás del que está más a la derecha en el DOM. */
+  transform: none;
+  margin-left: calc(var(--ancho) / -2);
+}
 
 .esp-portal {
   position: relative;

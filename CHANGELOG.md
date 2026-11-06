@@ -4,6 +4,16 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.31.1.77] - 2026-11-06
+
+### Corregido
+- Escena de la Estratega (modo espectáculo): el personaje que cruza del
+  Portal izquierdo al derecho se veía detrás del Portal de destino y medio
+  cortado. `.esp-ranura--par` (`espectaculo.css`) ya no usa `transform`
+  para centrarse (ahora `margin-left` negativo), así no crea su propio
+  contexto de apilamiento y las dos figuras que se cruzan pasan por delante
+  de ambos Portales.
+
 ## [1.31.0.75] - 2026-11-06
 
 ### Añadido
