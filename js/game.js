@@ -1,4 +1,5 @@
 // game.js
+import { aprenderAlTerminarPartida } from './aprendizaje-navegador.js';
 import { shuffle, draw, composicionMazoTotal, calcularResultadoFinal } from './utils.js';
 import { render } from './render.js';
 import { initActions } from './actions.js';
@@ -123,6 +124,8 @@ function construirMensajeResultadoFinal(players, invocacionesCompletadas) {
 // el empate) según REGLAMENTO.md, "Final de la partida", y luego pregunta
 // si queremos una nueva partida.
 export function finalizarPartida(motivo) {
+  // Las autómatas aprenden de las jugadas de las personas de esta partida.
+  aprenderAlTerminarPartida();
   // En la Mesa 3D, marcador final propio en vez del confirm() del navegador.
   if (vistaMesaActiva()) {
     window.juegoTerminado = true;

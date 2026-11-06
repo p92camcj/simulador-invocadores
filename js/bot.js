@@ -29,6 +29,7 @@ import {
 } from './bot-probabilidad.js';
 import { evaluarJugadasFaseA, PESOS } from './bot-estrategia.js';
 import { elegirFaseAExperta, elegirFaseBExperta, BUSQUEDA } from './bot-busqueda.js';
+import { modeloUtilizable, elegirJugadaComoPersona } from './aprendizaje.js';
 
 // ---------- Nombres de autómatas ----------
 // Pool temático "Invocadores", todos terminados en "bot", con margen de
@@ -1296,20 +1297,59 @@ function turnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
   ejecutor.terminar();
 }
 
+// Modelo aprendido de cómo juegan las personas (js/aprendizaje.js). Lo
+// carga la web desde el navegador (js/aprendizaje-navegador.js) y el
+// simulador de partidas cuando prueba el aprendizaje. `null` = sin modelo.
+let modeloPersonas = null;
+
+/** Fija (o quita, con `null`) el modelo de las personas que usa la Experta. */
+export function establecerModeloPersonas(modelo) {
+  modeloPersonas = modelo || null;
+}
+
+/** Modelo de las personas en uso (o `null`). */
+export function obtenerModeloPersonas() {
+  return modeloPersonas;
+}
+
 /**
  * Turno de una rival dentro de un mundo posible de la búsqueda 'experta'
- * (js/bot-busqueda.js): juega con la heurística 'dificil' sobre ese mundo,
- * solo con el motor. Cambia `estado.partida` el tiempo justo y lo restaura.
+ * (js/bot-busqueda.js), solo con el motor. Si la rival es una PERSONA y hay
+ * un modelo aprendido de cómo juegan las personas, su Fase A se sortea con
+ * ese modelo (`decidirYJugarTurnoComoPersona`); si no, juega con la
+ * heurística 'dificil'. Cambia `estado.partida` el tiempo justo y lo
+ * restaura.
  */
 function simularTurnoRival(mundo, idx, invocationSet) {
   const real = estado.partida;
   estado.partida = mundo;
   try {
-    decidirYJugarTurnoDificil(mundo.players, mundo.neutrals, idx,
-      { levelIdx: mundo.levelIdx, invocationSet }, EJECUTOR_MOTOR_SILENCIOSO);
+    const comoPersona = mundo.players[idx].tipo !== 'auto' && modeloUtilizable(modeloPersonas);
+    const turno = comoPersona ? decidirYJugarTurnoComoPersona : decidirYJugarTurnoDificil;
+    turno(mundo.players, mundo.neutrals, idx, { levelIdx: mundo.levelIdx, invocationSet }, EJECUTOR_MOTOR_SILENCIOSO);
   } finally {
     estado.partida = real;
   }
+}
+
+/**
+ * Turno simulado de una persona según el modelo aprendido: Fase A sorteada
+ * con `elegirJugadaComoPersona()` (js/aprendizaje.js) sobre lo que esa
+ * persona sabe en el mundo; Fase B con la heurística 'dificil'.
+ */
+function decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecutor) {
+  const { levelIdx, invocationSet } = contexto;
+  const lvl = LEVELS[levelIdx];
+  const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
+  const memoria = obtenerMemoriaBot(idx);
+  const vista = construirEstadoVisibleParaBot(players, neutrals, idx);
+  const probabilidades = estimarProbabilidadesPersonajes(vista, memoria, invocationSet);
+  const valorGemaNivel = lvl ? valorMedioGemaNivel(invocationSet, lvl) : 0;
+  const jugada = elegirJugadaComoPersona(vista, need, valorGemaNivel, probabilidades.probabilidadPorNombre, modeloPersonas);
+  ejecutor.jugar(players, idx, jugada);
+  const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, idx);
+  const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, idx, need, memoria, invocationSet, lvl);
+  if (decisionB) ejecutor.activar(players, neutrals, idx, levelIdx, need, decisionB, vistaTrasA);
 }
 
 const HEURISTICAS_POR_DIFICULTAD = {

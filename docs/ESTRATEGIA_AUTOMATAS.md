@@ -45,18 +45,34 @@ Probado y descartado: premiar el "progreso hacia el cierre" (llenar
 Portales, colocar requisitos aunque cobren otras). Con autojuego, la
 autómata que lo usaba perdía: ayudaba más a las rivales que a sí misma.
 
-## ¿Pueden aprender de partidas con personas?
+## Aprendizaje con partidas de personas (1.30.0)
 
-El simulador es una web estática sin servidor, así que hay tres caminos:
+Elegido: aprender en el propio navegador, de forma autónoma, a partir de
+las JUGADAS (no solo del resultado), porque cada partida da unas diez
+jugadas por persona y así se aprende con pocas partidas.
 
-1. **Aprender en el propio navegador.** Ajustar los pesos tras cada
-   partida y guardarlos en el dispositivo. Es automático, pero cada
-   dispositivo ve muy pocas partidas y el aprendizaje sería ruidoso.
-2. **Exportar las partidas (recomendado).** Guardar el registro de cada
-   partida (jugadas y resultado, sin nombres) y permitir descargarlo como
-   archivo. Con esos archivos se afinan los pesos con la arena y se
-   comprueba si las autómatas juegan como las personas. Es privado y no
-   necesita servidor.
-3. **Enviar las partidas a un servidor.** Lo más cómodo a largo plazo,
-   pero necesita un servidor y aviso de privacidad. Encaja con el futuro
-   modo multijugador por red.
+1. Cada vez que una persona juega una carta se guarda lo que veía en la
+   mesa (la misma vista que usan las autómatas, desde su asiento y sin
+   nombres) y la jugada que hizo. Se conservan las últimas 300.
+2. Al acabar la partida se busca qué pesos de la evaluación de Difícil
+   explican mejor esas jugadas (máxima verosimilitud): cuánto le importa a
+   esa gente lo que ganan las rivales, lo ya colocado, el riesgo de dejar
+   el cierre servido, y si prefiere jugar la carta que ve.
+3. Desde 15 jugadas, la Experta usa ese modelo para prever a las personas
+   cuando simula sus turnos.
+
+Medido en la arena con "personas" simuladas que juegan distinto a Difícil
+(se preocupan poco por las rivales y nada por dejar el cierre servido): el
+ajuste recupera exactamente sus pesos y la Experta pasa del 50 % al 61 % de
+victorias contra ellas.
+
+Límites: lo aprendido vive en cada dispositivo (se puede descargar e
+importar en otro para juntarlo) y la Experta tarda algo más por turno.
+
+### Otras opciones que quedan
+
+- **Aprender del resultado** (qué pesos ganan más contra personas): pide
+  muchas más partidas que aprender de las jugadas.
+- **Enviar las partidas a un servidor**: lo más cómodo a largo plazo, pero
+  necesita un servidor y aviso de privacidad. Encaja con el futuro modo
+  multijugador por red.

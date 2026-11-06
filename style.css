@@ -578,3 +578,14 @@ select {
 .ficha-metamorfo-cinta { position: absolute; left: 4%; right: 4%; bottom: 7%; border-radius: 999px; text-align: center;
   font-size: .72rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   background: linear-gradient(90deg, #ff6fc0, #8f7bff, #5fb4ff); }
+
+/* Panel "Aprendizaje de las autómatas" (pantalla de configuración) */
+.panel-aprendizaje {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.panel-aprendizaje p { margin: 6px 0 8px; }
+.panel-aprendizaje .btn { margin: 2px 4px 2px 0; font-size: 0.85rem; }

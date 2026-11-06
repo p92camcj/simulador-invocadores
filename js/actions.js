@@ -1,4 +1,5 @@
 // actions.js
+import { prepararEjemploPersona, guardarEjemploPersona } from './aprendizaje-navegador.js';
 import { nextTurn, finalizarPartida } from './game.js';
 import { render, picker } from './render.js';
 import { applyAbility } from './abilities.js';
@@ -33,9 +34,12 @@ function topLabel(stack) {
  */
 export function ejecutarJugada(cartaIdx, destKey) {
   if (cartaIdx === null || cartaIdx === undefined) return false;
+  // Aprendizaje de las autómatas: lo que sabía la persona y lo que eligió.
+  const ejemplo = prepararEjemploPersona(estado.partida, cartaIdx, destKey);
   const eventos = jugarCarta(estado.partida, { cartaIdx, destino: destKey });
   const jugada = eventos.find(e => e.tipo === 'cartaJugada');
   if (!jugada) return false;
+  guardarEjemploPersona(ejemplo);
   window.selectedCardIdx = null;
   // Modo espectáculo (solo presentación, ver js/espectaculo.js).
   anunciarCartaJugada(jugada.jugadora, jugada.destino);

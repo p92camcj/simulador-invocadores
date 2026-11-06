@@ -4,6 +4,27 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.30.0.119] - 2026-11-06
+
+### Añadido
+- **Las autómatas aprenden de las personas, solas y sin servidor**
+  (`js/aprendizaje.js`, `js/aprendizaje-navegador.js`). Cada jugada de
+  Fase A de una persona (`ejecutarJugada()`) se guarda en el navegador
+  (`localStorage`, últimas 300, sin nombres): lo que esa persona veía y lo
+  que eligió. Al acabar la partida (`finalizarPartida()`) se ajusta por
+  máxima verosimilitud un modelo de cómo juegan las personas (pesos de
+  `bot-estrategia.js`, temperatura y preferencia por la carta conocida).
+  Con 15 jugadas o más, la Experta lo usa para simular los turnos de las
+  personas (`decidirYJugarTurnoComoPersona`, `establecerModeloPersonas`
+  en `js/bot.js`). En la arena, contra "personas" simuladas que juegan
+  distinto a Difícil, la Experta pasa del 50 % al 61 % de victorias al
+  aprender; el modelo recupera exactamente sus pesos.
+- Panel "Aprendizaje de las autómatas" en la configuración: cuántas
+  jugadas lleva observadas, y botones para descargar, importar (juntar lo
+  aprendido en varios dispositivos) o borrar.
+- `tools/arena.mjs`: asientos `persona@perfil` (personas simuladas) y
+  `--aprender 1`. Nuevos tests en `tests/aprendizaje.mjs`.
+
 ## [1.29.1.117] - 2026-11-06
 
 ### Mejorado

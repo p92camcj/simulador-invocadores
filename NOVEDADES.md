@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.30.0.119 - 2026-11-06
+
+- **Las autómatas aprenden de vosotras.** Cada vez que una persona juega
+  una carta, el simulador recuerda lo que veía en la mesa y lo que eligió.
+  Al acabar la partida, las autómatas ajustan su forma de prever cómo
+  jugáis, y la dificultad Experta lo usa para anticiparse a vuestras
+  jugadas. Cuanto más juguéis, mejor os conocen.
+- Todo se queda en este dispositivo y sin nombres. En la pantalla de
+  configuración podéis ver cuánto han aprendido, descargarlo, llevarlo a
+  otro dispositivo o borrarlo.
+
 ## 1.29.1.117 - 2026-11-06
 
 - **Autómatas más listas con las Gemas.** La dificultad Difícil ya no
