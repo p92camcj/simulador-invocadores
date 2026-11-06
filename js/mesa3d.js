@@ -936,6 +936,16 @@ function accionMenu(opcion) {
   if (opcion === 'clasica') { cerrarHoja(); fijarVista('clasica'); }
 }
 
+/** Aviso público de cuántos Portales impiden aún la invocación (vacíos o boca abajo). */
+function portalesSinPersonajeHtml() {
+  const { players, neutrals } = estado.partida;
+  const pilas = [...players.flatMap(p => p.portals), ...neutrals];
+  const libres = pilas.filter(st => !st.length || !st.at(-1).vis?.public).length;
+  return libres
+    ? `<p class="m-hoja-txt">Falta${libres === 1 ? '' : 'n'} ${libres} Portal${libres === 1 ? '' : 'es'} sin personaje bocarriba.</p>`
+    : `<p class="m-hoja-txt">Todos los Portales tienen un personaje bocarriba.</p>`;
+}
+
 function verInvocacion() {
   const v = construirVistaMesa(estado.partida, { asientoPropio: estado.partida.turn });
   const inv = v.invocacion;
@@ -945,8 +955,9 @@ function verInvocacion() {
     tipo: 'info',
     titulo: `Invocación ${inv.nivel}: ${inv.nombre}`,
     cuerpo: (criatura ? `<img class="m-hoja-criatura" src="${criatura}" alt="">` : '')
-      + `<p class="m-hoja-txt">Se completa cuando, al final de un turno, cada personaje requerido está visible en lo alto de un Portal.</p>`
-      + requeridosHtml(inv),
+      + `<p class="m-hoja-txt">Se completa cuando, al final de un turno, cada personaje requerido está visible en lo alto de un Portal y todos los Portales (también los centrales) tienen un personaje bocarriba.</p>`
+      + requeridosHtml(inv)
+      + portalesSinPersonajeHtml(),
   });
 }
 
