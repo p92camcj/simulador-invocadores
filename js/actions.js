@@ -11,6 +11,7 @@ import {
   anunciarCartaJugada, envolverHabilidad, anunciarInvocacion, cuandoTermineEspectaculo,
   hayEspectaculoEnCurso
 } from './espectaculo.js';
+import { vistaMesaActiva, preguntarMesa } from './mesa3d.js';
 
 /**
  * Etiqueta entre paréntesis de lo que hay en el top de un Portal, con el
@@ -49,9 +50,20 @@ export function ejecutarJugada(cartaIdx, destKey) {
  * de 1 y una Gema de asterisco, se le pregunta cuál usar. Es una decisión de
  * la interfaz humana; el autómata pasa siempre false.
  */
-function preguntarUsoAsterisco(player) {
-  if (!tieneGemaAsterisco(player) || contarGemasUnitarias(player) === 0) return false;
-  return confirm(`${player.name}: tienes una Gema de asterisco. ¿Revelarla para activar la habilidad gratis? (Cancelar para pagar 1 Gema de valor 1)`);
+function preguntarUsoAsterisco(player, responder) {
+  if (!tieneGemaAsterisco(player) || contarGemasUnitarias(player) === 0) {
+    responder(false);
+    return;
+  }
+  // En la Mesa 3D, hoja con dos botones en vez del confirm() del navegador.
+  if (vistaMesaActiva()) {
+    preguntarMesa(`${player.name}: ¿cómo pagas el acceso al Portal central?`, [
+      { val: 'asterisco', lbl: '✦ Revelar mi Gema de asterisco (gratis)' },
+      { val: 'unidad', lbl: '💎 Pagar 1 Gema de valor 1' },
+    ], val => responder(val === 'asterisco'));
+    return;
+  }
+  responder(confirm(`${player.name}: tienes una Gema de asterisco. ¿Revelarla para activar la habilidad gratis? (Cancelar para pagar 1 Gema de valor 1)`));
 }
 
 /**
@@ -288,9 +300,12 @@ export function initActions() {
       // envolverHabilidad() solo añade la escena del modo espectáculo
       // cuando la habilidad se aplica de verdad (js/espectaculo.js).
       const onComplete = envolverHabilidad(name, window.turn, stack, () => {
-        const usarAsterisco = tipo === 'central' && preguntarUsoAsterisco(P().players[window.turn]);
-        completarActivacion(estado.partida, { origen: key, personaje: name, usarAsterisco });
-        render(P().players, P().neutrals, window.levelIdx);
+        const cobrar = usarAsterisco => {
+          completarActivacion(estado.partida, { origen: key, personaje: name, usarAsterisco });
+          render(P().players, P().neutrals, window.levelIdx);
+        };
+        if (tipo === 'central') preguntarUsoAsterisco(P().players[window.turn], cobrar);
+        else cobrar(false);
       });
 
       // Guardado aparte para que, si la jugadora cancela el segundo picker

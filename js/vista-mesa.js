@@ -10,12 +10,18 @@
 
 import { LEVELS, INVOCATION_SETS, sumaGemas } from './utils.js';
 
-/** Carta tal y como se enseña: nombre solo si es visible. */
+/**
+ * Carta tal y como se enseña: nombre solo si es visible. Un Metamorfo
+ * transformado se enseña como en la mesa real: la carta del Metamorfo con
+ * la ficha del personaje encima (`ficha`), no como si fuera ese personaje.
+ * `apariencia` es lo que cuenta para la invocación (aspecto || name).
+ */
 function cartaVista(carta, visible) {
   if (!carta) return null;
-  return visible
-    ? { visible: true, nombre: carta.aspecto || carta.name }
-    : { visible: false, nombre: null };
+  if (!visible) return { visible: false, nombre: null };
+  const vista = { visible: true, nombre: carta.name, apariencia: carta.aspecto || carta.name };
+  if (carta.aspecto && carta.aspecto !== carta.name) vista.ficha = carta.aspecto;
+  return vista;
 }
 
 /** Un Portal: carta de arriba (si es pública) y altura de la pila. */
@@ -167,7 +173,7 @@ export function claveObjetivo(idxJugadora, idxPortal) {
  */
 export function firmaPortal(pv) {
   if (!pv.top) return '0';
-  return `${pv.altura}|${pv.top.visible ? pv.top.nombre : '?'}`;
+  return `${pv.altura}|${pv.top.visible ? pv.top.nombre : '?'}|${pv.top.ficha || ''}`;
 }
 
 /**
@@ -180,6 +186,10 @@ export function cambioPortal(antes, ahora) {
   const a = alt(antes), b = alt(ahora);
   if (b > a) return 'entra';
   if (b < a) return 'sale';
+  // Misma carta visible, solo cambia la ficha: el Metamorfo se transforma.
+  const [, n1, f1] = antes.split('|');
+  const [, n2, f2] = ahora.split('|');
+  if (n1 === n2 && n1 !== '?' && f1 !== f2) return 'transforma';
   return 'voltea';
 }
 

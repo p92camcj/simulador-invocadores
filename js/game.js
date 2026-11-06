@@ -8,7 +8,7 @@ import { initSetup } from './setup.js';
 import { $ } from './utils.js';
 import { estado, reiniciarCamposDeTurno, reiniciarPartida } from './motor/estado.js';
 import { comprobarFinPorManoVacia } from './motor/acciones.js';
-import { anunciarTurnoMesa, retardoAutomata, salirDeMesa } from './mesa3d.js';
+import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, vistaMesaActiva, mostrarFinMesa } from './mesa3d.js';
 
 /**
  * Inicia la partida: prepara el mazo, reparte cartas, y lanza el primer turno.
@@ -123,6 +123,13 @@ function construirMensajeResultadoFinal(players, invocacionesCompletadas) {
 // el empate) según REGLAMENTO.md, "Final de la partida", y luego pregunta
 // si queremos una nueva partida.
 export function finalizarPartida(motivo) {
+  // En la Mesa 3D, marcador final propio en vez del confirm() del navegador.
+  if (vistaMesaActiva()) {
+    window.juegoTerminado = true;
+    const resultado = calcularResultadoFinal(window.players, window.invocacionesCompletadas || []);
+    mostrarFinMesa({ motivo, resultado }, () => resetJuego());
+    return;
+  }
   const resultado = construirMensajeResultadoFinal(window.players, window.invocacionesCompletadas || []);
   const jugarOtra = confirm(`${motivo}\n\n${resultado}\n\n¿Quieres jugar otra vez?`);
   if (jugarOtra) {

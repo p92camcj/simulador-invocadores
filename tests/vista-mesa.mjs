@@ -94,15 +94,21 @@ test('solo autómatas: abajo va la activa y no se ve su carta propia', () => {
 
 test('Portales: top público con nombre, oculto sin él', () => {
   const v = construirVistaMesa(partida(), { asientoPropio: 0 });
-  assert.deepEqual(v.centrales[0], { altura: 1, top: { visible: true, nombre: 'Pícaro' } });
+  assert.deepEqual(v.centrales[0], { altura: 1, top: { visible: true, nombre: 'Pícaro', apariencia: 'Pícaro' } });
   assert.deepEqual(v.centrales[1], { altura: 1, top: { visible: false, nombre: null } });
 });
 
-test('un Metamorfo transformado se enseña por su apariencia', () => {
+test('un Metamorfo transformado se enseña como Metamorfo con la ficha del personaje', () => {
   const p = partida();
   p.players[0].portals[0].push({ name: 'Metamorfo', aspecto: 'Maestro', vis: { public: true } });
   const v = construirVistaMesa(p, { asientoPropio: 0 });
-  assert.equal(v.propio.portales[0].top.nombre, 'Maestro');
+  assert.deepEqual(v.propio.portales[0].top, { visible: true, nombre: 'Metamorfo', apariencia: 'Maestro', ficha: 'Maestro' });
+});
+
+test('transformar un Metamorfo es un cambio propio (no un volteo)', () => {
+  const antes = firmaPortal({ altura: 2, top: { visible: true, nombre: 'Metamorfo' } });
+  const ahora = firmaPortal({ altura: 2, top: { visible: true, nombre: 'Metamorfo', ficha: 'Pícaro' } });
+  assert.equal(cambioPortal(antes, ahora), 'transforma');
 });
 
 test('recuento de la invocación activa por apariencia', () => {

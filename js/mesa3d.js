@@ -55,6 +55,7 @@ export function fijarVista(nueva) {
   vista = nueva === 'mesa' ? 'mesa' : 'clasica';
   try { localStorage.setItem(CLAVE_VISTA, vista); } catch { /* nada */ }
   document.body.classList.toggle('vista-mesa', vista === 'mesa');
+  document.documentElement.classList.toggle('vista-mesa', vista === 'mesa');
   const sel = document.querySelector('#selVista');
   if (sel) sel.value = vista;
   if (vista !== 'mesa') {
@@ -77,10 +78,15 @@ export function salirDeMesa() {
   document.body.classList.remove('mesa-en-partida');
   cerrarHoja();
   document.querySelector('.m-telon')?.remove();
+  document.querySelector('.m-fin')?.remove();
   const raiz = document.querySelector('#mesa3d');
   if (raiz) raiz.innerHTML = '';
   ultimoHtml = '';
   firmas.clear();
+  gemasPrevias.clear();
+  requeridosPrevios.clear();
+  invocacionesVistas = null;
+  efectosPendientes = [];
   ultimaHumana = null;
 }
 
@@ -95,12 +101,17 @@ let arrastre = null;
 let ignorarClickHasta = 0;
 let hojaActual = null;         // { tipo: 'picker' | 'info', ... }
 let activables = new Map();    // clave de Portal → { origen, lbl } (Fase B)
+let efectosPendientes = [];    // efectos detectados al pintar, se lanzan después
+const gemasPrevias = new Map(); // jugadora → nº de Gemas en el pintado anterior
+const requeridosPrevios = new Map();
+let invocacionesVistas = null;
 
 // ---------- Inicialización ----------
 
 export function initMesa3D() {
   vista = vistaPorDefecto();
   document.body.classList.toggle('vista-mesa', vista === 'mesa');
+  document.documentElement.classList.toggle('vista-mesa', vista === 'mesa');
 
   const sel = document.querySelector('#selVista');
   if (sel) {
@@ -116,12 +127,73 @@ export function initMesa3D() {
     else alertOriginal(msg);
   };
 
+  prepararPantallaInicio();
+
   const raiz = asegurarRaiz();
   raiz.addEventListener('click', alClicar);
   raiz.addEventListener('pointerdown', alEmpezarArrastre);
   window.addEventListener('pointermove', alMoverArrastre, { passive: false });
   window.addEventListener('pointerup', alSoltarArrastre);
   window.addEventListener('pointercancel', cancelarArrastre);
+}
+
+/**
+ * Pantalla de inicio: héroe con las criaturas y botones − / + en los campos
+ * numéricos. Solo se ven en la vista Mesa 3D (mesa3d.css); en la clásica
+ * quedan ocultos y los campos funcionan como siempre.
+ */
+function prepararPantallaInicio() {
+  const titulo = document.querySelector('#mainTitle');
+  if (titulo && !document.querySelector('.m-heroe')) {
+    const heroe = document.createElement('div');
+    heroe.className = 'm-heroe';
+    heroe.setAttribute('aria-hidden', 'true');
+    heroe.innerHTML = '<span class="m-heroe-portal"></span>'
+      + ['baelorith', 'cirelia', 'aelgorth'].map(n => `<img src="assets/invocaciones/${n}.webp" alt="" draggable="false">`).join('');
+    titulo.before(heroe);
+  }
+  const numJug = document.querySelector('#numPlayers');
+  const numBots = document.querySelector('#numBots');
+  const limites = { numPlayers: () => [2, 5], numBots: () => [0, parseInt(numJug?.value, 10) || 5] };
+  [numJug, numBots].forEach(input => {
+    if (!input || input.parentElement.classList.contains('m-paso-campo')) return;
+    const caja = document.createElement('span');
+    caja.className = 'm-paso m-paso-campo';
+    const menos = document.createElement('button');
+    const mas = document.createElement('button');
+    menos.type = mas.type = 'button';
+    menos.textContent = '−';
+    mas.textContent = '+';
+    menos.setAttribute('aria-label', 'Uno menos');
+    mas.setAttribute('aria-label', 'Uno más');
+    input.before(caja);
+    caja.append(menos, input, mas);
+    const ajustar = delta => {
+      const [min, max] = limites[input.id]();
+      const actual = parseInt(input.value, 10);
+      const nuevo = Math.min(max, Math.max(min, (Number.isNaN(actual) ? min : actual) + delta));
+      input.value = String(nuevo);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      sincronizar();
+    };
+    menos.addEventListener('click', () => ajustar(-1));
+    mas.addEventListener('click', () => ajustar(1));
+  });
+  // Los botones de la caja numérica (no los de clase .m-paso) siguen visibles en
+  // la clásica: allí la caja no oculta nada, solo añade − y +.
+  function sincronizar() {
+    if (numBots && numJug && parseInt(numBots.value, 10) > parseInt(numJug.value, 10)) numBots.value = numJug.value;
+    document.querySelectorAll('.m-paso-campo').forEach(caja => {
+      const input = caja.querySelector('input');
+      const [min, max] = limites[input.id]();
+      const v = parseInt(input.value, 10);
+      caja.children[0].disabled = v <= min;
+      caja.children[2].disabled = v >= max;
+    });
+  }
+  numJug?.addEventListener('input', sincronizar);
+  numBots?.addEventListener('input', sincronizar);
+  sincronizar();
 }
 
 function asegurarRaiz() {
@@ -142,12 +214,27 @@ const imgCarta = nombre => cardImages[nombre] || CARTA_OCULTA_IMG;
 function carta3d(cv, { clase = '', anim = '' } = {}) {
   const visible = !!cv?.visible;
   const frente = visible ? imgCarta(cv.nombre) : CARTA_OCULTA_IMG;
-  const alt = visible ? escapeHtml(cv.nombre) : 'Carta oculta';
-  return `<span class="c3d ${visible ? '' : 'dorso'} ${clase} ${anim}">`
+  const alt = visible ? escapeHtml(cv.ficha ? `${cv.nombre} (como ${cv.ficha})` : cv.nombre) : 'Carta oculta';
+  return `<span class="c3d ${visible ? '' : 'dorso'} ${cv?.ficha ? 'con-ficha' : ''} ${clase} ${anim}"`
+    + (visible ? ` data-nombre="${escapeHtml(cv.nombre)}"${cv.ficha ? ` data-ficha="${escapeHtml(cv.ficha)}"` : ''}` : '') + `>`
     + `<span class="c3d-cuerpo">`
     + `<img class="c3d-cara" src="${frente}" alt="${alt}" draggable="false">`
     + `<img class="c3d-trasera" src="${CARTA_OCULTA_IMG}" alt="" draggable="false">`
-    + `</span></span>`;
+    + `</span>`
+    + (visible && cv.ficha ? fichaHtml(cv.ficha) : '')
+    + `</span>`;
+}
+
+/**
+ * Ficha de transformación del Metamorfo: como en la mesa real, un medallón
+ * con la cara del personaje encima de la carta del Metamorfo, y una cinta
+ * que dice en qué se ha convertido.
+ */
+function fichaHtml(nombre) {
+  const fig = rutaFigura(nombre);
+  return `<span class="c3d-ficha" aria-hidden="true">`
+    + (fig ? `<img src="${fig}" alt="" draggable="false">` : `<b>${iconos[nombre] || '?'}</b>`)
+    + `</span><span class="c3d-ficha-cinta" aria-hidden="true">como ${escapeHtml(nombre)}</span>`;
 }
 
 function claseAnim(clave, cambio) {
@@ -160,7 +247,7 @@ function claseAnim(clave, cambio) {
 }
 
 /** Gemas: total exacto si es tuya y tu turno; si no, solo por nivel. */
-function gemasHtml(g) {
+function gemasHtml(g, idx) {
   const niveles = [['unitaria', 'u'], ['C', 'c'], ['B', 'b'], ['A', 'a']];
   const puntos = niveles
     .filter(([n]) => g.porNivel[n] > 0)
@@ -168,7 +255,10 @@ function gemasHtml(g) {
     .join('');
   const total = g.total !== null ? `<span class="m-gemas-total">💎 ${g.total}</span>` : '';
   const rev = g.reveladas.length ? `<span class="m-gemas-rev">${g.reveladas.map(v => `${v}*`).join(' ')}</span>` : '';
-  return `<span class="m-gemas">${total}${puntos || '<i>sin Gemas</i>'}${rev}</span>`;
+  const antes = gemasPrevias.get(idx);
+  if (antes !== undefined && g.cantidad > antes) efectosPendientes.push({ gemas: idx, mas: g.cantidad - antes });
+  gemasPrevias.set(idx, g.cantidad);
+  return `<span class="m-gemas" data-gemas="${idx}">${total}${puntos || '<i>sin Gemas</i>'}${rev}</span>`;
 }
 
 /**
@@ -182,6 +272,7 @@ function portalHtml(pv, { dest, obj, clave, etiqueta, tam, aria = etiqueta }) {
 
   const esperandoVuelo = vuelo && vuelo.dest === dest && vuelo.clave === clave;
   const anim = esperandoVuelo ? '' : claseAnim(clave, cambio);
+  if (cambio && !esperandoVuelo) efectosPendientes.push({ clave, tipo: cambio });
 
   const objetivo = window.pickerObjetivoPortal;
   const haySel = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
@@ -233,7 +324,7 @@ function rivalHtml(a, turno, unico) {
     return `<span class="m-mano-mini-carta" data-ver-mano="${a.idx}:${k}">${carta3d(cv, { anim: claseAnim(clave, cambio) })}</span>`;
   }).join('');
   return `<section class="m-rival ${a.activa ? 'activa' : ''} ${unico ? 'unico' : ''}" style="--color:${color}">`
-    + `<header class="m-rival-cab"><span class="m-nombre">${nombreAsiento(a)}${a.activa ? ' <span class="m-turno-punto"></span>' : ''}</span>${gemasHtml(a.gemas)}</header>`
+    + `<header class="m-rival-cab"><span class="m-nombre">${nombreAsiento(a)}${a.activa ? ' <span class="m-turno-punto"></span>' : ''}</span>${gemasHtml(a.gemas, a.idx)}</header>`
     + `<div class="m-rival-cuerpo"><div class="m-portales">${portales}</div>`
     + `<div class="m-mano-mini" aria-label="Mano de ${escapeHtml(a.nombre)}">${mano}</div></div>`
     + (a.clarividente ? `<span class="m-sello" title="Clarividente visible: su mano queda oculta">👁️</span>` : '')
@@ -254,7 +345,7 @@ function requeridosHtml(inv) {
   return `<div class="m-requeridos">` + inv.requeridos.map(r => {
     const fig = rutaFigura(r.nombre);
     const txt = r.estado === 'falta' ? 'falta' : r.estado === 'esta' ? 'en mesa' : 'repetido';
-    return `<span class="m-req m-req--${r.estado}" title="${escapeHtml(r.nombre)}: ${txt}">`
+    return `<span class="m-req m-req--${r.estado}" data-req="${escapeHtml(r.nombre)}" title="${escapeHtml(r.nombre)}: ${txt}">`
       + (fig ? `<img src="${fig}" alt="" draggable="false">` : `<span class="m-req-ico">${iconos[r.nombre] || '?'}</span>`)
       + `<span class="m-req-nombre">${escapeHtml(r.nombre)}</span></span>`;
   }).join('') + `</div>`;
@@ -366,16 +457,31 @@ export function renderMesa3D() {
       <div class="m-propio-cab">
         <span class="m-nombre">${nombreAsiento(v.propio)}${v.propio.activa ? ' <span class="m-turno-punto"></span>' : ''}</span>
         ${v.propio.clarividente ? '<span class="m-sello-txt">👁️ Clarividente: ves tus dos cartas</span>' : ''}
-        ${gemasHtml(v.propio.gemas)}
+        ${gemasHtml(v.propio.gemas, v.propio.idx)}
       </div>
       <div class="m-mano ${puedeJugar ? 'puede-jugar' : ''}">${manoPropiaHtml(v.propio, puedeJugar)}</div>
       <div class="m-acciones">${acciones}</div>
     </footer>`;
 
+  // Invocación completada (sin escenas): gran destello en la mesa.
+  const nivelesHechos = (partida.invocacionesCompletadas || []).length;
+  if (invocacionesVistas !== null && nivelesHechos > invocacionesVistas && !espectaculoActivo()) {
+    const ultima = partida.invocacionesCompletadas.at(-1);
+    efectosPendientes.push({ invocacion: ultima });
+  }
+  invocacionesVistas = nivelesHechos;
+  // Personajes requeridos que acaban de aparecer en la mesa.
+  (v.invocacion?.requeridos || []).forEach(r => {
+    const k = `${v.invocacion.nivel}:${r.nombre}`;
+    if (requeridosPrevios.has(k) && requeridosPrevios.get(k) === 'falta' && r.estado !== 'falta') efectosPendientes.push({ req: r.nombre });
+    requeridosPrevios.set(k, r.estado);
+  });
+
   if (html !== ultimoHtml) {
     raiz.innerHTML = html;
     ultimoHtml = html;
   }
+  lanzarEfectos();
   if (vuelo && !vuelo.lanzado) lanzarVuelo();
   // Cuando acaba la animación más larga, se repinta sin sus clases.
   if (animHasta.size) programarLimpieza();
@@ -449,6 +555,102 @@ function terminarVuelo() {
   if (clave) animHasta.set(clave, { clase: 'anim-aterriza', hasta: Date.now() + 500 });
   ultimoHtml = '';
   renderMesa3D();
+  if (clave) lanzarEfecto({ clave, tipo: 'aterriza' });
+}
+
+// ---------- Efectos: impactos, destellos, Gemas ----------
+
+/** Los efectos detectados en el último pintado (se lanzan tras el DOM). */
+function lanzarEfectos() {
+  const lista = efectosPendientes;
+  efectosPendientes = [];
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  lista.forEach(lanzarEfecto);
+}
+
+const COLOR_EFECTO = {
+  entra: ['#7fd8ff', '#b48cff'], aterriza: ['#ffe08b', '#ff9a3c'], voltea: ['#b48cff', '#ffffff'],
+  transforma: ['#ff9ad6', '#7fb4ff'], sale: ['#c9bfe8', '#6b5aa0'],
+};
+
+function capaEfectos() {
+  let capa = document.querySelector('.m-efectos');
+  if (!capa) {
+    capa = document.createElement('div');
+    capa.className = 'm-efectos';
+    capa.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(capa);
+  }
+  return capa;
+}
+
+/** Un efecto puntual sobre un elemento de la mesa (se borra solo). */
+function lanzarEfecto(ef) {
+  if (ef.invocacion) return efectoInvocacion(ef.invocacion);
+  let el;
+  if (ef.clave) el = document.querySelector(`.m-portal[data-clave="${ef.clave}"] .m-pila`);
+  else if (ef.gemas !== undefined) el = document.querySelector(`[data-gemas="${ef.gemas}"]`);
+  else if (ef.req) el = document.querySelector(`.m-requeridos [data-req="${CSS.escape(ef.req)}"]`);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const capa = capaEfectos();
+  const caja = document.createElement('div');
+  caja.style.left = `${cx}px`;
+  caja.style.top = `${cy}px`;
+
+  if (ef.gemas !== undefined) {
+    caja.className = 'm-ef m-ef-gema';
+    caja.innerHTML = `<b>+${ef.mas} 💎</b>` + '<i></i>'.repeat(8);
+    el.classList.add('m-salta');
+  } else if (ef.req) {
+    caja.className = 'm-ef m-ef-req';
+    caja.innerHTML = '<span></span>';
+    el.classList.add('m-salta');
+  } else {
+    const [c1, c2] = COLOR_EFECTO[ef.tipo] || COLOR_EFECTO.entra;
+    const fuerte = ef.tipo === 'aterriza' || ef.tipo === 'entra' || ef.tipo === 'transforma';
+    caja.className = `m-ef m-ef-${ef.tipo}`;
+    caja.style.setProperty('--c1', c1);
+    caja.style.setProperty('--c2', c2);
+    caja.style.setProperty('--w', `${r.width}px`);
+    caja.style.setProperty('--h', `${r.height}px`);
+    let chispas = '';
+    const n = fuerte ? 16 : 8;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + Math.random() * 0.4;
+      const dist = r.width * (0.7 + Math.random() * 0.9);
+      chispas += `<i style="--dx:${(Math.cos(ang) * dist).toFixed(0)}px;--dy:${(Math.sin(ang) * dist * 0.7).toFixed(0)}px;--s:${(0.5 + Math.random()).toFixed(2)}"></i>`;
+    }
+    caja.innerHTML = `<span class="m-ef-onda"></span><span class="m-ef-onda m-ef-onda--2"></span>`
+      + (fuerte ? '<span class="m-ef-pilar"></span>' : '') + chispas;
+    if (ef.tipo === 'aterriza') {
+      const escena = document.querySelector('.m-escena');
+      escena?.classList.remove('m-temblor');
+      void escena?.offsetWidth;
+      escena?.classList.add('m-temblor');
+      navigator.vibrate?.(18);
+    }
+  }
+  capa.appendChild(caja);
+  setTimeout(() => { caja.remove(); el.classList?.remove('m-salta'); }, 1300);
+}
+
+/** Invocación completada sin escenas: la criatura aparece sobre la mesa. */
+function efectoInvocacion(nivel) {
+  const set = estado.partida.invocationSet;
+  const inv = window.INVOCATION_SETS?.[set]?.[nivel];
+  if (!inv) return;
+  const criatura = rutaCriatura(inv.nombre);
+  const capa = capaEfectos();
+  const caja = document.createElement('div');
+  caja.className = 'm-ef-invocacion';
+  caja.innerHTML = `<span class="m-ef-inv-rayos"></span>`
+    + (criatura ? `<img src="${criatura}" alt="">` : '')
+    + `<strong>¡${escapeHtml(inv.nombre)} invocada!</strong>`;
+  capa.appendChild(caja);
+  navigator.vibrate?.([30, 60, 30]);
+  setTimeout(() => caja.remove(), 2600);
 }
 
 // Arrastrar con el dedo (o el ratón) una carta de la mano a un Portal.
@@ -646,6 +848,60 @@ export function pickerMesa(titulo, opciones, cb, onCancel) {
   });
 }
 
+/** Pregunta con botones grandes y sin "Cancelar" (sustituye a confirm()). */
+export function preguntarMesa(titulo, opciones, responder) {
+  abrirHoja({ tipo: 'picker', titulo, botones: opciones, alElegir: responder, cancelable: false });
+}
+
+/**
+ * Marcador final de la mesa (sustituye al confirm() de finalizarPartida):
+ * podio con la ganadora, recuento de Gemas y desempate, confeti, y los
+ * botones "Jugar otra vez" y "Ver la mesa".
+ */
+export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
+  cerrarHoja();
+  document.querySelector('.m-fin')?.remove();
+  const { stats, ganadores, motivoDesempate } = resultado;
+  const ids = new Set(ganadores.map(g => g.idx));
+  const titulo = ganadores.length === 1 ? `¡Gana ${ganadores[0].nombre}!` : '¡Empate!';
+  const sub = ganadores.length === 1
+    ? (motivoDesempate ? `Desempate: ${motivoDesempate}` : '')
+    : `Comparten la victoria ${ganadores.map(g => g.nombre).join(', ')}${motivoDesempate ? ` (${motivoDesempate})` : ''}`;
+  let confeti = '';
+  const colores = ['#ffe08b', '#ff9ad6', '#7fd8ff', '#b48cff', '#5dff9a'];
+  for (let i = 0; i < 40; i++) {
+    confeti += `<i style="left:${(Math.random() * 100).toFixed(1)}%;background:${colores[i % colores.length]};`
+      + `animation-delay:${(Math.random() * 1.6).toFixed(2)}s;animation-duration:${(2.4 + Math.random() * 2).toFixed(2)}s;--r:${Math.floor(Math.random() * 720)}deg"></i>`;
+  }
+  const filas = stats.map((st, k) => `<li class="${ids.has(st.idx) ? 'gana' : ''}" style="--d:${0.6 + k * 0.15}s">`
+    + `<span class="m-fin-pos">${ids.has(st.idx) ? '👑' : k + 1}</span>`
+    + `<span class="m-fin-nombre">${escapeHtml(st.nombre)}</span>`
+    + `<span class="m-fin-gemas">💎 ${st.total}</span></li>`).join('');
+  const fin = document.createElement('div');
+  fin.className = 'm-fin';
+  fin.innerHTML = `<div class="m-fin-confeti" aria-hidden="true">${confeti}</div>
+    <div class="m-fin-caja" role="dialog" aria-label="Final de la partida">
+      <span class="m-fin-corona" aria-hidden="true">👑</span>
+      <p class="m-fin-motivo">${escapeHtml(motivo)}</p>
+      <h2>${escapeHtml(titulo)}</h2>
+      ${sub ? `<p class="m-fin-sub">${escapeHtml(sub)}</p>` : ''}
+      <ol class="m-fin-lista">${filas}</ol>
+      <button type="button" class="m-btn m-btn--fin listo" data-fin="otra">Jugar otra vez ➜</button>
+      <button type="button" class="m-fin-ver" data-fin="ver">Ver cómo ha quedado la mesa</button>
+    </div>`;
+  fin.addEventListener('click', e => {
+    const accion = e.target.closest('[data-fin]')?.dataset.fin;
+    if (accion === 'otra') { fin.remove(); alJugarOtra(); }
+    if (accion === 'ver') {
+      fin.classList.add('minimizada');
+    } else if (fin.classList.contains('minimizada') && e.target.closest('.m-fin-caja')) {
+      fin.classList.remove('minimizada');
+    }
+  });
+  document.body.appendChild(fin);
+  navigator.vibrate?.([40, 80, 40, 80, 120]);
+}
+
 function abrirMenu() {
   const esc = espectaculoActivo();
   abrirHoja({
@@ -697,10 +953,13 @@ function verInvocacion() {
 /** Ver en grande lo que hay en un Portal o una carta visible. */
 function inspeccionarCarta(el, titulo, portal, activable) {
   const img = el?.querySelector('.c3d-cara');
+  const c = el?.querySelector('.c3d');
   const visible = img && !el.querySelector('.c3d.dorso');
   let cuerpo;
   if (visible) {
-    cuerpo = `<div class="m-zoom">${carta3d({ visible: true, nombre: img.getAttribute('alt') }, { anim: 'anim-zoom' })}</div>`;
+    const ficha = c?.dataset.ficha;
+    cuerpo = `<div class="m-zoom">${carta3d({ visible: true, nombre: c?.dataset.nombre, ficha }, { anim: 'anim-zoom' })}</div>`
+      + (ficha ? `<p class="m-hoja-txt">🎭 Es un <b>Metamorfo</b> con la ficha de <b>${escapeHtml(ficha)}</b>: cuenta como ${escapeHtml(ficha)} para la invocación, pero no tiene su habilidad.</p>` : '');
   } else if (img) {
     cuerpo = `<div class="m-zoom">${carta3d({ visible: false }, { anim: 'anim-zoom' })}</div><p class="m-hoja-txt">Carta oculta: no puedes ver qué es.</p>`;
   } else {

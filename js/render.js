@@ -101,6 +101,19 @@ function cartaImgHtml(name, visible) {
   return `<img src="${src}" alt="${alt}" class="card-img">`;
 }
 
+/**
+ * Metamorfo transformado, como en la mesa real: su propia carta con la
+ * ficha del personaje imitado encima (medallón) y una cinta "como X".
+ * La invocación lo sigue contando por su apariencia (`aspecto`).
+ */
+function metamorfoConFichaHtml(carta) {
+  const fig = rutaFigura(carta.aspecto);
+  return `<div class="carta-con-ficha" title="Metamorfo transformado en ${escapeHtml(carta.aspecto)}">`
+    + cartaImgHtml(carta.name, true)
+    + (fig ? `<img class="ficha-metamorfo" src="${fig}" alt="">` : '')
+    + `<span class="ficha-metamorfo-cinta">como ${escapeHtml(carta.aspecto)}</span></div>`;
+}
+
 // Tarea 5: círculos de color en vez de texto plano por nivel/color de
 // invocación (mapeo de colores según las reglas del juego, ver
 // REGLAMENTO.md — azul: Gemas unitarias de valor 1; amarillo: primera
@@ -263,7 +276,9 @@ function portalCardHtml(stack, label, destKeyJugar, keyObjetivo) {
   // apariencia (disfraz del Metamorfo), nunca la identidad real.
   const body = stack.length === 0
     ? '<div class="card-empty">Vacío</div>'
-    : cartaImgHtml(topCard.aspecto || topCard.name, topCard.vis?.public === true);
+    : (topCard.vis?.public === true && topCard.aspecto && topCard.aspecto !== topCard.name)
+      ? metamorfoConFichaHtml(topCard)
+      : cartaImgHtml(topCard.name, topCard.vis?.public === true);
 
   const objetivo = window.pickerObjetivoPortal;
   if (objetivo) {

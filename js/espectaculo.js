@@ -402,24 +402,35 @@ function cabecera(name, jugadora, lema) {
 function escenaMetamorfo({ jugadora, claveOrigen, origen }) {
   const destino = origen?.nombre;
   if (!destino || destino === 'Metamorfo') return null;
+  // Como en la mesa real: el Metamorfo sigue ahí y se le pone encima una
+  // ficha con la cara del personaje. La escena lo cuenta en tres tiempos:
+  // 1) sale el Metamorfo, 2) la ficha gira en el aire y se le clava en el
+  // pecho, 3) un barrido de luz lo recorre de abajo arriba y lo "repinta"
+  // como el otro personaje. Al final se ven las dos capas a la vez: el
+  // disfraz delante y la silueta rosa del Metamorfo detrás, con la ficha.
+  const fig = rutaFigura(destino);
   return {
     tipo: 'metamorfo',
-    duracion: 3400,
+    duracion: 4600,
     html: `
       <div class="esp-fondo" style="${vars('Metamorfo')}"></div>
       <div class="esp-ranura esp-ranura--sola" style="--x:50%;${vars('Metamorfo')}">
         ${portal(etiquetaPortal(claveOrigen))}
         <div class="esp-humo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="esp-aparicion esp-transformacion">
-          ${figura('Metamorfo', 'esp-fig--antes')}
-          <div class="esp-fig-despues"><div class="esp-iris">
-            ${figura(destino)}
-            ${figura('Metamorfo', 'esp-fig--rastro')}
-          </div></div>
+        <div class="esp-aparicion esp-aparicion--meta esp-metamorfosis">
+          ${figura('Metamorfo', 'esp-meta-sombra')}
+          ${figura('Metamorfo', 'esp-meta-base')}
+          <div class="esp-meta-disfraz">${figura(destino)}</div>
+          <span class="esp-meta-barrido" aria-hidden="true"></span>
         </div>
-        ${chispas(24)}
+        <div class="esp-meta-ficha" aria-hidden="true">
+          <span class="esp-meta-ficha-cara">${fig ? `<img src="${fig}" alt="" draggable="false">` : ''}</span>
+          <span class="esp-meta-ficha-canto"></span>
+        </div>
+        <span class="esp-meta-onda" aria-hidden="true"></span>
+        ${chispas(30)}
       </div>
-      ${rotulo(`Metamorfo → ${destino}`, `${jugadora} se transforma. Sigue siendo un Metamorfo por dentro.`)}`,
+      ${rotulo(`Metamorfo → ${destino}`, `${jugadora} le pone la ficha de ${destino}: parece ${destino}, pero sigue siendo un Metamorfo.`)}`,
   };
 }
 
