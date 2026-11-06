@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.29.0.115 - 2026-11-06
+
+- **Nueva dificultad de autómatas: Experta.** Antes de jugar, imagina
+  varias versiones posibles de las cartas que no puede ver y prueba en
+  cada una todas sus jugadas, con la carta y con la habilidad. Después se
+  queda con la que mejor le sale de media. No hace trampa: solo usa lo que
+  vería cualquiera sentado a la mesa.
+- En partidas de prueba, una Experta gana el 60 % de las veces contra dos
+  autómatas en Difícil.
+
 ## 1.28.0.113 - 2026-11-06
 
 - **Botones nuevos y más modernos** en la vista Mesa 3D, también en la

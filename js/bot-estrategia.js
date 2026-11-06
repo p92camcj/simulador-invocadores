@@ -29,17 +29,16 @@
 // distribución de `estimarProbabilidadesPersonajes()`, así que la bot sigue
 // sin poder hacer trampa.
 
-// Pesos heurísticos (no son reglas del juego; ajustables).
-// Cuánto pesa lo que gana la mejor rival frente a lo que gana la bot:
-// <1 porque en partidas de 3-5 jugadoras ayudar un poco a una rival no es
-// tan grave como ganar una misma.
-export const PESO_RIVAL = 0.75;
-// Fracción del valor de un requisito ya colocado que se cuenta antes de
-// que la invocación se cierre (puede taparse o duplicarse por el camino).
-export const FACTOR_POSICION = 0.4;
-// Probabilidad de que la siguiente jugadora vea y aproveche un cierre que
-// tiene a su alcance (no todas juegan perfecto).
-export const FACTOR_AMENAZA = 0.8;
+// Pesos heurísticos (no son reglas del juego). Es un objeto mutable para
+// que el simulador de partidas (tools/arena.mjs) pueda probar otros valores.
+// - rival: cuánto pesa lo que gana la mejor rival frente a lo que gana la
+//   bot (<1: en partidas de 3-5 jugadoras ayudar un poco a una rival no es
+//   tan grave como ganar una misma).
+// - posicion: fracción del valor de un requisito ya colocado que se cuenta
+//   antes de que la invocación se cierre (puede taparse por el camino).
+// - amenaza: probabilidad de que la siguiente jugadora vea y aproveche un
+//   cierre que tiene a su alcance.
+export const PESOS = { rival: 0.75, posicion: 0.4, amenaza: 0.8 };
 // Valor de cada Gema extra de Pícaro / Maestro (siempre valor 1).
 const VALOR_GEMA_UNITARIA = 1;
 
@@ -114,17 +113,17 @@ export function recompensasSiCierra(tablero, need, valorGemaNivel, nJugadoras) {
   return ganancias;
 }
 
-/** Lo que gana `idx` menos `PESO_RIVAL` × lo que gana la rival que más se lleva. */
+/** Lo que gana `idx` menos `PESOS.rival` × lo que gana la rival que más se lleva. */
 export function valorRelativo(ganancias, idx) {
   const rivales = ganancias.filter((_, i) => i !== idx);
   const mejorRival = rivales.length ? Math.max(...rivales) : 0;
-  return ganancias[idx] - PESO_RIVAL * mejorRival;
+  return ganancias[idx] - PESOS.rival * mejorRival;
 }
 
 /**
  * Valor de posición para `idx` de un tablero sin cerrar: requisitos
  * visibles en exclusiva en Portales propios, menos los de la rival mejor
- * colocada, todo multiplicado por `FACTOR_POSICION`.
+ * colocada, todo multiplicado por `PESOS.posicion`.
  */
 export function valorPosicional(tablero, need, valorGemaNivel, nJugadoras, idx) {
   const porJugadora = new Array(nJugadoras).fill(0);
@@ -132,7 +131,7 @@ export function valorPosicional(tablero, need, valorGemaNivel, nJugadoras, idx) 
     const con = tablero.filter(p => p.nombre === n);
     if (con.length === 1 && con[0].dueña !== null) porJugadora[con[0].dueña] += valorGemaNivel;
   });
-  return FACTOR_POSICION * valorRelativo(porJugadora, idx);
+  return PESOS.posicion * valorRelativo(porJugadora, idx);
 }
 
 /**
@@ -172,7 +171,7 @@ export function valorAmenazaSiguiente(tablero, need, valorGemaNivel, nJugadoras,
     const t = mejorCierrePara(tablero, need, valorGemaNivel, nJugadoras, siguienteIdx, nombre);
     if (t) ev += prob * valorRelativo(recompensasSiCierra(t, need, valorGemaNivel, nJugadoras), botIdx);
   });
-  return FACTOR_AMENAZA * ev;
+  return PESOS.amenaza * ev;
 }
 
 /**

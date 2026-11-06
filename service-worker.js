@@ -73,6 +73,7 @@ const urlsToCache = [
   './js/vista-mesa.js',
   './js/bot-probabilidad.js',
   './js/bot-estrategia.js',
+  './js/bot-busqueda.js',
   './js/version-check.js',
   './js/pwa-install.js',
   './js/motor/estado.js',

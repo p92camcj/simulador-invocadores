@@ -16,6 +16,8 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/bot.js](#jsbotjs)
 - [js/bot-probabilidad.js](#jsbot-probabilidadjs)
 - [js/bot-estrategia.js](#jsbot-estrategiajs)
+- [js/bot-busqueda.js](#jsbot-busquedajs)
+- [tools/arena.mjs](#toolsarenamjs)
 - [js/setup.js](#jssetupjs)
 - [js/render.js](#jsrenderjs)
 - [js/actions.js](#jsactionsjs)
@@ -145,7 +147,8 @@ y `aplicarHabilidad()` de `js/motor/habilidades.js` contestada por
 | `decidirOcultistaAdversarialNormal(vista, need)` | `función` | (Bloque 4, 4.5, exportada solo para tests) Ocultista puede alternar la visibilidad de un Portal YA VISIBLE (excepto una Centinela visible, restricción ya aplicada en `abilities.js`), no solo revelar uno oculto — heurística `'normal'` ADICIONAL a la compartida con Cronista: denegación GRATUITA, esconde el único ejemplar visible en toda la mesa de un requisito que hoy tiene una RIVAL. Comparte el criterio de selección de objetivo con `decidirCronistaAdversarialNormal` (interna `primerRequisitoUnicoDeRivalComoClaveHabilidad`) — solo cambia el efecto real, que decide `abilities.js`. `'dificil'` (dentro de `decidirHabilidadFaseBDificil`) evalúa el mismo uso adversarial sobre Portales visibles, sin el descuento `* 0.5` de Cronista (esconder deniega de inmediato, no a futuro). |
 | `decidirAprendizNormal(vista, need)` / `decidirAprendizPropioDificil(vista, need, cumplidos, valorGemaNivel)` / `decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGemaNivel)` | `función` | (Bloque 4, 4.4, exportadas solo para tests) Aprendiz intercambia manos COMPLETAS de dos jugadoras, manteniendo la orientación de cada carta. `'normal'`: SOLO beneficio propio incluyéndose a sí mismo — si su propia carta conocida ya es útil no la cambia a ciegas; si no, busca una rival cuya carta pública conocida sí lo sea. `'dificil'` combina dos casos independientes (el de mayor valor esperado gana): (a) `decidirAprendizPropioDificil`, incluyéndose, comparando el valor de recibir la carta pública de cada rival frente a ceder la propia (`valorCartaEnManoPropia`, interna — mismo descuento "a futuro, en mano" `* 0.5` que ya usa Cronista; deliberadamente NO reutiliza `valorEsperadoDeAccion()`, pensada para cartas que acaban VISIBLES en un Portal, no para un simple cambio de mano); (b) `decidirAprendizAjenoAjenoDificil`, intercambio puramente adversarial de las manos de DOS RIVALES (el bot no se incluye) para desbaratar a la que va mejor posicionada, estimada por el recuento de Gemas por nivel (`gemasPorNivel`, nunca el valor exacto) — solo con al menos 2 rivales y si a la líder se le puede quitar algo que de verdad le convenía. |
 | `decidirJugadaFaseA(vista, need)` / `decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl)` | `función` | (exportadas solo para tests) Decisión de Fase A por dificultad. `'normal'` prioriza completar la invocación activa con un único Portal bloqueante; si no, aplica el ajuste adversarial de bajo coste del Bloque 3 (`decidirJugadaAdversarialNormal`, interna): (1) denegación GRATUITA por duplicado si la carta conocida es requisito activo, ya está visible en Portal AJENO, y el propio bot no la tiene ya (no pierde nada); (2) si no, tapar un Portal ajeno que muestre, como única copia visible en toda la mesa, un requisito de la invocación activa. Solo con información visible ahora mismo, nunca memoria/probabilidad. `'dificil'` (desde 1.26.3) evalúa TODAS las combinaciones carta×Portal con `evaluarJugadasFaseA()` (`js/bot-estrategia.js`): reparto real de Gemas si la jugada cierra la invocación (propio menos la mejor rival), riesgo de dejar el cierre servido a la siguiente jugadora y valor de posición. Nunca propone jugar la carta oculta si `vista.tieneCartaOcultaPropia === false` (final de partida). |
-| `decidirYJugarTurno(players, neutrals, botIdx, contexto)` | `función` | Punto de entrada único: despacha por `players[botIdx].dificultad` (`HEURISTICAS_POR_DIFICULTAD`: `'normal'` o `'dificil'`) y ejecuta el turno completo (Fases A-E) de la bot. `contexto = { levelIdx, invocationSet }`. Desde el Bloque 4, la MEMORIA (`window.memoriaBots[botIdx]`, historial bruto de nombres vistos por Portal) la mantienen AMBAS dificultades (antes solo `'dificil'`) — la necesita Cronomante para decidir con sentido en cualquier nivel; el conteo de cartas/probabilidad (`js/bot-probabilidad.js`) sigue siendo exclusivo de `'dificil'`. Fase B: desde el Bloque 4, AMBAS dificultades saben usar las 7 habilidades activas (`PERSONAJES_CON_HABILIDAD`, `utils.js`). `'normal'` con una condición simple y de bajo riesgo por habilidad (solo información visible ahora mismo o memoria bruta, nunca probabilidad): Ocultista/Cronista comparten la comprobación "falta algo del combo Y hay un Portal oculto legal", y cada una además por su cuenta puede denegar gratis el único requisito visible de una rival (`decidirOcultistaAdversarialNormal`/`decidirCronistaAdversarialNormal`, ambas actúan también sobre un Portal YA VISIBLE, no solo oculto); Cronomante (`decidirCronomanteNormal`), Estratega (`decidirEstrategaNormal`), Aprendiz (`decidirAprendizNormal`), Metamorfo (`decidirMetamorfoNormal`) y Maestro (`decidirMaestroNormal`) — todas arriba — solo por beneficio propio, nunca el matiz adversarial más elaborado (reservado a `'dificil'`). `'dificil'` decide por valor esperado en Gemas: además del beneficio propio, cada habilidad incorpora su propio matiz adversarial (denegar/tapar/duplicar el único requisito visible de una rival, con el mismo mecanismo `cubreNecesarioUnicoRival`/`necesariosUnicosDeRivales` que ya usa Fase A) salvo Aprendiz, que además puede intercambiar las manos de DOS rivales sin beneficio propio directo. Ambos niveles resuelven los `picker()`/`pickerPortal()` que abre `applyAbility()` programáticamente (mismo `#pickerSelect`/`#pickerOk` que usaría un clic humano; el objetivo ya calculado se pasa como `objetivoPreferido` — un único valor o un ARRAY alineado por paso, para habilidades de varios pasos como Cronomante) y el resumen de turno (`alert()`) siempre se redacta en tercera persona, incluyendo de quién es el Portal/mano afectado por la habilidad activada (`describirObjetivoHabilidad`, arriba). Termina simulando el clic en `#btnEndTurn`, que ya comprueba invocación, reparte Gemas, roba y avanza turno con la misma lógica que una jugadora humana. |
+| `decidirYJugarTurno(players, neutrals, botIdx, contexto, ejecutor?)` | `función` | Punto de entrada único: despacha por `players[botIdx].dificultad` (`HEURISTICAS_POR_DIFICULTAD`: `'normal'`, `'dificil'` o `'experta'`) y ejecuta el turno completo (Fases A-E) de la bot. `contexto = { levelIdx, invocationSet }`. Desde el Bloque 4, la MEMORIA (`window.memoriaBots[botIdx]`, historial bruto de nombres vistos por Portal) la mantienen AMBAS dificultades (antes solo `'dificil'`) — la necesita Cronomante para decidir con sentido en cualquier nivel; el conteo de cartas/probabilidad (`js/bot-probabilidad.js`) sigue siendo exclusivo de `'dificil'`. Fase B: desde el Bloque 4, AMBAS dificultades saben usar las 7 habilidades activas (`PERSONAJES_CON_HABILIDAD`, `utils.js`). `'normal'` con una condición simple y de bajo riesgo por habilidad (solo información visible ahora mismo o memoria bruta, nunca probabilidad): Ocultista/Cronista comparten la comprobación "falta algo del combo Y hay un Portal oculto legal", y cada una además por su cuenta puede denegar gratis el único requisito visible de una rival (`decidirOcultistaAdversarialNormal`/`decidirCronistaAdversarialNormal`, ambas actúan también sobre un Portal YA VISIBLE, no solo oculto); Cronomante (`decidirCronomanteNormal`), Estratega (`decidirEstrategaNormal`), Aprendiz (`decidirAprendizNormal`), Metamorfo (`decidirMetamorfoNormal`) y Maestro (`decidirMaestroNormal`) — todas arriba — solo por beneficio propio, nunca el matiz adversarial más elaborado (reservado a `'dificil'`). `'dificil'` decide por valor esperado en Gemas: además del beneficio propio, cada habilidad incorpora su propio matiz adversarial (denegar/tapar/duplicar el único requisito visible de una rival, con el mismo mecanismo `cubreNecesarioUnicoRival`/`necesariosUnicosDeRivales` que ya usa Fase A) salvo Aprendiz, que además puede intercambiar las manos de DOS rivales sin beneficio propio directo. Ambos niveles resuelven los `picker()`/`pickerPortal()` que abre `applyAbility()` programáticamente (mismo `#pickerSelect`/`#pickerOk` que usaría un clic humano; el objetivo ya calculado se pasa como `objetivoPreferido` — un único valor o un ARRAY alineado por paso, para habilidades de varios pasos como Cronomante) y el resumen de turno (`alert()`) siempre se redacta en tercera persona, incluyendo de quién es el Portal/mano afectado por la habilidad activada (`describirObjetivoHabilidad`, arriba). Termina simulando el clic en `#btnEndTurn`, que ya comprueba invocación, reparte Gemas, roba y avanza turno con la misma lógica que una jugadora humana. `ejecutor` (opcional, desde 1.29.0) lleva a cabo lo decidido: `{ jugar, activar, resumen, terminar }`; por defecto el de la web (`ejecutarJugada`, `aplicarHabilidad` + `crearUiAutomata`, `alert()`, `ejecutarFinDeTurno`). |
+| `crearEjecutorMotor({ alJugar? })` | `función` | (1.29.0) Ejecutor sin interfaz, solo con el motor sobre `estado.partida`: juega con `jugarCarta`, aplica la habilidad con `aplicarHabilidad` + `crearUiAutomata` + `completarActivacion`, no muestra nada y no termina el turno (lo hace quien orquesta). Lo usa `tools/arena.mjs`. |
 
 ---
 
@@ -174,8 +177,10 @@ memoria propia del bot, para que quede auditable que no puede hacer trampa.
 dificultad `'dificil'` (desde 1.26.3). Funciones PURAS sobre la vista
 saneada (`construirEstadoVisibleParaBot()`) y la distribución del conteo de
 cartas (`estimarProbabilidadesPersonajes()`); nunca leen el estado real.
-Pesos ajustables exportados: `PESO_RIVAL` (0,75), `FACTOR_POSICION` (0,4),
-`FACTOR_AMENAZA` (0,8).
+Pesos ajustables en el objeto mutable exportado `PESOS` (`rival`,
+`posicion`, `amenaza`); el simulador `tools/arena.mjs` los cambia por
+asiento para enfrentar ajustes distintos. Los usa también `'experta'`
+(`js/bot-busqueda.js`) para puntuar cada mundo.
 
 ### Exportaciones
 
@@ -190,6 +195,44 @@ Pesos ajustables exportados: `PESO_RIVAL` (0,75), `FACTOR_POSICION` (0,4),
 | `valorAmenazaSiguiente(tablero, need, valorGemaNivel, nJugadoras, botIdx, siguienteIdx, probabilidadPorNombre)` | `función` | Valor esperado, para la bot, del cierre que podría hacer la siguiente jugadora con su carta privada (solo si le conviene a ella), × `FACTOR_AMENAZA`. |
 | `valorJugadaCierta(tablero, destKey, nombre, ctx)` / `valorJugadaOculta(tablero, destKey, ctx)` | `función` | Valor de jugar una carta conocida, o media sobre las identidades posibles de la carta oculta. |
 | `evaluarJugadasFaseA(vista, need, valorGemaNivel, probabilidadPorNombre)` | `función` | Lista `{ usaConocida, destKey, valor, cierra }` para cada carta × Portal. La usa `decidirJugadaFaseADificil()` (`js/bot.js`). |
+
+---
+
+## js/bot-busqueda.js
+**Propósito:** Dificultad `'experta'` (1.29.0): búsqueda del turno
+completo (Fase A + Fase B) con el motor real sobre mundos posibles
+(determinización / PIMC). La única función que recibe la partida real es
+`determinizar()`, que la copia y vuelve a repartir todo lo oculto.
+
+### Exportaciones
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `BUSQUEDA` | `objeto` | Presupuesto: `{ mundos: 8 }` (mundos posibles por decisión). |
+| `determinizar(partida, botIdx)` | `función` | Copia de la partida con la carta oculta de la bot, las cartas privadas de las rivales (y su mano entera si tienen la Clarividente visible) y el mazo repartidos al azar entre los personajes que la bot aún no ha visto (composición menos todas las cartas de los Portales y las de mano que ve), y las Gemas ajenas con el valor medio de su nivel. `tests/bot-busqueda.mjs` comprueba que no filtra nada oculto. |
+| `enumerarFasesB(partida, botIdx)` | `función` | `[null, { origen, guion }...]`: no activar nada, o cada habilidad activable (`opcionesActivarHabilidad`) con cada combinación de elecciones, descubiertas recorriendo las peticiones `ui.pedir` del motor en copias desechables. |
+| `puntuarMundo(antes, despues, botIdx, construirVista, probabilidadPorNombre)` | `función` | Gemas ganadas por la bot − `PESOS.rival` × las de la rival que más gana, más `valorPosicional` y `valorAmenazaSiguiente` (`bot-estrategia.js`) sobre la mesa que queda. |
+| `elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre)` | `función` | Media, entre mundos, del mejor turno (mejor Fase B) tras cada candidata de Fase A; devuelve la mejor con su `valor`. |
+| `elegirFaseBExperta(partida, botIdx, construirVista, probabilidadPorNombre)` | `función` | Con la Fase A ya jugada: la Fase B (o ninguna) con mejor media entre mundos, como `{ origen, guion, valor }` o `null`. `bot.js` pasa `guion` como `objetivoPreferido` a `crearUiAutomata`. |
+
+---
+
+## tools/arena.mjs
+**Propósito:** Simulador de partidas sin navegador (1.29.0) para medir y
+afinar la IA. Reparte como `setup.js` + `initGame()`, juega con
+`decidirYJugarTurno(..., crearEjecutorMotor())` y `terminarTurno`/
+`pasarTurno`, y resuelve la elección de la Clarividente como `render.js`.
+Azar con semilla (`sembrarAzar`).
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `sembrarAzar(semilla)` | `función` | Sustituye `Math.random` por un generador con semilla (mulberry32). |
+| `prepararPartida(dificultades, invocationSet)` | `función` | Partida nueva sin DOM, una autómata por dificultad. |
+| `jugarPartida(asientos, invocationSet, perfiles)` | `función` | Partida completa; asiento `'nivel'` o `'nivel@perfil'` (con `perfiles[perfil]` como `PESOS` en sus turnos). Devuelve `{ puntos, ganadoras, invocaciones, turnos }`. |
+| `torneo({ partidas, mesa, set, semilla, perfiles })` | `función` | Varias partidas rotando asientos; % de victorias y puntos medios por asiento. CLI: `node tools/arena.mjs --partidas 1000 --mesa experta,dificil,dificil`. |
+
+`tools/ajustar-pesos.mjs`: búsqueda aleatoria de `PESOS` enfrentando cada
+candidata a los pesos actuales en 2 y 3 jugadoras.
 
 ---
 

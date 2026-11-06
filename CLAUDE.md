@@ -185,7 +185,7 @@ in `nextTurn()`.
   `bot.js`'s `nombresDisponiblesParaBots()`), the rest stay editable human
   inputs; each `window.players[i]` gets `tipo: 'humano'|'auto'` (plus
   `dificultad` for bots, read from `#selDificultadBots` —
-  `'normal'`|`'dificil'`, see `js/bot.js`/`js/bot-probabilidad.js`). The
+  `'normal'`|`'dificil'`|`'experta'`, see `js/bot.js`/`js/bot-probabilidad.js`/`js/bot-busqueda.js`). The
   difficulty selector (`#lblDificultadBots`) is shown only when at least
   one bot is configured, and is **global for all bots in the match** — not
   one per bot, a deliberate simplification for this MVP (see
@@ -196,9 +196,13 @@ in `nextTurn()`.
   sanitized view (own known card only, no own hidden card, any other
   player's public hidden card, per-Portal visibility, Gem counts) so it's
   auditable at a glance that the bot can't cheat even as the heuristic
-  changes. `decidirYJugarTurno(players, neutrals, botIdx, contexto)` is the
+  changes. `decidirYJugarTurno(players, neutrals, botIdx, contexto, ejecutor)` is the
   single entry point, dispatching on `players[botIdx].dificultad`
-  (`HEURISTICAS_POR_DIFICULTAD`: `'normal'` or `'dificil'`). Since 1.26.7
+  (`HEURISTICAS_POR_DIFICULTAD`: `'normal'`, `'dificil'` or `'experta'`).
+  Since 1.29.0 *what to do* (decisions) and *who does it* (the `ejecutor`:
+  `jugar`/`activar`/`resumen`/`terminar`) are separate: the default is the
+  web one (below); `crearEjecutorMotor()` plays only through the engine,
+  with no DOM, and is what `tools/arena.mjs` uses. Since 1.26.7
   (phase 4 of the engine/UI split) it never touches DOM buttons or
   pickers: it plays and ends its turn through `ejecutarJugada()` /
   `ejecutarFinDeTurno()` (`actions.js`, the same functions human clicks
@@ -250,9 +254,31 @@ in `nextTurn()`.
   (exhaustive determinization). The vista now also carries
   `tieneCartaOcultaPropia` (yes/no only): without it, at the very end of
   the game with one card left, `'dificil'` could choose "play the hidden
-  card" without having one and freeze the match. Not yet done (see
-  `docs/MEJORAS_FUTURAS.md`): scoring Fase A + Fase B as one combined turn,
-  using the same evaluator in Fase B, and tuning the weights by self-play.
+  card" without having one and freeze the match. Its weights live in the
+  mutable `PESOS` object (`rival`, `posicion`, `amenaza`) so the arena can
+  try other values; tune them with `tools/ajustar-pesos.mjs`.
+- **`js/bot-busqueda.js`** — the `'experta'` difficulty (1.29.0): PIMC /
+  determinization over the REAL engine. `determinizar(partida, botIdx)` is
+  the only function that receives the real game: it deep-copies it and
+  re-deals everything the bot can't know (its own hidden card, rivals'
+  private cards, the deck, rivals' Gem values) from "composition minus
+  cards it has seen" (all Portal cards count as seen: every card was
+  played face up at some point). `tests/bot-busqueda.mjs` checks that two
+  games differing only in hidden info give identical worlds — keep that
+  test passing. In each of `BUSQUEDA.mundos` worlds it tries every Fase A
+  candidate followed by every Fase B (enumerated by walking each
+  ability's `ui.pedir` choices on throwaway copies), ends the turn with
+  `terminarTurno()` and scores *own Gem gain − PESOS.rival × best rival's*
+  plus `bot-estrategia.js`'s positional and next-player-threat values.
+  Picks the best average; after really playing Fase A, repeats for Fase B.
+  ~30-300 ms per turn in Node.
+- **`tools/arena.mjs`** — headless self-play: whole games in Node with
+  the engine + `crearEjecutorMotor()`, seeded PRNG, rotating seats.
+  `node tools/arena.mjs --partidas 1000 --mesa experta,dificil,dificil`;
+  a seat can be `nivel@perfil` with `--perfiles '{"perfil":{...PESOS}}'`
+  to pit two weight sets against each other. `tools/ajustar-pesos.mjs`
+  does a random search over `PESOS` with it. Use the arena to measure any
+  bot change against `main` before shipping it.
 - **`js/game.js`** — builds the character deck (`initGame`, via
   `composicionMazoTotal(window.invocationSet)` in `utils.js` — see the gap
   above), turn advancement and the "no cards left" end condition
@@ -487,6 +513,7 @@ node tests/motor-acciones.mjs
 node tests/motor-habilidades.mjs
 node tests/motor-adaptadores.mjs
 node tests/vista-mesa.mjs
+node tests/bot-busqueda.mjs
 ```
 
 ```bash

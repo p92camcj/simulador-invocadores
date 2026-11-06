@@ -111,7 +111,7 @@ export function initSetup() {
 
       const gemasIniciales = Array.from({ length: 3 }, () => ({ valor: 1, nivel: 'unitaria' }));
       const jugador = { name: nombre, tipo: esBot ? 'auto' : 'humano', hand: [], portals: [], gems: gemasIniciales };
-      if (esBot) jugador.dificultad = dificultadBots; // 'normal' o 'dificil', ver js/bot.js
+      if (esBot) jugador.dificultad = dificultadBots; // 'normal', 'dificil' o 'experta', ver js/bot.js
       window.players.push(jugador);
     });
 
