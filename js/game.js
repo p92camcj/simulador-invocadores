@@ -8,6 +8,7 @@ import { initSetup } from './setup.js';
 import { $ } from './utils.js';
 import { estado, reiniciarCamposDeTurno, reiniciarPartida } from './motor/estado.js';
 import { comprobarFinPorManoVacia } from './motor/acciones.js';
+import { anunciarTurnoMesa, retardoAutomata, salirDeMesa } from './mesa3d.js';
 
 /**
  * Inicia la partida: prepara el mazo, reparte cartas, y lanza el primer turno.
@@ -85,7 +86,10 @@ export function nextTurn() {
   document.querySelector('#btnAbility')?.classList.toggle('hidden', esBot);
   document.querySelector('#btnEndTurn')?.classList.toggle('hidden', esBot);
 
-  alert(esBot ? `🤖 ${current.name} está pensando…` : 'Turno de ' + current.name);
+  // En la Mesa 3D el cambio de turno es un telón o un rótulo (js/mesa3d.js).
+  if (!anunciarTurnoMesa(current, esBot)) {
+    alert(esBot ? `🤖 ${current.name} está pensando…` : 'Turno de ' + current.name);
+  }
   document.querySelector('#lblTurn').textContent =
   `Turno de: ${current.name} — Mazo: ${window.deck.length}`;
   render(window.players, window.neutrals, window.levelIdx);
@@ -96,7 +100,7 @@ export function nextTurn() {
         levelIdx: window.levelIdx,
         invocationSet: window.invocationSet,
       });
-    }, 500);
+    }, retardoAutomata());
   }
 }
 
@@ -155,6 +159,8 @@ export function resetJuego() {
   // Mostrar título y subtítulo
   $('#mainTitle')?.classList.remove('hidden');
   $('#mainSubtitle')?.classList.remove('hidden');
+
+  salirDeMesa();
 
   // Limpiar el estado de partida (conserva el set de invocación elegido)
   reiniciarPartida();

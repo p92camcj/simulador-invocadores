@@ -22,6 +22,8 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/game.js](#jsgamejs)
 - [js/index.js](#jsindexjs)
 - [js/espectaculo.js](#jsespectaculojs)
+- [js/vista-mesa.js](#jsvista-mesajs)
+- [js/mesa3d.js](#jsmesa3djs)
 - [js/motor/estado.js](#jsmotorestadojs)
 - [js/motor/acciones.js](#jsmotoraccionesjs)
 - [js/motor/habilidades.js](#jsmotorhabilidadesjs)
@@ -293,6 +295,44 @@ document.addEventListener('DOMContentLoaded', () => {
 | `anunciarInvocacion({ nivel, nombre, need, recompensas })` | `función` | Escena de invocación completada (los personajes requeridos convergen en el círculo y aparece el nombre de la invocación con las Gemas que recibe cada jugadora, solo el número, nunca el valor). Devuelve `true` si se escenificó, en cuyo caso `actions.js` no muestra el `alert()` de texto. |
 | `rutaFigura(nombre)` / `rutaCriatura(nombreInvocacion)` | `función` | Ruta del arte de cuerpo entero de un personaje, o de la criatura de una invocación (solo Cirelia, Baelorith y Aelgorth tienen); `null` si no hay. Las usa también `render.js` para los retratos pequeños del panel de la invocación activa. |
 | `hayEspectaculoEnCurso()` / `cuandoTermineEspectaculo()` | `función` | Para esperar a la cola de escenas: `#btnEndTurn` retrasa el avance de turno (y su aviso "Turno de ...") hasta que terminan, con `window.avanceTurnoPendiente` como guarda contra un doble clic; la última invocación espera antes de mostrar el marcador final. |
+
+---
+
+## js/vista-mesa.js
+**Propósito:** Modelo de la vista **Mesa 3D**: traduce `estado.partida` a lo que cada asiento enseña en la pantalla compartida. Puro (sin DOM ni `window`), probado en `tests/vista-mesa.mjs`. Misma regla que `render.js`: una carta que quien mira no puede ver sale con `nombre: null`, así que su nombre nunca llega al DOM.
+
+### Exportaciones
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `construirVistaMesa(partida, { asientoPropio })` | `función` | Vista completa: invocación activa con el estado de cada personaje requerido, asiento propio (abajo), rivales en orden de turno, Portales centrales, mazo y fase del turno. El asiento propio ve sus cartas "de dueña" solo si es humana y es su turno, o si es la única humana de la partida. Una Clarividente visible oculta la mano entera al resto. Gemas: total exacto solo para quien ve como dueña; el resto, por nivel y las de asterisco reveladas. |
+| `elegirAsientoPropio(players, turno, ultimaHumana)` | `función` | Qué jugadora va abajo: la activa si es humana; en el turno de una autómata, la última humana (contra autómatas la humana no se mueve). |
+| `contarHumanas(players)` | `función` | Número de jugadoras humanas (decide si hace falta el telón para pasar el móvil). |
+| `estadoInvocacion(partida)` | `función` | Nivel, nombre y estado (`falta` / `esta` / `repetido`) de cada personaje requerido, contado por apariencia como el motor. |
+| `claveJugar(turno, jugadora, portal)` / `claveObjetivo(jugadora, portal)` | `función` | Claves de Portal en los formatos de `jugarCarta` (`p:j`, `a:i:j`, `n:k`) y de `portalesConEstado` (`i:j`, `n:k`). |
+| `firmaPortal(portalVista)` / `cambioPortal(antes, ahora)` | `función` | Firma pública de un Portal y tipo de cambio entre dos pintados (`entra`, `voltea`, `sale`), para animarlo. |
+| `pistaTurno(vista, { haySeleccion, eligiendoObjetivo })` | `función` | Texto de ayuda de la barra de acciones. |
+
+---
+
+## js/mesa3d.js
+**Propósito:** Vista **Mesa 3D**, alternativa a la clásica y pensada para jugar con el dedo en el móvil (estilos en `mesa3d.css`, solo CSS 3D, sin librerías). Mesa en perspectiva con cartas 3D (cara y dorso), tu mano abajo en abanico, rivales arriba y Portales centrales en medio. No contiene reglas: actúa con las mismas funciones que la clásica (`window.selectHandCard`, `window.tryPlayOnPortal`, `window.selectPortalObjetivo`, `#btnAbility`, `#btnEndTurn`, `#btnPlayCancel`). Se elige en la configuración (`#selVista`) o con `#btnVista`, y se guarda en `localStorage` (`invocadores.vista`); en pantallas táctiles es la vista por defecto.
+
+Interacción: tocar una carta de la mano la levanta y los Portales brillan; tocar un Portal la juega (la carta vuela hasta él). También se puede arrastrar con el dedo. Tocar un Portal sin carta elegida lo amplía; en la Fase B los Portales con habilidad activable llevan un ✦ y, al tocarlos, ofrecen activarla. Los `picker()` se convierten en hojas inferiores con botones grandes; si piden un Portal, la hoja es compacta y los Portales válidos se pueden tocar en la mesa. `alert()` se muestra como aviso flotante que no bloquea. Con varias humanas, cada cambio de turno muestra un telón para pasar el móvil sin enseñar la mano.
+
+### Exportaciones
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `initMesa3D()` | `función` | Lee la preferencia de vista, conecta `#selVista`/`#btnVista`, los toques y el arrastre, y envuelve `alert()`. Llamada desde `index.js`. |
+| `vistaMesaActiva()` / `fijarVista('mesa' \| 'clasica')` | `función` | Lee / cambia la vista (también a mitad de partida) y repinta. |
+| `renderMesa3D()` | `función` | Pinta la mesa. La llama `render()` en cada pintado; no hace nada en la vista clásica. Solo reescribe el DOM si el HTML cambia, y anima los Portales que cambian (`cambioPortal`). |
+| `pickerMesa(titulo, opciones, cb, onCancel)` | `función` | Versión en hoja inferior de `picker()`; `render.js` delega en ella cuando la mesa está activa. |
+| `hayPickerMesaAbierto()` | `función` | Para que la elección de la Clarividente (`render.js`) espere si ya hay una pregunta abierta. |
+| `anunciarTurnoMesa(jugadora, esAutomata)` | `función` | Cambio de turno en la mesa (telón o rótulo). Devuelve `false` en la vista clásica, y entonces `nextTurn()` usa su `alert()`. |
+| `retardoAutomata()` | `función` | Pausa antes de que juegue una autómata (más larga en la mesa, para poder seguir su jugada). |
+| `mostrarAviso(texto)` | `función` | Aviso flotante. |
+| `salirDeMesa()` | `función` | Limpia la mesa al volver al menú (`resetJuego()`). |
 
 ---
 

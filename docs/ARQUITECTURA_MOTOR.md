@@ -1,6 +1,6 @@
 # Separación del motor de juego y la interfaz
 
-> **Última actualización:** 2026-11-06 00:10 (Europe/Madrid)
+> **Última actualización:** 2026-11-06 16:55 (Europe/Madrid)
 
 Plan acordado con Julio el 2026-11-05. Objetivo: que las reglas de
 Invocadores vivan en un núcleo puro (sin DOM, sin `window`, testable en
@@ -136,7 +136,16 @@ todo en la fase 4, al convertir `actions.js` en adaptador.
   - El turno del autómata sigue orquestado desde `game.js` (`nextTurn` con
     `setTimeout`) y su resumen sale con `alert()`: es presentación.
 
-### Fase 5 (opcional): interfaz de terminal
+### Primera piel nueva: Mesa 3D (1.27.0)
+
+- `js/mesa3d.js` + `mesa3d.css`: vista alternativa para móvil, en CSS 3D.
+  No contiene reglas: actúa con los mismos ganchos que la web clásica.
+- `js/vista-mesa.js`: modelo puro de "qué enseña cada asiento" a partir de
+  `estado.partida` (tests en `tests/vista-mesa.mjs`). Es la pieza que una
+  interfaz de red reutilizaría para mandar a cada móvil solo lo suyo.
+- Julio descartó la interfaz de terminal (2026-11-06).
+
+### Fase 5 (descartada): interfaz de terminal
 
 - Un `node tools/terminal.mjs` mínimo como prueba de que la separación es
   real: si se puede jugar una partida completa por texto, el motor está

@@ -2,10 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Simulador Invocadores</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="espectaculo.css" />
+  <link rel="stylesheet" href="mesa3d.css" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#6c4eb6">
 
@@ -28,6 +29,7 @@
       <button id="btnPlayCancel" class="btn secondary cancel hidden">Cancelar selección</button>
       <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
+      <button id="btnVista" class="btn secondary" type="button" title="Cambia a la vista Mesa 3D, pensada para móvil">📱 Mesa 3D</button>
       <button id="btnEspectaculo" class="btn secondary" type="button" aria-pressed="true" title="Activa o desactiva las escenas animadas">✨ Escenas: sí</button>
       <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">Ver ayuda</button>
       <a id="btnReglamento" class="btn secondary" href="docs/reglamento/reglamento-invocadores.pdf" target="_blank" rel="noopener">Reglamento</a>
@@ -64,6 +66,13 @@
           <option value="introductorio">Introductorio (Cilast / Burnio / Aspir)</option>
           <option value="normal" selected>Normal (Cirelia / Baelorith / Aelgorth)</option>
           <option value="floral">Floral (Caisis / Brose / Aures)</option>
+        </select>
+      </label>
+
+      <label>Vista de juego:
+        <select id="selVista">
+          <option value="mesa">Mesa 3D (pensada para móvil y pantallas táctiles)</option>
+          <option value="clasica">Clásica (tablero en columnas)</option>
         </select>
       </label>
 

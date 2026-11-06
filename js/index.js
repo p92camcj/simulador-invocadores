@@ -4,6 +4,7 @@ import { initGame } from './game.js';
 import { LEVELS, INVOCATION_SETS } from './utils.js';
 import { initEspectaculo } from './espectaculo.js';
 import { instalarAliasGlobales } from './motor/estado.js';
+import { initMesa3D } from './mesa3d.js';
 
 // Estado global: vive en un único objeto serializable (js/motor/estado.js).
 // window.players, window.turn, etc. son alias de ese objeto, para que el
@@ -19,4 +20,5 @@ window.INVOCATION_SETS = INVOCATION_SETS;
 document.addEventListener('DOMContentLoaded', () => {
   initSetup();
   initEspectaculo();
+  initMesa3D();
 });

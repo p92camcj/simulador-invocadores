@@ -3,6 +3,7 @@ import { mostrarCarta, sumaGemas, cardImages, CARTA_OCULTA_IMG, escapeHtml } fro
 import { rutaFigura, rutaCriatura } from './espectaculo.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 import { aplicarEleccionClarividente } from './motor/habilidades.js';
+import { renderMesa3D, pickerMesa, vistaMesaActiva, hayPickerMesaAbierto } from './mesa3d.js';
 
 /**
  * Resuelve, para una jugadora que acaba de perder la visibilidad de su
@@ -74,7 +75,7 @@ function resolverEleccionClarividente(player) {
  */
 function gestionarTransicionesClarividente(players) {
   actualizarClarividente(players);
-  const pickerEnCurso = !!window.pickerObjetivoPortal ||
+  const pickerEnCurso = !!window.pickerObjetivoPortal || hayPickerMesaAbierto() ||
     document.querySelector('#picker')?.classList.contains('hidden') === false;
   players.forEach(player => {
     if (player._clariVisiblePrev === true && !player.hasClariActivo && !player._clariEligiendo) {
@@ -182,6 +183,11 @@ function portalPlayAttrs(destKey) {
  * @param {Function} [onCancel] - Callback opcional invocado al cancelar, en vez de `cb`
  */
 export function picker(title, options, cb, onCancel) {
+  // Vista Mesa 3D: hoja inferior con botones grandes (js/mesa3d.js).
+  if (vistaMesaActiva()) {
+    pickerMesa(title, options, cb, onCancel);
+    return;
+  }
   const pickerEl = document.querySelector('#picker');
   const titleEl = document.querySelector('#pickerTitle');
   const selectEl = document.querySelector('#pickerSelect');
@@ -436,6 +442,8 @@ export function render(players, neutrals, levelIdx) {
   );
 
   renderBoardGrid(players, neutrals);
+  // Vista Mesa 3D (js/mesa3d.js): no hace nada si está la clásica.
+  renderMesa3D();
 
   const lblInv = document.querySelector('#lblInv');
   const invStatus = document.querySelector('#invStatus');
