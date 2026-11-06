@@ -4,6 +4,22 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.30.1.73] - 2026-11-06
+
+### Cambiado
+- **Cartas nuevas de Adrián** (PDF "Invocadores 4.0 junio 2026"): las 14
+  cartas de personaje de `assets/cards/*.png` se regeneran desde ese PDF con
+  el nuevo `tools/cartas_desde_pdf.py`. El número de la esquina ahora es el
+  de copias de cada carta en el mazo (Maestro 2, Clarividente 2, Ocultista
+  2, Cronomante 3, Estratega 3, Cronista 4, Aprendiz 4, Centinela 4, Pícaro
+  6, Metamorfo 2, Entusiasta 2, Reena/Sora/Lumo 3), que ya coincidía con
+  `CANTIDADES_MODO_NORMAL`/`CANTIDADES_ANIMALES`: no cambia ninguna regla.
+  El Maestro estrena icono de su habilidad activa (bajar la carta visible de
+  otra persona a su Portal). El reverso y las cartas de ayuda no cambian.
+- Los SVG de `assets/cartas/` quedan desfasados hasta que lleguen los
+  nuevos; no relanzar `tools/generar_cartas.py` con ellos o se perderían las
+  cartas nuevas.
+
 ## [1.30.0.119] - 2026-11-06
 
 ### Añadido

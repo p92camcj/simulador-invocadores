@@ -427,7 +427,12 @@ in `nextTurn()`.
   classic card images (`assets/cards/*.png`, incl. the `carta-oculta-reverso.png`
   back from `portal.svg`) are generated from the full-card SVGs in
   `assets/cartas/` by `node tools/rasterizar_svg.cjs cartas && python3
-  tools/generar_cartas.py` (same file names and 362x504 size). Toggle: `#btnEspectaculo` (header) /
+  tools/generar_cartas.py` (same file names and 362x504 size). **Since
+  1.30.1 the 14 character cards come instead from Adrián's newer PDF
+  ("Invocadores 4.0", corner number = copies in the deck) via
+  `tools/cartas_desde_pdf.py`; the SVGs in `assets/cartas/` are outdated
+  until new ones arrive, so don't re-run `generar_cartas.py` with them**
+  (the back and the two help cards still come from the old ones). Toggle: `#btnEspectaculo` (header) /
   `#chkEspectaculo` (setup), stored in `localStorage`.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), an alternative to the classic board
