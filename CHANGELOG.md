@@ -4,6 +4,43 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.28.0.113] - 2026-11-06
+
+### Añadido
+- **Botones y pantalla de inicio renovados en la vista Mesa 3D** (`mesa3d.css`,
+  `prepararPantallaInicio()` en `js/mesa3d.js`): cabecera con las tres
+  criaturas sobre un portal giratorio, título dorado, botones en píldora con
+  brillo, tarjeta de configuración translúcida, selectores oscuros y
+  contadores + / − para jugadoras y autómatas. Los botones de la cabecera
+  pasan a "❓ Ayuda" y "📖 Reglamento".
+- **Efectos en la mesa** (`lanzarEfectos()` en `js/mesa3d.js`, capa
+  `.m-efectos`): onda y chispas al entrar o aterrizar una carta, destellos
+  al voltear, transformar o retirar, salto del contador de Gemas al ganar,
+  chip de requisito que se ilumina al cumplirse y, al completar una
+  invocación sin el modo Escenas, rayos, la criatura, rótulo y temblor de
+  la mesa (con vibración en el móvil). Respeta `prefers-reduced-motion`.
+- **Marcador final en la mesa** (`mostrarFinMesa()`): clasificación con
+  corona y confeti, "Jugar otra vez" y "Ver cómo ha quedado la mesa", en
+  lugar del `confirm()` del navegador.
+- **Pregunta de la Gema de asterisco como hoja** (`preguntarMesa()`):
+  `preguntarUsoAsterisco()` en `js/actions.js` pasa a callback y, en la
+  mesa, ofrece dos botones grandes en lugar de `confirm()`.
+
+### Cambiado
+- **Metamorfo transformado: se ve que sigue siendo un Metamorfo.** Antes se
+  pintaba como el personaje imitado. Ahora, como en la mesa real, es la
+  carta del Metamorfo con la ficha del personaje encima (medallón con su
+  cara, cinta "como X" y borde iridiscente), en la Mesa 3D (`ficha` en
+  `construirVistaMesa()`, cambio `transforma` en `cambioPortal()`) y en la
+  vista clásica (`metamorfoConFichaHtml()` en `js/render.js`). Al
+  ampliarlo se explica qué es.
+- **Escena de transformación del Metamorfo rehecha** (`escenaMetamorfo()` en
+  `js/espectaculo.js`, `espectaculo.css`): la ficha cae girando, un barrido
+  de luz convierte al Metamorfo en el disfraz, queda su silueta rosa detrás
+  y la ficha se posa a un lado, con onda de choque y chispas.
+
+---
+
 ## [1.27.0.111] - 2026-11-06
 
 ### Añadido

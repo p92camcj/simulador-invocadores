@@ -111,10 +111,12 @@ the version that shipped this):
   aspecto-based invocation `map`) all read `.name`. Invocation-combo
   fulfillment/Gem distribution (`actions.js`) and everything rendered on
   screen (`mostrarCarta()` in `utils.js`, `cartaImgHtml()` calls in
-  `render.js`) read `card.aspecto || card.name` instead — a transformed
-  Metamorfo's card art already shows the imitated character (it just
-  doesn't have the "psst, it's really a Metamorfo" overlay badge yet, see
-  `docs/MEJORAS_FUTURAS.md`). The one deliberate exception:
+  `render.js`) read `card.aspecto || card.name` instead — since 1.28 a
+  transformed, visible Metamorfo is drawn as the Metamorfo card with a
+  token (medallion with the imitated character's face and a "como X"
+  ribbon) on top — `metamorfoConFichaHtml()` in `render.js`, the `ficha`
+  field of `construirVistaMesa()` in the Mesa 3D view, and the token scene
+  in `escenaMetamorfo()` (`espectaculo.js`). The one deliberate exception:
   `opcionesActivarHabilidad()` (`utils.js`) labels the Fase-B ability menu
   with real identity, not appearance — clicking that option always
   triggers Metamorfo's own re-transform ability, never the imitated
@@ -386,7 +388,10 @@ in `nextTurn()`.
   `pickerMesa()`, a bottom sheet), `nextTurn()` (`anunciarTurnoMesa()`:
   hand-off curtain with several humans, instead of `alert()`) and
   `resetJuego()` (`salirDeMesa()`); while active it also turns `alert()`
-  into non-blocking toasts. What each seat shows comes from the pure
+  into non-blocking toasts, the asterisk-Gem `confirm()` into a sheet
+  (`preguntarMesa()`) and the end-of-game `confirm()` into a scoreboard
+  (`mostrarFinMesa()`, called from `finalizarPartida()`). Board changes
+  fire visual effects (`lanzarEfectos()`), presentation only. What each seat shows comes from the pure
   `construirVistaMesa()` (`js/vista-mesa.js`, tests in
   `tests/vista-mesa.mjs`): a card the viewer can't see has `nombre: null`,
   so hidden names never reach the DOM. Seat rule: the active human sits at

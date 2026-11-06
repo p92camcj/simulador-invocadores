@@ -172,8 +172,8 @@ Implementado en el mismo bloque de trabajo que separó la Fase B del turno
   `PERSONAJES_NO_ANIMALES` (`js/utils.js`, nueva constante) menos el propio
   Metamorfo, en cualquier momento del turno. La persistencia ya funcionaba
   (nada revertía `.name`); solo faltaba quitar la restricción para poder
-  observarla. Sigue pendiente la representación visual (ficha superpuesta),
-  ver más abajo.
+  observarla. La representación visual (ficha superpuesta) quedó resuelta
+  en 1.28.0, ver más abajo.
 
 ---
 
@@ -287,7 +287,15 @@ Portal propio (2 jugadoras → 2 Portales cada una), se añadió un tercer paso
 de selección de Portal destino cuando aplica, no contemplado explícitamente
 en el diseño original de esta tarea.
 
-### Metamorfo: representación visual de la transformación
+### ~~Metamorfo: representación visual de la transformación~~ (resuelto 2026-11-06, 1.28.0)
+
+**Resuelto:** las dos vistas pintan la carta del Metamorfo (algo apagada y con
+borde iridiscente) con la ficha del personaje imitado encima, como en la mesa
+real (un medallón con su cara, algo translúcido para que se siga viendo la carta
+base) y una cinta "como X". En la Mesa 3D la ficha cae girando al transformarse,
+y la escena del modo espectáculo enseña la ficha clavándose en el Metamorfo y un
+barrido que lo repinta, con su silueta rosa detrás. Texto original:
+
 
 La restricción antigua ("solo el personaje concreto que falta para
 completar la invocación activa") y la falta de persistencia ya están

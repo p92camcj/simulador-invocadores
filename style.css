@@ -568,3 +568,13 @@ select {
   margin-left: 6px;
   filter: drop-shadow(0 0 4px rgba(108, 78, 182, 0.6));
 }
+
+/* Metamorfo transformado: su carta con la ficha del personaje encima. */
+.carta-con-ficha { position: relative; width: 100%; max-width: 120px; }
+.carta-con-ficha .card-img { filter: saturate(.6) brightness(.9); box-shadow: 0 0 0 2px #ff9ad6, 0 0 10px #7fb4ff; }
+.ficha-metamorfo { position: absolute; left: 50%; top: 20%; width: 58%; aspect-ratio: 1; transform: translateX(-50%);
+  border-radius: 50%; object-fit: cover; object-position: 50% 3%; background: #efe7ff; opacity: .9;
+  box-shadow: 0 0 0 3px #f4d27a, 0 0 0 5px #8a5a12, 0 3px 8px rgba(0, 0, 0, .5); }
+.ficha-metamorfo-cinta { position: absolute; left: 4%; right: 4%; bottom: 7%; border-radius: 999px; text-align: center;
+  font-size: .72rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(90deg, #ff6fc0, #8f7bff, #5fb4ff); }

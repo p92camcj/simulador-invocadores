@@ -712,3 +712,72 @@
   .esp-destello, .esp-pasado, .esp-velo, .esp-fig--antes, .esp-convergen { display: none; }
   .esp-fig-despues, .esp-titulo-invocacion { opacity: 1 !important; }
 }
+
+/* ---------- Metamorfo (1.28): ficha + barrido, dos capas al final ---------- */
+.esp-metamorfosis { display: grid; grid-template: 100% / 100%; }
+.esp-metamorfosis > * { grid-area: 1 / 1; justify-self: center; align-self: end; }
+.esp-meta-base {
+  animation:
+    esp-sube calc(var(--t) * 800ms) cubic-bezier(.15, .85, .3, 1.15) calc(var(--t) * 200ms) both,
+    esp-meta-se-va calc(var(--t) * 1100ms) linear calc(var(--t) * 2100ms) both;
+}
+/* El barrido sube: lo que queda por debajo de la línea ya es el disfraz. */
+@keyframes esp-meta-se-va {
+  from { clip-path: inset(0 0 0 0); filter: none; }
+  to { clip-path: inset(0 0 100% 0); filter: brightness(1.6) hue-rotate(40deg); }
+}
+.esp-meta-disfraz { display: grid; height: 100%; min-height: 0; clip-path: inset(100% 0 0 0);
+  animation: esp-meta-aparece calc(var(--t) * 1100ms) linear calc(var(--t) * 2100ms) forwards; }
+.esp-meta-disfraz .esp-fig { justify-self: center; align-self: end;
+  animation: esp-iridiscente calc(var(--t) * 1500ms) ease-in-out calc(var(--t) * 3200ms) infinite alternate;
+  filter: drop-shadow(0 0 3px #ff9ad6) drop-shadow(0 0 10px #7fb4ff) drop-shadow(0 0 18px color-mix(in srgb, #ff9ad6 70%, transparent)); }
+@keyframes esp-meta-aparece { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+.esp-meta-barrido { align-self: stretch !important; justify-self: stretch !important; position: relative; pointer-events: none; opacity: 0;
+  animation: esp-meta-linea calc(var(--t) * 1100ms) linear calc(var(--t) * 2100ms) both; }
+.esp-meta-barrido::before { content: ""; position: absolute; left: 18%; right: 18%; height: 6px; bottom: 0; border-radius: 6px;
+  background: linear-gradient(90deg, transparent, #fff, #ff9ad6, #7fb4ff, #fff, transparent);
+  box-shadow: 0 0 18px #fff, 0 0 40px #ff9ad6, 0 0 70px #7fb4ff; }
+@keyframes esp-meta-linea {
+  0% { opacity: 0; transform: translateY(0); }
+  8%, 92% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-100%); }
+}
+/* La silueta del Metamorfo queda detrás, desplazada y en rosa: delata quién es. */
+.esp-meta-sombra { opacity: 0; transform: translateX(-16%) scale(0.94);
+  filter: brightness(0) drop-shadow(0 0 0 #ff9ad6) drop-shadow(0 0 14px #ff9ad6);
+  animation: esp-meta-sombra calc(var(--t) * 900ms) ease-out calc(var(--t) * 3100ms) forwards; }
+@keyframes esp-meta-sombra {
+  from { opacity: 0; transform: translateX(0) scale(1); }
+  to { opacity: .55; transform: translateX(-18%) scale(0.94); filter: brightness(0) invert(.75) sepia(1) saturate(4) hue-rotate(270deg) drop-shadow(0 0 14px #ff9ad6); }
+}
+/* La ficha: medallón dorado con la cara del personaje, gira y se posa. */
+.esp-meta-ficha { position: absolute; left: 50%; bottom: 62%; width: clamp(64px, 14vmin, 120px); aspect-ratio: 1; z-index: 6;
+  transform-style: preserve-3d; opacity: 0; pointer-events: none;
+  animation: esp-meta-ficha calc(var(--t) * 2600ms) cubic-bezier(.3, .7, .3, 1) calc(var(--t) * 700ms) forwards; }
+.esp-meta-ficha-cara, .esp-meta-ficha-canto { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; }
+.esp-meta-ficha-cara { overflow: hidden; background: radial-gradient(circle at 35% 30%, #fff8, #2a1d4f);
+  box-shadow: 0 0 0 4px #f4d27a, 0 0 0 7px #8a5a12, 0 0 30px #ffe08b, inset 0 0 12px #000a; }
+.esp-meta-ficha-cara img { width: 100%; height: 160%; object-fit: cover; object-position: 50% 4%; }
+.esp-meta-ficha-canto { transform: rotateY(180deg); background: radial-gradient(circle at 40% 35%, #ffe9a8, #c8902a 55%, #6b4310);
+  box-shadow: 0 0 0 4px #f4d27a, 0 0 0 7px #8a5a12, 0 0 30px #ffe08b; }
+@keyframes esp-meta-ficha {
+  0% { opacity: 0; transform: translate(-50%, -80%) scale(.3) rotateY(0deg); }
+  15% { opacity: 1; transform: translate(-50%, -60%) scale(1.15) rotateY(540deg); }
+  45% { opacity: 1; transform: translate(-50%, -40%) scale(1.25) rotateY(1080deg); filter: drop-shadow(0 0 20px #ffe08b); }
+  55% { opacity: 1; transform: translate(-50%, 60%) scale(.8) rotateY(1080deg); }
+  60% { opacity: 1; transform: translate(-50%, 50%) scale(.95) rotateY(1080deg); filter: brightness(2); }
+  100% { opacity: 1; transform: translate(70%, -30%) scale(.62) rotateY(1080deg); filter: none; }
+}
+/* Onda de choque cuando la ficha toca al Metamorfo */
+.esp-meta-onda { position: absolute; left: 50%; bottom: 48%; width: 40vmin; aspect-ratio: 1; border-radius: 50%; z-index: 5;
+  transform: translate(-50%, 50%) scale(0); border: 4px solid #fff; box-shadow: 0 0 30px #ff9ad6, inset 0 0 30px #7fb4ff; opacity: 0;
+  pointer-events: none; animation: esp-meta-onda calc(var(--t) * 900ms) ease-out calc(var(--t) * 2150ms) forwards; }
+@keyframes esp-meta-onda {
+  0% { opacity: 1; transform: translate(-50%, 50%) scale(0.1); }
+  100% { opacity: 0; transform: translate(-50%, 50%) scale(2.4); border-width: 1px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .esp-meta-base, .esp-meta-barrido, .esp-meta-onda { display: none; }
+  .esp-meta-disfraz { clip-path: none; animation: none; }
+  .esp-meta-ficha { opacity: 1; animation: none; transform: translate(70%, -30%) scale(.62); }
+}

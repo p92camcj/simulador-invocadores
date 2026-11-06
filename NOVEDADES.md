@@ -6,6 +6,23 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.28.0.113 - 2026-11-06
+
+- **Botones nuevos y más modernos** en la vista Mesa 3D, también en la
+  pantalla de inicio, que ahora recibe con las tres criaturas y botones + / −
+  para elegir jugadoras y autómatas.
+- **El Metamorfo ya no engaña a la vista:** cuando se transforma sigue
+  viéndose su carta, con la ficha del personaje encima, igual que en la mesa
+  de verdad. La escena de transformación también es nueva: la ficha cae
+  girando y un barrido de luz lo convierte, dejando su silueta detrás.
+- **Más espectáculo en la mesa:** ondas y chispas al jugar cartas, Gemas que
+  saltan al ganarlas, requisitos que se iluminan y una gran celebración al
+  completar una invocación.
+- **Marcador final** con corona y confeti, y las preguntas que antes salían
+  en ventanas del navegador ahora aparecen con botones grandes en la mesa.
+
+---
+
 ## 1.27.0.111 - 2026-11-06
 
 - **Nueva vista "Mesa 3D", pensada para jugar en el móvil.** Elígela al
