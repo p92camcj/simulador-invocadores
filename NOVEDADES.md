@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.30.1.73 - 2026-11-06
+
+- **Cartas nuevas.** Las cartas de personaje usan ya el diseño nuevo de
+  Adrián. El número de la esquina indica cuántas copias de esa carta hay en
+  el mazo, y el Maestro tiene un icono nuevo que explica su habilidad de
+  obligar a alguien a bajar su carta visible a su Portal. Las reglas no
+  cambian.
+
 ## 1.30.0.119 - 2026-11-06
 
 - **Las autómatas aprenden de vosotras.** Cada vez que una persona juega
