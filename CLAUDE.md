@@ -255,7 +255,10 @@ in `nextTurn()`.
   `tieneCartaOcultaPropia` (yes/no only): without it, at the very end of
   the game with one card left, `'dificil'` could choose "play the hidden
   card" without having one and freeze the match. Its weights live in the
-  mutable `PESOS` object (`rival`, `posicion`, `amenaza`) so the arena can
+  mutable `PESOS` object (`rival`, `posicion`, `amenaza`, plus
+  `costeCentral`, subtracted in `bot.js`'s 'dificil' Fase B when activating
+  a central Portal: before 1.29.1 it ignored that Gem cost and burned its
+  Gems, the biggest weakness found in self-play) so the arena can
   try other values; tune them with `tools/ajustar-pesos.mjs`.
 - **`js/bot-busqueda.js`** — the `'experta'` difficulty (1.29.0): PIMC /
   determinization over the REAL engine. `determinizar(partida, botIdx)` is
@@ -270,6 +273,11 @@ in `nextTurn()`.
   ability's `ui.pedir` choices on throwaway copies), ends the turn with
   `terminarTurno()` and scores *own Gem gain − PESOS.rival × best rival's*
   plus `bot-estrategia.js`'s positional and next-player-threat values.
+  With `BUSQUEDA.ronda` (on since 1.29.1) it then plays each rival's turn
+  in that world with the 'dificil' heuristic (`simularTurnoRival` in
+  `bot.js`) and scores the whole round instead. `BUSQUEDA.rival` (0.5)
+  replaces `PESOS.rival` during its turn: same strength as 0.75, more
+  invocations closed.
   Picks the best average; after really playing Fase A, repeats for Fase B.
   ~30-300 ms per turn in Node.
 - **`tools/arena.mjs`** — headless self-play: whole games in Node with
@@ -460,6 +468,8 @@ in `nextTurn()`.
   (phase 1), actions/events (phase 2), decisions as requests (phase 3) and
   UI adapters (phase 4) are done; optional terminal UI (phase 5) is next. Read it before touching how state,
   abilities or turn flow are wired.
+- **`docs/ESTRATEGIA_AUTOMATAS.md`** — rule-based strategies the bots
+  use, arena results, and the options for learning from real games.
 - **`CHANGELOG.md`** — full version history.
 
 ## Regla de prioridad: deuda técnica antes que alcance nuevo

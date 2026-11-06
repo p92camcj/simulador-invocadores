@@ -38,7 +38,11 @@
 //   antes de que la invocación se cierre (puede taparse por el camino).
 // - amenaza: probabilidad de que la siguiente jugadora vea y aproveche un
 //   cierre que tiene a su alcance.
-export const PESOS = { rival: 0.75, posicion: 0.4, amenaza: 0.8 };
+// - costeCentral: cuánto resta, en la Fase B de 'dificil', activar un
+//   Portal central (cuesta una Gema de valor 1, y cada Gema es un punto).
+//   Es mayor que 1 porque las estimaciones de esa fase son optimistas; con
+//   autojuego, 3 gana claramente a 0 (que gastaba Gemas sin retorno).
+export const PESOS = { rival: 0.75, posicion: 0.4, amenaza: 0.8, costeCentral: 3 };
 // Valor de cada Gema extra de Pícaro / Maestro (siempre valor 1).
 const VALOR_GEMA_UNITARIA = 1;
 

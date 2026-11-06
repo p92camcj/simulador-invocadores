@@ -26,6 +26,7 @@ import {
 } from '../js/utils.js';
 import { decidirYJugarTurno, crearEjecutorMotor } from '../js/bot.js';
 import { PESOS } from '../js/bot-estrategia.js';
+import { BUSQUEDA } from '../js/bot-busqueda.js';
 
 /** PRNG con semilla (mulberry32): mismas partidas en cada ejecución. */
 export function sembrarAzar(semilla) {
@@ -91,8 +92,13 @@ function gestionarClarividente(partida) {
  */
 export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}) {
   const base = { ...PESOS };
+  const baseBusqueda = { ...BUSQUEDA };
   const dificultades = asientos.map(a => a.split('@')[0]);
-  const pesosDe = asientos.map(a => ({ ...base, ...(perfiles[a.split('@')[1]] || {}) }));
+  // Un perfil puede cambiar PESOS (bot-estrategia.js) y BUSQUEDA (bot-busqueda.js).
+  const perfilDe = a => perfiles[a.split('@')[1]] || {};
+  const soloClaves = (obj, ref) => Object.fromEntries(Object.entries(obj).filter(([k]) => k in ref));
+  const pesosDe = asientos.map(a => ({ ...base, ...soloClaves(perfilDe(a), base) }));
+  const busquedaDe = asientos.map(a => ({ ...baseBusqueda, ...soloClaves(perfilDe(a), baseBusqueda) }));
   const partida = prepararPartida(dificultades, invocationSet);
   estado.partida = partida;
   const ejecutor = crearEjecutorMotor();
@@ -100,6 +106,7 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}) 
   if (comprobarFinPorManoVacia(partida).length) partida.juegoTerminado = true;
   while (!partida.juegoTerminado && turnos < 500) {
     Object.assign(PESOS, pesosDe[partida.turn]);
+    Object.assign(BUSQUEDA, busquedaDe[partida.turn]);
     decidirYJugarTurno(partida.players, partida.neutrals, partida.turn,
       { levelIdx: partida.levelIdx, invocationSet }, ejecutor);
     gestionarClarividente(partida);
@@ -110,6 +117,7 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}) 
     turnos++;
   }
   Object.assign(PESOS, base);
+  Object.assign(BUSQUEDA, baseBusqueda);
   const resultado = calcularResultadoFinal(partida.players, partida.invocacionesCompletadas);
   return {
     puntos: partida.players.map(p => sumaGemas(p.gems)),
@@ -158,6 +166,7 @@ if (esPrincipal) {
     return acc;
   }, []));
   if (args.pesos) Object.assign(PESOS, JSON.parse(args.pesos));
+  if (args.busqueda) Object.assign(BUSQUEDA, JSON.parse(args.busqueda));
   const perfiles = args.perfiles ? JSON.parse(args.perfiles) : {};
   const jugadoras = +(args.jugadoras || 3);
   const mesa = args.mesa ? args.mesa.split(',') : ['dificil', ...Array(jugadoras - 1).fill('normal')];

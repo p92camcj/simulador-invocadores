@@ -27,8 +27,8 @@ import {
   valorMedioGemaNivel, valorEsperadoDeAccion, personajeMemorizadoEnPortal,
   calcularNecesariosUnicosDeRivales, PESO_ADVERSARIAL,
 } from './bot-probabilidad.js';
-import { evaluarJugadasFaseA } from './bot-estrategia.js';
-import { elegirFaseAExperta, elegirFaseBExperta } from './bot-busqueda.js';
+import { evaluarJugadasFaseA, PESOS } from './bot-estrategia.js';
+import { elegirFaseAExperta, elegirFaseBExperta, BUSQUEDA } from './bot-busqueda.js';
 
 // ---------- Nombres de autómatas ----------
 // Pool temático "Invocadores", todos terminados en "bot", con margen de
@@ -883,8 +883,11 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
   const contexto = { need, cumplidos, valorGemaNivel, necesariosUnicosDeRivales };
 
   let mejor = null;
+  // Activar un Portal central cuesta una Gema de valor 1, y cada Gema es un
+  // punto al final de la partida: solo compensa si se espera ganar más.
   const considerar = candidato => {
-    if (!mejor || candidato.ev > mejor.ev) mejor = candidato;
+    const ev = candidato.ev - (candidato.tipo === 'own' ? 0 : PESOS.costeCentral);
+    if (!mejor || ev > mejor.ev) mejor = { ...candidato, ev };
   };
 
   objetivosHabilidadDisponibles(players, neutrals, botIdx).forEach(c => {
@@ -1239,6 +1242,18 @@ function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecutor
  * carta oculta que no tiene.
  */
 function decidirYJugarTurnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
+  // La 'experta' tiene su propio peso de rival (BUSQUEDA.rival), también
+  // para las rivales que simula: se aplica solo durante su turno.
+  const rivalPrevio = PESOS.rival;
+  PESOS.rival = BUSQUEDA.rival;
+  try {
+    turnoExperta(players, neutrals, botIdx, contexto, ejecutor);
+  } finally {
+    PESOS.rival = rivalPrevio;
+  }
+}
+
+function turnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
   const { levelIdx, invocationSet } = contexto;
   const lvl = LEVELS[levelIdx];
   const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
@@ -1251,7 +1266,7 @@ function decidirYJugarTurnoExperta(players, neutrals, botIdx, contexto, ejecutor
   const candidatas = evaluarJugadasFaseA(vistaAntes, need, valorGemaNivel, probabilidades.probabilidadPorNombre)
     .map(({ usaConocida, destKey }) => ({ usaConocida, destKey }));
   const elegida = elegirFaseAExperta(estado.partida, botIdx, candidatas, construirEstadoVisibleParaBot,
-    probabilidades.probabilidadPorNombre);
+    probabilidades.probabilidadPorNombre, (mundo, idx) => simularTurnoRival(mundo, idx, invocationSet));
   const etiquetas = new Map(listaPortalesConDestino(vistaAntes).map(p => [p.destKey, p.etiqueta]));
   const decisionA = { ...elegida, etiqueta: etiquetas.get(elegida.destKey) };
   ejecutor.jugar(players, botIdx, decisionA);
@@ -1279,6 +1294,22 @@ function decidirYJugarTurnoExperta(players, neutrals, botIdx, contexto, ejecutor
 
   ejecutor.resumen(resumen);
   ejecutor.terminar();
+}
+
+/**
+ * Turno de una rival dentro de un mundo posible de la búsqueda 'experta'
+ * (js/bot-busqueda.js): juega con la heurística 'dificil' sobre ese mundo,
+ * solo con el motor. Cambia `estado.partida` el tiempo justo y lo restaura.
+ */
+function simularTurnoRival(mundo, idx, invocationSet) {
+  const real = estado.partida;
+  estado.partida = mundo;
+  try {
+    decidirYJugarTurnoDificil(mundo.players, mundo.neutrals, idx,
+      { levelIdx: mundo.levelIdx, invocationSet }, EJECUTOR_MOTOR_SILENCIOSO);
+  } finally {
+    estado.partida = real;
+  }
 }
 
 const HEURISTICAS_POR_DIFICULTAD = {
@@ -1339,3 +1370,5 @@ export function crearEjecutorMotor({ alJugar } = {}) {
     terminar() {},
   };
 }
+
+const EJECUTOR_MOTOR_SILENCIOSO = crearEjecutorMotor();
