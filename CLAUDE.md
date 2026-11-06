@@ -280,12 +280,31 @@ in `nextTurn()`.
   invocations closed.
   Picks the best average; after really playing Fase A, repeats for Fase B.
   ~30-300 ms per turn in Node.
+- **`js/aprendizaje.js`** + **`js/aprendizaje-navegador.js`** — (1.30.0)
+  autonomous learning from games with people, no server. Every human Fase
+  A play (`ejecutarJugada()` in `actions.js`, via
+  `prepararEjemploPersona`/`guardarEjemploPersona`) stores an example: the
+  sanitized vista from HER seat (`construirEstadoVisibleParaBot`, names
+  stripped) plus her choice, in `localStorage['invocadores.aprendizaje']`
+  (last `MAX_EJEMPLOS` = 300). At game end (`finalizarPartida()` →
+  `aprenderAlTerminarPartida()`) `ajustarModelo()` fits `rival`/
+  `posicion`/`amenaza` + softmax `beta` + known-card bias by maximum
+  likelihood (coordinate search over a grid; ~1.5 s for 300 examples in
+  Node). With ≥ `MIN_EJEMPLOS_MODELO` examples the model goes to
+  `establecerModeloPersonas()` (`bot.js`) and Experta's round simulation
+  plays human seats with `decidirYJugarTurnoComoPersona` (Fase A sampled
+  by `elegirJugadaComoPersona`) instead of assuming 'dificil'. The setup
+  screen panel (`#panelAprendizaje`) downloads/imports/clears it. Per
+  device only. `aprendizaje.js` is pure; keep it that way.
 - **`tools/arena.mjs`** — headless self-play: whole games in Node with
   the engine + `crearEjecutorMotor()`, seeded PRNG, rotating seats.
   `node tools/arena.mjs --partidas 1000 --mesa experta,dificil,dificil`;
   a seat can be `nivel@perfil` with `--perfiles '{"perfil":{...PESOS}}'`
   to pit two weight sets against each other. `tools/ajustar-pesos.mjs`
-  does a random search over `PESOS` with it. Use the arena to measure any
+  does a random search over `PESOS` with it. A `persona@perfil` seat is
+  a simulated human (`tipo: 'humano'`, played by 'dificil' with that
+  profile's weights); `--aprender 1` records their plays and refits the
+  people model after each game, like the web does. Use the arena to measure any
   bot change against `main` before shipping it.
 - **`js/game.js`** — builds the character deck (`initGame`, via
   `composicionMazoTotal(window.invocationSet)` in `utils.js` — see the gap
@@ -524,6 +543,7 @@ node tests/motor-habilidades.mjs
 node tests/motor-adaptadores.mjs
 node tests/vista-mesa.mjs
 node tests/bot-busqueda.mjs
+node tests/aprendizaje.mjs
 ```
 
 ```bash

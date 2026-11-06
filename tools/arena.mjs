@@ -24,7 +24,10 @@ import {
   shuffle, draw, composicionMazoTotal, calcularResultadoFinal, sumaGemas,
   tieneClarividenteVisible, LEVELS, INVOCATION_SETS,
 } from '../js/utils.js';
-import { decidirYJugarTurno, crearEjecutorMotor } from '../js/bot.js';
+import { decidirYJugarTurno, crearEjecutorMotor, construirEstadoVisibleParaBot, establecerModeloPersonas } from '../js/bot.js';
+import { crearEjemplo, ajustarModelo, conPesos, MAX_EJEMPLOS } from '../js/aprendizaje.js';
+import { estimarProbabilidadesPersonajes, valorMedioGemaNivel } from '../js/bot-probabilidad.js';
+import { evaluarJugadasFaseA } from '../js/bot-estrategia.js';
 import { PESOS } from '../js/bot-estrategia.js';
 import { BUSQUEDA } from '../js/bot-busqueda.js';
 
@@ -44,8 +47,12 @@ export function sembrarAzar(semilla) {
 export function prepararPartida(dificultades, invocationSet = 'normal') {
   const partida = crearEstadoPartida(invocationSet);
   const n = dificultades.length;
+  // 'persona' = una persona simulada (para probar el aprendizaje): para el
+  // motor y para las autómatas es una jugadora humana; la juega la
+  // heurística 'dificil' con los pesos de su perfil.
   partida.players = dificultades.map((dificultad, i) => ({
-    name: `${dificultad}-${i}`, tipo: 'auto', dificultad, hand: [], portals: [],
+    name: `${dificultad}-${i}`, tipo: dificultad === 'persona' ? 'humano' : 'auto',
+    dificultad: dificultad === 'persona' ? 'dificil' : dificultad, hand: [], portals: [],
     gems: Array.from({ length: 3 }, () => ({ valor: 1, nivel: 'unitaria' })),
   }));
   // Reparto de Portales del reglamento (setup.js).
@@ -90,7 +97,7 @@ function gestionarClarividente(partida) {
  * `perfiles[perfil]` (para enfrentar dos ajustes de pesos en la misma mesa).
  * Devuelve { puntos, ganadoras, invocaciones, turnos }.
  */
-export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}) {
+export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, registro = null) {
   const base = { ...PESOS };
   const baseBusqueda = { ...BUSQUEDA };
   const dificultades = asientos.map(a => a.split('@')[0]);
@@ -107,6 +114,7 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}) 
   while (!partida.juegoTerminado && turnos < 500) {
     Object.assign(PESOS, pesosDe[partida.turn]);
     Object.assign(BUSQUEDA, busquedaDe[partida.turn]);
+    if (registro && partida.players[partida.turn].tipo !== 'auto') registrarComoNavegador(partida, registro, invocationSet);
     decidirYJugarTurno(partida.players, partida.neutrals, partida.turn,
       { levelIdx: partida.levelIdx, invocationSet }, ejecutor);
     gestionarClarividente(partida);
@@ -128,19 +136,50 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}) 
 }
 
 /**
+ * Lo mismo que hace la web (js/aprendizaje-navegador.js) cuando juega una
+ * persona: guarda en `registro` lo que sabía y la jugada que hizo. Aquí la
+ * "persona" es simulada, así que su jugada se calcula antes (con sus pesos)
+ * y se guarda como la elegida; la de verdad la hace decidirYJugarTurno.
+ */
+function registrarComoNavegador(partida, registro, invocationSet) {
+  const idx = partida.turn;
+  const lvl = LEVELS[partida.levelIdx];
+  if (!lvl) return;
+  const need = INVOCATION_SETS[invocationSet][lvl].need;
+  const vista = construirEstadoVisibleParaBot(partida.players, partida.neutrals, idx);
+  const probs = estimarProbabilidadesPersonajes(vista, { portales: {} }, invocationSet).probabilidadPorNombre;
+  const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
+  const cands = conPesos({}, () => evaluarJugadasFaseA(vista, need, valorGemaNivel, probs));
+  const mejor = Math.max(...cands.map(c => c.valor));
+  const elegida = cands.find(c => c.valor >= mejor - 1e-9 && c.usaConocida) || cands.find(c => c.valor >= mejor - 1e-9);
+  if (!elegida) return;
+  registro.push(crearEjemplo({ vista, need, valorGemaNivel, probabilidadPorNombre: probs, usaConocida: elegida.usaConocida, destKey: elegida.destKey }));
+}
+
+/**
  * Enfrenta la mesa `mesa` (dificultad por asiento) en `partidas` partidas,
  * rotando asientos. Devuelve, por dificultad, el % de victorias (los empates
  * se reparten) y los puntos medios, más las invocaciones medias por partida.
  */
-export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'], set = 'normal', semilla = 1, perfiles = {} } = {}) {
+export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'], set = 'normal', semilla = 1, perfiles = {}, aprender = false } = {}) {
   sembrarAzar(semilla);
   const n = mesa.length;
   const stats = {};
   mesa.forEach(d => { stats[d] ??= { asientos: 0, victorias: 0, puntos: 0 }; });
   let invocaciones = 0;
+  // Con `aprender`, como en la web: las jugadas de las 'persona' se
+  // registran y, al acabar cada partida, se reajusta el modelo que usa la
+  // Experta para preverlas.
+  let ejemplos = [];
+  establecerModeloPersonas(null);
   for (let g = 0; g < partidas; g++) {
     const rot = mesa.map((_, i) => mesa[(i + g) % n]);
-    const r = jugarPartida(rot, set, perfiles);
+    const registro = aprender ? [] : null;
+    const r = jugarPartida(rot, set, perfiles, registro);
+    if (aprender && registro.length) {
+      ejemplos = ejemplos.concat(registro).slice(-MAX_EJEMPLOS);
+      establecerModeloPersonas(ajustarModelo(ejemplos));
+    }
     invocaciones += r.invocaciones;
     rot.forEach((d, i) => {
       stats[d].asientos++;
@@ -155,6 +194,7 @@ export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'],
       puntosMedios: +(s.puntos / s.asientos).toFixed(2),
     };
   });
+  establecerModeloPersonas(null);
   return { partidas, mesa: mesa.join(','), invocacionesPorPartida: +(invocaciones / partidas).toFixed(2), resumen };
 }
 
@@ -171,6 +211,6 @@ if (esPrincipal) {
   const jugadoras = +(args.jugadoras || 3);
   const mesa = args.mesa ? args.mesa.split(',') : ['dificil', ...Array(jugadoras - 1).fill('normal')];
   const t0 = Date.now();
-  const r = torneo({ partidas: +(args.partidas || 500), mesa, set: args.set || 'normal', semilla: +(args.semilla || 1), perfiles });
+  const r = torneo({ partidas: +(args.partidas || 500), mesa, set: args.set || 'normal', semilla: +(args.semilla || 1), perfiles, aprender: args.aprender === '1' });
   console.log(JSON.stringify({ ...r, pesos: PESOS, segundos: (Date.now() - t0) / 1000 }, null, 1));
 }

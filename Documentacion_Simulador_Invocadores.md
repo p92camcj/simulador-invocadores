@@ -148,6 +148,7 @@ y `aplicarHabilidad()` de `js/motor/habilidades.js` contestada por
 | `decidirAprendizNormal(vista, need)` / `decidirAprendizPropioDificil(vista, need, cumplidos, valorGemaNivel)` / `decidirAprendizAjenoAjenoDificil(vista, need, cumplidos, valorGemaNivel)` | `función` | (Bloque 4, 4.4, exportadas solo para tests) Aprendiz intercambia manos COMPLETAS de dos jugadoras, manteniendo la orientación de cada carta. `'normal'`: SOLO beneficio propio incluyéndose a sí mismo — si su propia carta conocida ya es útil no la cambia a ciegas; si no, busca una rival cuya carta pública conocida sí lo sea. `'dificil'` combina dos casos independientes (el de mayor valor esperado gana): (a) `decidirAprendizPropioDificil`, incluyéndose, comparando el valor de recibir la carta pública de cada rival frente a ceder la propia (`valorCartaEnManoPropia`, interna — mismo descuento "a futuro, en mano" `* 0.5` que ya usa Cronista; deliberadamente NO reutiliza `valorEsperadoDeAccion()`, pensada para cartas que acaban VISIBLES en un Portal, no para un simple cambio de mano); (b) `decidirAprendizAjenoAjenoDificil`, intercambio puramente adversarial de las manos de DOS RIVALES (el bot no se incluye) para desbaratar a la que va mejor posicionada, estimada por el recuento de Gemas por nivel (`gemasPorNivel`, nunca el valor exacto) — solo con al menos 2 rivales y si a la líder se le puede quitar algo que de verdad le convenía. |
 | `decidirJugadaFaseA(vista, need)` / `decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl)` | `función` | (exportadas solo para tests) Decisión de Fase A por dificultad. `'normal'` prioriza completar la invocación activa con un único Portal bloqueante; si no, aplica el ajuste adversarial de bajo coste del Bloque 3 (`decidirJugadaAdversarialNormal`, interna): (1) denegación GRATUITA por duplicado si la carta conocida es requisito activo, ya está visible en Portal AJENO, y el propio bot no la tiene ya (no pierde nada); (2) si no, tapar un Portal ajeno que muestre, como única copia visible en toda la mesa, un requisito de la invocación activa. Solo con información visible ahora mismo, nunca memoria/probabilidad. `'dificil'` (desde 1.26.3) evalúa TODAS las combinaciones carta×Portal con `evaluarJugadasFaseA()` (`js/bot-estrategia.js`): reparto real de Gemas si la jugada cierra la invocación (propio menos la mejor rival), riesgo de dejar el cierre servido a la siguiente jugadora y valor de posición. Nunca propone jugar la carta oculta si `vista.tieneCartaOcultaPropia === false` (final de partida). |
 | `decidirYJugarTurno(players, neutrals, botIdx, contexto, ejecutor?)` | `función` | Punto de entrada único: despacha por `players[botIdx].dificultad` (`HEURISTICAS_POR_DIFICULTAD`: `'normal'`, `'dificil'` o `'experta'`) y ejecuta el turno completo (Fases A-E) de la bot. `contexto = { levelIdx, invocationSet }`. Desde el Bloque 4, la MEMORIA (`window.memoriaBots[botIdx]`, historial bruto de nombres vistos por Portal) la mantienen AMBAS dificultades (antes solo `'dificil'`) — la necesita Cronomante para decidir con sentido en cualquier nivel; el conteo de cartas/probabilidad (`js/bot-probabilidad.js`) sigue siendo exclusivo de `'dificil'`. Fase B: desde el Bloque 4, AMBAS dificultades saben usar las 7 habilidades activas (`PERSONAJES_CON_HABILIDAD`, `utils.js`). `'normal'` con una condición simple y de bajo riesgo por habilidad (solo información visible ahora mismo o memoria bruta, nunca probabilidad): Ocultista/Cronista comparten la comprobación "falta algo del combo Y hay un Portal oculto legal", y cada una además por su cuenta puede denegar gratis el único requisito visible de una rival (`decidirOcultistaAdversarialNormal`/`decidirCronistaAdversarialNormal`, ambas actúan también sobre un Portal YA VISIBLE, no solo oculto); Cronomante (`decidirCronomanteNormal`), Estratega (`decidirEstrategaNormal`), Aprendiz (`decidirAprendizNormal`), Metamorfo (`decidirMetamorfoNormal`) y Maestro (`decidirMaestroNormal`) — todas arriba — solo por beneficio propio, nunca el matiz adversarial más elaborado (reservado a `'dificil'`). `'dificil'` decide por valor esperado en Gemas: además del beneficio propio, cada habilidad incorpora su propio matiz adversarial (denegar/tapar/duplicar el único requisito visible de una rival, con el mismo mecanismo `cubreNecesarioUnicoRival`/`necesariosUnicosDeRivales` que ya usa Fase A) salvo Aprendiz, que además puede intercambiar las manos de DOS rivales sin beneficio propio directo. Ambos niveles resuelven los `picker()`/`pickerPortal()` que abre `applyAbility()` programáticamente (mismo `#pickerSelect`/`#pickerOk` que usaría un clic humano; el objetivo ya calculado se pasa como `objetivoPreferido` — un único valor o un ARRAY alineado por paso, para habilidades de varios pasos como Cronomante) y el resumen de turno (`alert()`) siempre se redacta en tercera persona, incluyendo de quién es el Portal/mano afectado por la habilidad activada (`describirObjetivoHabilidad`, arriba). Termina simulando el clic en `#btnEndTurn`, que ya comprueba invocación, reparte Gemas, roba y avanza turno con la misma lógica que una jugadora humana. `ejecutor` (opcional, desde 1.29.0) lleva a cabo lo decidido: `{ jugar, activar, resumen, terminar }`; por defecto el de la web (`ejecutarJugada`, `aplicarHabilidad` + `crearUiAutomata`, `alert()`, `ejecutarFinDeTurno`). |
+| `establecerModeloPersonas(modelo)` / `obtenerModeloPersonas()` | `función` | (1.30.0) Modelo aprendido de cómo juegan las personas (`js/aprendizaje.js`). Si está fijado, la Experta simula los turnos de las personas con `decidirYJugarTurnoComoPersona` en vez de con la heurística Difícil. |
 | `crearEjecutorMotor({ alJugar? })` | `función` | (1.29.0) Ejecutor sin interfaz, solo con el motor sobre `estado.partida`: juega con `jugarCarta`, aplica la habilidad con `aplicarHabilidad` + `crearUiAutomata` + `completarActivacion`, no muestra nada y no termina el turno (lo hace quien orquesta). Lo usa `tools/arena.mjs`. |
 
 ---
@@ -218,6 +219,37 @@ completo (Fase A + Fase B) con el motor real sobre mundos posibles
 
 ---
 
+## js/aprendizaje.js
+**Propósito:** Aprendizaje autónomo de las autómatas a partir de las
+jugadas de las personas (1.30.0), sin servidor. Puro: sin DOM, `window` ni
+localStorage, y nunca recibe la partida real (solo vistas saneadas).
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `VERSION_ALMACEN`, `MAX_EJEMPLOS` (300), `MIN_EJEMPLOS_MODELO` (15) | `constante` | Formato del almacén, ejemplos guardados como máximo y mínimos para usar el modelo. |
+| `crearAlmacenVacio()` / `normalizarAlmacen(datos)` | `función` | Almacén `{ version, partidas, ejemplos, modelo }`; `normalizarAlmacen` valida lo leído o importado y descarta lo corrupto. |
+| `crearEjemplo({ vista, need, valorGemaNivel, probabilidadPorNombre, usaConocida, destKey })` | `función` | Ejemplo de entrenamiento: copia de la vista desde el asiento de la persona, sin nombres, y su jugada. |
+| `anadirEjemplos(almacen, ejemplos)` | `función` | Añade y recorta a los `MAX_EJEMPLOS` más recientes. |
+| `conPesos(pesos, fn)` | `función` | Ejecuta `fn` con `PESOS` (bot-estrategia.js) cambiados temporalmente. |
+| `ajustarModelo(ejemplos)` | `función` | Máxima verosimilitud de las jugadas con `evaluarJugadasFaseA` + softmax: `{ rival, posicion, amenaza, beta, sesgoConocida, logVerosimilitud, acierto, ejemplos }`, o `null` si hay pocos ejemplos. |
+| `logVerosimilitud(ejemplos, modelo)` | `función` | Log-verosimilitud media (diagnóstico y tests). |
+| `modeloUtilizable(modelo)` | `función` | Si el modelo tiene datos suficientes y es válido. |
+| `elegirJugadaComoPersona(vista, need, valorGemaNivel, probabilidadPorNombre, modelo, azar)` | `función` | Sortea una jugada de Fase A con el softmax del modelo. |
+
+## js/aprendizaje-navegador.js
+**Propósito:** Adaptador web de `js/aprendizaje.js`: localStorage
+(`invocadores.aprendizaje`), panel `#panelAprendizaje` de la configuración y
+entrega del modelo a `bot.js`.
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `initAprendizaje()` | `función` | Carga lo aprendido, llama a `establecerModeloPersonas` y conecta el panel (descargar, importar, borrar). Desde `index.js`. |
+| `prepararEjemploPersona(partida, cartaIdx, destKey)` | `función` | Antes de `jugarCarta` en `ejecutarJugada()`: ejemplo si juega una persona, `null` si es autómata. |
+| `guardarEjemploPersona(ejemplo)` | `función` | Tras una jugada válida: lo guarda. |
+| `aprenderAlTerminarPartida()` | `función` | Desde `finalizarPartida()`: si jugaron personas, reajusta el modelo (diferido con `setTimeout`). |
+
+---
+
 ## tools/arena.mjs
 **Propósito:** Simulador de partidas sin navegador (1.29.0) para medir y
 afinar la IA. Reparte como `setup.js` + `initGame()`, juega con
@@ -230,7 +262,7 @@ Azar con semilla (`sembrarAzar`).
 | `sembrarAzar(semilla)` | `función` | Sustituye `Math.random` por un generador con semilla (mulberry32). |
 | `prepararPartida(dificultades, invocationSet)` | `función` | Partida nueva sin DOM, una autómata por dificultad. |
 | `jugarPartida(asientos, invocationSet, perfiles)` | `función` | Partida completa; asiento `'nivel'` o `'nivel@perfil'` (con `perfiles[perfil]` como `PESOS` y `BUSQUEDA` en sus turnos). Devuelve `{ puntos, ganadoras, invocaciones, turnos }`. |
-| `torneo({ partidas, mesa, set, semilla, perfiles })` | `función` | Varias partidas rotando asientos; % de victorias y puntos medios por asiento. CLI: `node tools/arena.mjs --partidas 1000 --mesa experta,dificil,dificil`. |
+| `torneo({ partidas, mesa, set, semilla, perfiles, aprender })` | `función` | Varias partidas rotando asientos; % de victorias y puntos medios por asiento. CLI: `node tools/arena.mjs --partidas 1000 --mesa experta,dificil,dificil`. Asiento `'persona@perfil'`: persona simulada (`tipo: 'humano'`, juega Difícil con esos pesos). Con `aprender` (CLI `--aprender 1`) registra sus jugadas y reajusta el modelo de las personas tras cada partida. |
 
 `tools/ajustar-pesos.mjs`: búsqueda aleatoria de `PESOS` enfrentando cada
 candidata a los pesos actuales en 2 y 3 jugadoras.

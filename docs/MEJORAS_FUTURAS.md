@@ -49,12 +49,11 @@ se generen solo a partir de la vista saneada.
    Probado y descartado: un término de "progreso hacia el cierre" (ayuda
    más a las rivales que a quien lo usa). Sigue pendiente comparar con
    partidas reales entre personas (ver punto 6).
-6. **Aprender de partidas reales**: registrar cada partida (jugadas y
-   resultado, sin nombres) y permitir descargarla como archivo; con esos
-   registros se pueden afinar los pesos y comprobar si las autómatas
-   juegan como las personas. Sin servidor, es la opción más sencilla y
-   privada; el aprendizaje directo en el navegador tendría muy pocos datos
-   por dispositivo.
+6. ~~**Aprender de partidas reales**~~ (hecho en 1.30.0, aprendizaje por
+   imitación en el navegador, ver `docs/ESTRATEGIA_AUTOMATAS.md`).
+   Siguiente paso posible: aprender también de los RESULTADOS (qué pesos
+   ganan más contra personas reales), que necesita muchas más partidas;
+   juntar registros de varios dispositivos (importar) ayuda.
 
 ## Resuelto recientemente (2026-07-21, Bloque 3 — estrategia adversarial en Fase A)
 
