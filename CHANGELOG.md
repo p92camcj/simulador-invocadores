@@ -4,6 +4,28 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.29.1.117] - 2026-11-06
+
+### Mejorado
+- **Difícil ya no malgasta Gemas.** Su Fase B (`decidirHabilidadFaseBDificil`,
+  `js/bot.js`) resta `PESOS.costeCentral` (3) al activar un Portal central,
+  que cuesta una Gema de valor 1. Antes lo ignoraba y acababa las partidas
+  con 1,6 Gemas de media. En la arena: Difícil contra dos Normal pasa del
+  46 % al 78 % de victorias; contra tres Normal, al 52 %.
+- **Experta anticipa a cada rival.** Con `BUSQUEDA.ronda` (activo por
+  defecto), tras su mejor turno en cada mundo posible juega el turno de
+  cada rival con la heurística Difícil (`simularTurnoRival`, `js/bot.js`)
+  y puntúa la ronda entera (`puntuarRonda`, `js/bot-busqueda.js`). Usa
+  `BUSQUEDA.rival` = 0,5 como peso de rival: igual de fuerte y cierra más
+  invocaciones. Contra dos Difícil (ya mejoradas) gana el 48 %; en sus
+  partidas se completan 1,1 invocaciones de media con 3 jugadoras (antes
+  0,7).
+- `tools/arena.mjs`: los perfiles por asiento también cambian `BUSQUEDA`,
+  y hay opción `--busqueda`.
+- Nuevo `docs/ESTRATEGIA_AUTOMATAS.md`: estrategias del reglamento que
+  usan las autómatas, resultados y opciones para aprender de partidas
+  reales.
+
 ## [1.29.0.115] - 2026-11-06
 
 ### Añadido

@@ -40,12 +40,21 @@ se generen solo a partir de la vista saneada.
    `PESOS` de `bot-estrategia.js` enfrentando cada candidata a los pesos
    actuales. Pendiente: afinar también los pesos de `bot-probabilidad.js`
    (Fase B de Difícil).
-5. **Partidas más vivas**: con autómatas se completan muy pocas
-   invocaciones (0,3-0,8 de 3 por partida en 3-4 jugadoras, medido con la
-   arena), así que la mayoría de partidas acaban sin apenas Gemas. Merece
-   la pena mirar si es así también entre personas (puede ser un dato útil
-   para el diseño del juego) o si es un efecto de las autómatas
-   bloqueándose entre sí.
+5. **Partidas más vivas** (avance en 1.29.1): la causa principal era
+   que Difícil gastaba sus Gemas de 1 en habilidades centrales sin
+   retorno (acababa con ~1,6 Gemas de media) y que los Portales centrales
+   se quedaban vacíos muchos turnos. Con el coste de las Gemas en cuenta
+   y la Experta anticipando a cada rival, entre Experta y Difícil se
+   completan ~1,1 invocaciones por partida a 3 (antes 0,7) y ~1,9 a 2.
+   Probado y descartado: un término de "progreso hacia el cierre" (ayuda
+   más a las rivales que a quien lo usa). Sigue pendiente comparar con
+   partidas reales entre personas (ver punto 6).
+6. **Aprender de partidas reales**: registrar cada partida (jugadas y
+   resultado, sin nombres) y permitir descargarla como archivo; con esos
+   registros se pueden afinar los pesos y comprobar si las autómatas
+   juegan como las personas. Sin servidor, es la opción más sencilla y
+   privada; el aprendizaje directo en el navegador tendría muy pocos datos
+   por dispositivo.
 
 ## Resuelto recientemente (2026-07-21, Bloque 3 — estrategia adversarial en Fase A)
 

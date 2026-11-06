@@ -178,7 +178,8 @@ dificultad `'dificil'` (desde 1.26.3). Funciones PURAS sobre la vista
 saneada (`construirEstadoVisibleParaBot()`) y la distribución del conteo de
 cartas (`estimarProbabilidadesPersonajes()`); nunca leen el estado real.
 Pesos ajustables en el objeto mutable exportado `PESOS` (`rival`,
-`posicion`, `amenaza`); el simulador `tools/arena.mjs` los cambia por
+`posicion`, `amenaza`, y `costeCentral`, que resta la Fase B de
+`'dificil'` en `js/bot.js` al activar un Portal central); el simulador `tools/arena.mjs` los cambia por
 asiento para enfrentar ajustes distintos. Los usa también `'experta'`
 (`js/bot-busqueda.js`) para puntuar cada mundo.
 
@@ -208,11 +209,11 @@ completo (Fase A + Fase B) con el motor real sobre mundos posibles
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
-| `BUSQUEDA` | `objeto` | Presupuesto: `{ mundos: 8 }` (mundos posibles por decisión). |
+| `BUSQUEDA` | `objeto` | `{ mundos: 8, ronda: 1, rival: 0.5 }`: mundos posibles por decisión; si se simula la ronda de las rivales tras el turno propio; y el `PESOS.rival` que usa la experta (lo aplica `bot.js` solo durante su turno). |
 | `determinizar(partida, botIdx)` | `función` | Copia de la partida con la carta oculta de la bot, las cartas privadas de las rivales (y su mano entera si tienen la Clarividente visible) y el mazo repartidos al azar entre los personajes que la bot aún no ha visto (composición menos todas las cartas de los Portales y las de mano que ve), y las Gemas ajenas con el valor medio de su nivel. `tests/bot-busqueda.mjs` comprueba que no filtra nada oculto. |
 | `enumerarFasesB(partida, botIdx)` | `función` | `[null, { origen, guion }...]`: no activar nada, o cada habilidad activable (`opcionesActivarHabilidad`) con cada combinación de elecciones, descubiertas recorriendo las peticiones `ui.pedir` del motor en copias desechables. |
 | `puntuarMundo(antes, despues, botIdx, construirVista, probabilidadPorNombre)` | `función` | Gemas ganadas por la bot − `PESOS.rival` × las de la rival que más gana, más `valorPosicional` y `valorAmenazaSiguiente` (`bot-estrategia.js`) sobre la mesa que queda. |
-| `elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre)` | `función` | Media, entre mundos, del mejor turno (mejor Fase B) tras cada candidata de Fase A; devuelve la mejor con su `valor`. |
+| `elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre, jugarRival)` | `función` | Media, entre mundos, del mejor turno (mejor Fase B) tras cada candidata de Fase A; devuelve la mejor con su `valor`. Con `BUSQUEDA.ronda`, tras ese turno juega en el mundo el turno de cada rival con `jugarRival(mundo, idx)` (en `bot.js`, la heurística `'dificil'`) y puntúa toda la ronda: Gemas propias − `PESOS.rival` × las de la mejor rival, más `valorPosicional`. |
 | `elegirFaseBExperta(partida, botIdx, construirVista, probabilidadPorNombre)` | `función` | Con la Fase A ya jugada: la Fase B (o ninguna) con mejor media entre mundos, como `{ origen, guion, valor }` o `null`. `bot.js` pasa `guion` como `objetivoPreferido` a `crearUiAutomata`. |
 
 ---
@@ -228,7 +229,7 @@ Azar con semilla (`sembrarAzar`).
 |--------|------|-------------|
 | `sembrarAzar(semilla)` | `función` | Sustituye `Math.random` por un generador con semilla (mulberry32). |
 | `prepararPartida(dificultades, invocationSet)` | `función` | Partida nueva sin DOM, una autómata por dificultad. |
-| `jugarPartida(asientos, invocationSet, perfiles)` | `función` | Partida completa; asiento `'nivel'` o `'nivel@perfil'` (con `perfiles[perfil]` como `PESOS` en sus turnos). Devuelve `{ puntos, ganadoras, invocaciones, turnos }`. |
+| `jugarPartida(asientos, invocationSet, perfiles)` | `función` | Partida completa; asiento `'nivel'` o `'nivel@perfil'` (con `perfiles[perfil]` como `PESOS` y `BUSQUEDA` en sus turnos). Devuelve `{ puntos, ganadoras, invocaciones, turnos }`. |
 | `torneo({ partidas, mesa, set, semilla, perfiles })` | `función` | Varias partidas rotando asientos; % de victorias y puntos medios por asiento. CLI: `node tools/arena.mjs --partidas 1000 --mesa experta,dificil,dificil`. |
 
 `tools/ajustar-pesos.mjs`: búsqueda aleatoria de `PESOS` enfrentando cada

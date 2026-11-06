@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.29.1.117 - 2026-11-06
+
+- **Autómatas más listas con las Gemas.** La dificultad Difícil ya no
+  gasta Gemas en habilidades de los Portales centrales que no le compensan:
+  cada Gema es un punto al final. Ahora gana muchas más partidas.
+- **La Experta piensa en lo que harás tú.** Antes de jugar, imagina
+  también el turno de cada rival, así que evita dejarte la invocación
+  servida y cierra más invocaciones. Las partidas son más vivas.
+
 ## 1.29.0.115 - 2026-11-06
 
 - **Nueva dificultad de autómatas: Experta.** Antes de jugar, imagina

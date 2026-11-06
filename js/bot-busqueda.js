@@ -25,7 +25,7 @@
 // información oculta producen exactamente los mismos mundos.
 
 import { aplicarHabilidad } from './motor/habilidades.js';
-import { jugarCarta, terminarTurno, completarActivacion, invocacionActiva } from './motor/acciones.js';
+import { jugarCarta, terminarTurno, pasarTurno, completarActivacion, invocacionActiva } from './motor/acciones.js';
 import {
   composicionMazoTotal, sumaGemas, tieneClarividenteVisible, opcionesActivarHabilidad,
   todosLosPortales, shuffle, INVOCATION_SETS,
@@ -35,7 +35,13 @@ import {
 } from './bot-estrategia.js';
 
 // Presupuesto de búsqueda (ajustable desde tools/arena.mjs).
-export const BUSQUEDA = { mundos: 8 };
+// - mundos: cuántos mundos posibles se generan por decisión.
+// - ronda: 1 = tras el turno propio se simula el turno de cada rival hasta
+//   que vuelve a tocarle a la autómata (ver puntuarRonda); 0 = solo el
+//   turno propio.
+// - rival: PESOS.rival mientras decide la 'experta'. Con 0,5 juega igual de
+//   fuerte que con 0,75 pero cierra más invocaciones (partidas más vivas).
+export const BUSQUEDA = { mundos: 8, ronda: 1, rival: 0.5 };
 
 const clonar = obj => JSON.parse(JSON.stringify(obj));
 
@@ -202,11 +208,58 @@ export function puntuarMundo(antes, despues, botIdx, construirVista, probabilida
 }
 
 /** Valor de terminar el turno en `mundo` tras aplicar la Fase B `accionB` (o ninguna). */
-function valorTrasFaseB(mundo, botIdx, accionB, construirVista, probabilidadPorNombre, antes) {
+function valorTrasFaseB(mundo, botIdx, accionB, construirVista, probabilidadPorNombre, antes, guardar) {
   const copia = clonar(mundo);
   if (accionB && !aplicarConGuion(copia, botIdx, accionB.origen, accionB.guion)) return null;
   terminarTurno(copia);
+  if (guardar) guardar.mundo = copia;
   return puntuarMundo(antes, copia, botIdx, construirVista, probabilidadPorNombre);
+}
+
+/**
+ * Simula, en un mundo donde la autómata ya ha terminado su turno, el turno
+ * de cada rival hasta que vuelve a tocarle (o se acaba la partida). Cada
+ * rival juega con `jugarRival(mundo, idx)` (una heurística rápida, con la
+ * información que esa rival tiene en este mundo). Devuelve la puntuación,
+ * para `botIdx`, de toda la ronda respecto a `antes`: así la autómata ve
+ * qué hará cada rival con la mesa que le deja (cerrar la invocación, tapar
+ * un requisito, gastar Gemas...) en vez de suponerlo.
+ */
+function puntuarRonda(antes, mundo, botIdx, jugarRival) {
+  const n = mundo.players.length;
+  let guard = 0;
+  while (!mundo.juegoTerminado && guard++ < n) {
+    pasarTurno(mundo);
+    if (mundo.juegoTerminado || mundo.turn === botIdx) break;
+    jugarRival(mundo, mundo.turn);
+    if (!mundo.played) break;
+    terminarTurno(mundo);
+  }
+  const delta = mundo.players.map((p, i) => sumaGemas(p.gems) - sumaGemas(antes.players[i].gems));
+  const rivales = delta.filter((_, i) => i !== botIdx);
+  let valor = delta[botIdx] - PESOS.rival * (rivales.length ? Math.max(...rivales) : 0);
+  if (mundo.juegoTerminado) return valor;
+  const inv = invocacionActiva(mundo);
+  if (!inv) return valor;
+  const valorGemaNivel = inv.gemas.reduce((a, b) => a + b, 0) / inv.gemas.length;
+  const tablero = tableroDesdeVistaReal(mundo, botIdx);
+  valor += valorPosicional(tablero, inv.need, valorGemaNivel, n, botIdx);
+  return valor;
+}
+
+/** Tablero simplificado (formato de bot-estrategia.js) de un mundo ya determinizado. */
+function tableroDesdeVistaReal(mundo, botIdx) {
+  const tablero = [];
+  const cima = s => (s.length && s.at(-1).vis?.public) ? (s.at(-1).aspecto || s.at(-1).name) : null;
+  mundo.players.forEach((p, i) => p.portals.forEach((s, k) => {
+    const nombre = cima(s);
+    tablero.push({ destKey: i === botIdx ? `p:${k}` : `a:${i}:${k}`, dueña: i, nombre, bloqueado: !nombre });
+  }));
+  mundo.neutrals.forEach((s, k) => {
+    const nombre = cima(s);
+    tablero.push({ destKey: `n:${k}`, dueña: null, nombre, bloqueado: !nombre });
+  });
+  return tablero;
 }
 
 /**
@@ -214,9 +267,10 @@ function valorTrasFaseB(mundo, botIdx, accionB, construirVista, probabilidadPorN
  * Devuelve la candidata con mejor media (entre mundos) del mejor turno
  * posible tras ella, con su `valor`.
  */
-export function elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre) {
+export function elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre, jugarRival) {
   const mundos = Array.from({ length: BUSQUEDA.mundos }, () => determinizar(partida, botIdx));
   const totales = candidatas.map(() => 0);
+  const conRonda = BUSQUEDA.ronda && jugarRival;
   mundos.forEach(mundo => {
     candidatas.forEach((cand, ci) => {
       const tras = clonar(mundo);
@@ -224,11 +278,13 @@ export function elegirFaseAExperta(partida, botIdx, candidatas, construirVista, 
       if (idx < 0) { totales[ci] -= 1e6; return; }
       jugarCarta(tras, { cartaIdx: idx, destino: cand.destKey });
       let mejor = -Infinity;
+      let mejorMundo = null;
       enumerarFasesB(tras, botIdx).forEach(accionB => {
-        const v = valorTrasFaseB(tras, botIdx, accionB, construirVista, probabilidadPorNombre, mundo);
-        if (v !== null && v > mejor) mejor = v;
+        const guardar = conRonda ? {} : null;
+        const v = valorTrasFaseB(tras, botIdx, accionB, construirVista, probabilidadPorNombre, mundo, guardar);
+        if (v !== null && v > mejor) { mejor = v; mejorMundo = guardar?.mundo; }
       });
-      totales[ci] += mejor;
+      totales[ci] += conRonda && mejorMundo ? puntuarRonda(mundo, mejorMundo, botIdx, jugarRival) : mejor;
     });
   });
   let mejorIdx = 0;
