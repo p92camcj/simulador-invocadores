@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.31.1.77 - 2026-11-06
+
+- En la escena de la Estratega, el personaje que cambia del Portal de la
+  izquierda al de la derecha ya no se esconde detrás del Portal: ahora los
+  dos personajes se cruzan por delante y se ven enteros.
+
 ## 1.31.0.75 - 2026-11-06
 
 - **Salir y retomar la partida.** Durante la partida hay un botón
