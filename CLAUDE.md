@@ -374,6 +374,24 @@ in `nextTurn()`.
   `assets/cartas/` by `node tools/rasterizar_svg.cjs cartas && python3
   tools/generar_cartas.py` (same file names and 362x504 size). Toggle: `#btnEspectaculo` (header) /
   `#chkEspectaculo` (setup), stored in `localStorage`.
+- **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
+  3D" view (added 1.27.0, 2026-11-06), an alternative to the classic board
+  built for touch/mobile, pure CSS 3D (the owner chose it over Three.js).
+  Selectable in setup (`#selVista`) or `#btnVista`, stored in
+  `localStorage` (`invocadores.vista`), default on touch screens. Holds no
+  rules: it acts through the same hooks as the classic view
+  (`window.selectHandCard`/`tryPlayOnPortal`/`selectPortalObjetivo`,
+  clicking `#btnAbility`/`#btnEndTurn`/`#btnPlayCancel`). Wired in at
+  `render()` (calls `renderMesa3D()`), `picker()` (delegates to
+  `pickerMesa()`, a bottom sheet), `nextTurn()` (`anunciarTurnoMesa()`:
+  hand-off curtain with several humans, instead of `alert()`) and
+  `resetJuego()` (`salirDeMesa()`); while active it also turns `alert()`
+  into non-blocking toasts. What each seat shows comes from the pure
+  `construirVistaMesa()` (`js/vista-mesa.js`, tests in
+  `tests/vista-mesa.mjs`): a card the viewer can't see has `nombre: null`,
+  so hidden names never reach the DOM. Seat rule: the active human sits at
+  the bottom; during a bot's turn the last human stays there; a lone human
+  sees her own owner-visible card all the time.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current
@@ -463,6 +481,7 @@ node tests/motor-estado.mjs
 node tests/motor-acciones.mjs
 node tests/motor-habilidades.mjs
 node tests/motor-adaptadores.mjs
+node tests/vista-mesa.mjs
 ```
 
 ```bash

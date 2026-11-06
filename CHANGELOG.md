@@ -4,6 +4,46 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.27.0.111] - 2026-11-06
+
+### Añadido
+- **Vista "Mesa 3D", pensada para jugar en el móvil.** Una interfaz nueva,
+  seleccionable en la configuración (`#selVista`) o desde la cabecera
+  (`#btnVista`), que convive con la clásica y con el modo Escenas. Solo CSS
+  3D (`mesa3d.css`), sin librerías ni dependencias nuevas:
+  - Mesa en perspectiva con cartas 3D (cara y dorso), pilas con grosor
+    según su altura y círculos rúnicos animados bajo cada Portal. Tu mano va
+    abajo en abanico, las rivales arriba (en orden de turno) y los Portales
+    centrales en medio.
+  - Jugar una carta: tocarla (se levanta y los Portales brillan) y tocar un
+    Portal, o arrastrarla con el dedo. La carta vuela hasta su Portal.
+  - Fase B: los Portales con habilidad activable llevan un ✦ y, al
+    tocarlos, ofrecen activarla; el botón Habilidad se desactiva si no hay
+    ninguna. Los `picker()` pasan a ser hojas inferiores con botones
+    grandes; si piden un Portal, la hoja es compacta y se puede tocar el
+    Portal en la mesa.
+  - Tocar un Portal o una carta visible la amplía; tocar la invocación
+    muestra la criatura y sus requisitos.
+  - Los `alert()` se muestran como avisos flotantes que no bloquean. Con
+    varias humanas, cada turno empieza con un telón para pasar el móvil sin
+    enseñar la mano; contra autómatas, un rótulo, y la humana no se mueve de
+    su sitio (y ve su carta también durante el turno de las autómatas).
+  - Animaciones de carta que entra, se voltea, se reparte o aterriza;
+    respeta `prefers-reduced-motion`.
+  - En pantallas táctiles es la vista por defecto; la preferencia se guarda
+    en `localStorage` (`invocadores.vista`).
+- `js/vista-mesa.js`: modelo puro de lo que enseña cada asiento (sin DOM).
+  Tests nuevos: `node tests/vista-mesa.mjs` (11), que comprueban que ninguna
+  carta oculta llega a la vista.
+
+### Cambiado
+- `render()` llama a `renderMesa3D()` y `picker()` delega en la hoja de la
+  mesa cuando está activa; `nextTurn()` usa `anunciarTurnoMesa()` en vez del
+  `alert()` y espera algo más antes de que juegue una autómata en la mesa
+  (`retardoAutomata()`); `resetJuego()` limpia la mesa.
+- `index.html`: `viewport-fit=cover` para respetar las zonas seguras del
+  móvil.
+
 ## [1.26.7.109] - 2026-11-05
 
 ### Cambiado

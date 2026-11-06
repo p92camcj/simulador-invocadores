@@ -6,6 +6,23 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.27.0.111 - 2026-11-06
+
+- **Nueva vista "Mesa 3D", pensada para jugar en el móvil.** Elígela al
+  configurar la partida (o con el botón 📱 Mesa 3D). La mesa se ve en
+  perspectiva, con cartas en 3D, tu mano abajo y las rivales arriba.
+- **Jugar es más fácil con el dedo:** toca una carta y luego un Portal, o
+  arrástrala hasta él. Los Portales donde puedes activar una habilidad
+  brillan con una ✦; tócalos para usarla.
+- **Toca cualquier carta visible o Portal para verlo en grande**, y la
+  invocación de arriba para ver la criatura y qué personajes faltan.
+- **Para pasar el móvil:** si jugáis varias personas, cada turno empieza con
+  una pantalla que tapa la mano hasta que la siguiente jugadora pulsa «Ver
+  mi mano». Contra autómatas, tu sitio no cambia.
+- Los avisos ya no interrumpen: aparecen arriba y se van solos.
+- La vista clásica y las Escenas siguen igual; puedes cambiar de vista en
+  cualquier momento desde el menú ☰.
+
 ## 1.26.7.109 - 2026-11-05
 
 - **Cambio interno, sin diferencias al jugar.** Los autómatas ya juegan
