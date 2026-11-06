@@ -132,6 +132,16 @@ test('sin todos los Portales visibles o sin la combinación no hay invocación',
   assert.equal(p.levelIdx, 0);
 });
 
+test('un Portal vacío (p. ej. el central nuevo) impide la invocación aunque estén los requisitos', () => {
+  const p = mesaInvocacionC();
+  p.players[0].portals[1].push(enPortal('Pícaro'));
+  p.neutrals.push([]);
+  assert.deepEqual(resolverInvocacion(p), []);
+  assert.equal(p.levelIdx, 0);
+  p.neutrals[1].push(enPortal('Cronomante'));
+  assert.deepEqual(tipos(resolverInvocacion(p)), ['invocacionCompletada']);
+});
+
 test('invocación completa: Gemas a quien tiene cada personaje, Pícaro cobra y se gira, nuevo central, sube nivel', () => {
   const p = mesaInvocacionC();
   p.players[0].portals[1].push(enPortal('Pícaro'));

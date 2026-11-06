@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.30.2.74 - 2026-11-06
+
+- **La explicación de la invocación ya está completa.** En la Mesa 3D
+  faltaba decir que, además de estar visibles los personajes requeridos,
+  todos los Portales (también los centrales) deben tener un personaje
+  bocarriba. La regla ya se aplicaba en el juego; solo faltaba el texto.
+- **Aviso de Portales pendientes.** En las dos vistas se indica cuántos
+  Portales siguen vacíos o boca abajo e impiden completar la invocación.
+
+---
+
 ## 1.30.1.73 - 2026-11-06
 
 - **Cartas nuevas.** Las cartas de personaje usan ya el diseño nuevo de

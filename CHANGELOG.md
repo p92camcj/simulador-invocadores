@@ -4,6 +4,26 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.30.2.74] - 2026-11-06
+
+### Corregido
+- La hoja "Invocación" de la Mesa 3D (`verInvocacion()` en `js/mesa3d.js`)
+  explicaba la condición de la invocación sin la mitad de la regla: además
+  de los personajes requeridos, todos los Portales (también los centrales)
+  deben tener un personaje bocarriba. El motor (`resolverInvocacion()`), los
+  autómatas (`invocacionCerrada()`, `decidirJugadaFaseA()`,
+  `completariaLaInvocacionConMaestro()`) y el reglamento ya lo exigían; solo
+  fallaba el texto.
+
+### Añadido
+- Aviso público de cuántos Portales siguen vacíos o boca abajo: en la hoja de
+  la Mesa 3D (`portalesSinPersonajeHtml()`) y junto a los requisitos de la
+  vista clásica (`avisoPortalesSinPersonaje()` en `js/render.js`).
+- Test en `tests/motor-acciones.mjs`: un Portal central vacío impide la
+  invocación aunque estén los tres requisitos.
+
+---
+
 ## [1.30.1.73] - 2026-11-06
 
 ### Cambiado

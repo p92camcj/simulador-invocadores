@@ -499,5 +499,17 @@ export function render(players, neutrals, levelIdx) {
     const fig = rutaFigura(n);
     const retrato = fig ? `<img class="mini-fig" src="${fig}" alt=""> ` : '';
     return `<span class="${cls}">${retrato}${mostrarCarta({ name: n })}</span>`;
-  }).join(' , ');
+  }).join(' , ') + avisoPortalesSinPersonaje(players, neutrals);
+}
+
+/**
+ * La invocación también exige que TODOS los Portales (también los
+ * centrales) tengan un personaje bocarriba (REGLAMENTO.md, fase C). Avisa de
+ * cuántos faltan; es información pública de la mesa.
+ */
+function avisoPortalesSinPersonaje(players, neutrals) {
+  const pilas = [...players.flatMap(p => p.portals), ...neutrals];
+  const libres = pilas.filter(st => !st.length || !st.at(-1).vis?.public).length;
+  if (!libres) return '';
+  return ` <span class="missing">· ${libres} Portal${libres === 1 ? '' : 'es'} sin personaje bocarriba</span>`;
 }
