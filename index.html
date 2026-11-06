@@ -29,6 +29,7 @@
       <button id="btnPlayCancel" class="btn secondary cancel hidden">Cancelar selección</button>
       <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
+      <button id="btnSalir" class="btn secondary hidden" type="button" title="Vuelve al menú de inicio; la partida queda guardada para retomarla">🚪 Salir</button>
       <button id="btnVista" class="btn secondary" type="button" title="Cambia a la vista Mesa 3D, pensada para móvil">📱 Mesa 3D</button>
       <button id="btnEspectaculo" class="btn secondary" type="button" aria-pressed="true" title="Activa o desactiva las escenas animadas">✨ Escenas: sí</button>
       <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">❓ Ayuda</button>
@@ -47,6 +48,14 @@
     </div>
 
     <div id="setup" class="section">
+      <div id="panelRetomar" class="panel-retomar hidden">
+        <strong>Tienes una partida a medias</strong>
+        <p id="txtRetomar"></p>
+        <button id="btnRetomar" type="button" class="btn primary">▶ Retomar partida</button>
+        <button id="btnDescartarPartida" type="button" class="btn secondary">Descartar</button>
+        <p class="nota-retomar">O configura abajo una partida nueva (sustituirá a la guardada).</p>
+      </div>
+
       <h2>Configurar partida</h2>
       <label>Jugadoras (2‑5): <input id="numPlayers" type="number" min="2" max="5" value="2" /></label>
       <div id="numError" class="error-msg hidden">Número de jugadoras inválido.</div>

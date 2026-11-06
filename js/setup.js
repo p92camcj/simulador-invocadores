@@ -1,13 +1,33 @@
 // setup.js
 import { $ } from './utils.js';
-import { initGame } from './game.js';
+import { initGame, mostrarTablero, retomarPartida } from './game.js';
 import { nombresDisponiblesParaBots } from './bot.js';
+import { leerPartidaGuardada, borrarPartidaGuardada, describirPartidaGuardada } from './partida-guardada.js';
+
+/** Aviso "Tienes una partida a medias" del menú de inicio. */
+function pintarPanelRetomar() {
+  const panel = $('#panelRetomar');
+  if (!panel) return;
+  const registro = leerPartidaGuardada();
+  panel.classList.toggle('hidden', !registro);
+  if (!registro) return;
+  $('#txtRetomar').textContent = describirPartidaGuardada(registro);
+  $('#btnRetomar').onclick = () => {
+    if (!retomarPartida()) pintarPanelRetomar();
+  };
+  $('#btnDescartarPartida').onclick = () => {
+    if (!confirm('¿Descartar la partida guardada? No se podrá recuperar.')) return;
+    borrarPartidaGuardada();
+    pintarPanelRetomar();
+  };
+}
 
 /**
  * Inicializa la UI de configuración de la partida.
  * Muestra el formulario de nombres y arranca el juego.
  */
 export function initSetup() {
+  pintarPanelRetomar();
   // Al pulsar 'Continuar', generar inputs según número de jugadoras (entre 2 y 5)
   // y número de autómatas (0..jugadoras). Convención simple: los últimos
   // `nBots` puestos son autómatas, el resto humanas — no configurable por
@@ -136,17 +156,7 @@ export function initSetup() {
     }
 
     // Ocultar sección de setup y mostrar control de turno
-    $('#setup').classList.add('hidden');
-    $('#info').classList.remove('hidden');
-    $('#boardNeutrals').classList.remove('hidden');
-    $('#boardGrid').classList.remove('hidden');
-    $('#btnEndTurn').classList.remove('hidden');
-    if ($('#btnCtrlPlay')) $('#btnCtrlPlay').classList.remove('hidden');
-    if ($('#btnAbility')) $('#btnAbility').classList.remove('hidden');
-    $('#mainTitle')?.classList.add('hidden');
-    $('#mainSubtitle')?.classList.add('hidden');
-
-
+    mostrarTablero();
 
     // Iniciar la partida
     initGame();

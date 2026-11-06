@@ -7,9 +7,15 @@ import { decidirYJugarTurno } from './bot.js';
 
 import { initSetup } from './setup.js';
 import { $ } from './utils.js';
-import { estado, reiniciarCamposDeTurno, reiniciarPartida } from './motor/estado.js';
+import { estado, reiniciarCamposDeTurno, reiniciarPartida, cargarPartida } from './motor/estado.js';
 import { comprobarFinPorManoVacia } from './motor/acciones.js';
-import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, vistaMesaActiva, mostrarFinMesa } from './mesa3d.js';
+import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, vistaMesaActiva, mostrarFinMesa, preguntarMesa } from './mesa3d.js';
+import { detenerEspectaculo } from './espectaculo.js';
+import { guardarPartidaEnCurso, leerPartidaGuardada, borrarPartidaGuardada } from './partida-guardada.js';
+
+// Sube cada vez que se sale al menú: un turno de autómata que estaba
+// esperando su setTimeout no debe jugar en una partida que ya no está.
+let generacionPartida = 0;
 
 /**
  * Inicia la partida: prepara el mazo, reparte cartas, y lanza el primer turno.
@@ -76,7 +82,10 @@ export function nextTurn() {
     finalizarPartida(fin.motivo);
     return;
   }
-  
+  // Foto de la partida al empezar el turno: es la que se retoma al volver
+  // desde el menú de inicio (o tras recargar la página).
+  guardarPartidaEnCurso(estado.partida);
+
   // Durante el turno de una autómata se ocultan los controles de acción
   // humanos (jugar carta/activar habilidad/terminar turno) para que nadie
   // interfiera a mitad de su turno — el propio bot los sigue invocando por
@@ -96,7 +105,9 @@ export function nextTurn() {
   render(window.players, window.neutrals, window.levelIdx);
 
   if (esBot) {
+    const generacion = generacionPartida;
     setTimeout(() => {
+      if (generacion !== generacionPartida) return;
       decidirYJugarTurno(window.players, window.neutrals, window.turn, {
         levelIdx: window.levelIdx,
         invocationSet: window.invocationSet,
@@ -124,6 +135,8 @@ function construirMensajeResultadoFinal(players, invocacionesCompletadas) {
 // el empate) según REGLAMENTO.md, "Final de la partida", y luego pregunta
 // si queremos una nueva partida.
 export function finalizarPartida(motivo) {
+  // Una partida terminada ya no se puede retomar.
+  borrarPartidaGuardada();
   // Las autómatas aprenden de las jugadas de las personas de esta partida.
   aprenderAlTerminarPartida();
   // En la Mesa 3D, marcador final propio en vez del confirm() del navegador.
@@ -165,6 +178,9 @@ export function resetJuego() {
   $('#btnEndTurn')?.classList.add('hidden');
   $('#btnCtrlPlay')?.classList.add('hidden');
   $('#btnAbility')?.classList.add('hidden');
+  $('#btnSalir')?.classList.add('hidden');
+  $('#picker')?.classList.add('hidden');
+  $('#helpModal')?.classList.add('hidden');
 
   // Mostrar título y subtítulo
   $('#mainTitle')?.classList.remove('hidden');
@@ -180,3 +196,63 @@ export function resetJuego() {
 }
 
 
+
+/** Oculta el menú de inicio y muestra el tablero y los controles de turno. */
+export function mostrarTablero() {
+  $('#setup')?.classList.add('hidden');
+  $('#info')?.classList.remove('hidden');
+  $('#boardNeutrals')?.classList.remove('hidden');
+  $('#boardGrid')?.classList.remove('hidden');
+  $('#btnEndTurn')?.classList.remove('hidden');
+  $('#btnCtrlPlay')?.classList.remove('hidden');
+  $('#btnAbility')?.classList.remove('hidden');
+  $('#btnSalir')?.classList.remove('hidden');
+  $('#mainTitle')?.classList.add('hidden');
+  $('#mainSubtitle')?.classList.add('hidden');
+}
+
+/**
+ * Botón "Salir": pide confirmación y vuelve al menú de inicio. La partida
+ * queda guardada tal como estaba al empezar este turno (ver
+ * js/partida-guardada.js), así que desde el menú se puede retomar.
+ */
+export function salirAlMenu() {
+  const partida = estado.partida;
+  const enCurso = partida.players.length && !partida.juegoTerminado;
+  if (!enCurso) {
+    volverAlMenu();
+    return;
+  }
+  const actual = partida.players[partida.turn];
+  const aMedias = partida.played || partida.habilidadUsadaEsteTurno;
+  const aviso = aMedias
+    ? `Lo hecho en este turno no se guarda: al retomar, ${actual.name} empezará su turno de nuevo.`
+    : 'La partida queda guardada y podrás retomarla desde el menú de inicio.';
+  if (vistaMesaActiva()) {
+    preguntarMesa(`¿Salir al menú de inicio? ${aviso}`, [
+      { val: 'salir', lbl: '🚪 Salir al menú' },
+      { val: 'seguir', lbl: 'Seguir jugando' },
+    ], val => { if (val === 'salir') volverAlMenu(); });
+    return;
+  }
+  if (confirm(`¿Salir al menú de inicio?\n\n${aviso}`)) volverAlMenu();
+}
+
+function volverAlMenu() {
+  generacionPartida++;
+  detenerEspectaculo();
+  resetJuego();
+}
+
+/** Retoma la partida guardada (botón del menú de inicio). */
+export function retomarPartida() {
+  const registro = leerPartidaGuardada();
+  if (!registro) return false;
+  generacionPartida++;
+  detenerEspectaculo();
+  cargarPartida(registro.partida);
+  mostrarTablero();
+  initActions();
+  nextTurn();
+  return true;
+}
