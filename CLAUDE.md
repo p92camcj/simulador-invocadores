@@ -435,10 +435,13 @@ in `nextTurn()`.
   (the back and the two help cards still come from the old ones). Toggle: `#btnEspectaculo` (header) /
   `#chkEspectaculo` (setup), stored in `localStorage`.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
-  3D" view (added 1.27.0, 2026-11-06), an alternative to the classic board
-  built for touch/mobile, pure CSS 3D (the owner chose it over Three.js).
-  Selectable in setup (`#selVista`) or `#btnVista`, stored in
-  `localStorage` (`invocadores.vista`), default on touch screens. Holds no
+  3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
+  (the owner chose it over Three.js). **Since 1.32.1 it is the only
+  maintained view, on desktop too**: the classic board (`render.js`'s
+  grid, `style.css`, `#boardGrid`/`#ctrlPlay`/`#picker` in `index.html`) is
+  frozen/deprecated — reachable only with `?vista=clasica` in the URL, not
+  remembered, no setup selector — and will be deleted later
+  (`docs/DEUDA_TECNICA.md` item 17). Don't add features to it. Holds no
   rules: it acts through the same hooks as the classic view
   (`window.selectHandCard`/`tryPlayOnPortal`/`selectPortalObjetivo`,
   clicking `#btnAbility`/`#btnEndTurn`/`#btnPlayCancel`). Wired in at

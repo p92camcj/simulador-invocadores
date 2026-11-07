@@ -1,7 +1,8 @@
 // js/mesa3d.js
 //
-// Vista "Mesa 3D": una interfaz alternativa a la clásica, pensada para
-// jugar con el dedo en un móvil. Mesa en perspectiva con cartas 3D (CSS 3D,
+// Vista "Mesa 3D": la interfaz principal desde 1.32.1 (la clásica está
+// congelada y solo se abre con ?vista=clasica). Pensada para jugar con el
+// dedo en un móvil, también se usa en ordenador. Mesa en perspectiva con cartas 3D (CSS 3D,
 // sin librerías), tu mano abajo en abanico, los rivales arriba y los
 // Portales centrales en medio.
 //
@@ -36,29 +37,28 @@ const DURACION_ANIM = 750;
 
 // ---------- Preferencia de vista ----------
 
+// Desde 1.32.1 la Mesa 3D es la única vista mantenida, también en
+// ordenador. La clásica queda congelada (deprecated): solo se abre con
+// ?vista=clasica en la URL, no se recuerda y se retirará más adelante.
 function vistaPorDefecto() {
   try {
-    const guardada = localStorage.getItem(CLAVE_VISTA);
-    if (guardada === 'mesa' || guardada === 'clasica') return guardada;
-  } catch { /* sin almacenamiento */ }
-  // En pantallas táctiles se empieza en la mesa.
-  return window.matchMedia?.('(pointer: coarse)').matches ? 'mesa' : 'clasica';
+    if (new URLSearchParams(location.search).get('vista') === 'clasica') return 'clasica';
+  } catch { /* sin URL */ }
+  return 'mesa';
 }
 
-let vista = 'clasica';
+let vista = 'mesa';
 
 export function vistaMesaActiva() {
   return vista === 'mesa';
 }
 
-/** Cambia de vista ('mesa' | 'clasica'), la recuerda y repinta. */
+/** Cambia de vista ('mesa' | 'clasica') y repinta. No se guarda: la clásica está congelada. */
 export function fijarVista(nueva) {
   vista = nueva === 'mesa' ? 'mesa' : 'clasica';
-  try { localStorage.setItem(CLAVE_VISTA, vista); } catch { /* nada */ }
+  try { localStorage.removeItem(CLAVE_VISTA); } catch { /* nada */ }
   document.body.classList.toggle('vista-mesa', vista === 'mesa');
   document.documentElement.classList.toggle('vista-mesa', vista === 'mesa');
-  const sel = document.querySelector('#selVista');
-  if (sel) sel.value = vista;
   if (vista !== 'mesa') {
     cerrarHoja();
     document.body.classList.remove('mesa-en-partida');
@@ -114,11 +114,6 @@ export function initMesa3D() {
   document.body.classList.toggle('vista-mesa', vista === 'mesa');
   document.documentElement.classList.toggle('vista-mesa', vista === 'mesa');
 
-  const sel = document.querySelector('#selVista');
-  if (sel) {
-    sel.value = vista;
-    sel.addEventListener('change', e => fijarVista(e.target.value));
-  }
   document.querySelector('#btnVista')?.addEventListener('click', () => fijarVista('mesa'));
 
   // alert() → aviso flotante mientras se juega en la mesa.
@@ -918,7 +913,6 @@ function abrirMenu() {
       <button type="button" class="m-opcion" data-menu="ayuda">❓ Carta de ayuda</button>
       <button type="button" class="m-opcion" data-menu="historial">📜 Historial de jugadas</button>
       <a class="m-opcion" href="docs/reglamento/reglamento-invocadores.pdf" target="_blank" rel="noopener">📖 Reglamento</a>
-      <button type="button" class="m-opcion" data-menu="clasica">▦ Cambiar a la vista clásica</button>
       <button type="button" class="m-opcion" data-menu="salir">🚪 Salir al menú de inicio</button>
     </div>`,
   });
@@ -941,7 +935,6 @@ function accionMenu(opcion) {
     });
     return;
   }
-  if (opcion === 'clasica') { cerrarHoja(); fijarVista('clasica'); }
   if (opcion === 'salir') { cerrarHoja(); document.querySelector('#btnSalir')?.click(); }
 }
 
