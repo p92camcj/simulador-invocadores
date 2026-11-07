@@ -42,5 +42,25 @@ export const uiNavegador = {
  * mismos arrays.
  */
 export function applyAbility(name, ownerIdx, stack, players, neutrals, levelIdx, need = [], onComplete = () => {}) {
-  aplicarHabilidad(estado.partida, { personaje: name, jugadora: ownerIdx, pila: stack }, uiNavegador, onComplete);
+  // Lo elegido se apunta para el historial de jugadas. Si se retoma un
+  // Cronomante a medias, se conserva lo elegido en su primer paso.
+  const retomaCronomante = name === 'Cronomante' && !!estado.partida.cronomantePortalInvestigado;
+  if (!retomaCronomante) elegidos = [];
+  const ui = {
+    ...uiNavegador,
+    pedir(peticion, responder, cancelar) {
+      uiNavegador.pedir(peticion, valor => {
+        elegidos.push(valor);
+        responder(valor);
+      }, cancelar);
+    },
+  };
+  aplicarHabilidad(estado.partida, { personaje: name, jugadora: ownerIdx, pila: stack }, ui, onComplete);
+}
+
+let elegidos = [];
+
+/** Valores elegidos en los picker() de la última habilidad humana (historial). */
+export function eleccionesUltimaHabilidad() {
+  return [...elegidos];
 }

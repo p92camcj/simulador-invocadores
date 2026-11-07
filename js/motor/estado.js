@@ -21,6 +21,7 @@ export const CLAVES_PARTIDA = [
   'players', 'neutrals', 'deck', 'levelIdx', 'turn', 'played',
   'habilidadUsadaEsteTurno', 'invocationSet', 'juegoTerminado',
   'cronomantePortalInvestigado', 'invocacionesCompletadas', 'memoriaBots',
+  'historial',
 ];
 
 /** Claves del estado de interfaz (no serializable, no es parte de la partida). */
@@ -44,6 +45,8 @@ export function crearEstadoPartida(invocationSet = 'normal') {
     cronomantePortalInvestigado: null,
     invocacionesCompletadas: [],
     memoriaBots: [],
+    // Historial de jugadas de la partida (js/historial.js), solo texto.
+    historial: [],
   };
 }
 

@@ -436,7 +436,7 @@ in `nextTurn()`.
   `#chkEspectaculo` (setup), stored in `localStorage`.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
-  (the owner chose it over Three.js). **Since 1.31.2 it is the only
+  (the owner chose it over Three.js). **Since 1.32.1 it is the only
   maintained view, on desktop too**: the classic board (`render.js`'s
   grid, `style.css`, `#boardGrid`/`#ctrlPlay`/`#picker` in `index.html`) is
   frozen/deprecated — reachable only with `?vista=clasica` in the URL, not
@@ -468,6 +468,19 @@ in `nextTurn()`.
   done. `finalizarPartida()` deletes the save. Leaving bumps a counter in
   `game.js` so a pending bot `setTimeout` doesn't play on, and calls
   `detenerEspectaculo()` so queued scenes don't advance the turn.
+- **`js/historial.js`** + **`js/narrador.js`** — (1.32.0) play-by-play
+  log and on-screen narration. Every Fase A play (`ejecutarJugada()`),
+  Fase B ability (`conHistorialHabilidad()` in `actions.js`, wrapped
+  around both the human and the bot `onComplete`), invocation and turn
+  start is appended to `estado.partida.historial` (pure, public info only).
+  `narrador.js` listens and, for bots, shows a persistent caption, glows
+  the affected Portals with a step number (`atributosDestacado()`, read by
+  `render.js`/`mesa3d.js`) and draws a colored "magic dust" trail per move
+  (`COLOR_MOTIVO`). Bot turns are paced: each heuristic in `bot.js` is a
+  generator that `yield`s after Fase A and Fase B, and
+  `jugarTurnoAutomataPasoAPaso()` + `nextTurn()` wait for scenes plus
+  `pausaTrasPaso()` (speed setting `#selRitmoBots`) between steps; the
+  arena still runs them straight through via `decidirYJugarTurno()`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current
@@ -562,6 +575,7 @@ node tests/motor-adaptadores.mjs
 node tests/vista-mesa.mjs
 node tests/bot-busqueda.mjs
 node tests/aprendizaje.mjs
+node tests/historial.mjs
 ```
 
 ```bash

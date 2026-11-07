@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.31.2.78] - 2026-11-07
+## [1.32.1.WW] - 2026-11-07
 
 ### Cambiado
 - **La Mesa 3D es la única vista mantenida, también en ordenador.** La
@@ -16,6 +16,49 @@ Todas las versiones importantes del simulador de Invocadores.
   `#btnVista` pasa a "📱 Volver a la Mesa 3D". Su código se borrará más
   adelante (`docs/DEUDA_TECNICA.md` ítem 17).
 
+## [1.32.0.78] - 2026-11-07
+
+### Añadido
+- **Turnos de las autómatas paso a paso.** Cada heurística de `bot.js`
+  (`normal`, `dificil`, `experta` y la persona simulada) es ahora un
+  generador que se detiene tras jugar carta (`yield 'faseA'`) y tras
+  activar habilidad (`yield 'faseB'`). En la web, `nextTurn()` usa el nuevo
+  `jugarTurnoAutomataPasoAPaso()` y entre paso y paso espera a que acaben
+  las escenas y hace una pausa (`pausaTrasPaso()`: 2,6 s tras la carta,
+  3,4 s tras la habilidad, por el ritmo elegido). `decidirYJugarTurno()`
+  los recorre del tirón, así que la arena y las simulaciones de la Experta
+  no cambian (misma salida de `tools/arena.mjs` que en `main`).
+- **Ritmo de los autómatas** en el menú de inicio (`#selRitmoBots`:
+  Rápido / Normal / Pausado), guardado en
+  `localStorage['invocadores.ritmoAutomatas']`.
+- Nuevo `js/historial.js` (puro): historial de jugadas en
+  `estado.partida.historial` (nueva clave de `CLAVES_PARTIDA`; se guarda y
+  se retoma con la partida, `determinizar()` no lo copia). Anota inicio de
+  turno, carta jugada (también si era la carta oculta y cuál resultó ser),
+  habilidad con lo elegido y cómo quedan los Portales que cambiaron, e
+  invocación con su reparto de Gemas. Lo alimentan `ejecutarJugada()`,
+  `ejecutarFinDeTurno()` y el nuevo `conHistorialHabilidad()`
+  (`actions.js`), que envuelve el `onComplete` de la Fase B humana y del
+  autómata. `applyAbility()` (`abilities.js`) apunta lo elegido en los
+  picker() (`eleccionesUltimaHabilidad()`) para describir también las
+  habilidades de las personas.
+- Nuevo `js/narrador.js` (solo presentación): rótulo que narra cada paso de
+  una autómata y se queda en pantalla durante la pausa (sustituye al
+  `alert()` del resumen del turno y al de "está pensando…" de la vista
+  clásica); Portales afectados resaltados con el color del motivo y el
+  número de paso (`atributosDestacado()`, leído por `render.js` y
+  `mesa3d.js`) hasta que la persona juega; estelas de polvo mágico de
+  origen a destino, con un color por motivo (`COLOR_MOTIVO`: carta jugada,
+  Estratega, Cronista, Ocultista, Cronomante, Maestro, Aprendiz,
+  Metamorfo), tras las escenas del modo espectáculo; y ventana de
+  historial (`abrirHistorial()`) desde `#btnHistorial` en la clásica y 📜
+  (barra y menú ☰) en la Mesa 3D.
+- `tests/historial.mjs`.
+
+### Cambiado
+- Las etiquetas de Portal central de los textos del autómata dicen "Portal
+  central N" (antes "Portal Neutral N"), como el resto de la interfaz.
+- `service-worker.js` cachea los dos módulos nuevos.
 ## [1.31.1.77] - 2026-11-06
 
 ### Corregido

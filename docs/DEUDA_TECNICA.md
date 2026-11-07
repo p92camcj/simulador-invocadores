@@ -420,7 +420,7 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 
 ### 17. Vista clásica congelada pendiente de borrar
 
-Desde 1.31.2 la Mesa 3D es la única vista mantenida y la clásica solo se
+Desde 1.32.1 la Mesa 3D es la única vista mantenida y la clásica solo se
 abre con `?vista=clasica`. Falta borrarla: `renderBoardGrid`/
 `renderBoardNeutrals`/`portalCardHtml` y el `picker()` de `<select>` en
 `render.js`, sus estilos en `style.css`, y `#boardGrid`, `#boardNeutrals`,

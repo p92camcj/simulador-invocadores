@@ -6,12 +6,28 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.31.2.78 - 2026-11-07
+## 1.32.1.WW - 2026-11-07
 
 - La Mesa 3D pasa a ser la forma de jugar en todos los dispositivos,
   también en el ordenador. La vista clásica en columnas deja de ofrecerse
   y de actualizarse, y desaparecerá en una versión futura.
 
+## 1.32.0.78 - 2026-11-07
+
+- **Ahora se entiende lo que hacen los autómatas.** Juegan paso a paso:
+  primero la carta, una pausa, luego la habilidad y otra pausa. Cada paso
+  se cuenta en un rótulo que se queda en pantalla el tiempo suficiente
+  para leerlo, sin ventanas que haya que cerrar.
+- Los Portales que acaban de cambiar brillan con un número (1 = carta
+  jugada, 2 = habilidad) hasta que te toca mover a ti.
+- Cada movimiento deja una estela de polvo mágico de donde sale la carta a
+  donde llega, con un color según el motivo: dorado al jugar una carta,
+  azul con la Estratega, verde con el Cronista, violeta con el Ocultista…
+- **Historial de jugadas**: con el botón "📜 Historial" (en la Mesa 3D, el
+  icono 📜 de arriba) ves todo lo que ha hecho cada jugadora, turno a
+  turno.
+- En el menú de inicio puedes elegir el **ritmo de los autómatas**:
+  rápido, normal o pausado.
 ## 1.31.1.77 - 2026-11-06
 
 - En la escena de la Estratega, el personaje que cambia del Portal de la
