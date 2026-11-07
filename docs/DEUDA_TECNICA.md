@@ -418,6 +418,19 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 
 ## Prioridad Baja
 
+### 17. Vista clásica congelada pendiente de borrar
+
+Desde 1.32.1 la Mesa 3D es la única vista mantenida y la clásica solo se
+abre con `?vista=clasica`. Falta borrarla: `renderBoardGrid`/
+`renderBoardNeutrals`/`portalCardHtml` y el `picker()` de `<select>` en
+`render.js`, sus estilos en `style.css`, y `#boardGrid`, `#boardNeutrals`,
+`#ctrlPlay`, `#picker` e `#info` en `index.html`. Antes hay que sacar de la
+clásica lo que la Mesa 3D usa por debajo: la elección de la Clarividente
+(`gestionarTransicionesClarividente` en `render.js`, que es lógica y no
+pintado), los botones ocultos `#btnAbility`/`#btnEndTurn`/`#btnPlayCancel`/
+`#btnSalir` que la mesa pulsa con `.click()` (mejor llamar a funciones de
+`actions.js`/`game.js`) y `pickerPortal()`.
+
 ### 8. Nombres de personaje como strings mágicos repetidos sin roster centralizado (parcialmente mitigado)
 
 - **Dónde**: `js/utils.js` (claves de `iconos`, `INVOCATION_SETS`),
