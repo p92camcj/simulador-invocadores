@@ -6,6 +6,30 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.34.0.147 - 2026-11-07
+
+- ¡Ya puedes elegir el modo de juego!
+  - **Introductorio**: 29 cartas, para aprender.
+  - **Normal**.
+  - **Avanzado**: todas las cartas, con los Animales.
+  - **Experto**.
+
+  El menú solo te deja escoger los sets de invocaciones que se pueden
+  completar con el mazo de cada modo.
+- En Normal y Avanzado se apartan 2 cartas al azar al empezar; en
+  Introductorio y Experto no se aparta ninguna.
+- Nueva expansión opcional, **el Entusiasta**: si hay invocación y lo
+  tienes bocarriba en tu Portal, pierdes una Gema de valor 1. Es lo último
+  que se resuelve, en un Portal central no hace nada y el Metamorfo no
+  puede copiarlo.
+- **Madain**, la cuarta invocación (Reena, Metamorfo sin transformar, Sora
+  y Lumo), con Gemas de 11 a 13. Siempre está en Experto y es opcional en
+  Avanzado.
+- En Experto aparece la **autómata central**:
+  - Se queda las Gemas de lo que se invoca en los Portales centrales.
+  - Al final, quien va última puede cambiarle todas sus Gemas.
+  - ¡Si la autómata acaba primera, perdéis todas!
+
 ## 1.33.0.145 - 2026-11-07
 
 - Menú de inicio renovado: después de elegir cuántas jugáis, decides en

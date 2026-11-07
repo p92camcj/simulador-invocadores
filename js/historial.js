@@ -149,11 +149,19 @@ export function textoHabilidad(partida, { jugadora, personaje, origen, detalle, 
 }
 
 /** Invocación completada (evento 'invocacionCompletada' del motor). */
-export function textoInvocacion({ nivel, nombre, recompensas = [] }) {
+export function textoInvocacion({ nivel, nombre, recompensas = [], gemasAutomata = 0, entusiastas = [] }) {
   const reparto = recompensas.filter(r => r.gemas > 0)
     .map(r => `${r.jugadora} +${r.gemas} ${r.gemas === 1 ? 'Gema' : 'Gemas'}`);
-  return `✨ Invocación ${nivel} completada (${nombre})`
+  if (gemasAutomata > 0) reparto.push(`autómata central +${gemasAutomata} ${gemasAutomata === 1 ? 'Gema' : 'Gemas'}`);
+  const etiqueta = nivel === '*' ? 'final' : nivel;
+  let texto = `✨ Invocación ${etiqueta} completada (${nombre})`
     + (reparto.length ? `: ${reparto.join(', ')}.` : ', sin Gemas para nadie.');
+  entusiastas.forEach(e => {
+    texto += e.perdida
+      ? ` 🎉 El Entusiasta le quita a ${e.jugadora} una Gema de valor 1.`
+      : ` 🎉 El Entusiasta de ${e.jugadora} no le quita nada: no tiene Gemas de valor 1.`;
+  });
+  return texto;
 }
 
 /**

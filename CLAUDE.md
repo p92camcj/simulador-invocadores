@@ -21,32 +21,30 @@ as of the last audit (2026-07-19), updated after implementing turn-sequence
 Fase B and the real Gem economy (also 2026-07-19 — see `CHANGELOG.md` for
 the version that shipped this):
 
-- Missing characters entirely: **Entusiasta** (not in the deck at all — it's
-  the optional expansion described in "Variantes y modos de juego", never
-  shuffled in by default) and its passive ability (lose a Gem on a
-  successful invocation). **Animales** (Reena, Sora, Lumo) *are* now in the
-  deck, but only when the `introductorio` invocation set is selected (see
-  `game.js`). **Not** for `floral`: floral reuses the exact same "Modo
-  normal" deck as the `normal` set (32 cards) — it isn't a third deck
-  variant, it only renames/recombines the invocation cards
-  (`INVOCATION_SETS.floral`). Floral's required characters (Ocultista,
-  Centinela, Maestro, Clarividente, ...) don't even exist in the
-  introductorio deck, so grouping floral with introductorio for deck
-  purposes made its invocations uncompletable — a real bug that shipped in
-  `1.4.0.26` and was fixed in the very next version, see `CHANGELOG.md`.
-  So: `game.js`'s deck is **32 cards for `normal` and `floral`**, **41 for
-  `introductorio`** — not the 43-card full component count, which is total
-  physical cards across all modes, not what goes in a single deck.
-- Missing modes: Introductorio (as a full selectable deck-prep variant, not
-  just its invocation set), Avanzado, Experto (with the central autómata),
-  the 2v2 team variant, and the Entusiasta expansion. Note: today's
-  `introductorio` invocation-set deck (32 base + 9 Animales = 41 cards) is
-  actually closer in size/composition to what real **Avanzado** mode
-  should be — real **Introductorio** mode has its own much smaller roster
-  (Reena/Sora/Lumo/Pícaro/Aprendiz/Cronista/Estratega/Cronomante only, **29
-  cards**, no cards set aside) that doesn't exist in code yet. See
-  `docs/AUDITORIA_REGLAS.md` §1 for the exact numbers and per-mode size
-  estimates (S/M/L).
+- **Game modes (1.34.0, 2026-11-07, rules confirmed by Julio — see
+  project memory/REGLAMENTO.md):** `MODOS_JUEGO` in `utils.js` —
+  `introductorio` (29 cards, only the introductorio set, none set aside),
+  `normal` (32 cards, normal/floral sets, 2 set aside), `avanzado` (41 cards
+  with Animales, any set, 2 set aside, Madain optional), `experto` (41
+  cards, any set, nothing set aside, Madain always, central autómata). The
+  game config lives in `estado.partida` (`modo`, `entusiasta`, `madain`,
+  `automataCentral`); `modoDe()` derives the mode from `invocationSet` for
+  old saved games (`modo: null`). `prepararMazo(cfg)` is the single deck
+  builder (web + arena): composition (`composicionMazoTotal(cfg)`, which
+  still accepts a plain set string), Entusiastas shuffled in **before**
+  setting cards aside. Levels: `nivelesPartida(cfg)` = C, B, A (+ `'*'` =
+  Madain, `INVOCATION_ASTERISCO`); always get the active invocation with
+  `invocacionDePartida(cfg)` / `datosInvocacion(cfg, nivel)`, never
+  `INVOCATION_SETS[set][LEVELS[i]]`. Bots receive `configPartida(partida)`
+  as their `contexto`. Entusiasta: `aplicarEntusiastas()`, resolved last in
+  `resolverInvocacion()`, nothing on central Portals, not a Metamorfo
+  option. Central autómata (Experto): collects unique required characters
+  on central Portals plus Pícaro/Maestro bonuses
+  (`aplicarBonusPasivosInvocacion(..., automata)`); end-game swap and
+  ranking in `resultadoFinalExperto()` (pure), asked in `finalizarPartida()`.
+  Tests: `tests/modos.mjs`. Still missing: the 2v2 team variant; the
+  'dificil' heuristic ignores the Entusiasta and the central autómata
+  ('experta' sees them through the real engine).
 - No tiebreak logic or final scoreboard at game end — this is the
   highest-priority gap of the ones tracked in `docs/MEJORAS_FUTURAS.md`,
   since it also blocks the 2v2 variant (team score needs a scoreboard to
@@ -121,9 +119,6 @@ the version that shipped this):
   with real identity, not appearance — clicking that option always
   triggers Metamorfo's own re-transform ability, never the imitated
   character's, so the label has to say so.
-- Modo Experto's 4th invocation ("Asterisco"/Madain, 4 characters incl.
-  Metamorfo + all 3 Animales) is defined as `INVOCATION_ASTERISCO` in
-  `utils.js` but deliberately **not** wired into any real game flow yet.
 
 Do not assume any given piece of game logic is correct just because it's
 already in the code — check it against `docs/reglamento/REGLAMENTO.md`
@@ -184,8 +179,10 @@ in `nextTurn()`.
   The config is remembered in `localStorage['invocadores.menuInicio']`.
   `crearJugadoras()` builds `window.players` (`tipo: 'humano'|'auto'`,
   `dificultad` for bots, 3 unit Gems each); the Portal distribution by
-  player count (rulebook table for 2-5) lives here too; reads
-  `window.invocationSet` from `#selInvocationSet` and calls `initGame()`.
+  player count (rulebook table for 2-5) lives here too. Since 1.34.0 it
+  also reads the mode (`#selModo`; only the sets that mode can complete are
+  offered in `#selInvocationSet`), `#chkMadain` and `#chkEntusiasta` into
+  `window.modo`/`invocationSet`/`madain`/`entusiasta`, then `initGame()`.
 - **`js/bot.js`** — autómata ("bot") decision logic, added 2026-07-21. No
   decision function ever reads `players[botIdx].hand`/`window.deck`
   directly — everything starts from `construirEstadoVisibleParaBot()`, a
@@ -303,8 +300,8 @@ in `nextTurn()`.
   people model after each game, like the web does. Use the arena to measure any
   bot change against `main` before shipping it.
 - **`js/game.js`** — builds the character deck (`initGame`, via
-  `composicionMazoTotal(window.invocationSet)` in `utils.js` — see the gap
-  above), turn advancement and the "no cards left" end condition
+  `prepararMazo(estado.partida)` in `utils.js`, and the central autómata in
+  Experto), turn advancement and the "no cards left" end condition
   (`nextTurn`), and end-of-game handling (`finalizarPartida`,
   `resetJuego`). `finalizarPartida` must stay `export`ed — it's called
   from `actions.js`. `initGame()`/`resetJuego()` also reset
@@ -565,6 +562,7 @@ node tests/vista-mesa.mjs
 node tests/bot-busqueda.mjs
 node tests/aprendizaje.mjs
 node tests/historial.mjs
+node tests/modos.mjs
 ```
 
 ```bash

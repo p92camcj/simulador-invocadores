@@ -10,6 +10,8 @@
 //                        [--mesa dificil,normal,normal] [--set normal]
 //                        [--semilla 1] [--pesos '{"rival":0.75}']
 //                        [--perfiles '{"b":{"rival":0.5}}']  (asiento 'dificil@b')
+//                        [--modo normal|introductorio|avanzado|experto]
+//                        [--entusiasta 1] [--madain 1]
 //
 // `--mesa` dice la dificultad de cada asiento. Los asientos rotan en cada
 // partida para que nadie tenga siempre la ventaja de empezar. `--pesos`
@@ -21,8 +23,9 @@ import { estado, crearEstadoPartida } from '../js/motor/estado.js';
 import { terminarTurno, pasarTurno, comprobarFinPorManoVacia } from '../js/motor/acciones.js';
 import { aplicarEleccionClarividente } from '../js/motor/habilidades.js';
 import {
-  shuffle, draw, composicionMazoTotal, calcularResultadoFinal, sumaGemas,
-  tieneClarividenteVisible, LEVELS, INVOCATION_SETS,
+  draw, prepararMazo, calcularResultadoFinal, sumaGemas, tieneClarividenteVisible,
+  invocacionDePartida, configPartida, MODOS_JUEGO, modoDe, crearAutomataCentral, resultadoFinalExperto,
+  jugadorasConMenosPuntos, convieneIntercambioAutomata,
 } from '../js/utils.js';
 import { decidirYJugarTurno, crearEjecutorMotor, construirEstadoVisibleParaBot, establecerModeloPersonas } from '../js/bot.js';
 import { crearEjemplo, ajustarModelo, conPesos, MAX_EJEMPLOS } from '../js/aprendizaje.js';
@@ -43,9 +46,25 @@ export function sembrarAzar(semilla) {
   };
 }
 
+/**
+ * Opciones de partida: un set ('normal', 'floral', 'introductorio', como
+ * antes de los modos) o { modo, invocationSet, entusiasta, madain }.
+ */
+function opcionesDePartida(opciones) {
+  if (typeof opciones === 'string') return { invocationSet: opciones, modo: modoDe(opciones), entusiasta: false, madain: false };
+  const modo = MODOS_JUEGO[opciones.modo] ? opciones.modo : 'normal';
+  const reglas = MODOS_JUEGO[modo];
+  const invocationSet = reglas.sets.includes(opciones.invocationSet) ? opciones.invocationSet : reglas.sets[0];
+  const madain = reglas.madain === 'siempre' || (reglas.madain === 'opcional' && !!opciones.madain);
+  return { invocationSet, modo, entusiasta: !!opciones.entusiasta, madain };
+}
+
 /** Prepara una partida como setup.js + initGame() (game.js), sin DOM. */
-export function prepararPartida(dificultades, invocationSet = 'normal') {
-  const partida = crearEstadoPartida(invocationSet);
+export function prepararPartida(dificultades, opciones = 'normal') {
+  const op = opcionesDePartida(opciones);
+  const partida = crearEstadoPartida(op.invocationSet);
+  Object.assign(partida, { modo: op.modo, entusiasta: op.entusiasta, madain: op.madain });
+  partida.automataCentral = MODOS_JUEGO[op.modo].automata ? crearAutomataCentral() : null;
   const n = dificultades.length;
   // 'persona' = una persona simulada (para probar el aprendizaje): para el
   // motor y para las autómatas es una jugadora humana; la juega la
@@ -60,11 +79,8 @@ export function prepararPartida(dificultades, invocationSet = 'normal') {
   const centrales = { 2: 1, 3: 2, 4: 1, 5: 0 }[n];
   partida.players.forEach(p => { p.portals = Array.from({ length: porJugadora }, () => []); });
   partida.neutrals = Array.from({ length: centrales }, () => []);
-  // Mazo (game.js): se baraja y se apartan 2 cartas sin mirar.
-  const nombres = Object.entries(composicionMazoTotal(invocationSet)).flatMap(([nm, c]) => Array(c).fill(nm));
-  shuffle(nombres);
-  nombres.splice(0, 2);
-  partida.deck = nombres.map(name => ({ name }));
+  // Mazo (game.js): el del modo, sin las cartas que aparta al azar.
+  partida.deck = prepararMazo(partida);
   partida.players.forEach(p => { draw(p, true, partida.deck); draw(p, false, partida.deck); });
   return partida;
 }
@@ -76,8 +92,7 @@ export function prepararPartida(dificultades, invocationSet = 'normal') {
  * dos, así que no es hacer trampa.
  */
 function gestionarClarividente(partida) {
-  const nivel = LEVELS[partida.levelIdx];
-  const need = nivel ? INVOCATION_SETS[partida.invocationSet][nivel].need : null;
+  const need = invocacionDePartida(partida)?.need || null;
   partida.players.forEach(p => {
     const ahora = tieneClarividenteVisible(p);
     if (p._clariPrev && !ahora && p.hand.length === 2) {
@@ -98,6 +113,7 @@ function gestionarClarividente(partida) {
  * Devuelve { puntos, ganadoras, invocaciones, turnos }.
  */
 export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, registro = null) {
+  // `invocationSet`: un set o las opciones de partida (opcionesDePartida).
   const base = { ...PESOS };
   const baseBusqueda = { ...BUSQUEDA };
   const dificultades = asientos.map(a => a.split('@')[0]);
@@ -114,9 +130,8 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, 
   while (!partida.juegoTerminado && turnos < 500) {
     Object.assign(PESOS, pesosDe[partida.turn]);
     Object.assign(BUSQUEDA, busquedaDe[partida.turn]);
-    if (registro && partida.players[partida.turn].tipo !== 'auto') registrarComoNavegador(partida, registro, invocationSet);
-    decidirYJugarTurno(partida.players, partida.neutrals, partida.turn,
-      { levelIdx: partida.levelIdx, invocationSet }, ejecutor);
+    if (registro && partida.players[partida.turn].tipo !== 'auto') registrarComoNavegador(partida, registro);
+    decidirYJugarTurno(partida.players, partida.neutrals, partida.turn, configPartida(partida), ejecutor);
     gestionarClarividente(partida);
     if (!partida.played) throw new Error(`La autómata ${partida.turn} no jugó carta (turno ${turnos})`);
     terminarTurno(partida);
@@ -126,10 +141,17 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, 
   }
   Object.assign(PESOS, base);
   Object.assign(BUSQUEDA, baseBusqueda);
-  const resultado = calcularResultadoFinal(partida.players, partida.invocacionesCompletadas);
+  // Modo Experto: las últimas cambian sus Gemas con la autómata central si les conviene.
+  const resultado = partida.automataCentral
+    ? resultadoFinalExperto(partida.players, partida.automataCentral, partida.invocacionesCompletadas,
+      jugadorasConMenosPuntos(partida.players).filter(i => convieneIntercambioAutomata(partida.players, partida.automataCentral, i)))
+    : calcularResultadoFinal(partida.players, partida.invocacionesCompletadas);
   return {
     puntos: partida.players.map(p => sumaGemas(p.gems)),
-    ganadoras: resultado.ganadores.map(g => g.idx ?? partida.players.findIndex(p => p.name === g.nombre)),
+    // Solo Experto: puntos de la autómata central y si ha ganado ella.
+    puntosAutomata: partida.automataCentral ? sumaGemas(partida.automataCentral.gems) : null,
+    ganaAutomata: resultado.ganadores.some(g => g.esAutomataCentral),
+    ganadoras: resultado.ganadores.filter(g => !g.esAutomataCentral).map(g => g.idx ?? partida.players.findIndex(p => p.name === g.nombre)),
     invocaciones: partida.invocacionesCompletadas.length,
     turnos,
   };
@@ -141,14 +163,15 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, 
  * "persona" es simulada, así que su jugada se calcula antes (con sus pesos)
  * y se guarda como la elegida; la de verdad la hace decidirYJugarTurno.
  */
-function registrarComoNavegador(partida, registro, invocationSet) {
+function registrarComoNavegador(partida, registro) {
   const idx = partida.turn;
-  const lvl = LEVELS[partida.levelIdx];
-  if (!lvl) return;
-  const need = INVOCATION_SETS[invocationSet][lvl].need;
+  const cfg = configPartida(partida);
+  const inv = invocacionDePartida(cfg);
+  if (!inv) return;
+  const { nivel: lvl, need } = inv;
   const vista = construirEstadoVisibleParaBot(partida.players, partida.neutrals, idx);
-  const probs = estimarProbabilidadesPersonajes(vista, { portales: {} }, invocationSet).probabilidadPorNombre;
-  const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
+  const probs = estimarProbabilidadesPersonajes(vista, { portales: {} }, cfg).probabilidadPorNombre;
+  const valorGemaNivel = valorMedioGemaNivel(cfg, lvl);
   const cands = conPesos({}, () => evaluarJugadasFaseA(vista, need, valorGemaNivel, probs));
   const mejor = Math.max(...cands.map(c => c.valor));
   const elegida = cands.find(c => c.valor >= mejor - 1e-9 && c.usaConocida) || cands.find(c => c.valor >= mejor - 1e-9);
@@ -167,6 +190,7 @@ export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'],
   const stats = {};
   mesa.forEach(d => { stats[d] ??= { asientos: 0, victorias: 0, puntos: 0 }; });
   let invocaciones = 0;
+  let ganaAutomata = 0;
   // Con `aprender`, como en la web: las jugadas de las 'persona' se
   // registran y, al acabar cada partida, se reajusta el modelo que usa la
   // Experta para preverlas.
@@ -181,6 +205,7 @@ export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'],
       establecerModeloPersonas(ajustarModelo(ejemplos));
     }
     invocaciones += r.invocaciones;
+    if (r.ganaAutomata) ganaAutomata++;
     rot.forEach((d, i) => {
       stats[d].asientos++;
       stats[d].puntos += r.puntos[i];
@@ -195,7 +220,11 @@ export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'],
     };
   });
   establecerModeloPersonas(null);
-  return { partidas, mesa: mesa.join(','), invocacionesPorPartida: +(invocaciones / partidas).toFixed(2), resumen };
+  return {
+    partidas, mesa: mesa.join(','), invocacionesPorPartida: +(invocaciones / partidas).toFixed(2), resumen,
+    // Solo en Modo Experto: partidas que gana la autómata central.
+    ...(typeof set === 'object' && set.modo === 'experto' ? { ganaAutomataCentral: +(ganaAutomata / partidas).toFixed(3) } : {}),
+  };
 }
 
 // ---------- Línea de comandos ----------
@@ -211,6 +240,9 @@ if (esPrincipal) {
   const jugadoras = +(args.jugadoras || 3);
   const mesa = args.mesa ? args.mesa.split(',') : ['dificil', ...Array(jugadoras - 1).fill('normal')];
   const t0 = Date.now();
-  const r = torneo({ partidas: +(args.partidas || 500), mesa, set: args.set || 'normal', semilla: +(args.semilla || 1), perfiles, aprender: args.aprender === '1' });
+  const set = args.modo
+    ? { modo: args.modo, invocationSet: args.set, entusiasta: args.entusiasta === '1', madain: args.madain === '1' }
+    : (args.set || 'normal');
+  const r = torneo({ partidas: +(args.partidas || 500), mesa, set, semilla: +(args.semilla || 1), perfiles, aprender: args.aprender === '1' });
   console.log(JSON.stringify({ ...r, pesos: PESOS, segundos: (Date.now() - t0) / 1000 }, null, 1));
 }

@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-11-05 16:55 (Europe/Madrid)
+> **Última actualización:** 2026-11-07 20:32 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -20,15 +20,10 @@
 > ⚠️ **El simulador digital (`js/`) todavía no implementa todas estas reglas.**
 > Ver `CLAUDE.md` para el detalle de qué está desactualizado.
 >
-> ⚠️ **Punto ambiguo en el PDF fuente, pendiente de confirmar con el diseñador:**
-> en "Modo avanzado" el texto dice literalmente *"se extraen dos cartas al
-> azar que jugarán esta partida"*. Por coherencia con el resto del documento
-> (donde "extraer" cartas del mazo siempre significa apartarlas de la caja,
-> sin usarlas) y con la frase equivalente de Modo experto ("No se extraen
-> cartas en esta partida"), aquí se ha interpretado como *"que **no**
-> jugarán esta partida"* — es decir, se apartan 2 cartas al azar sin mirarlas,
-> igual que ya hacía la versión anterior del reglamento con 4 cartas. Si la
-> intención real era otra, corregir esta nota y el apartado correspondiente.
+> ✅ **Confirmado por Julio el 2026-11-07:** en "Modo avanzado" el PDF dice
+> *"se extraen dos cartas al azar que jugarán esta partida"*; la lectura
+> correcta es que esas 2 cartas **no** juegan (se apartan sin mirarlas, igual
+> que en Modo normal).
 >
 > ⚠️ **Punto ambiguo en la FAQ, pendiente de confirmar con el diseñador:**
 > la pregunta "¿Se puede usar la habilidad de un personaje contra un Portal
@@ -189,11 +184,16 @@ Personajes duplicados se pierden y, tras el reparto, siempre sobran Gemas.
 
 - **Modo introductorio** (recomendado para familiarizarse con las mecánicas
   y personajes): Reena, Sora, Lumo, Pícaro, Aprendiz, Cronista, Estratega y
-  Cronomante. Se baraja y se deja junto a las cartas de invocación.
+  Cronomante (29 cartas: 3 de cada Animal, 6 Pícaros, 4 Aprendices, 4
+  Cronistas, 3 Estrategas y 3 Cronomantes). Se baraja y se deja junto a las
+  cartas de invocación; no se aparta ninguna carta. Solo se puede jugar con
+  el set de invocaciones introductorio (los otros piden personajes que no
+  están en este mazo).
 - **Modo normal** (para jugadores que ya conocen las mecánicas): Pícaro,
   Centinela, Aprendiz, Cronista, Estratega, Cronomante, Ocultista,
   Clarividente, Maestro y Metamorfo. Se baraja el mazo y se sacan al azar 2
-  cartas sin mirarlas, que se dejarán en la caja del juego.
+  cartas sin mirarlas, que se dejarán en la caja del juego. Se juega con el
+  set normal o el floral (el introductorio necesita Animales).
 
   > **Cambio respecto a versiones anteriores:** el Metamorfo ya forma parte
   > del mazo base de "Modo normal" desde el principio (antes se barajaba
@@ -456,11 +456,18 @@ También puede transformarse en otro personaje pagando de nuevo su coste.
 Si se ejecuta una invocación con éxito y un Entusiasta está bocarriba en un
 Portal, el jugador que lo tenga en su Portal pierde una Gema de valor 1. No
 se da cambio: si no tiene ninguna Gema de valor 1, el efecto no se aplica y
-no pierde ninguna Gema.
+no pierde ninguna Gema. Es lo último que se resuelve en la invocación,
+después del reparto de Gemas y de los bonus del Pícaro y del Maestro. Un
+Entusiasta en un Portal central no hace nada. El Metamorfo no puede
+transformarse en Entusiasta.
 
 > **Cambio respecto a versiones anteriores (confirmado con el autor,
 > 2026-11-05):** antes decía "(o mayor y toma el cambio)". El Entusiasta
-> todavía no está en el simulador.
+> ya está en el simulador (expansión opcional del menú de inicio).
+>
+> **Aclaraciones de Julio, 2026-11-07:** el Entusiasta se resuelve el
+> último, no actúa en Portales centrales y no es una transformación válida
+> del Metamorfo.
 
 ---
 
@@ -516,8 +523,9 @@ comparte la victoria.
 
 - En cualquiera de las variantes y modos de juego, se puede introducir el
   personaje del Entusiasta.
-- Se barajan los dos Entusiastas con el mazo de robo justo antes de comenzar
-  la partida.
+- Se barajan los dos Entusiastas con el mazo **antes** de apartar las cartas
+  al azar del modo elegido, así que alguno puede quedarse fuera de la
+  partida (Julio, 2026-11-07).
 
 ![Modo avanzado y modo experto](img/14-modo-avanzado-experto.jpg)
 
@@ -525,9 +533,12 @@ comparte la victoria.
 
 - Se juega con todas las cartas, incluidos los Animales, excepto el
   Entusiasta.
-- Se baraja el mazo y se extraen dos cartas al azar (ver nota de ambigüedad
-  al principio de este documento: aquí se interpretan como cartas que
-  **no** se usan esta partida, igual que en el resto de modos).
+- Se baraja el mazo y se extraen dos cartas al azar que **no** se usan esta
+  partida, igual que en Modo normal (confirmado el 2026-11-07).
+- Se puede jugar con cualquiera de los tres sets de invocaciones.
+- Opcionalmente, se puede añadir la cuarta invocación (Madain) como
+  invocación final, igual que en Modo experto (decisión de Julio,
+  2026-11-07).
 
 > **Cambio respecto a versiones anteriores:** antes se excluían expresamente
 > los dos Metamorfos, se descartaban 4 cartas al azar del resto del mazo y
@@ -552,7 +563,13 @@ comparte la victoria.
   correspondientes (las **habilidades pasivas** de obtención de Gemas de
   Pícaro y Maestro también surten efecto para el autómata).
 - Al finalizar la partida, el jugador con MENOS puntuación PUEDE
-  intercambiar todas sus Gemas por todas las del autómata.
+  intercambiar todas sus Gemas por todas las del autómata. Si varios
+  jugadores empatan con la menor puntuación, cada uno puede puntuar con las
+  Gemas del autómata; si así ganan, la victoria es compartida.
+- Si el autómata empata con un jugador en el primer puesto, se aplica el
+  desempate habitual (invocaciones distintas, Gema de mayor valor de la
+  última invocación...). Si el autómata gana, pierden todos los jugadores.
+- Se puede jugar con cualquiera de los tres sets de invocaciones.
 - Los Portales centrales, ahora del autómata, siguen teniendo el coste de
   una Gema unitaria para realizar la habilidad de uno de sus personajes.
 

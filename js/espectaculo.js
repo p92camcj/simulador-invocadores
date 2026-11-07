@@ -52,7 +52,7 @@ const COLORES = {
 };
 // Criaturas invocadas con arte propio (assets/invocaciones/<nombre>.webp).
 const CRIATURAS_CON_ARTE = new Set(['Cirelia', 'Baelorith', 'Aelgorth']);
-const COLOR_NIVEL = { C: '#f2c94c', B: '#e0533a', A: '#9b59d0' };
+const COLOR_NIVEL = { C: '#f2c94c', B: '#e0533a', A: '#9b59d0', '*': '#3fe0c5' };
 
 // ---------- Preferencia on/off ----------
 
@@ -605,15 +605,17 @@ function escenaGenerica({ name, jugadora, claveOrigen }) {
 
 // ---------- Invocación completada ----------
 
-export function anunciarInvocacion({ nivel, nombre, need, recompensas }) {
+export function anunciarInvocacion({ nivel, nombre, need, recompensas, gemasAutomata = 0, entusiastas = [] }) {
   if (!espectaculoActivo()) return false;
-  const posiciones = [[50, 18], [16, 64], [84, 64]];
+  const posiciones = need.length > 3 ? [[50, 14], [14, 52], [86, 52], [50, 80]] : [[50, 18], [16, 64], [84, 64]];
   const figuras = need.map((n, i) => {
     const [x, y] = posiciones[i % posiciones.length];
     return `<div class="esp-convergen" style="--x:${x}%;--y:${y}%;${vars(n)}">${figura(n)}</div>`;
   }).join('');
   const lista = recompensas.filter(r => r.gemas > 0)
-    .map(r => `<li>${esc(r.jugadora)} <b>+${r.gemas}</b> ${r.gemas === 1 ? 'Gema' : 'Gemas'}</li>`).join('');
+    .map(r => `<li>${esc(r.jugadora)} <b>+${r.gemas}</b> ${r.gemas === 1 ? 'Gema' : 'Gemas'}</li>`).join('')
+    + (gemasAutomata > 0 ? `<li>🤖 Autómata central <b>+${gemasAutomata}</b> ${gemasAutomata === 1 ? 'Gema' : 'Gemas'}</li>` : '')
+    + entusiastas.filter(e => e.perdida).map(e => `<li>🎉 ${esc(e.jugadora)} <b>−1</b> (Entusiasta)</li>`).join('');
   encolar({
     tipo: 'invocacion',
     duracion: 5200,
@@ -624,7 +626,7 @@ export function anunciarInvocacion({ nivel, nombre, need, recompensas }) {
       <div class="esp-destello" aria-hidden="true"></div>
       ${CRIATURAS_CON_ARTE.has(nombre) ? `<div class="esp-criatura" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'}"><img src="assets/invocaciones/${esc(nombre.toLowerCase())}.webp" alt="${esc(nombre)}" draggable="false"></div>` : ''}
       <div class="esp-titulo-invocacion ${CRIATURAS_CON_ARTE.has(nombre) ? 'esp-titulo-invocacion--abajo' : ''}" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'}">
-        <small>Invocación ${esc(nivel)} completada</small>
+        <small>Invocación ${nivel === '*' ? 'final' : esc(nivel)} completada</small>
         <strong>${esc(nombre)}</strong>
         ${lista ? `<ul>${lista}</ul>` : ''}
       </div>

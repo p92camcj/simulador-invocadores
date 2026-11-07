@@ -4,7 +4,8 @@
 // Desde 1.32.3 la única vista es la Mesa 3D (js/mesa3d.js): render() le
 // pide que se pinte y picker() abre su hoja inferior de opciones. Aquí
 // queda además la elección de la Clarividente, que se dispara al repintar.
-import { actualizarClarividente } from './utils.js';
+import { actualizarClarividente, invocacionDePartida } from './utils.js';
+import { estado } from './motor/estado.js';
 import { aplicarEleccionClarividente } from './motor/habilidades.js';
 import { renderMesa3D, pickerMesa, hayPickerMesaAbierto } from './mesa3d.js';
 
@@ -40,8 +41,7 @@ function resolverEleccionClarividente(player) {
   };
 
   if (player.tipo === 'auto') {
-    const lvl = window.LEVELS?.[window.levelIdx];
-    const need = lvl ? window.INVOCATION_SETS?.[window.invocationSet]?.[lvl]?.need : null;
+    const need = invocacionDePartida(estado.partida)?.need || null;
     const esRequerida = c => !!need && need.includes(c.aspecto || c.name);
     let idxElegida;
     if (need && esRequerida(c0) && !esRequerida(c1)) idxElegida = 0;

@@ -8,7 +8,7 @@
 // ver sale con `nombre: null`, así que el nombre de una carta oculta nunca
 // llega al DOM.
 
-import { LEVELS, INVOCATION_SETS, sumaGemas } from './utils.js';
+import { invocacionDePartida, nivelesPartida, sumaGemas } from './utils.js';
 
 /**
  * Carta tal y como se enseña: nombre solo si es visible. Un Metamorfo
@@ -38,7 +38,7 @@ function portalVista(pila) {
  * `bocarriba` (partida terminada) se enseñan también todas, con su valor.
  */
 function gemasVista(gems, exacto, bocarriba = false) {
-  const porNivel = { unitaria: 0, C: 0, B: 0, A: 0 };
+  const porNivel = { unitaria: 0, C: 0, B: 0, A: 0, '*': 0 };
   gems.forEach(g => { if (g.nivel in porNivel) porNivel[g.nivel]++; });
   const reveladas = gems.filter(g => g.esAsterisco && g.revelada).map(g => g.valor);
   return {
@@ -93,9 +93,9 @@ function manoAjena(p) {
 
 /** Recuento de la invocación activa, por apariencia (como actions/render). */
 export function estadoInvocacion(partida) {
-  const nivel = LEVELS[partida.levelIdx];
-  if (!nivel) return null;
-  const inv = INVOCATION_SETS[partida.invocationSet][nivel];
+  const inv = invocacionDePartida(partida);
+  if (!inv) return null;
+  const { nivel } = inv;
   const cuenta = {};
   inv.need.forEach(n => { cuenta[n] = 0; });
   const contar = pila => {
@@ -159,6 +159,11 @@ export function construirVistaMesa(partida, { asientoPropio }) {
     propio: asiento(asientoPropio),
     rivales,
     centrales: neutrals.map(portalVista),
+    // Modo Experto: Gemas de la autómata central (solo por nivel hasta el final).
+    automataCentral: partida.automataCentral ? gemasVista(partida.automataCentral.gems, false, terminada) : null,
+    // Invocaciones de la partida (C, B, A y la final si hay Madain) y cuál toca.
+    niveles: nivelesPartida(partida),
+    nivelIdx: partida.levelIdx,
   };
 }
 

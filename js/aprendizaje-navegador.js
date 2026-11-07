@@ -14,7 +14,7 @@ import {
 } from './aprendizaje.js';
 import { construirEstadoVisibleParaBot, establecerModeloPersonas } from './bot.js';
 import { estimarProbabilidadesPersonajes, valorMedioGemaNivel } from './bot-probabilidad.js';
-import { LEVELS, INVOCATION_SETS } from './utils.js';
+import { configPartida, invocacionDePartida } from './utils.js';
 
 const CLAVE = 'invocadores.aprendizaje';
 let almacen = crearAlmacenVacio();
@@ -57,14 +57,16 @@ export function prepararEjemploPersona(partida, cartaIdx, destKey) {
     if (!jugadora || jugadora.tipo === 'auto' || partida.played) return null;
     const carta = jugadora.hand[cartaIdx];
     if (!carta) return null;
-    const lvl = LEVELS[partida.levelIdx];
-    if (!lvl) return null;
-    const need = INVOCATION_SETS[partida.invocationSet][lvl].need;
+    const cfg = configPartida(partida);
+    const inv = invocacionDePartida(cfg);
+    if (!inv) return null;
+    const lvl = inv.nivel;
+    const need = inv.need;
     const vista = construirEstadoVisibleParaBot(partida.players, partida.neutrals, idx);
-    const probabilidades = estimarProbabilidadesPersonajes(vista, { portales: {} }, partida.invocationSet);
+    const probabilidades = estimarProbabilidadesPersonajes(vista, { portales: {} }, cfg);
     return crearEjemplo({
       vista, need,
-      valorGemaNivel: valorMedioGemaNivel(partida.invocationSet, lvl),
+      valorGemaNivel: valorMedioGemaNivel(cfg, lvl),
       probabilidadPorNombre: probabilidades.probabilidadPorNombre,
       usaConocida: carta.vis?.owner === true,
       destKey,

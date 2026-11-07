@@ -23,14 +23,18 @@ export const INVOCATION_SETS = {
   },
 };
 
-// Cuarta invocación de Modo Experto ("Asterisco"). Se deja preparada pero
-// todavía NO está conectada a ningún flujo de juego real (eso es el bloque
-// de Modo Experto, aparte) — ver docs/MEJORAS_FUTURAS.md.
+// Cuarta invocación ("Asterisco", Madain): obligatoria en Modo Experto y
+// opcional en Modo Avanzado (REGLAMENTO.md, "Modo experto"). Nivel '*'.
+// El Metamorfo debe estar SIN transformar: como se compara por apariencia
+// (`aspecto || name`), un Metamorfo transformado ya no cuenta como tal.
 export const INVOCATION_ASTERISCO = {
   nombre: 'Madain',
   need: ['Reena', 'Metamorfo', 'Sora', 'Lumo'],
   gemas: [11, 12, 12, 12, 13],
 };
+export const NIVEL_ASTERISCO = '*';
+// Niveles cuyas Gemas cuentan como "invocación" en el desempate final.
+export const NIVELES_CON_GEMAS = [...LEVELS, NIVEL_ASTERISCO];
 
 // Personajes cuya habilidad se activa manualmente en la Fase B del turno
 // (ver docs/reglamento/REGLAMENTO.md, "Secuencia del turno"). Centinela y
@@ -62,25 +66,118 @@ export const CANTIDADES_MODO_NORMAL = {
   Cronista: 4, Aprendiz: 4, Centinela: 4, 'Pícaro': 6, Metamorfo: 2,
 };
 
-// Cantidades de los 3 Animales (Reena/Sora/Lumo), solo presentes en el mazo
-// cuando el set de invocación elegido es 'introductorio' (ver la nota de
-// alcance en CLAUDE.md: hoy es más bien "Modo Avanzado" por composición,
-// pendiente de separar — no se toca esa deuda en esta tarea).
+// Cantidades de los 3 Animales (Reena/Sora/Lumo).
 export const CANTIDADES_ANIMALES = { Reena: 3, Sora: 3, Lumo: 3 };
 
+// Mazo del Modo introductorio: 29 cartas (REGLAMENTO.md, "Preparación del
+// mazo de personajes"; copias confirmadas por Julio el 2026-11-07).
+export const CANTIDADES_MODO_INTRODUCTORIO = {
+  ...CANTIDADES_ANIMALES,
+  'Pícaro': 6, Aprendiz: 4, Cronista: 4, Estratega: 3, Cronomante: 3,
+};
+
+// Expansión: los 2 Entusiastas.
+export const CANTIDADES_ENTUSIASTA = { Entusiasta: 2 };
+
 /**
- * Composición total del mazo configurado: `{ nombrePersonaje: cantidad }`,
- * incluyendo los Animales solo si `invocationSet === 'introductorio'` (ver
- * `CANTIDADES_ANIMALES` arriba). Es la MISMA información pública de las
- * reglas que ya construía `initGame()` (`game.js`) a mano — factorizada aquí
- * para que también la use el motor probabilístico del autómata (conteo de
- * cartas: "cuántas copias hay en total" es dato de reglas, no del estado real
- * de la partida).
+ * Modos de juego (REGLAMENTO.md, "Preparación" y "Variantes y modos de
+ * juego"; dudas resueltas por Julio el 2026-11-07):
+ * - `sets`: sets de invocación que se pueden completar con ese mazo.
+ * - `apartar`: cartas que se sacan al azar sin mirar y no juegan.
+ * - `madain`: 'nunca' | 'opcional' | 'siempre' (cuarta invocación).
+ * - `automata`: autómata central que cobra lo de los Portales centrales.
  */
-export function composicionMazoTotal(invocationSet) {
-  return invocationSet === 'introductorio'
-    ? { ...CANTIDADES_MODO_NORMAL, ...CANTIDADES_ANIMALES }
-    : { ...CANTIDADES_MODO_NORMAL };
+export const MODOS_JUEGO = {
+  introductorio: {
+    nombre: 'Introductorio', sets: ['introductorio'], apartar: 0, madain: 'nunca', automata: false,
+    cantidades: CANTIDADES_MODO_INTRODUCTORIO,
+    descripcion: 'Para aprender: 29 cartas sin habilidades complicadas.',
+  },
+  normal: {
+    nombre: 'Normal', sets: ['normal', 'floral'], apartar: 2, madain: 'nunca', automata: false,
+    cantidades: CANTIDADES_MODO_NORMAL,
+    descripcion: 'Los 10 personajes sin Animales; se apartan 2 cartas al azar.',
+  },
+  avanzado: {
+    nombre: 'Avanzado', sets: ['introductorio', 'normal', 'floral'], apartar: 2, madain: 'opcional', automata: false,
+    cantidades: { ...CANTIDADES_MODO_NORMAL, ...CANTIDADES_ANIMALES },
+    descripcion: 'Todas las cartas, Animales incluidos; se apartan 2 cartas al azar.',
+  },
+  experto: {
+    nombre: 'Experto', sets: ['introductorio', 'normal', 'floral'], apartar: 0, madain: 'siempre', automata: true,
+    cantidades: { ...CANTIDADES_MODO_NORMAL, ...CANTIDADES_ANIMALES },
+    descripcion: 'Todas las cartas, Madain como cuarta invocación y una autómata central que también puntúa.',
+  },
+};
+
+/**
+ * Modo de una partida o configuración. Las partidas guardadas antes de que
+ * existieran los modos solo traen `invocationSet`: el set introductorio
+ * usaba el mazo completo con Animales (= Avanzado) y el resto el Normal.
+ */
+export function modoDe(cfg) {
+  if (typeof cfg === 'string') return cfg === 'introductorio' ? 'avanzado' : 'normal';
+  if (cfg?.modo && MODOS_JUEGO[cfg.modo]) return cfg.modo;
+  return cfg?.invocationSet === 'introductorio' ? 'avanzado' : 'normal';
+}
+
+/**
+ * Lo que necesitan saber el motor y las autómatas de la configuración de
+ * una partida (sin nada oculto): nivel actual, set, modo y opciones.
+ */
+export function configPartida(partida) {
+  return {
+    levelIdx: partida.levelIdx,
+    invocationSet: partida.invocationSet,
+    modo: modoDe(partida),
+    entusiasta: !!partida.entusiasta,
+    madain: !!partida.madain,
+  };
+}
+
+/** Niveles de invocación de la partida, en orden: C, B, A (y * si hay Madain). */
+export function nivelesPartida(cfg) {
+  return cfg && typeof cfg === 'object' && cfg.madain ? [...LEVELS, NIVEL_ASTERISCO] : LEVELS;
+}
+
+/** Datos ({ nombre, need, gemas }) de la invocación de nivel `nivel`. */
+export function datosInvocacion(cfg, nivel) {
+  if (nivel === NIVEL_ASTERISCO) return INVOCATION_ASTERISCO;
+  const set = typeof cfg === 'string' ? cfg : cfg.invocationSet;
+  return INVOCATION_SETS[set]?.[nivel];
+}
+
+/** Invocación activa ({ nivel, nombre, need, gemas }) o null si no queda. */
+export function invocacionDePartida(cfg) {
+  const nivel = nivelesPartida(cfg)[cfg.levelIdx];
+  return nivel ? { nivel, ...datosInvocacion(cfg, nivel) } : null;
+}
+
+/**
+ * Composición total del mazo configurado: `{ nombrePersonaje: cantidad }`
+ * (incluye las cartas que se apartan al azar, que nadie sabe cuáles son).
+ * Es dato público de las reglas: la usan `prepararMazo()` y el conteo de
+ * cartas de las autómatas, así que nunca se desincronizan. `cfg` es la
+ * partida, `configPartida(partida)` o, por compatibilidad, un set.
+ */
+export function composicionMazoTotal(cfg) {
+  const modo = MODOS_JUEGO[modoDe(cfg)];
+  const conEntusiasta = typeof cfg === 'object' && cfg?.entusiasta;
+  return { ...modo.cantidades, ...(conEntusiasta ? CANTIDADES_ENTUSIASTA : {}) };
+}
+
+/**
+ * Mazo de robo de una partida nueva: la composición del modo (con los
+ * Entusiastas si se juega con la expansión), barajada, y sin las cartas que
+ * el modo aparta al azar. Los Entusiastas se barajan ANTES de apartar, así
+ * que pueden quedarse fuera (Julio, 2026-11-07). Devuelve [{ name }].
+ */
+export function prepararMazo(cfg) {
+  const nombres = Object.entries(composicionMazoTotal(cfg))
+    .flatMap(([name, cantidad]) => Array(cantidad).fill(name));
+  shuffle(nombres);
+  nombres.splice(0, MODOS_JUEGO[modoDe(cfg)].apartar);
+  return nombres.map(name => ({ name }));
 }
 
 // ---------- Iconos de personajes ----------
@@ -491,35 +588,52 @@ export function construirPoolGemas(valores) {
  *   valor 1 y su Pícaro se voltea bocabajo. Los Portales centrales no tienen
  *   dueña, así que su Pícaro ni cobra ni se voltea.
  *
+ * Modo Experto: si se pasa `automata` (la autómata central, `{ gems }`), los
+ * Portales centrales son suyos: cobra el bonus del Maestro y el del Pícaro
+ * de un Portal central (y ese Pícaro también se voltea).
+ *
  * Ambos miran la identidad real (`.name`), no la apariencia de un
  * Metamorfo transformado (DEUDA_TECNICA.md ítem 14). Función pura, ver
  * `tests/run-tests.mjs`.
  */
-export function aplicarBonusPasivosInvocacion(players, neutrals, need) {
+export function aplicarBonusPasivosInvocacion(players, neutrals, need, automata = null) {
   const portales = todosLosPortales(players, neutrals);
   const cimaVisibleEs = (st, nombre) =>
     st.length > 0 && st.at(-1).name === nombre && st.at(-1).vis?.public === true;
+  // Quién cobra lo de un Portal: su dueña, o la autómata central en Experto.
+  const cobradora = playerIdx => (playerIdx !== null ? players[playerIdx] : automata);
+  const unitaria = () => ({ valor: 1, nivel: 'unitaria' });
 
   const hayPicaroVisible = portales.some(({ stack }) => cimaVisibleEs(stack, 'Pícaro'));
   const maestros = portales.filter(({ stack }) => cimaVisibleEs(stack, 'Maestro'));
-  if (
-    need.includes('Maestro') &&
-    !hayPicaroVisible &&
-    maestros.length === 1 &&
-    maestros[0].playerIdx !== null
-  ) {
-    players[maestros[0].playerIdx].gems.push(
-      { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }
-    );
+  if (need.includes('Maestro') && !hayPicaroVisible && maestros.length === 1) {
+    cobradora(maestros[0].playerIdx)?.gems.push(unitaria(), unitaria(), unitaria());
   }
 
   portales.forEach(({ stack, playerIdx }) => {
-    if (playerIdx === null || !cimaVisibleEs(stack, 'Pícaro')) return;
-    players[playerIdx].gems.push({ valor: 1, nivel: 'unitaria' });
+    const quien = cobradora(playerIdx);
+    if (!quien || !cimaVisibleEs(stack, 'Pícaro')) return;
+    quien.gems.push(unitaria());
     stack.at(-1).vis.public = false;
   });
 }
 
+/**
+ * Expansión del Entusiasta: lo último que se resuelve en una invocación con
+ * éxito (Julio, 2026-11-07). Cada Entusiasta bocarriba en el Portal de una
+ * jugadora le quita una Gema de valor 1 (sin cambio: si no tiene, no
+ * pierde nada). En un Portal central no hace nada. Mira la identidad real.
+ * Devuelve [{ jugadora, perdida }] por cada Entusiasta que ha actuado.
+ */
+export function aplicarEntusiastas(players, neutrals) {
+  const efectos = [];
+  todosLosPortales(players, neutrals).forEach(({ stack, playerIdx }) => {
+    const top = stack.at(-1);
+    if (playerIdx === null || !top || top.name !== 'Entusiasta' || top.vis?.public !== true) return;
+    efectos.push({ jugadora: playerIdx, perdida: gastarGemaUnitaria(players[playerIdx]) });
+  });
+  return efectos;
+}
 
 /**
  * Clasificación final de la partida (REGLAMENTO.md, "Final de la
@@ -552,7 +666,7 @@ export function calcularResultadoFinal(players, invocacionesCompletadas = []) {
   const stats = players.map((p, idx) => {
     const gemasPorNivelReal = {};
     p.gems.forEach(g => {
-      if (!LEVELS.includes(g.nivel)) return;
+      if (!NIVELES_CON_GEMAS.includes(g.nivel)) return;
       gemasPorNivelReal[g.nivel] = Math.max(gemasPorNivelReal[g.nivel] || 0, g.valor || 0);
     });
     return {
@@ -576,7 +690,7 @@ export function calcularResultadoFinal(players, invocacionesCompletadas = []) {
     for (const nivel of nivelesDesdeElMasReciente) {
       const va = a.gemasPorNivelReal[nivel] || 0;
       const vb = b.gemasPorNivelReal[nivel] || 0;
-      if (va !== vb) return { cmp: vb - va, criterio: `Gema de mayor valor en la invocación ${nivel}` };
+      if (va !== vb) return { cmp: vb - va, criterio: `Gema de mayor valor en la invocación ${nivel === NIVEL_ASTERISCO ? 'Madain' : nivel}` };
     }
     return { cmp: 0, criterio: 'empate total' };
   }
@@ -599,6 +713,65 @@ export function calcularResultadoFinal(players, invocacionesCompletadas = []) {
   }
 
   return { stats: ordenados, ganadores, motivoDesempate };
+}
+
+// ---------- Modo Experto: autómata central ----------
+
+export const NOMBRE_AUTOMATA_CENTRAL = 'Autómata central';
+
+/** Autómata central vacía (Modo Experto): solo tiene Gemas. */
+export function crearAutomataCentral() {
+  return { gems: [] };
+}
+
+/** Índices de las jugadoras con la suma de Gemas más baja (puede haber empate). */
+export function jugadorasConMenosPuntos(players) {
+  if (!players.length) return [];
+  const minimo = Math.min(...players.map(p => sumaGemas(p.gems)));
+  return players.map((p, i) => (sumaGemas(p.gems) === minimo ? i : -1)).filter(i => i >= 0);
+}
+
+/**
+ * ¿Le conviene a la jugadora `idx` cambiar sus Gemas por las de la
+ * autómata? (decisión de una autómata jugadora: solo si suma más).
+ */
+export function convieneIntercambioAutomata(players, automata, idx) {
+  return sumaGemas(automata.gems) > sumaGemas(players[idx].gems);
+}
+
+/**
+ * Final del Modo Experto (REGLAMENTO.md, "Modo experto"; empates resueltos
+ * por Julio el 2026-11-07). La jugadora con menos puntos PUEDE cambiar
+ * todas sus Gemas por las de la autómata central; si varias empatan en el
+ * último puesto, cada una que acepte puntúa con las Gemas de la autómata
+ * (y si eso gana, la victoria es compartida). La autómata se queda con las
+ * de la primera que cambia (todas suman lo mismo). Después, la autómata
+ * entra en la clasificación como una jugadora más: si queda primera, gana
+ * ella; un empate con ella se resuelve con el desempate habitual.
+ *
+ * `cambian`: índices de jugadoras que aceptan el cambio (solo cuentan los
+ * de `jugadorasConMenosPuntos`). Pura: no toca `players` ni `automata`.
+ * Devuelve el resultado de `calcularResultadoFinal` (la autómata tiene
+ * `idx === players.length` y `esAutomataCentral`) más `intercambios`.
+ */
+export function resultadoFinalExperto(players, automata, invocacionesCompletadas = [], cambian = []) {
+  const ultimas = new Set(jugadorasConMenosPuntos(players));
+  const quienes = cambian.filter(i => ultimas.has(i));
+  const copia = gems => gems.map(g => ({ ...g }));
+  const participantes = players.map((p, i) => ({
+    name: p.name,
+    gems: quienes.includes(i) ? copia(automata.gems) : p.gems,
+  }));
+  participantes.push({
+    name: NOMBRE_AUTOMATA_CENTRAL,
+    gems: quienes.length ? copia(players[quienes[0]].gems) : automata.gems,
+  });
+  const resultado = calcularResultadoFinal(participantes, invocacionesCompletadas);
+  const idxAutomata = players.length;
+  resultado.stats.forEach(st => { if (st.idx === idxAutomata) st.esAutomataCentral = true; });
+  resultado.ganadores.forEach(st => { if (st.idx === idxAutomata) st.esAutomataCentral = true; });
+  resultado.intercambios = quienes.map(i => players[i].name);
+  return resultado;
 }
 
 /**

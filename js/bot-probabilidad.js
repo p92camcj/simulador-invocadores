@@ -40,7 +40,7 @@
 //    bot, se pondera bajo pero no a cero porque aun así puede acercar el
 //    cierre de la invocación).
 
-import { INVOCATION_SETS, composicionMazoTotal } from './utils.js';
+import { datosInvocacion, composicionMazoTotal } from './utils.js';
 
 // Cuánto vale, en términos relativos, que el personaje jugado/movido acabe
 // en un Portal PROPIO (se cobra la Gema entera), uno de OTRA jugadora
@@ -120,8 +120,9 @@ export function actualizarMemoriaBot(memoriaBot, vista) {
  * Devuelve `{ contabilizadas, desconocidos, totalHuecosDesconocidos,
  * probabilidadPorNombre }`.
  */
-export function estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet) {
-  const composicion = composicionMazoTotal(invocationSet);
+export function estimarProbabilidadesPersonajes(vista, memoriaBot, cfg) {
+  // `cfg`: configuración pública de la partida (configPartida) o un set.
+  const composicion = composicionMazoTotal(cfg);
   const contabilizadas = {};
   const contar = nombre => {
     if (!nombre) return;
@@ -153,8 +154,8 @@ export function estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet
 }
 
 /** Valor medio de Gema del nivel `lvl` de la invocación activa (dato público, ya está en INVOCATION_SETS). */
-export function valorMedioGemaNivel(invocationSet, lvl) {
-  const { gemas } = INVOCATION_SETS[invocationSet][lvl];
+export function valorMedioGemaNivel(cfg, lvl) {
+  const { gemas } = datosInvocacion(cfg, lvl);
   return gemas.reduce((a, b) => a + b, 0) / gemas.length;
 }
 

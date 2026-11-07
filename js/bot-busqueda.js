@@ -28,7 +28,7 @@ import { aplicarHabilidad } from './motor/habilidades.js';
 import { jugarCarta, terminarTurno, pasarTurno, completarActivacion, invocacionActiva } from './motor/acciones.js';
 import {
   composicionMazoTotal, sumaGemas, tieneClarividenteVisible, opcionesActivarHabilidad,
-  todosLosPortales, shuffle, INVOCATION_SETS,
+  todosLosPortales, shuffle, nivelesPartida, datosInvocacion,
 } from './utils.js';
 import {
   PESOS, tableroDesdeVista, valorPosicional, valorAmenazaSiguiente,
@@ -65,7 +65,7 @@ export function determinizar(partida, botIdx) {
 
   // Cartas que la autómata conoce: todas las de los Portales y las de mano
   // que ve. El resto de la composición pública del mazo está "por ver".
-  const porVer = { ...composicionMazoTotal(mundo.invocationSet) };
+  const porVer = { ...composicionMazoTotal(mundo) };
   const restar = nombre => { if (porVer[nombre] > 0) porVer[nombre]--; };
   todosLosPortales(mundo.players, mundo.neutrals).forEach(({ stack }) => stack.forEach(c => restar(c.name)));
 
@@ -93,17 +93,18 @@ export function determinizar(partida, botIdx) {
 
   // Valor de las Gemas ajenas: solo se sabe el nivel (y el de las reveladas).
   const medias = {};
-  Object.entries(INVOCATION_SETS[mundo.invocationSet]).forEach(([nivel, { gemas }]) => {
+  nivelesPartida(mundo).forEach(nivel => {
+    const { gemas } = datosInvocacion(mundo, nivel);
     medias[nivel] = gemas.reduce((a, b) => a + b, 0) / gemas.length;
   });
-  mundo.players.forEach((p, i) => {
-    if (i === botIdx) return;
-    p.gems.forEach(g => {
-      if (g.revelada || g.nivel === 'unitaria') return;
-      if (medias[g.nivel] !== undefined) g.valor = medias[g.nivel];
-      g.esAsterisco = false;
-    });
+  const ocultarValores = gems => gems.forEach(g => {
+    if (g.revelada || g.nivel === 'unitaria') return;
+    if (medias[g.nivel] !== undefined) g.valor = medias[g.nivel];
+    g.esAsterisco = false;
   });
+  mundo.players.forEach((p, i) => { if (i !== botIdx) ocultarValores(p.gems); });
+  // Las Gemas de la autómata central (Modo Experto) tampoco se ven.
+  if (mundo.automataCentral) ocultarValores(mundo.automataCentral.gems);
   return mundo;
 }
 
