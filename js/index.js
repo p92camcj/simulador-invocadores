@@ -1,6 +1,5 @@
 // index.js
 import { initSetup } from './setup.js';
-import { initGame, salirAlMenu } from './game.js';
 import { LEVELS, INVOCATION_SETS } from './utils.js';
 import { initEspectaculo } from './espectaculo.js';
 import { instalarAliasGlobales } from './motor/estado.js';
@@ -21,7 +20,6 @@ window.INVOCATION_SETS = INVOCATION_SETS;
 // Al cargar el DOM, iniciar el setup
 document.addEventListener('DOMContentLoaded', () => {
   initSetup();
-  document.querySelector('#btnSalir')?.addEventListener('click', salirAlMenu);
   initEspectaculo();
   initMesa3D();
   initAprendizaje();

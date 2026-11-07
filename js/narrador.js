@@ -343,7 +343,6 @@ export function abrirHistorial() {
 /** Se llama una vez al cargar la página. */
 export function initNarrador() {
   escucharHistorial(alNuevaEntrada);
-  document.querySelector('#btnHistorial')?.addEventListener('click', abrirHistorial);
   const sel = document.querySelector('#selRitmoBots');
   if (sel) {
     sel.value = ritmoAutomatas();
