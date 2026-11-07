@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.33.0.87] - 2026-11-07
+## [1.33.0.145] - 2026-11-07
 
 ### Cambiado
 - **Menú de inicio por asientos.** Tras elegir el número de jugadoras,
