@@ -283,7 +283,7 @@ candidata a los pesos actuales en 2 y 3 jugadoras.
 ---
 
 ## js/render.js
-**Propósito:** Punto único de repintado y de preguntas a la jugadora. Desde 1.32.2 la única vista es la Mesa 3D (`js/mesa3d.js`): `render()` le pide que se pinte y `picker()` abre su hoja inferior. Aquí vive también la elección de la Clarividente, que se dispara al repintar.
+**Propósito:** Punto único de repintado y de preguntas a la jugadora. Desde 1.32.3 la única vista es la Mesa 3D (`js/mesa3d.js`): `render()` le pide que se pinte y `picker()` abre su hoja inferior. Aquí vive también la elección de la Clarividente, que se dispara al repintar.
 
 ### Exportaciones
 
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
 ---
 
 ## js/mesa3d.js
-**Propósito:** Vista **Mesa 3D**, la interfaz del simulador (la vista clásica en columnas se retiró en 1.32.2), pensada para jugar con el dedo en el móvil y también usada en ordenador (estilos en `mesa3d.css`, solo CSS 3D, sin librerías; `body.vista-mesa` es una clase fija en `index.html`). Mesa en perspectiva con cartas 3D (cara y dorso), tu mano abajo en abanico, rivales arriba y Portales centrales en medio. No contiene reglas: actúa con las acciones exportadas de `actions.js` (`seleccionarCartaMano`, `jugarEnPortal`, `elegirPortalObjetivo`, `activarHabilidad`, `cancelarSeleccion`, `ejecutarFinDeTurno`) y `salirAlMenu()` de `game.js`. Borra al cargar la antigua preferencia `invocadores.vista`.
+**Propósito:** Vista **Mesa 3D**, la interfaz del simulador (la vista clásica en columnas se retiró en 1.32.3), pensada para jugar con el dedo en el móvil y también usada en ordenador (estilos en `mesa3d.css`, solo CSS 3D, sin librerías; `body.vista-mesa` es una clase fija en `index.html`). Mesa en perspectiva con cartas 3D (cara y dorso), tu mano abajo en abanico, rivales arriba y Portales centrales en medio. No contiene reglas: actúa con las acciones exportadas de `actions.js` (`seleccionarCartaMano`, `jugarEnPortal`, `elegirPortalObjetivo`, `activarHabilidad`, `cancelarSeleccion`, `ejecutarFinDeTurno`) y `salirAlMenu()` de `game.js`. Borra al cargar la antigua preferencia `invocadores.vista`.
 
 Interacción: tocar una carta de la mano la levanta y los Portales brillan; tocar un Portal la juega (la carta vuela hasta él). También se puede arrastrar con el dedo. Tocar un Portal sin carta elegida lo amplía; en la Fase B los Portales con habilidad activable llevan un ✦ y, al tocarlos, ofrecen activarla. Los `picker()` se convierten en hojas inferiores con botones grandes; si piden un Portal, la hoja es compacta y los Portales válidos se pueden tocar en la mesa. `alert()` se muestra como aviso flotante que no bloquea. Desde 1.28 cada cambio se celebra con efectos en una capa aparte (`.m-efectos`): onda y chispas al entrar o aterrizar una carta, destello al voltear o transformar, salto del contador de Gemas al ganar, chip de requisito que se ilumina al cumplirse y, al completar una invocación (sin el modo Escenas), rayos, la criatura y temblor de la mesa. La pantalla de inicio también se rediseña en esta vista (cabecera con las criaturas, botones redondeados, selectores + / −). Con varias humanas, cada cambio de turno muestra un telón para pasar el móvil sin enseñar la mano. El menú ☰ de la barra superior incluye "Salir al menú de inicio" (`salirAlMenu()` en `game.js`).
 

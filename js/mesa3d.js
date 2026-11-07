@@ -1,7 +1,7 @@
 // js/mesa3d.js
 //
 // Vista "Mesa 3D": la interfaz del simulador (la vista clásica en columnas
-// se retiró en 1.32.2). Pensada para jugar con el dedo en un móvil, también
+// se retiró en 1.32.3). Pensada para jugar con el dedo en un móvil, también
 // se usa en ordenador. Mesa en perspectiva con cartas 3D (CSS 3D, sin
 // librerías), tu mano abajo en abanico, los rivales arriba y los Portales
 // centrales en medio.
@@ -79,7 +79,7 @@ let invocacionesVistas = null;
 // ---------- Inicialización ----------
 
 export function initMesa3D() {
-  // Preferencia de la antigua vista clásica (retirada en 1.32.2).
+  // Preferencia de la antigua vista clásica (retirada en 1.32.3).
   try { localStorage.removeItem('invocadores.vista'); } catch { /* nada */ }
 
   // alert() → aviso flotante mientras se juega en la mesa.

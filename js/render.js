@@ -1,7 +1,7 @@
 // render.js
 //
 // Punto único de repintado de la partida y de las preguntas a la jugadora.
-// Desde 1.32.2 la única vista es la Mesa 3D (js/mesa3d.js): render() le
+// Desde 1.32.3 la única vista es la Mesa 3D (js/mesa3d.js): render() le
 // pide que se pinte y picker() abre su hoja inferior de opciones. Aquí
 // queda además la elección de la Clarividente, que se dispara al repintar.
 import { actualizarClarividente } from './utils.js';

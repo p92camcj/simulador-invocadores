@@ -373,7 +373,7 @@ in `nextTurn()`.
   separately from `case 'Maestro'` itself — pure functions with no DOM/
   `picker()` dependency, so `tests/run-tests.mjs` can exercise the real
   selection/movement logic directly.
-- **`js/render.js`** — since 1.32.2 a thin layer: `render()` runs the
+- **`js/render.js`** — since 1.32.3 a thin layer: `render()` runs the
   Clarividente transitions (`gestionarTransicionesClarividente()`: when a
   player loses her visible Clarividente she must pick which hand card to
   keep seeing — a human via `picker()`, a bot by heuristic) and then
@@ -432,7 +432,7 @@ in `nextTurn()`.
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
   (the owner chose it over Three.js). **It is the only view, on desktop
   too**: the classic column board was frozen in 1.32.1 and deleted in
-  1.32.2 (`body.vista-mesa` is now a fixed class in `index.html`;
+  1.32.3 (`body.vista-mesa` is now a fixed class in `index.html`;
   `style.css` keeps only the setup screen, modals, narrator and history).
   Holds no rules: it calls the UI actions exported by `actions.js`
   (`seleccionarCartaMano`, `jugarEnPortal`, `elegirPortalObjetivo`,

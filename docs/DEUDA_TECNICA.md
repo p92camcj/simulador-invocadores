@@ -31,8 +31,8 @@
 
 ### ~~17. Vista clásica congelada pendiente de borrar~~ (resuelto)
 
-Resuelto en 1.32.2. La vista clásica se congeló en 1.32.1 y se borró en
-1.32.2: el tablero en columnas y el `picker()` de `<select>` de
+Resuelto en 1.32.3. La vista clásica se congeló en 1.32.1 y se borró en
+1.32.3: el tablero en columnas y el `picker()` de `<select>` de
 `render.js`, el panel de jugar carta con `<select>` y el arrastre nativo de
 `actions.js`, la cabecera de botones de partida y los bloques `#ctrlPlay`,
 `#picker`, `#info`, `#boardNeutrals` y `#boardGrid` de `index.html`, y sus

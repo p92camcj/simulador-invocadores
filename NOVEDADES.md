@@ -6,12 +6,18 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.32.2.85 - 2026-11-07
+## 1.32.3.WW - 2026-11-07
 
 - La vista clásica en columnas se ha retirado del todo: la Mesa 3D es la
   única forma de jugar, en el móvil y en el ordenador.
 - Por dentro la mesa funciona igual, pero con menos piezas que mantener,
   lo que hará más fácil seguir mejorándola.
+## 1.32.2.82 - 2026-11-07
+
+- Mesa 3D: si cancelas a medias el Cronomante, la mesa ya no te ofrece
+  activar la habilidad de otro Portal (como el Maestro) que en realidad te
+  llevaba de vuelta al Cronomante. Ahora solo te deja retomar el
+  Cronomante en el mismo Portal que elegiste, como dice el reglamento.
 
 ## 1.32.1.83 - 2026-11-07
 
