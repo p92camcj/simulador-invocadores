@@ -55,6 +55,16 @@ test('las rivales enseñan solo su carta pública y van en orden de turno', () =
   assert.equal(v.rivales[0].gemas.total, null);
 });
 
+test('al terminar la partida todas las Gemas salen bocarriba con su valor', () => {
+  const p = partida();
+  assert.equal(construirVistaMesa(p, { asientoPropio: 1 }).rivales[0].gemas.valores, null);
+  p.juegoTerminado = true;
+  p.players[2].gems = [{ valor: 3, nivel: 'C' }, { valor: 1, nivel: 'unitaria' }];
+  const v = construirVistaMesa(p, { asientoPropio: 1 });
+  assert.equal(v.rivales[0].gemas.total, 4);
+  assert.deepEqual(v.rivales[0].gemas.valores.map(g => g.valor), [1, 3]);
+});
+
 test('una Clarividente visible oculta la mano entera al resto y la enseña a su dueña', () => {
   const p = partida();
   p.players[1].hasClariActivo = true;

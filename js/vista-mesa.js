@@ -33,8 +33,11 @@ function portalVista(pila) {
   };
 }
 
-/** Gemas por nivel (lo que es público) y, si `exacto`, el total real. */
-function gemasVista(gems, exacto) {
+/**
+ * Gemas por nivel (lo que es público) y, si `exacto`, el total real. Con
+ * `bocarriba` (partida terminada) se enseñan también todas, con su valor.
+ */
+function gemasVista(gems, exacto, bocarriba = false) {
   const porNivel = { unitaria: 0, C: 0, B: 0, A: 0 };
   gems.forEach(g => { if (g.nivel in porNivel) porNivel[g.nivel]++; });
   const reveladas = gems.filter(g => g.esAsterisco && g.revelada).map(g => g.valor);
@@ -42,7 +45,10 @@ function gemasVista(gems, exacto) {
     cantidad: gems.length,
     porNivel,
     reveladas,
-    total: exacto ? sumaGemas(gems) : null,
+    total: exacto || bocarriba ? sumaGemas(gems) : null,
+    valores: bocarriba
+      ? [...gems].sort((a, b) => a.valor - b.valor).map(g => ({ valor: g.valor, nivel: g.nivel, esAsterisco: !!g.esAsterisco }))
+      : null,
   };
 }
 
@@ -119,6 +125,8 @@ export function construirVistaMesa(partida, { asientoPropio }) {
   const { players, neutrals, turn } = partida;
   const n = players.length;
   const duena = veComoDuena(players, asientoPropio, turn);
+  // Al terminar la partida se ponen bocarriba las Gemas de todas.
+  const terminada = !!partida.juegoTerminado;
 
   const asiento = idx => {
     const p = players[idx];
@@ -129,7 +137,7 @@ export function construirVistaMesa(partida, { asientoPropio }) {
       automata: p.tipo === 'auto',
       activa: idx === turn,
       clarividente: !!p.hasClariActivo,
-      gemas: gemasVista(p.gems, comoDuena),
+      gemas: gemasVista(p.gems, comoDuena, terminada),
       portales: p.portals.map(portalVista),
       mano: comoDuena ? manoDeDuena(p) : manoAjena(p),
       comoDuena,
@@ -146,7 +154,7 @@ export function construirVistaMesa(partida, { asientoPropio }) {
     jugada: !!partida.played,
     habilidadUsada: !!partida.habilidadUsadaEsteTurno,
     cronomantePendiente: !!partida.cronomantePortalInvestigado,
-    terminada: !!partida.juegoTerminado,
+    terminada,
     invocacion: estadoInvocacion(partida),
     propio: asiento(asientoPropio),
     rivales,

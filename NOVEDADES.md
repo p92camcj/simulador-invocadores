@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.32.4.143 - 2026-11-07
+
+- Al terminar la partida, "Ver cómo ha quedado la mesa" ya muestra las
+  Gemas que se repartieron en la última invocación.
+- Además, todas las Gemas de todas las jugadoras se ponen bocarriba: se
+  ve el valor de cada una y el total de cada jugadora.
+
 ## 1.32.3.88 - 2026-11-07
 
 - La vista clásica en columnas se ha retirado del todo: la Mesa 3D es la

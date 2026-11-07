@@ -208,12 +208,16 @@ function claseAnim(clave, cambio) {
 /** Gemas: total exacto si es tuya y tu turno; si no, solo por nivel. */
 function gemasHtml(g, idx) {
   const niveles = [['unitaria', 'u'], ['C', 'c'], ['B', 'b'], ['A', 'a']];
-  const puntos = niveles
+  const clase = Object.fromEntries(niveles);
+  // Partida terminada: cada Gema bocarriba con su valor.
+  const puntos = g.valores ? g.valores
+    .map(v => `<span class="m-gema-valor m-gema--${clase[v.nivel] || 'u'}" title="Gema de nivel ${v.nivel}${v.esAsterisco ? ' (asterisco)' : ''}">${v.valor}${v.esAsterisco ? '*' : ''}</span>`)
+    .join('') : niveles
     .filter(([n]) => g.porNivel[n] > 0)
     .map(([n, c]) => `<span class="m-gema m-gema--${c}" title="Gemas de nivel ${n}"></span><b>${g.porNivel[n]}</b>`)
     .join('');
   const total = g.total !== null ? `<span class="m-gemas-total">💎 ${g.total}</span>` : '';
-  const rev = g.reveladas.length ? `<span class="m-gemas-rev">${g.reveladas.map(v => `${v}*`).join(' ')}</span>` : '';
+  const rev = !g.valores && g.reveladas.length ? `<span class="m-gemas-rev">${g.reveladas.map(v => `${v}*`).join(' ')}</span>` : '';
   const antes = gemasPrevias.get(idx);
   if (antes !== undefined && g.cantidad > antes) efectosPendientes.push({ gemas: idx, mas: g.cantidad - antes });
   gemasPrevias.set(idx, g.cantidad);

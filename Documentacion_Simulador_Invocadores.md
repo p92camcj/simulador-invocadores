@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
-| `construirVistaMesa(partida, { asientoPropio })` | `función` | Cada carta visible lleva `nombre` (identidad real), `apariencia` (`aspecto \|\| name`, lo que cuenta para la invocación) y, si es un Metamorfo transformado, `ficha` (el personaje de la ficha que tiene encima: se pinta la carta del Metamorfo con un medallón, no la del personaje). Vista completa: invocación activa con el estado de cada personaje requerido, asiento propio (abajo), rivales en orden de turno, Portales centrales, mazo y fase del turno. El asiento propio ve sus cartas "de dueña" solo si es humana y es su turno, o si es la única humana de la partida. Una Clarividente visible oculta la mano entera al resto. Gemas: total exacto solo para quien ve como dueña; el resto, por nivel y las de asterisco reveladas. |
+| `construirVistaMesa(partida, { asientoPropio })` | `función` | Cada carta visible lleva `nombre` (identidad real), `apariencia` (`aspecto \|\| name`, lo que cuenta para la invocación) y, si es un Metamorfo transformado, `ficha` (el personaje de la ficha que tiene encima: se pinta la carta del Metamorfo con un medallón, no la del personaje). Vista completa: invocación activa con el estado de cada personaje requerido, asiento propio (abajo), rivales en orden de turno, Portales centrales, mazo y fase del turno. El asiento propio ve sus cartas "de dueña" solo si es humana y es su turno, o si es la única humana de la partida. Una Clarividente visible oculta la mano entera al resto. Gemas: total exacto solo para quien ve como dueña; el resto, por nivel y las de asterisco reveladas. Con la partida terminada, todas las Gemas de todas salen bocarriba (`gemas.valores`: valor y nivel de cada una) con su total. |
 | `elegirAsientoPropio(players, turno, ultimaHumana)` | `función` | Qué jugadora va abajo: la activa si es humana; en el turno de una autómata, la última humana (contra autómatas la humana no se mueve). |
 | `contarHumanas(players)` | `función` | Número de jugadoras humanas (decide si hace falta el telón para pasar el móvil). |
 | `estadoInvocacion(partida)` | `función` | Nivel, nombre y estado (`falta` / `esta` / `repetido`) de cada personaje requerido, contado por apariencia como el motor. |
@@ -466,7 +466,7 @@ Interacción: tocar una carta de la mano la levanta y los Portales brillan; toca
 | `retardoAutomata()` | `función` | Pausa antes de que juegue una autómata (1,3 s, para poder seguir su jugada). |
 | `mostrarAviso(texto)` | `función` | Aviso flotante. |
 | `preguntarMesa(titulo, opciones, responder)` | `función` | Pregunta de varias opciones en hoja inferior (sustituye a `confirm()`; la usa `actions.js` para elegir entre revelar la Gema de asterisco o pagar una Gema de 1). |
-| `mostrarFinMesa({ motivo, resultado }, alJugarOtra)` | `función` | Marcador final con confeti (clasificación de `calcularResultadoFinal`), botón para jugar otra vez y opción de ver cómo ha quedado la mesa. Lo llama `finalizarPartida()`. |
+| `mostrarFinMesa({ motivo, resultado }, alJugarOtra)` | `función` | Marcador final con confeti (clasificación de `calcularResultadoFinal`), botón para jugar otra vez y opción de ver cómo ha quedado la mesa. Lo llama `finalizarPartida()` después de repintar la mesa (así se ven las Gemas repartidas en la última invocación). |
 | `salirDeMesa()` | `función` | Limpia la mesa al volver al menú (`resetJuego()`). |
 
 ---

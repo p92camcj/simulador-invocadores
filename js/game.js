@@ -127,6 +127,9 @@ export function finalizarPartida(motivo) {
   aprenderAlTerminarPartida();
   // Marcador final de la mesa, con el botón de jugar otra vez.
   window.juegoTerminado = true;
+  // Se repinta la mesa para que se vean las Gemas de la última invocación
+  // (y todas bocarriba) al pulsar "Ver cómo ha quedado la mesa".
+  render(window.players, window.neutrals, window.levelIdx);
   const resultado = calcularResultadoFinal(window.players, window.invocacionesCompletadas || []);
   mostrarFinMesa({ motivo, resultado }, () => resetJuego());
 }
