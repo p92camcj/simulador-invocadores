@@ -12,7 +12,7 @@
 // de abrir picker(). El bot nunca duplica lógica de reglas ni pulsa botones
 // del DOM: solo decide los parámetros por heurística en vez de por clic.
 import {
-  LEVELS, INVOCATION_SETS, shuffle, contarGemasPorNivel,
+  invocacionDePartida, configPartida, shuffle, contarGemasPorNivel,
   opcionesActivarHabilidad,
   contarGemasUnitarias, tieneClarividenteVisible, todosLosPortales, jugadoraProtegidaPorCentinela,
 } from './utils.js';
@@ -357,9 +357,9 @@ export function completariaLaInvocacionConMaestro(vista, need, personaje) {
  * cerrar la invocación aunque solo cobrasen las rivales y no miraba qué
  * quedaba para el turno siguiente. Esa función se mantiene para Fase B.
  */
-export function decidirJugadaFaseADificil(vista, memoriaBot, need, invocationSet, lvl) {
-  const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet);
-  const valorGemaNivel = lvl ? valorMedioGemaNivel(invocationSet, lvl) : 0;
+export function decidirJugadaFaseADificil(vista, memoriaBot, need, cfg, lvl) {
+  const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, cfg);
+  const valorGemaNivel = lvl ? valorMedioGemaNivel(cfg, lvl) : 0;
   const etiquetas = new Map(listaPortalesConDestino(vista).map(p => [p.destKey, p.etiqueta]));
   const candidatas = evaluarJugadasFaseA(vista, need, valorGemaNivel, probabilidades.probabilidadPorNombre);
 
@@ -871,9 +871,9 @@ export function decidirMetamorfoDificil(vista, need, esPropio, probabilidades, c
  * estrictamente positivo — si no, prefiere no gastar el turno de
  * habilidad, igual que 'normal'.
  */
-function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, memoriaBot, invocationSet, lvl) {
-  const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, invocationSet);
-  const valorGemaNivel = valorMedioGemaNivel(invocationSet, lvl);
+function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, memoriaBot, cfg, lvl) {
+  const probabilidades = estimarProbabilidadesPersonajes(vista, memoriaBot, cfg);
+  const valorGemaNivel = valorMedioGemaNivel(cfg, lvl);
   const visibles = personajesVisiblesActuales(vista);
   const cumplidos = need.filter(k => visibles.includes(k));
   // Bloque 3/4: mismo término adversarial que ya usa Fase A — qué requisitos
@@ -1136,9 +1136,12 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
 // ---------- Orquestación por dificultad ----------
 
 function* decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto, ejecutor) {
-  const { levelIdx, invocationSet } = contexto;
-  const lvl = LEVELS[levelIdx];
-  const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
+  // `contexto` es la configuración pública de la partida (configPartida).
+  const cfg = contexto;
+  const { levelIdx } = cfg;
+  const inv = invocacionDePartida(cfg);
+  const lvl = inv?.nivel;
+  const need = inv ? inv.need : [];
   // Bloque 4: la memoria ("qué he visto pasar por cada Portal") ya la usa
   // también el nivel 'normal' — la necesita Cronomante para tener un
   // objetivo con sentido, sin que eso implique conteo de cartas/probabilidad
@@ -1189,14 +1192,17 @@ function* decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto, ejecutor
  * decisión, sin depender de que este bot mire fuera de sus propios turnos.
  */
 function* decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecutor) {
-  const { levelIdx, invocationSet } = contexto;
-  const lvl = LEVELS[levelIdx];
-  const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
+  // `contexto` es la configuración pública de la partida (configPartida).
+  const cfg = contexto;
+  const { levelIdx } = cfg;
+  const inv = invocacionDePartida(cfg);
+  const lvl = inv?.nivel;
+  const need = inv ? inv.need : [];
   const memoriaBot = obtenerMemoriaBot(botIdx);
 
   const vistaAntes = construirEstadoVisibleParaBot(players, neutrals, botIdx);
   actualizarMemoriaBot(memoriaBot, vistaAntes);
-  const decisionA = decidirJugadaFaseADificil(vistaAntes, memoriaBot, need, invocationSet, lvl);
+  const decisionA = decidirJugadaFaseADificil(vistaAntes, memoriaBot, need, cfg, lvl);
   ejecutor.jugar(players, botIdx, decisionA);
   yield 'faseA';
 
@@ -1210,7 +1216,7 @@ function* decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecuto
 
   const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, botIdx);
   actualizarMemoriaBot(memoriaBot, vistaTrasA);
-  const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, botIdx, need, memoriaBot, invocationSet, lvl);
+  const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, botIdx, need, memoriaBot, cfg, lvl);
   if (decisionB) {
     resumen.detalleHabilidad = ejecutor.activar(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
     resumen.habilidad = decisionB.name;
@@ -1246,19 +1252,22 @@ function* decidirYJugarTurnoExperta(players, neutrals, botIdx, contexto, ejecuto
 }
 
 function* turnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
-  const { levelIdx, invocationSet } = contexto;
-  const lvl = LEVELS[levelIdx];
-  const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
+  // `contexto` es la configuración pública de la partida (configPartida).
+  const cfg = contexto;
+  const { levelIdx } = cfg;
+  const inv = invocacionDePartida(cfg);
+  const lvl = inv?.nivel;
+  const need = inv ? inv.need : [];
   const memoriaBot = obtenerMemoriaBot(botIdx);
 
   const vistaAntes = construirEstadoVisibleParaBot(players, neutrals, botIdx);
   actualizarMemoriaBot(memoriaBot, vistaAntes);
-  const probabilidades = estimarProbabilidadesPersonajes(vistaAntes, memoriaBot, invocationSet);
-  const valorGemaNivel = lvl ? valorMedioGemaNivel(invocationSet, lvl) : 0;
+  const probabilidades = estimarProbabilidadesPersonajes(vistaAntes, memoriaBot, cfg);
+  const valorGemaNivel = lvl ? valorMedioGemaNivel(cfg, lvl) : 0;
   const candidatas = evaluarJugadasFaseA(vistaAntes, need, valorGemaNivel, probabilidades.probabilidadPorNombre)
     .map(({ usaConocida, destKey }) => ({ usaConocida, destKey }));
   const elegida = elegirFaseAExperta(estado.partida, botIdx, candidatas, construirEstadoVisibleParaBot,
-    probabilidades.probabilidadPorNombre, (mundo, idx) => simularTurnoRival(mundo, idx, invocationSet));
+    probabilidades.probabilidadPorNombre, (mundo, idx) => simularTurnoRival(mundo, idx, cfg));
   const etiquetas = new Map(listaPortalesConDestino(vistaAntes).map(p => [p.destKey, p.etiqueta]));
   const decisionA = { ...elegida, etiqueta: etiquetas.get(elegida.destKey) };
   ejecutor.jugar(players, botIdx, decisionA);
@@ -1313,13 +1322,13 @@ export function obtenerModeloPersonas() {
  * heurística 'dificil'. Cambia `estado.partida` el tiempo justo y lo
  * restaura.
  */
-function simularTurnoRival(mundo, idx, invocationSet) {
+function simularTurnoRival(mundo, idx, cfg) {
   const real = estado.partida;
   estado.partida = mundo;
   try {
     const comoPersona = mundo.players[idx].tipo !== 'auto' && modeloUtilizable(modeloPersonas);
     const turno = comoPersona ? decidirYJugarTurnoComoPersona : decidirYJugarTurnoDificil;
-    completarTurno(turno(mundo.players, mundo.neutrals, idx, { levelIdx: mundo.levelIdx, invocationSet }, EJECUTOR_MOTOR_SILENCIOSO));
+    completarTurno(turno(mundo.players, mundo.neutrals, idx, configPartida(mundo), EJECUTOR_MOTOR_SILENCIOSO));
   } finally {
     estado.partida = real;
   }
@@ -1331,18 +1340,21 @@ function simularTurnoRival(mundo, idx, invocationSet) {
  * persona sabe en el mundo; Fase B con la heurística 'dificil'.
  */
 function* decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecutor) {
-  const { levelIdx, invocationSet } = contexto;
-  const lvl = LEVELS[levelIdx];
-  const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
+  // `contexto` es la configuración pública de la partida (configPartida).
+  const cfg = contexto;
+  const { levelIdx } = cfg;
+  const inv = invocacionDePartida(cfg);
+  const lvl = inv?.nivel;
+  const need = inv ? inv.need : [];
   const memoria = obtenerMemoriaBot(idx);
   const vista = construirEstadoVisibleParaBot(players, neutrals, idx);
-  const probabilidades = estimarProbabilidadesPersonajes(vista, memoria, invocationSet);
-  const valorGemaNivel = lvl ? valorMedioGemaNivel(invocationSet, lvl) : 0;
+  const probabilidades = estimarProbabilidadesPersonajes(vista, memoria, cfg);
+  const valorGemaNivel = lvl ? valorMedioGemaNivel(cfg, lvl) : 0;
   const jugada = elegirJugadaComoPersona(vista, need, valorGemaNivel, probabilidades.probabilidadPorNombre, modeloPersonas);
   ejecutor.jugar(players, idx, jugada);
   yield 'faseA';
   const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, idx);
-  const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, idx, need, memoria, invocationSet, lvl);
+  const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, idx, need, memoria, cfg, lvl);
   if (decisionB) {
     ejecutor.activar(players, neutrals, idx, levelIdx, need, decisionB, vistaTrasA);
     yield 'faseB';

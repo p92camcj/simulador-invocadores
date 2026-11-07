@@ -1,6 +1,9 @@
 // game.js
 import { aprenderAlTerminarPartida } from './aprendizaje-navegador.js';
-import { shuffle, draw, composicionMazoTotal, calcularResultadoFinal } from './utils.js';
+import {
+  draw, prepararMazo, calcularResultadoFinal, MODOS_JUEGO, modoDe, crearAutomataCentral,
+  jugadorasConMenosPuntos, convieneIntercambioAutomata, resultadoFinalExperto, sumaGemas, configPartida,
+} from './utils.js';
 import { render } from './render.js';
 import { jugarTurnoAutomataPasoAPaso } from './bot.js';
 import { registrarEnHistorial } from './historial.js';
@@ -22,24 +25,13 @@ let generacionPartida = 0;
  * Inicia la partida: prepara el mazo, reparte cartas, y lanza el primer turno.
  */
 export function initGame() {
-  // Construir mazo de personajes — cantidades reales de "Modo normal" según
-  // docs/reglamento/REGLAMENTO.md ("Preparación del mazo de personajes"): no
-  // incluye Entusiasta (expansión aparte) ni Animales salvo que el set de
-  // invocación elegido sea 'introductorio'. El set 'floral' NO es una
-  // tercera variante de mazo: reutiliza este mismo mazo de "Modo normal"
-  // (solo cambian nombre/combo de las cartas de invocación en
-  // INVOCATION_SETS.floral), porque sus personajes requeridos (Ocultista,
-  // Centinela, Maestro, Clarividente...) no existen en el mazo introductorio.
-  const composicion = composicionMazoTotal(window.invocationSet);
-  const chars = Object.entries(composicion).flatMap(
-    ([name, cantidad]) => Array(cantidad).fill(name)
-  );
-
-  // El Metamorfo ya forma parte del mazo desde el principio (no se baraja
-  // aparte). Se saca al azar 2 cartas sin mirarlas y se dejan en la caja.
-  shuffle(chars);
-  const descartadas = chars.splice(0, 2);
-  window.deck = chars.map(name => ({ name }));
+  // Mazo del modo elegido (MODOS_JUEGO en utils.js): composición, con los
+  // Entusiastas si se juega con la expansión, barajado y sin las cartas que
+  // el modo aparta al azar (2 en Normal y Avanzado, ninguna en Introductorio
+  // y Experto). Ver docs/reglamento/REGLAMENTO.md, "Preparación".
+  window.deck = prepararMazo(estado.partida);
+  // Modo Experto: la autómata central, dueña de los Portales centrales.
+  estado.partida.automataCentral = MODOS_JUEGO[modoDe(estado.partida)].automata ? crearAutomataCentral() : null;
 
   // Reparto inicial: 1 visible y 1 oculta por jugadora
   window.players.forEach(p => {
@@ -109,10 +101,7 @@ export function nextTurn() {
     };
     setTimeout(() => {
       if (generacion !== generacionPartida) return;
-      jugarTurnoAutomataPasoAPaso(window.players, window.neutrals, window.turn, {
-        levelIdx: window.levelIdx,
-        invocationSet: window.invocationSet,
-      }, esperar);
+      jugarTurnoAutomataPasoAPaso(window.players, window.neutrals, window.turn, configPartida(estado.partida), esperar);
     }, pausaAntesDeJugar(retardoAutomata()));
   }
 }
@@ -130,8 +119,43 @@ export function finalizarPartida(motivo) {
   // Se repinta la mesa para que se vean las Gemas de la última invocación
   // (y todas bocarriba) al pulsar "Ver cómo ha quedado la mesa".
   render(window.players, window.neutrals, window.levelIdx);
-  const resultado = calcularResultadoFinal(window.players, window.invocacionesCompletadas || []);
-  mostrarFinMesa({ motivo, resultado }, () => resetJuego());
+  const partida = estado.partida;
+  if (!partida.automataCentral) {
+    const resultado = calcularResultadoFinal(window.players, window.invocacionesCompletadas || []);
+    mostrarFinMesa({ motivo, resultado }, () => resetJuego());
+    return;
+  }
+  // Modo Experto: la jugadora (o jugadoras empatadas) con menos puntos puede
+  // cambiar todas sus Gemas por las de la autómata central. Una autómata
+  // jugadora lo hace si sale ganando; a una persona se le pregunta.
+  const generacion = generacionPartida;
+  const pendientes = jugadorasConMenosPuntos(partida.players);
+  const cambian = [];
+  const siguiente = () => {
+    if (generacion !== generacionPartida) return;
+    const idx = pendientes.shift();
+    if (idx === undefined) {
+      const resultado = resultadoFinalExperto(partida.players, partida.automataCentral, partida.invocacionesCompletadas || [], cambian);
+      mostrarFinMesa({ motivo, resultado }, () => resetJuego());
+      return;
+    }
+    const p = partida.players[idx];
+    if (p.tipo === 'auto') {
+      if (convieneIntercambioAutomata(partida.players, partida.automataCentral, idx)) cambian.push(idx);
+      siguiente();
+      return;
+    }
+    const propias = sumaGemas(p.gems);
+    const deLaAutomata = sumaGemas(partida.automataCentral.gems);
+    preguntarMesa(`${p.name}, tienes la puntuación más baja (💎 ${propias}). ¿Cambias todas tus Gemas por las de la autómata central (💎 ${deLaAutomata})?`, [
+      { val: 'si', lbl: `🔄 Cambiar (quedarme con ${deLaAutomata})` },
+      { val: 'no', lbl: `Quedarme con las mías (${propias})` },
+    ], val => {
+      if (val === 'si') cambian.push(idx);
+      siguiente();
+    });
+  };
+  siguiente();
 }
 
 

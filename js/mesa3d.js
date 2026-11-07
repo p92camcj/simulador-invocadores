@@ -20,7 +20,7 @@
 // Además, durante la partida alert() se muestra como aviso flotante que no
 // bloquea.
 
-import { cardImages, CARTA_OCULTA_IMG, escapeHtml, iconos } from './utils.js';
+import { cardImages, CARTA_OCULTA_IMG, escapeHtml, iconos, MODOS_JUEGO, modoDe, datosInvocacion } from './utils.js';
 import { rutaFigura, rutaCriatura, espectaculoActivo, fijarEspectaculo } from './espectaculo.js';
 import { estado } from './motor/estado.js';
 import { opcionesFaseB } from './motor/acciones.js';
@@ -204,7 +204,7 @@ function claseAnim(clave, cambio) {
 
 /** Gemas: total exacto si es tuya y tu turno; si no, solo por nivel. */
 function gemasHtml(g, idx) {
-  const niveles = [['unitaria', 'u'], ['C', 'c'], ['B', 'b'], ['A', 'a']];
+  const niveles = [['unitaria', 'u'], ['C', 'c'], ['B', 'b'], ['A', 'a'], ['*', 'x']];
   const clase = Object.fromEntries(niveles);
   // Partida terminada: cada Gema bocarriba con su valor.
   const puntos = g.valores ? g.valores
@@ -293,12 +293,24 @@ function rivalHtml(a, turno, unico) {
     + `</section>`;
 }
 
+/** "Invocación C", o "Invocación final" para Madain. */
+function etiquetaNivel(nivel) {
+  return nivel === '*' ? 'Invocación final' : `Invocación ${nivel}`;
+}
+
+/** Gemas de la autómata central (Modo Experto), junto a los Portales centrales. */
+function automataCentralHtml(g) {
+  if (!g) return '';
+  return `<div class="m-automata-central" title="La autómata central cobra lo que se invoca en los Portales centrales">`
+    + `<span class="m-nombre">🤖 Autómata central</span>${gemasHtml(g, 'automata')}</div>`;
+}
+
 function invocacionHtml(inv) {
   if (!inv) return '<div class="m-invocacion"><strong>Sin invocación activa</strong></div>';
   const criatura = rutaCriatura(inv.nombre);
-  return `<button type="button" class="m-invocacion nivel-${inv.nivel}" data-accion="invocacion">`
+  return `<button type="button" class="m-invocacion nivel-${inv.nivel === '*' ? 'X' : inv.nivel}" data-accion="invocacion">`
     + (criatura ? `<img class="m-criatura" src="${criatura}" alt="" draggable="false">` : `<span class="m-criatura m-criatura--sin">✦</span>`)
-    + `<span class="m-inv-txt"><small>Invocación ${inv.nivel}</small><strong>${escapeHtml(inv.nombre)}</strong></span>`
+    + `<span class="m-inv-txt"><small>${escapeHtml(etiquetaNivel(inv.nivel))}</small><strong>${escapeHtml(inv.nombre)}</strong></span>`
     + `</button>`;
 }
 
@@ -407,7 +419,7 @@ export function renderMesa3D() {
       <div class="m-rivales ${v.rivales.length === 1 ? 'uno' : ''}">${rivales}</div>
       <div class="m-escena">
         <div class="m-plano">
-          ${centrales ? `<div class="m-centro"><span class="m-centro-titulo">Portales centrales</span><div class="m-portales">${centrales}</div></div>` : ''}
+          ${centrales || v.automataCentral ? `<div class="m-centro"><span class="m-centro-titulo">${v.automataCentral ? 'Portales de la autómata central' : 'Portales centrales'}</span>${automataCentralHtml(v.automataCentral)}<div class="m-portales">${centrales}</div></div>` : ''}
           <div class="m-propios" style="--color:${colorPropio}"><div class="m-portales">${propios}</div></div>
         </div>
       </div>
@@ -597,8 +609,7 @@ function lanzarEfecto(ef) {
 
 /** Invocación completada sin escenas: la criatura aparece sobre la mesa. */
 function efectoInvocacion(nivel) {
-  const set = estado.partida.invocationSet;
-  const inv = window.INVOCATION_SETS?.[set]?.[nivel];
+  const inv = datosInvocacion(estado.partida, nivel);
   if (!inv) return;
   const criatura = rutaCriatura(inv.nombre);
   const capa = capaEfectos();
@@ -821,12 +832,17 @@ export function preguntarMesa(titulo, opciones, responder) {
 export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
   cerrarHoja();
   document.querySelector('.m-fin')?.remove();
-  const { stats, ganadores, motivoDesempate } = resultado;
+  const { stats, ganadores, motivoDesempate, intercambios = [] } = resultado;
   const ids = new Set(ganadores.map(g => g.idx));
-  const titulo = ganadores.length === 1 ? `¡Gana ${ganadores[0].nombre}!` : '¡Empate!';
-  const sub = ganadores.length === 1
+  const ganaAutomata = ganadores.length === 1 && ganadores[0].esAutomataCentral;
+  const titulo = ganaAutomata ? '¡Gana la autómata central!' : ganadores.length === 1 ? `¡Gana ${ganadores[0].nombre}!` : '¡Empate!';
+  let sub = ganadores.length === 1
     ? (motivoDesempate ? `Desempate: ${motivoDesempate}` : '')
     : `Comparten la victoria ${ganadores.map(g => g.nombre).join(', ')}${motivoDesempate ? ` (${motivoDesempate})` : ''}`;
+  if (ganaAutomata) sub = `Todas las jugadoras pierden. ${sub}`.trim();
+  if (intercambios.length) {
+    sub += `${sub ? ' · ' : ''}${intercambios.join(' y ')} ${intercambios.length === 1 ? 'ha cambiado sus' : 'han cambiado sus'} Gemas por las de la autómata central.`;
+  }
   let confeti = '';
   const colores = ['#ffe08b', '#ff9ad6', '#7fd8ff', '#b48cff', '#5dff9a'];
   for (let i = 0; i < 40; i++) {
@@ -835,7 +851,7 @@ export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
   }
   const filas = stats.map((st, k) => `<li class="${ids.has(st.idx) ? 'gana' : ''}" style="--d:${0.6 + k * 0.15}s">`
     + `<span class="m-fin-pos">${ids.has(st.idx) ? '👑' : k + 1}</span>`
-    + `<span class="m-fin-nombre">${escapeHtml(st.nombre)}</span>`
+    + `<span class="m-fin-nombre">${st.esAutomataCentral ? '🤖 ' : ''}${escapeHtml(st.nombre)}</span>`
     + `<span class="m-fin-gemas">💎 ${st.total}</span></li>`).join('');
   const fin = document.createElement('div');
   fin.className = 'm-fin';
@@ -908,6 +924,14 @@ function portalesSinPersonajeHtml() {
     : `<p class="m-hoja-txt">Todos los Portales tienen un personaje bocarriba.</p>`;
 }
 
+/** Modo, opciones y progreso de la partida, en una línea. */
+function resumenModo(partida, v) {
+  const modo = MODOS_JUEGO[modoDe(partida)];
+  const extras = [partida.entusiasta ? 'con Entusiasta' : '', partida.automataCentral ? 'con autómata central' : '']
+    .filter(Boolean).join(', ');
+  return `Modo ${modo.nombre}${extras ? ` (${extras})` : ''} · invocación ${Math.min(v.nivelIdx + 1, v.niveles.length)} de ${v.niveles.length}.`;
+}
+
 function verInvocacion() {
   const v = construirVistaMesa(estado.partida, { asientoPropio: estado.partida.turn });
   const inv = v.invocacion;
@@ -915,9 +939,11 @@ function verInvocacion() {
   const criatura = rutaCriatura(inv.nombre);
   abrirHoja({
     tipo: 'info',
-    titulo: `Invocación ${inv.nivel}: ${inv.nombre}`,
+    titulo: `${etiquetaNivel(inv.nivel)}: ${inv.nombre}`,
     cuerpo: (criatura ? `<img class="m-hoja-criatura" src="${criatura}" alt="">` : '')
       + `<p class="m-hoja-txt">Se completa cuando, al final de un turno, cada personaje requerido está visible en lo alto de un Portal y todos los Portales (también los centrales) tienen un personaje bocarriba.</p>`
+      + (inv.nivel === '*' ? `<p class="m-hoja-txt">🎭 El Metamorfo tiene que estar <b>sin transformar</b> para contar.</p>` : '')
+      + `<p class="m-hoja-txt">${escapeHtml(resumenModo(estado.partida, v))}</p>`
       + requeridosHtml(inv)
       + portalesSinPersonajeHtml(),
   });

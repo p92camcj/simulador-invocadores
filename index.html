@@ -67,13 +67,26 @@
       </label>
 
       <h3>Modo de juego</h3>
-      <label>Set de invocación:
+      <label>Modo:
+        <select id="selModo">
+          <option value="introductorio">Introductorio</option>
+          <option value="normal" selected>Normal</option>
+          <option value="avanzado">Avanzado</option>
+          <option value="experto">Experto</option>
+        </select>
+      </label>
+      <p id="txtModo" class="nota-setup nota-modo"></p>
+      <label>Set de invocaciones:
         <select id="selInvocationSet">
           <option value="introductorio">Introductorio (Cilast / Burnio / Aspir)</option>
           <option value="normal" selected>Normal (Cirelia / Baelorith / Aelgorth)</option>
           <option value="floral">Floral (Caisis / Brose / Aures)</option>
         </select>
       </label>
+      <label id="lblMadain" class="check-espectaculo hidden"><input id="chkMadain" type="checkbox" />
+        <span>Cuarta invocación: <b>Madain</b> (Reena, Metamorfo sin transformar, Sora y Lumo), con Gemas de 11 a 13</span></label>
+      <label class="check-espectaculo"><input id="chkEntusiasta" type="checkbox" />
+        <span>Expansión del <b>Entusiasta</b>: si hay invocación y lo tienes bocarriba en tu Portal, pierdes una Gema de valor 1</span></label>
 
       <label class="check-espectaculo"><input id="chkEspectaculo" type="checkbox" checked />
         Modo espectáculo: ver a cada personaje aparecer en su Portal y una escena por habilidad</label>

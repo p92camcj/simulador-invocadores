@@ -7,7 +7,7 @@ import { describirObjetivoHabilidad, construirEstadoVisibleParaBot } from './bot
 import { tieneGemaAsterisco, contarGemasUnitarias } from './utils.js';
 import { estado } from './motor/estado.js';
 import {
-  jugarCarta, terminarTurno, pasarTurno, validarFaseB, opcionesFaseB, completarActivacion,
+  jugarCarta, terminarTurno, pasarTurno, validarFaseB, opcionesFaseB, completarActivacion, invocacionActiva,
 } from './motor/acciones.js';
 import {
   anunciarCartaJugada, envolverHabilidad, anunciarInvocacion, cuandoTermineEspectaculo,
@@ -121,10 +121,9 @@ export function ejecutarFinDeTurno() {
   const invocacion = eventos.find(e => e.tipo === 'invocacionCompletada');
   if (invocacion) {
     // En modo espectáculo la escena sustituye al aviso de texto.
-    const { nivel, nombre, need, recompensas } = invocacion;
     registrarEnHistorial(estado.partida, { tipo: 'invocacion', texto: textoInvocacion(invocacion) });
-    const escenificada = anunciarInvocacion({ nivel, nombre, need, recompensas });
-    if (!escenificada) alert(`Invocación ${nivel} (${nombre}) completa`);
+    const escenificada = anunciarInvocacion(invocacion);
+    if (!escenificada) alert(textoInvocacion(invocacion));
   }
   const fin = eventos.find(e => e.tipo === 'partidaTerminada');
   if (fin) {
@@ -207,8 +206,7 @@ export function activarHabilidad() {
     return;
   }
 
-  const lvl = window.LEVELS[window.levelIdx];
-  const need = lvl ? window.INVOCATION_SETS[window.invocationSet][lvl].need : [];
+  const need = invocacionActiva(estado.partida)?.need || [];
 
   // Si hay una investigación de Cronomante pendiente este turno (se
   // canceló el segundo picker sin querer), no se puede elegir otra

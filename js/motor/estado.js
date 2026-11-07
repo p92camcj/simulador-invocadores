@@ -21,7 +21,7 @@ export const CLAVES_PARTIDA = [
   'players', 'neutrals', 'deck', 'levelIdx', 'turn', 'played',
   'habilidadUsadaEsteTurno', 'invocationSet', 'juegoTerminado',
   'cronomantePortalInvestigado', 'invocacionesCompletadas', 'memoriaBots',
-  'historial',
+  'historial', 'modo', 'entusiasta', 'madain', 'automataCentral',
 ];
 
 /** Claves del estado de interfaz (no serializable, no es parte de la partida). */
@@ -47,6 +47,14 @@ export function crearEstadoPartida(invocationSet = 'normal') {
     memoriaBots: [],
     // Historial de jugadas de la partida (js/historial.js), solo texto.
     historial: [],
+    // Modo de juego (MODOS_JUEGO en utils.js). null = partida anterior a
+    // los modos: modoDe() lo deduce del set de invocación.
+    modo: null,
+    // Expansión del Entusiasta y cuarta invocación (Madain).
+    entusiasta: false,
+    madain: false,
+    // Modo Experto: { gems } de la autómata central; null en los demás.
+    automataCentral: null,
   };
 }
 

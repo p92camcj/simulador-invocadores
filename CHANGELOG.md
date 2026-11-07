@@ -4,6 +4,57 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.34.0.147] - 2026-11-07
+
+### Añadido
+- **Modos de juego** en el menú de inicio (`MODOS_JUEGO`, `js/utils.js`;
+  reglas confirmadas por Julio el 2026-11-07):
+  - Introductorio: 29 cartas, solo set introductorio, sin apartar.
+  - Normal: 32 cartas, sets normal o floral, se apartan 2.
+  - Avanzado: 41 cartas con Animales, cualquier set, se apartan 2 y Madain
+    es opcional.
+  - Experto: 41 cartas, cualquier set, sin apartar, con Madain y la
+    autómata central.
+
+  El selector de set solo ofrece los que el mazo del modo puede completar.
+  `prepararMazo()` es el único constructor del mazo, para la web
+  (`initGame()`) y para la arena.
+- **Expansión del Entusiasta** (opcional, en cualquier modo). Sus 2 cartas
+  se barajan antes de apartar, así que pueden quedarse fuera.
+  `aplicarEntusiastas()` se resuelve lo último de la invocación, quita una
+  Gema de valor 1 sin dar cambio y no actúa en Portales centrales. El
+  Metamorfo no puede transformarse en Entusiasta.
+- **Madain, cuarta invocación** (nivel `'*'`, Gemas 11-13). Para cumplirla
+  hace falta el Metamorfo sin transformar.
+  `nivelesPartida()`/`datosInvocacion()`/`invocacionDePartida()` sustituyen
+  a `INVOCATION_SETS[set][LEVELS[i]]` en el motor, la mesa, las autómatas
+  y la arena.
+- **Autómata central (Modo Experto)**: `estado.partida.automataCentral`.
+  - Cobra las Gemas de los requeridos únicos de los Portales centrales y
+    los bonus del Pícaro y del Maestro centrales
+    (`aplicarBonusPasivosInvocacion(..., automata)`).
+  - En la mesa se ven sus Gemas sobre sus Portales.
+  - Al final, las jugadoras empatadas en la puntuación más baja pueden
+    cambiar sus Gemas por las suyas: a una persona se le pregunta; una
+    autómata lo hace si le conviene.
+  - Se clasifica con `resultadoFinalExperto()` y el desempate habitual. Si
+    gana la autómata central, pierden todas.
+- La hoja de la invocación indica el modo y el progreso ("invocación 2
+  de 4").
+- `tools/arena.mjs`: opciones `--modo`, `--entusiasta 1` y `--madain 1`
+  (en Experto informa además de `ganaAutomataCentral`).
+- Tests nuevos: `tests/modos.mjs` (13).
+
+### Cambiado
+- Las autómatas reciben `configPartida(partida)` como contexto, así que su
+  conteo de cartas usa el mazo real del modo.
+- `estado.partida` incorpora `modo`, `entusiasta`, `madain` y
+  `automataCentral`. Una partida guardada sin `modo` lo deduce del set,
+  como hasta ahora.
+- Reglamento: se resuelve la duda de Avanzado (las 2 cartas extraídas no
+  juegan) y se añaden las aclaraciones sobre el Entusiasta y el final de
+  Experto.
+
 ## [1.33.0.145] - 2026-11-07
 
 ### Cambiado

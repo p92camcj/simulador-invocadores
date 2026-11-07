@@ -13,15 +13,16 @@
 // - 'accionInvalida'        { motivo }  (la partida no ha cambiado)
 // - 'cartaJugada'           { jugadora, destino, carta }
 // - 'manosRepuestas'        {}
-// - 'invocacionCompletada'  { nivel, nombre, need, recompensas: [{ jugadora, gemas }] }
+// - 'invocacionCompletada'  { nivel, nombre, need, recompensas: [{ jugadora, gemas }],
+//                             gemasAutomata, entusiastas: [{ jugadora, perdida }] }
 // - 'partidaTerminada'      { motivo }
 // - 'habilidadAplicada'     { jugadora, origen, personaje }
 //
 // Lo que hace cada habilidad está en js/motor/habilidades.js (fase 3).
 
 import {
-  LEVELS, INVOCATION_SETS, apilarEnPortal, generarVis, reponerManoSiFalta,
-  todosLosPortales, construirPoolGemas, aplicarBonusPasivosInvocacion,
+  invocacionDePartida, nivelesPartida, apilarEnPortal, generarVis, reponerManoSiFalta,
+  todosLosPortales, construirPoolGemas, aplicarBonusPasivosInvocacion, aplicarEntusiastas,
   pagarActivacionPortalCentral, opcionesActivarHabilidad,
 } from '../utils.js';
 import { ocultarOtrasCentinelas } from './habilidades.js';
@@ -42,9 +43,7 @@ export function pilaDeDestino(partida, jugadora, destino) {
 
 /** Invocación activa ({ nivel, nombre, need, gemas }) o null si no queda ninguna. */
 export function invocacionActiva(partida) {
-  const nivel = LEVELS[partida.levelIdx];
-  if (!nivel) return null;
-  return { nivel, ...INVOCATION_SETS[partida.invocationSet][nivel] };
+  return invocacionDePartida(partida);
 }
 
 /**
@@ -98,18 +97,26 @@ export function resolverInvocacion(partida) {
   const todosVisibles = todos.every(({ stack }) => stack.length && stack.at(-1).vis?.public);
   if (!todosVisibles || !need.every(k => map.get(k))) return [];
 
+  const automata = partida.automataCentral || null;
   const gemasAntes = players.map(p => p.gems.length);
+  const gemasAutomataAntes = automata ? automata.gems.length : 0;
   const pool = construirPoolGemas(inv.gemas);
   need.forEach(k => {
     const arr = map.get(k);
-    // Solo cobra si el personaje está en un único Portal y no es central.
-    if (arr.length === 1 && arr[0] !== null) {
-      const gema = pool.shift();
-      if (gema) players[arr[0]].gems.push({ valor: gema.valor, nivel, esAsterisco: gema.esAsterisco });
-    }
+    // Solo cobra si el personaje está en un único Portal. Un Portal central
+    // no tiene dueña: su Gema se pierde, salvo en Modo Experto, donde los
+    // Portales centrales son de la autómata central y la cobra ella.
+    if (arr.length !== 1) return;
+    const quien = arr[0] !== null ? players[arr[0]] : automata;
+    if (!quien) return;
+    const gema = pool.shift();
+    if (gema) quien.gems.push({ valor: gema.valor, nivel, esAsterisco: gema.esAsterisco });
   });
   // El Maestro se evalúa antes de voltear a los Pícaros (utils.js).
-  aplicarBonusPasivosInvocacion(players, neutrals, need);
+  aplicarBonusPasivosInvocacion(players, neutrals, need, automata);
+  const recompensas = players.map((p, i) => ({ jugadora: p.name, gemas: p.gems.length - gemasAntes[i] }));
+  // El Entusiasta es lo último que se resuelve.
+  const entusiastas = aplicarEntusiastas(players, neutrals);
 
   partida.invocacionesCompletadas.push(nivel);
   neutrals.push([]);
@@ -120,9 +127,13 @@ export function resolverInvocacion(partida) {
     nivel,
     nombre: inv.nombre,
     need,
-    recompensas: players.map((p, i) => ({ jugadora: p.name, gemas: p.gems.length - gemasAntes[i] })),
+    recompensas,
+    // Gemas que se ha llevado la autómata central (Modo Experto).
+    gemasAutomata: automata ? automata.gems.length - gemasAutomataAntes : 0,
+    // Entusiastas que han actuado: [{ jugadora, perdida }].
+    entusiastas: entusiastas.map(e => ({ jugadora: players[e.jugadora].name, perdida: e.perdida })),
   }];
-  if (partida.levelIdx >= LEVELS.length) {
+  if (partida.levelIdx >= nivelesPartida(partida).length) {
     partida.juegoTerminado = true;
     eventos.push({ tipo: 'partidaTerminada', motivo: `Se ha completado la invocación ${nivel}. Fin de la partida.` });
   }

@@ -1,5 +1,5 @@
 // setup.js
-import { $ } from './utils.js';
+import { $, MODOS_JUEGO } from './utils.js';
 import { initGame, mostrarTablero, retomarPartida } from './game.js';
 import { nombresDisponiblesParaBots } from './bot.js';
 import { leerPartidaGuardada, borrarPartidaGuardada, describirPartidaGuardada } from './partida-guardada.js';
@@ -49,7 +49,7 @@ function guardarMenu() {
     localStorage.setItem(CLAVE_MENU, JSON.stringify({
       n: parseInt($('#numPlayers').value, 10),
       asientos,
-      invocationSet: $('#selInvocationSet')?.value,
+      ...leerModoElegido(),
     }));
   } catch { /* sin almacenamiento: no pasa nada */ }
 }
@@ -148,6 +148,55 @@ function pintarAsientos() {
   $('#lblRitmoBots')?.classList.toggle('hidden', !hayBots);
 }
 
+// ---------- Modo de juego ----------
+
+/** Lo elegido en el menú: { modo, invocationSet, madain, entusiasta }. */
+function leerModoElegido() {
+  const modo = $('#selModo')?.value || 'normal';
+  const reglas = MODOS_JUEGO[modo] || MODOS_JUEGO.normal;
+  return {
+    modo,
+    invocationSet: $('#selInvocationSet')?.value || 'normal',
+    madain: reglas.madain === 'siempre' || (reglas.madain === 'opcional' && !!$('#chkMadain')?.checked),
+    entusiasta: !!$('#chkEntusiasta')?.checked,
+  };
+}
+
+/**
+ * Ajusta el menú al modo elegido: solo deja los sets que se pueden
+ * completar con su mazo, y muestra Madain como opción (Avanzado), fija
+ * (Experto) u oculta (Introductorio y Normal).
+ */
+function ajustarOpcionesModo() {
+  const modo = $('#selModo')?.value || 'normal';
+  const reglas = MODOS_JUEGO[modo] || MODOS_JUEGO.normal;
+  const selSet = $('#selInvocationSet');
+  if (selSet) {
+    [...selSet.options].forEach(o => { o.disabled = !reglas.sets.includes(o.value); o.hidden = o.disabled; });
+    if (!reglas.sets.includes(selSet.value)) selSet.value = reglas.sets[0];
+  }
+  const txt = $('#txtModo');
+  if (txt) txt.textContent = reglas.descripcion;
+  const chk = $('#chkMadain');
+  $('#lblMadain')?.classList.toggle('hidden', reglas.madain === 'nunca');
+  if (chk) {
+    chk.disabled = reglas.madain !== 'opcional';
+    if (reglas.madain === 'siempre') chk.checked = true;
+    if (reglas.madain === 'nunca') chk.checked = false;
+  }
+}
+
+/** Restaura en el menú el modo guardado (si sigue siendo válido). */
+function restaurarModo(guardado) {
+  if (!guardado) return;
+  const sel = $('#selModo');
+  if (sel && MODOS_JUEGO[guardado.modo]) sel.value = guardado.modo;
+  const selSet = $('#selInvocationSet');
+  if (selSet && [...selSet.options].some(o => o.value === guardado.invocationSet)) selSet.value = guardado.invocationSet;
+  if ($('#chkMadain')) $('#chkMadain').checked = !!guardado.madain;
+  if ($('#chkEntusiasta')) $('#chkEntusiasta').checked = !!guardado.entusiasta;
+}
+
 /**
  * Jugadoras de la partida a partir de los asientos: nombre, tipo, nivel y
  * las 3 Gemas de valor 1 de la preparación. Nombres repetidos se numeran.
@@ -182,11 +231,9 @@ export function initSetup() {
     asientos = normalizarAsientos(guardado?.asientos);
     const n = parseInt(guardado?.n, 10);
     if (n >= 2 && n <= 5) $('#numPlayers').value = String(n);
-    const sel = $('#selInvocationSet');
-    if (sel && guardado?.invocationSet && [...sel.options].some(o => o.value === guardado.invocationSet)) {
-      sel.value = guardado.invocationSet;
-    }
+    restaurarModo(guardado);
   }
+  ajustarOpcionesModo();
   const numJug = $('#numPlayers');
   numJug.oninput = () => {
     const n = parseInt(numJug.value, 10);
@@ -198,8 +245,12 @@ export function initSetup() {
     guardarMenu();
     pintarAsientos();
   };
-  const selSet = $('#selInvocationSet');
-  if (selSet) selSet.onchange = guardarMenu;
+  const selModo = $('#selModo');
+  if (selModo) selModo.onchange = () => { ajustarOpcionesModo(); guardarMenu(); };
+  ['#selInvocationSet', '#chkMadain', '#chkEntusiasta'].forEach(sel => {
+    const el = $(sel);
+    if (el) el.onchange = guardarMenu;
+  });
   pintarAsientos();
 
   $('#btnStart').onclick = e => {
@@ -211,7 +262,11 @@ export function initSetup() {
     }
     window.players = crearJugadoras(asientos.slice(0, n));
     window.neutrals = [];
-    window.invocationSet = $('#selInvocationSet')?.value || 'normal';
+    const eleccion = leerModoElegido();
+    window.invocationSet = eleccion.invocationSet;
+    window.modo = eleccion.modo;
+    window.madain = eleccion.madain;
+    window.entusiasta = eleccion.entusiasta;
 
     // Configurar portales según número de jugadoras (docs/reglamento/REGLAMENTO.md, "Preparación"):
     //   2 jugadoras -> 2 portales/jugadora + 1 central

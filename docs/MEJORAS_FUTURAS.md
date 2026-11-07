@@ -258,23 +258,10 @@ trabajo concretas. La fuente de verdad de cómo debe comportarse cada una es
 tocar cualquiera de estos bloques, releer la sección correspondiente del
 reglamento, no fiarse de esta descripción resumida.
 
-### Personajes que faltan: Entusiasta
+### ~~Personajes que faltan: Entusiasta~~ (resuelto 1.34.0, 2026-11-07)
 
-Falta por implementar el personaje **Entusiasta** por completo: la carta ni
-siquiera entra en el mazo hoy (es la expansión aparte descrita en
-"Variantes y modos de juego" — se baraja aparte justo antes de empezar,
-no forma parte de la preparación normal del mazo), y su habilidad pasiva
-(perder una Gema de valor 1 o superior cuando se completa cualquier
-invocación con el Entusiasta bocarriba en un Portal) no existe en
-`js/abilities.js`. Los **Animales** (Reena, Sora, Lumo) ya están
-integrados — sin habilidad propia, que es fiel al reglamento ("no tienen
-ninguna habilidad") — y entran en el mazo solo cuando el set de invocación
-elegido es `introductorio` (el único que los necesita; `floral` reutiliza
-el mazo normal sin Animales, ver `js/game.js`). Tamaño **S–M**: necesita
-un toggle nuevo en la configuración (la expansión es opt-in), añadirlo al
-mazo condicionalmente, y la penalización pasiva reutilizando
-`gastarGemaUnitaria()` (`js/utils.js`) para el "toma el cambio" — ver
-`docs/AUDITORIA_REGLAS.md`, sección 2.1.
+Expansión opcional en el menú de inicio, en cualquier modo. Ver
+`aplicarEntusiastas()` y `prepararMazo()` en `js/utils.js`.
 
 ### ~~Maestro: habilidad activa nueva~~ (resuelto 2026-07-21)
 
@@ -382,25 +369,14 @@ usando `alert()`/`confirm()` como el resto de la app (ver `DEUDA_TECNICA.md`
 mejora de UX pendiente, ver "Sustituir `alert()`/`confirm()`..." más abajo.
 Detalle completo en `docs/AUDITORIA_REGLAS.md`, sección 4.
 
-### Modos Introductorio, Avanzado y Experto
+### ~~Modos Introductorio, Avanzado y Experto~~ (resuelto 1.34.0, 2026-11-07)
 
-Solo existe la preparación de mazo de "Modo normal" (ya al día con el
-reglamento: sin Entusiasta/Animales salvo que el set de invocación los
-requiera, Metamorfo incluido desde el principio, 2 cartas apartadas al
-azar). Faltan el modo Introductorio como variante de preparación de mazo
-completa (hoy solo existe su set de invocación, no su lista de personajes
-propia: Reena, Sora, Lumo, Pícaro, Aprendiz, Cronista, Estratega y
-Cronomante — roster real de **29 cartas**, no las 41 que produce hoy el
-código al elegir el set `introductorio`, ver `docs/AUDITORIA_REGLAS.md`
-sección 1.1 para el cálculo exacto), el modo Avanzado (tamaño S–M: su
-composición de 41 cartas coincide, por casualidad, con lo que el código
-ya produce hoy para `introductorio` — es más renombrar/reutilizar que
-construir desde cero) y el modo Experto (tamaño L: autómata central sin
-mano ni turno propio, 4ª invocación "Asterisco"/Madain ya definida como
-`INVOCATION_ASTERISCO` en `js/utils.js` pero sin conectar a ningún flujo,
-restricción de Metamorfo en forma natural, intercambio de Gemas al
-final) — cada uno como variante seleccionable antes de empezar, no como
-modos separados de código.
+Seleccionables en el menú de inicio (`MODOS_JUEGO` en `js/utils.js`), con
+Madain como cuarta invocación (obligatoria en Experto, opcional en
+Avanzado) y la autómata central del Modo Experto con el intercambio final
+de Gemas. Pendiente: que la heurística Difícil tenga en cuenta al
+Entusiasta y a la autómata central (la Experta ya los ve porque simula con
+el motor real).
 
 ### Variante 2 contra 2
 
