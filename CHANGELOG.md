@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.32.1.WW] - 2026-11-07
+## [1.32.1.83] - 2026-11-07
 
 ### Cambiado
 - **La Mesa 3D es la única vista mantenida, también en ordenador.** La

@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.32.1.WW - 2026-11-07
+## 1.32.1.83 - 2026-11-07
 
 - La Mesa 3D pasa a ser la forma de jugar en todos los dispositivos,
   también en el ordenador. La vista clásica en columnas deja de ofrecerse
