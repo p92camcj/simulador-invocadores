@@ -4,6 +4,21 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.32.4.143] - 2026-11-07
+
+### Corregido
+- Mesa 3D, final de la partida: "Ver cómo ha quedado la mesa" no
+  enseñaba las Gemas repartidas en la última invocación, porque la mesa no
+  se repintaba después de `terminarTurno()`. `finalizarPartida()`
+  (`js/game.js`) llama ahora a `render()` antes de mostrar el marcador.
+
+### Cambiado
+- Con la partida terminada, todas las Gemas de todas las jugadoras se ven
+  bocarriba con su valor y su total: `construirVistaMesa()`
+  (`js/vista-mesa.js`) añade `gemas.valores` cuando `juegoTerminado`, y
+  `gemasHtml()` (`js/mesa3d.js`) pinta cada Gema con el color de su nivel y
+  su valor. Test nuevo en `tests/vista-mesa.mjs`.
+
 ## [1.32.3.88] - 2026-11-07
 
 ### Eliminado

@@ -230,6 +230,10 @@ body.vista-mesa.mesa-en-partida #mesa3d { display: flex; }
 .m-gemas-rev { color: var(--oro); margin-left: 4px; }
 .m-gema { width: 11px; height: 11px; transform: rotate(45deg); border-radius: 2px;
   box-shadow: inset -2px -2px 0 #0004, inset 2px 2px 0 #fff6, 0 0 6px currentColor; }
+.m-gemas:has(.m-gema-valor) { white-space: normal; flex-wrap: wrap; }
+.m-rival-cab:has(.m-gema-valor) { flex-wrap: wrap; }
+.m-gema-valor { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 3px; border-radius: 5px;
+  font-size: .72rem; font-weight: 900; color: #1b1030 !important; box-shadow: 0 0 6px #ffffff55; }
 .m-gema--u { background: #4dabf7; color: #4dabf7; }
 .m-gema--c { background: #f2c94c; color: #f2c94c; }
 .m-gema--b { background: #e0533a; color: #e0533a; }
