@@ -8,7 +8,7 @@
 // La firma de applyAbility() no cambia: la usan actions.js (Fase B humana)
 // y bot.js (que contesta los mismos picker() por JS, de forma síncrona).
 
-import { picker, pickerPortal } from './render.js';
+import { picker, pickerPortal, render } from './render.js';
 import { estado } from './motor/estado.js';
 import { aplicarHabilidad, bajarCartaMaestro as bajarCartaMaestroMotor } from './motor/habilidades.js';
 
@@ -26,7 +26,14 @@ export function bajarCartaMaestro(players, neutrals, targetIdx, portalIdx, mazo 
 export const uiNavegador = {
   pedir({ tipo, pregunta, opciones }, responder, cancelar) {
     const abrir = tipo === 'portal' ? pickerPortal : picker;
-    abrir(pregunta, opciones, responder, cancelar);
+    // Tras cancelar se vuelve a dibujar la mesa: cancelar puede dejar estado
+    // nuevo (p. ej. el Portal fijado del Cronomante) y sin esto la Mesa 3D
+    // seguía ofreciendo, al tocar un Portal, habilidades que ya no se pueden
+    // activar (el botón llevaba de vuelta al Cronomante pendiente).
+    abrir(pregunta, opciones, responder, () => {
+      cancelar?.();
+      render(window.players, window.neutrals, window.levelIdx);
+    });
   },
   avisar(evento) {
     if (evento.tipo === 'accionInvalida') alert(evento.motivo);
