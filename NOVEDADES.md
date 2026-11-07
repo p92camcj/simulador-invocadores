@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.32.0.77 - 2026-11-07
+## 1.32.0.78 - 2026-11-07
 
 - **Ahora se entiende lo que hacen los autómatas.** Juegan paso a paso:
   primero la carta, una pausa, luego la habilidad y otra pausa. Cada paso
@@ -22,6 +22,11 @@ detalle técnico completo, mira `CHANGELOG.md`.
   turno.
 - En el menú de inicio puedes elegir el **ritmo de los autómatas**:
   rápido, normal o pausado.
+## 1.31.1.77 - 2026-11-06
+
+- En la escena de la Estratega, el personaje que cambia del Portal de la
+  izquierda al de la derecha ya no se esconde detrás del Portal: ahora los
+  dos personajes se cruzan por delante y se ven enteros.
 
 ## 1.31.0.75 - 2026-11-06
 
