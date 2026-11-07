@@ -22,119 +22,196 @@ function pintarPanelRetomar() {
   };
 }
 
+// ---------- Asientos del menú de inicio ----------
+// Cada asiento es una persona (con su nombre) o una autómata (con su nivel).
+// Se recuerda la última configuración en este dispositivo.
+
+const CLAVE_MENU = 'invocadores.menuInicio';
+const NOMBRES_POR_DEFECTO = ['Javi', 'Isa', 'Julio', 'Adrián', 'Ana'];
+export const NIVELES_AUTOMATA = [
+  { valor: 'normal', etiqueta: 'Normal · juega directa' },
+  { valor: 'dificil', etiqueta: 'Difícil · cuenta cartas' },
+  { valor: 'experta', etiqueta: 'Experta · simula partidas' },
+];
+
+/** Estado del menú: un objeto por asiento posible (hasta 5). */
+let asientos = null;
+
+function leerMenuGuardado() {
+  try {
+    const datos = JSON.parse(localStorage.getItem(CLAVE_MENU) || 'null');
+    return datos && Array.isArray(datos.asientos) ? datos : null;
+  } catch { return null; }
+}
+
+function guardarMenu() {
+  try {
+    localStorage.setItem(CLAVE_MENU, JSON.stringify({
+      n: parseInt($('#numPlayers').value, 10),
+      asientos,
+      invocationSet: $('#selInvocationSet')?.value,
+    }));
+  } catch { /* sin almacenamiento: no pasa nada */ }
+}
+
 /**
- * Inicializa la UI de configuración de la partida.
- * Muestra el formulario de nombres y arranca el juego.
+ * Normaliza la lista de asientos: siempre 5, cada uno con tipo, nombre,
+ * nivel y nombre de autómata (únicos entre sí).
+ */
+export function normalizarAsientos(previos = []) {
+  const lista = Array.from({ length: 5 }, (_, i) => {
+    const p = previos[i] || {};
+    return {
+      tipo: p.tipo === 'auto' ? 'auto' : 'humano',
+      nombre: typeof p.nombre === 'string' ? p.nombre.slice(0, 24) : '',
+      dificultad: NIVELES_AUTOMATA.some(n => n.valor === p.dificultad) ? p.dificultad : 'normal',
+      nombreBot: typeof p.nombreBot === 'string' ? p.nombreBot : '',
+    };
+  });
+  const usados = new Set();
+  lista.forEach(a => {
+    if (!a.nombreBot || usados.has(a.nombreBot)) a.nombreBot = '';
+    else usados.add(a.nombreBot);
+  });
+  const libres = nombresDisponiblesParaBots(10).filter(n => !usados.has(n));
+  lista.forEach(a => { if (!a.nombreBot) a.nombreBot = libres.shift() || 'Autómata'; });
+  return lista;
+}
+
+/** Pinta una fila por jugadora con su interruptor persona/autómata. */
+function pintarAsientos() {
+  const n = parseInt($('#numPlayers').value, 10);
+  const lista = $('#listaJugadores');
+  if (!lista || Number.isNaN(n)) return;
+  lista.textContent = '';
+  for (let i = 0; i < n; i++) {
+    const a = asientos[i];
+    const fila = document.createElement('div');
+    fila.className = `fila-jugador fila-${a.tipo}`;
+
+    const cabecera = document.createElement('div');
+    cabecera.className = 'fila-cabecera';
+    const num = document.createElement('span');
+    num.className = 'fila-num';
+    num.textContent = String(i + 1);
+    const tipo = document.createElement('div');
+    tipo.className = 'tipo-jugador';
+    tipo.setAttribute('role', 'radiogroup');
+    tipo.setAttribute('aria-label', `Jugadora ${i + 1}`);
+    [['humano', '👤 Persona'], ['auto', '🤖 Autómata']].forEach(([valor, texto]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = texto;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(a.tipo === valor));
+      b.classList.toggle('activo', a.tipo === valor);
+      b.onclick = () => {
+        if (a.tipo === valor) return;
+        a.tipo = valor;
+        guardarMenu();
+        pintarAsientos();
+        if (valor === 'humano') lista.querySelectorAll('input')[i]?.focus();
+      };
+      tipo.appendChild(b);
+    });
+    cabecera.append(num, tipo);
+    fila.appendChild(cabecera);
+
+    if (a.tipo === 'humano') {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 24;
+      input.placeholder = `Nombre de la jugadora ${i + 1}`;
+      input.value = a.nombre;
+      input.setAttribute('aria-label', `Nombre de la jugadora ${i + 1}`);
+      input.addEventListener('input', () => { a.nombre = input.value; guardarMenu(); });
+      fila.appendChild(input);
+    } else {
+      const nombre = document.createElement('div');
+      nombre.className = 'nombre-bot';
+      nombre.textContent = a.nombreBot;
+      const sel = document.createElement('select');
+      sel.setAttribute('aria-label', `Nivel de ${a.nombreBot}`);
+      NIVELES_AUTOMATA.forEach(({ valor, etiqueta }) => {
+        const op = document.createElement('option');
+        op.value = valor;
+        op.textContent = etiqueta;
+        op.selected = valor === a.dificultad;
+        sel.appendChild(op);
+      });
+      sel.addEventListener('change', () => { a.dificultad = sel.value; guardarMenu(); });
+      fila.append(nombre, sel);
+    }
+    lista.appendChild(fila);
+  }
+  const hayBots = asientos.slice(0, n).some(a => a.tipo === 'auto');
+  $('#lblRitmoBots')?.classList.toggle('hidden', !hayBots);
+}
+
+/**
+ * Jugadoras de la partida a partir de los asientos: nombre, tipo, nivel y
+ * las 3 Gemas de valor 1 de la preparación. Nombres repetidos se numeran.
+ */
+export function crearJugadoras(asientosPartida) {
+  const vistos = new Map();
+  // Un asiento sin nombre toma uno por defecto que nadie más esté usando.
+  const escritos = new Set(asientosPartida.map(a => (a.tipo === 'auto' ? a.nombreBot : a.nombre.trim())).filter(Boolean));
+  const porDefecto = NOMBRES_POR_DEFECTO.filter(nm => !escritos.has(nm));
+  return asientosPartida.map((a, i) => {
+    const esBot = a.tipo === 'auto';
+    let nombre = esBot ? a.nombreBot : (a.nombre.trim() || porDefecto.shift() || `Jugadora ${i + 1}`);
+    const veces = (vistos.get(nombre) || 0) + 1;
+    vistos.set(nombre, veces);
+    if (veces > 1) nombre = `${nombre} ${veces}`;
+    const gems = Array.from({ length: 3 }, () => ({ valor: 1, nivel: 'unitaria' }));
+    const jugador = { name: nombre, tipo: esBot ? 'auto' : 'humano', hand: [], portals: [], gems };
+    if (esBot) jugador.dificultad = a.dificultad; // 'normal', 'dificil' o 'experta', ver js/bot.js
+    return jugador;
+  });
+}
+
+/**
+ * Inicializa la UI de configuración de la partida: número de jugadoras,
+ * una fila por asiento (persona con nombre o autómata con nivel), modo de
+ * juego, y el botón de empezar.
  */
 export function initSetup() {
   pintarPanelRetomar();
-  // Al pulsar 'Continuar', generar inputs según número de jugadoras (entre 2 y 5)
-  // y número de autómatas (0..jugadoras). Convención simple: los últimos
-  // `nBots` puestos son autómatas, el resto humanas — no configurable por
-  // posición en este MVP.
-  $('#cfgNext').onclick = () => {
-    const n = parseInt($('#numPlayers').value);
+  const guardado = leerMenuGuardado();
+  if (!asientos) {
+    asientos = normalizarAsientos(guardado?.asientos);
+    const n = parseInt(guardado?.n, 10);
+    if (n >= 2 && n <= 5) $('#numPlayers').value = String(n);
+    const sel = $('#selInvocationSet');
+    if (sel && guardado?.invocationSet && [...sel.options].some(o => o.value === guardado.invocationSet)) {
+      sel.value = guardado.invocationSet;
+    }
+  }
+  const numJug = $('#numPlayers');
+  numJug.oninput = () => {
+    const n = parseInt(numJug.value, 10);
     const errorEl = $('#numError');
-    const nBots = parseInt($('#numBots').value);
-    const botsErrorEl = $('#botsError');
-
-    if (isNaN(n) || n < 2 || n > 5) {
-      errorEl.textContent = 'El número de jugadoras debe estar entre 2 y 5.';
-      errorEl.classList.remove('hidden');
-      return;
-    }
-    errorEl.classList.add('hidden');
-
-    if (isNaN(nBots) || nBots < 0 || nBots > n) {
-      botsErrorEl.textContent = 'El número de autómatas no puede superar el de jugadoras.';
-      botsErrorEl.classList.remove('hidden');
-      return;
-    }
-    botsErrorEl.classList.add('hidden');
-
-    // Selector de dificultad: una única dificultad GLOBAL para todos los
-    // autómatas de la partida (no una por autómata) — decisión deliberada
-    // de esta tarea para no complicar la UI con un selector por fila de
-    // nombre; ver CHANGELOG.md. Solo se muestra si hay al menos un bot.
-    $('#lblDificultadBots').classList.toggle('hidden', nBots === 0);
-    $('#lblRitmoBots')?.classList.toggle('hidden', nBots === 0);
-
-    const form = $('#nameForm');
-
-    // Si ya hay exactamente los campos necesarios (mismo total Y mismo
-    // reparto humanas/bots), no los volvemos a generar.
-    const nHumanas = n - nBots;
-    const yaGenerado = form.children.length === n
-      && Array.from(form.elements).filter(el => el.dataset.tipo === 'humano').length === nHumanas;
-    if (yaGenerado) {
-      $('#nameWrap').classList.remove('hidden');
-      return;
-    }
-
-    // Si hay que cambiar el reparto, regeneramos conservando lo que
-    // podamos de los nombres humanos ya escritos.
-    const valoresPreviosHumanos = Array.from(form.elements)
-      .filter(el => el.dataset.tipo === 'humano')
-      .map(el => el.value);
-    const nombresBots = nombresDisponiblesParaBots(nBots);
-
-    // DEUDA_TECNICA.md ítem 5 (resuelto de paso, al tocar este código para
-    // los bots): nombres insertados vía innerHTML sin escapar. Se
-    // construyen los <input> con createElement/propiedades en vez de
-    // interpolar valores en una plantilla de string.
-    form.textContent = '';
-    let idxHumanaPrevia = 0;
-    for (let i = 0; i < n; i++) {
-      const esBot = i >= nHumanas;
-      const input = document.createElement('input');
-      input.name = `p${i}`;
-      if (esBot) {
-        input.value = nombresBots[i - nHumanas];
-        input.readOnly = true;
-        input.dataset.tipo = 'auto';
-        input.title = 'Nombre asignado automáticamente a este autómata';
-      } else {
-        input.placeholder = `Jugadora ${i + 1}`;
-        input.value = valoresPreviosHumanos[idxHumanaPrevia] || '';
-        input.dataset.tipo = 'humano';
-        input.required = true;
-        idxHumanaPrevia++;
-      }
-      form.appendChild(input);
-    }
-
-    $('#nameWrap').classList.remove('hidden');
+    const valido = !Number.isNaN(n) && n >= 2 && n <= 5;
+    errorEl.textContent = 'El número de jugadoras debe estar entre 2 y 5.';
+    errorEl.classList.toggle('hidden', valido);
+    if (!valido) return;
+    guardarMenu();
+    pintarAsientos();
   };
+  const selSet = $('#selInvocationSet');
+  if (selSet) selSet.onchange = guardarMenu;
+  pintarAsientos();
 
-  // Al pulsar 'Iniciar', leer nombres y configurar jugadores
   $('#btnStart').onclick = e => {
     e.preventDefault();
-    // Inicializar arrays globales
-    window.players = [];
+    const n = parseInt(numJug.value, 10);
+    if (Number.isNaN(n) || n < 2 || n > 5) {
+      numJug.oninput();
+      return;
+    }
+    window.players = crearJugadoras(asientos.slice(0, n));
     window.neutrals = [];
     window.invocationSet = $('#selInvocationSet')?.value || 'normal';
-
-    // Leer nombres y crear objetos de jugador. Recorre los propios
-    // elementos del formulario (en vez de FormData) para poder distinguir
-    // humanas de autómatas vía su dataset.tipo.
-    const nombresPorDefecto = ['Javi', 'Isa', 'Julio', 'Adrián'];
-    let idxHumana = 0;
-    const dificultadBots = $('#selDificultadBots')?.value || 'normal';
-
-    // Cada jugador recibe 3 Gemas de valor 1 (azules) en la preparación,
-    // sea humana o autómata.
-    Array.from($('#nameForm').elements).forEach(input => {
-      const esBot = input.dataset.tipo === 'auto';
-      const nombre = esBot
-        ? input.value
-        : (input.value.trim() || nombresPorDefecto[idxHumana] || `Jugadora ${idxHumana + 1}`);
-      if (!esBot) idxHumana++;
-
-      const gemasIniciales = Array.from({ length: 3 }, () => ({ valor: 1, nivel: 'unitaria' }));
-      const jugador = { name: nombre, tipo: esBot ? 'auto' : 'humano', hand: [], portals: [], gems: gemasIniciales };
-      if (esBot) jugador.dificultad = dificultadBots; // 'normal', 'dificil' o 'experta', ver js/bot.js
-      window.players.push(jugador);
-    });
 
     // Configurar portales según número de jugadoras (docs/reglamento/REGLAMENTO.md, "Preparación"):
     //   2 jugadoras -> 2 portales/jugadora + 1 central

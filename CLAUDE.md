@@ -175,21 +175,17 @@ in `nextTurn()`.
 - **`js/index.js`** — entry point. Initializes the global `window.*` state,
   exposes `LEVELS`/`INVOCATION_SETS` on `window`, and calls `initSetup()` on
   `DOMContentLoaded`.
-- **`js/setup.js`** — the player-count (2-5)/name-entry/invocation-set
-  screen. Builds `window.players` / `window.neutrals` (Portal distribution
-  by player count lives here, matching the rulebook's table for 2-5
-  players), reads `window.invocationSet` from `#selInvocationSet`, gives
-  each player their starting 3 unit Gems, and calls `initGame()`. Also
-  handles the "Autómatas (bots)" field (0..player count, validated): the
-  last `nBots` name slots become read-only autómata names (from
-  `bot.js`'s `nombresDisponiblesParaBots()`), the rest stay editable human
-  inputs; each `window.players[i]` gets `tipo: 'humano'|'auto'` (plus
-  `dificultad` for bots, read from `#selDificultadBots` —
-  `'normal'`|`'dificil'`|`'experta'`, see `js/bot.js`/`js/bot-probabilidad.js`/`js/bot-busqueda.js`). The
-  difficulty selector (`#lblDificultadBots`) is shown only when at least
-  one bot is configured, and is **global for all bots in the match** — not
-  one per bot, a deliberate simplification for this MVP (see
-  `CHANGELOG.md` for the version that added the `'dificil'` level).
+- **`js/setup.js`** — the setup screen. Since 1.33.0 one row per seat
+  (2-5, `#numPlayers`, rendered live into `#listaJugadores`): each seat is
+  either a person (name input) or an autómata (auto name from `bot.js`'s
+  `nombresDisponiblesParaBots()` + its own difficulty select —
+  `'normal'`|`'dificil'`|`'experta'`, see `js/bot.js`/
+  `js/bot-probabilidad.js`/`js/bot-busqueda.js`; one level **per bot**).
+  The config is remembered in `localStorage['invocadores.menuInicio']`.
+  `crearJugadoras()` builds `window.players` (`tipo: 'humano'|'auto'`,
+  `dificultad` for bots, 3 unit Gems each); the Portal distribution by
+  player count (rulebook table for 2-5) lives here too; reads
+  `window.invocationSet` from `#selInvocationSet` and calls `initGame()`.
 - **`js/bot.js`** — autómata ("bot") decision logic, added 2026-07-21. No
   decision function ever reads `players[botIdx].hand`/`window.deck`
   directly — everything starts from `construirEstadoVisibleParaBot()`, a

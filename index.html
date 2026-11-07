@@ -51,21 +51,14 @@
       </div>
 
       <h2>Configurar partida</h2>
-      <label>Jugadoras (2‑5): <input id="numPlayers" type="number" min="2" max="5" value="2" /></label>
+      <label>Jugadoras (2‑5): <input id="numPlayers" type="number" min="2" max="5" value="3" /></label>
       <div id="numError" class="error-msg hidden">Número de jugadoras inválido.</div>
 
-      <label>Autómatas (bots) entre esas jugadoras: <input id="numBots" type="number" min="0" max="5" value="0" /></label>
-      <div id="botsError" class="error-msg hidden">Número de autómatas inválido.</div>
+      <h3>Jugadoras</h3>
+      <p class="nota-setup">Elige para cada asiento si juega una persona (escribe su nombre) o una autómata (elige su nivel).</p>
+      <div id="listaJugadores" class="lista-jugadores"></div>
 
-      <label id="lblDificultadBots" class="hidden">Dificultad de los autómatas:
-        <select id="selDificultadBots">
-          <option value="normal" selected>Normal (heurística directa)</option>
-          <option value="dificil">Difícil (conteo de cartas y valor esperado)</option>
-          <option value="experta">Experta (simula sus jugadas en mundos posibles)</option>
-        </select>
-      </label>
-
-      <label id="lblRitmoBots" class="hidden">Ritmo de los autómatas:
+      <label id="lblRitmoBots" class="hidden">Ritmo de las autómatas:
         <select id="selRitmoBots">
           <option value="rapido">Rápido</option>
           <option value="normal" selected>Normal (pausa tras cada acción)</option>
@@ -73,6 +66,7 @@
         </select>
       </label>
 
+      <h3>Modo de juego</h3>
       <label>Set de invocación:
         <select id="selInvocationSet">
           <option value="introductorio">Introductorio (Cilast / Burnio / Aspir)</option>
@@ -81,9 +75,10 @@
         </select>
       </label>
 
-
       <label class="check-espectaculo"><input id="chkEspectaculo" type="checkbox" checked />
         Modo espectáculo: ver a cada personaje aparecer en su Portal y una escena por habilidad</label>
+
+      <button id="btnStart" type="button" class="btn primary">Iniciar partida</button>
 
       <div id="panelAprendizaje" class="panel-aprendizaje">
         <strong>Aprendizaje de las autómatas</strong>
@@ -94,12 +89,6 @@
         <input id="fileAprendizaje" type="file" accept="application/json,.json" hidden />
       </div>
 
-      <button id="cfgNext" class="btn primary">Continuar</button>
-      <div id="nameWrap" class="hidden">
-        <h3>Nombres</h3>
-        <form id="nameForm"></form>
-        <button id="btnStart" class="btn primary">Iniciar</button>
-      </div>
     </div>
   </div>
   <script type="module" src="js/index.js"></script>
