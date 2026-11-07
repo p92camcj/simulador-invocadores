@@ -4,6 +4,19 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.32.2.82] - 2026-11-07
+
+### Corregido
+- Mesa 3D: tras cancelar la elección de carta del Cronomante, los Portales
+  seguían brillando como "activables" y al tocar otro (p. ej. un Maestro)
+  se ofrecía "Activar: Maestro", pero el botón llevaba de vuelta al
+  Cronomante pendiente. El adaptador web (`uiNavegador` en
+  `js/abilities.js`) vuelve a llamar a `render()` después de cualquier
+  cancelación, así la mesa se redibuja con el Portal del Cronomante ya
+  fijado y solo ofrece retomarlo. La regla no cambia: el Portal elegido
+  con el Cronomante no se puede cambiar, y la Gema del Portal central se
+  cobra solo al subir una carta.
+
 ## [1.32.1.83] - 2026-11-07
 
 ### Cambiado

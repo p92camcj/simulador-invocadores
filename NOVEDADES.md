@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.32.2.82 - 2026-11-07
+
+- Mesa 3D: si cancelas a medias el Cronomante, la mesa ya no te ofrece
+  activar la habilidad de otro Portal (como el Maestro) que en realidad te
+  llevaba de vuelta al Cronomante. Ahora solo te deja retomar el
+  Cronomante en el mismo Portal que elegiste, como dice el reglamento.
+
 ## 1.32.1.83 - 2026-11-07
 
 - La Mesa 3D pasa a ser la forma de jugar en todos los dispositivos,
