@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.32.3.WW - 2026-11-07
+## 1.32.3.88 - 2026-11-07
 
 - La vista clásica en columnas se ha retirado del todo: la Mesa 3D es la
   única forma de jugar, en el móvil y en el ordenador.

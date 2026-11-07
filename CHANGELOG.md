@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.32.3.WW] - 2026-11-07
+## [1.32.3.88] - 2026-11-07
 
 ### Eliminado
 - **Vista clásica** (congelada en 1.32.1, resuelve el ítem 17 de
