@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.34.1.149 - 2026-11-07
+
+- Hemos jugado cientos de miles de partidas simuladas entre autómatas
+  para estudiar si el juego está equilibrado: modos, número de jugadoras,
+  personajes, una jugadora que sabotea y otra que juega al azar como una
+  niña pequeña. El juego no cambia; las conclusiones y propuestas se han
+  enviado al autor.
+
 ## 1.34.0.147 - 2026-11-07
 
 - ¡Ya puedes elegir el modo de juego!

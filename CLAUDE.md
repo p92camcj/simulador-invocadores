@@ -299,6 +299,14 @@ in `nextTurn()`.
   profile's weights); `--aprender 1` records their plays and refits the
   people model after each game, like the web does. Use the arena to measure any
   bot change against `main` before shipping it.
+- **`tools/equilibrio.mjs`** — (1.34.1) balance analysis by mass
+  simulation on top of the arena: extra analysis-only seats `'caotico'`
+  (random legal plays, "5-year-old") and `'saboteador'` (searches, like
+  Experta, for the play that keeps the invocation furthest and hands out
+  fewest Gems), restricted play `'dificil-sin:Cronista'` / `'-sin:todas'`,
+  deck overrides (`--cantidades`, `--apartar`) and per-game metrics with
+  95 % CIs. Results of the first run (2026-11-07, ~280,000 games) are in
+  the Claude Doc "Invocadores: análisis de equilibrio por simulación".
 - **`js/game.js`** — builds the character deck (`initGame`, via
   `prepararMazo(estado.partida)` in `utils.js`, and the central autómata in
   Experto), turn advancement and the "no cards left" end condition
