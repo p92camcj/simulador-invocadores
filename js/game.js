@@ -3,14 +3,16 @@ import { aprenderAlTerminarPartida } from './aprendizaje-navegador.js';
 import { shuffle, draw, composicionMazoTotal, calcularResultadoFinal } from './utils.js';
 import { render } from './render.js';
 import { initActions } from './actions.js';
-import { decidirYJugarTurno } from './bot.js';
+import { jugarTurnoAutomataPasoAPaso } from './bot.js';
+import { registrarEnHistorial } from './historial.js';
+import { pausaTrasPaso, pausaAntesDeJugar, reiniciarNarrador } from './narrador.js';
 
 import { initSetup } from './setup.js';
 import { $ } from './utils.js';
 import { estado, reiniciarCamposDeTurno, reiniciarPartida, cargarPartida } from './motor/estado.js';
 import { comprobarFinPorManoVacia } from './motor/acciones.js';
 import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, vistaMesaActiva, mostrarFinMesa, preguntarMesa } from './mesa3d.js';
-import { detenerEspectaculo } from './espectaculo.js';
+import { detenerEspectaculo, cuandoTermineEspectaculo } from './espectaculo.js';
 import { guardarPartidaEnCurso, leerPartidaGuardada, borrarPartidaGuardada } from './partida-guardada.js';
 
 // Sube cada vez que se sale al menú: un turno de autómata que estaba
@@ -85,6 +87,9 @@ export function nextTurn() {
   // Foto de la partida al empezar el turno: es la que se retoma al volver
   // desde el menú de inicio (o tras recargar la página).
   guardarPartidaEnCurso(estado.partida);
+  // Historial de jugadas: empieza un turno (después de guardar, para que al
+  // retomar la partida no salga dos veces).
+  registrarEnHistorial(estado.partida, { tipo: 'turno', jugadora: window.turn, texto: `Turno de ${current.name}` });
 
   // Durante el turno de una autómata se ocultan los controles de acción
   // humanos (jugar carta/activar habilidad/terminar turno) para que nadie
@@ -97,8 +102,10 @@ export function nextTurn() {
   document.querySelector('#btnEndTurn')?.classList.toggle('hidden', esBot);
 
   // En la Mesa 3D el cambio de turno es un telón o un rótulo (js/mesa3d.js).
-  if (!anunciarTurnoMesa(current, esBot)) {
-    alert(esBot ? `🤖 ${current.name} está pensando…` : 'Turno de ' + current.name);
+  // Con una autómata no hay alert(): su turno se narra paso a paso en
+  // pantalla (js/narrador.js) sin bloquear.
+  if (!anunciarTurnoMesa(current, esBot) && !esBot) {
+    alert('Turno de ' + current.name);
   }
   document.querySelector('#lblTurn').textContent =
   `Turno de: ${current.name} — Mazo: ${window.deck.length}`;
@@ -106,13 +113,22 @@ export function nextTurn() {
 
   if (esBot) {
     const generacion = generacionPartida;
+    // Paso a paso: tras jugar carta y tras activar habilidad, la autómata
+    // espera a que acaben las escenas y hace una pausa, para que se pueda
+    // seguir lo que ha hecho (rótulo + Portales resaltados + estelas).
+    const esperar = (fase, seguir, abortar) => {
+      cuandoTermineEspectaculo().then(() => setTimeout(() => {
+        if (generacion !== generacionPartida) abortar();
+        else seguir();
+      }, pausaTrasPaso(fase)));
+    };
     setTimeout(() => {
       if (generacion !== generacionPartida) return;
-      decidirYJugarTurno(window.players, window.neutrals, window.turn, {
+      jugarTurnoAutomataPasoAPaso(window.players, window.neutrals, window.turn, {
         levelIdx: window.levelIdx,
         invocationSet: window.invocationSet,
-      });
-    }, retardoAutomata());
+      }, esperar);
+    }, pausaAntesDeJugar(retardoAutomata()));
   }
 }
 
@@ -179,6 +195,8 @@ export function resetJuego() {
   $('#btnCtrlPlay')?.classList.add('hidden');
   $('#btnAbility')?.classList.add('hidden');
   $('#btnSalir')?.classList.add('hidden');
+  $('#btnHistorial')?.classList.add('hidden');
+  reiniciarNarrador();
   $('#picker')?.classList.add('hidden');
   $('#helpModal')?.classList.add('hidden');
 
@@ -207,6 +225,7 @@ export function mostrarTablero() {
   $('#btnCtrlPlay')?.classList.remove('hidden');
   $('#btnAbility')?.classList.remove('hidden');
   $('#btnSalir')?.classList.remove('hidden');
+  $('#btnHistorial')?.classList.remove('hidden');
   $('#mainTitle')?.classList.add('hidden');
   $('#mainSubtitle')?.classList.add('hidden');
 }
@@ -241,6 +260,7 @@ export function salirAlMenu() {
 function volverAlMenu() {
   generacionPartida++;
   detenerEspectaculo();
+  reiniciarNarrador();
   resetJuego();
 }
 
@@ -250,6 +270,7 @@ export function retomarPartida() {
   if (!registro) return false;
   generacionPartida++;
   detenerEspectaculo();
+  reiniciarNarrador();
   cargarPartida(registro.partida);
   mostrarTablero();
   initActions();

@@ -59,7 +59,8 @@ function cartaDeManoConocida(carta, duenaIdx, botIdx, partida) {
  * partida real sobrevive en la copia.
  */
 export function determinizar(partida, botIdx) {
-  const mundo = clonar(partida);
+  // El historial de jugadas es solo para personas: no se copia a cada mundo.
+  const mundo = clonar({ ...partida, historial: [] });
   mundo.memoriaBots = [];
 
   // Cartas que la autómata conoce: todas las de los Portales y las de mano

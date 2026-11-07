@@ -2,7 +2,8 @@
 import { prepararEjemploPersona, guardarEjemploPersona } from './aprendizaje-navegador.js';
 import { nextTurn, finalizarPartida } from './game.js';
 import { render, picker } from './render.js';
-import { applyAbility } from './abilities.js';
+import { applyAbility, eleccionesUltimaHabilidad } from './abilities.js';
+import { describirObjetivoHabilidad, construirEstadoVisibleParaBot } from './bot.js';
 import { mostrarCarta, tieneGemaAsterisco, contarGemasUnitarias } from './utils.js';
 import { estado } from './motor/estado.js';
 import {
@@ -13,6 +14,10 @@ import {
   hayEspectaculoEnCurso
 } from './espectaculo.js';
 import { vistaMesaActiva, preguntarMesa } from './mesa3d.js';
+import {
+  registrarEnHistorial, claveDeDestino, claveDeOrigenHabilidad, fotoPortales, portalesCambiados,
+  pilaDeClave, textoJugada, textoHabilidad, textoInvocacion, trazosHabilidad,
+} from './historial.js';
 
 /**
  * Etiqueta entre paréntesis de lo que hay en el top de un Portal, con el
@@ -36,10 +41,22 @@ export function ejecutarJugada(cartaIdx, destKey) {
   if (cartaIdx === null || cartaIdx === undefined) return false;
   // Aprendizaje de las autómatas: lo que sabía la persona y lo que eligió.
   const ejemplo = prepararEjemploPersona(estado.partida, cartaIdx, destKey);
+  const jugadora = estado.partida.turn;
+  const conocida = estado.partida.players[jugadora]?.hand[cartaIdx]?.vis?.owner === true;
   const eventos = jugarCarta(estado.partida, { cartaIdx, destino: destKey });
   const jugada = eventos.find(e => e.tipo === 'cartaJugada');
   if (!jugada) return false;
   guardarEjemploPersona(ejemplo);
+  // Historial de jugadas (y narración en pantalla si es una autómata).
+  const clave = claveDeDestino(destKey, jugadora);
+  const carta = pilaDeClave(estado.partida, clave)?.at(-1);
+  if (carta) {
+    registrarEnHistorial(estado.partida, {
+      tipo: 'jugada', jugadora, portales: [clave],
+      trazos: [{ desde: `mano:${jugadora}`, hacia: clave, motivo: 'jugada' }],
+      texto: textoJugada(estado.partida, { jugadora, carta, conocida, clave }),
+    });
+  }
   window.selectedCardIdx = null;
   // Modo espectáculo (solo presentación, ver js/espectaculo.js).
   anunciarCartaJugada(jugada.jugadora, jugada.destino);
@@ -47,6 +64,38 @@ export function ejecutarJugada(cartaIdx, destKey) {
   // Clarividente para cualquier jugadora afectada.
   render(estado.partida.players, estado.partida.neutrals, estado.partida.levelIdx);
   return true;
+}
+
+/**
+ * Envuelve el `onComplete` de una activación de habilidad (Fase B) para
+ * anotarla en el historial con los Portales que cambiaron. Se crea ANTES de
+ * aplicar la habilidad (foto de la mesa de antes) y anota cuando la
+ * habilidad tiene efecto de verdad, antes de cobrar y repintar (así el
+ * repintado ya resalta los Portales). `detalle()` (opcional) da la frase de
+ * lo elegido y `elegidos()` los valores elegidos en los picker(). La usan la Fase B humana y la del autómata (bot.js).
+ */
+export function conHistorialHabilidad(personaje, jugadora, origen, { detalle, elegidos } = {}, onComplete) {
+  const antes = fotoPortales(estado.partida);
+  const claveOrigen = origen ? claveDeOrigenHabilidad(origen, jugadora) : null;
+  return (...args) => {
+    try {
+      const partida = estado.partida;
+      const cambiados = portalesCambiados(antes, fotoPortales(partida));
+      registrarEnHistorial(partida, {
+        tipo: 'habilidad', jugadora, personaje,
+        portales: [...new Set([claveOrigen, ...cambiados].filter(Boolean))],
+        texto: textoHabilidad(partida, {
+          jugadora, personaje, origen: claveOrigen, detalle: detalle?.() || '', cambiados,
+        }),
+        trazos: trazosHabilidad(partida, {
+          personaje, jugadora, origen: claveOrigen, cambiados, elegidos: elegidos?.() || [],
+        }),
+      });
+    } catch (e) {
+      console.warn('Historial de habilidad no disponible:', e);
+    }
+    return onComplete(...args);
+  };
 }
 
 /**
@@ -89,6 +138,7 @@ export function ejecutarFinDeTurno() {
   if (invocacion) {
     // En modo espectáculo la escena sustituye al aviso de texto.
     const { nivel, nombre, need, recompensas } = invocacion;
+    registrarEnHistorial(estado.partida, { tipo: 'invocacion', texto: textoInvocacion(invocacion) });
     const escenificada = anunciarInvocacion({ nivel, nombre, need, recompensas });
     if (!escenificada) alert(`Invocación ${nivel} (${nombre}) completa`);
   }
@@ -294,6 +344,9 @@ export function initActions() {
       const idx = parseInt(idxStr);
       const stack = tipo === 'own' ? P().players[window.turn].portals[idx] : P().neutrals[idx];
       const name = stack.at(-1).name;
+      const jugadora = window.turn;
+      const detalleHumano = () => describirObjetivoHabilidad(name, eleccionesUltimaHabilidad(),
+        construirEstadoVisibleParaBot(P().players, P().neutrals, jugadora));
 
       // Se invoca solo cuando la habilidad se ha aplicado de verdad (nunca si
       // el jugador cancela un picker() intermedio a medias): primero cobra el
@@ -303,14 +356,14 @@ export function initActions() {
       // llegar aquí.
       // envolverHabilidad() solo añade la escena del modo espectáculo
       // cuando la habilidad se aplica de verdad (js/espectaculo.js).
-      const onComplete = envolverHabilidad(name, window.turn, stack, () => {
+      const onComplete = envolverHabilidad(name, window.turn, stack, conHistorialHabilidad(name, window.turn, key, { detalle: detalleHumano, elegidos: eleccionesUltimaHabilidad }, () => {
         const cobrar = usarAsterisco => {
           completarActivacion(estado.partida, { origen: key, personaje: name, usarAsterisco });
           render(P().players, P().neutrals, window.levelIdx);
         };
         if (tipo === 'central') preguntarUsoAsterisco(P().players[window.turn], cobrar);
         else cobrar(false);
-      });
+      }));
 
       // Guardado aparte para que, si la jugadora cancela el segundo picker
       // de Cronomante y vuelve a pulsar "Activar habilidad" más tarde, se

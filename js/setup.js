@@ -57,6 +57,7 @@ export function initSetup() {
     // de esta tarea para no complicar la UI con un selector por fila de
     // nombre; ver CHANGELOG.md. Solo se muestra si hay al menos un bot.
     $('#lblDificultadBots').classList.toggle('hidden', nBots === 0);
+    $('#lblRitmoBots')?.classList.toggle('hidden', nBots === 0);
 
     const form = $('#nameForm');
 

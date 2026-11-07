@@ -465,6 +465,19 @@ in `nextTurn()`.
   done. `finalizarPartida()` deletes the save. Leaving bumps a counter in
   `game.js` so a pending bot `setTimeout` doesn't play on, and calls
   `detenerEspectaculo()` so queued scenes don't advance the turn.
+- **`js/historial.js`** + **`js/narrador.js`** — (1.32.0) play-by-play
+  log and on-screen narration. Every Fase A play (`ejecutarJugada()`),
+  Fase B ability (`conHistorialHabilidad()` in `actions.js`, wrapped
+  around both the human and the bot `onComplete`), invocation and turn
+  start is appended to `estado.partida.historial` (pure, public info only).
+  `narrador.js` listens and, for bots, shows a persistent caption, glows
+  the affected Portals with a step number (`atributosDestacado()`, read by
+  `render.js`/`mesa3d.js`) and draws a colored "magic dust" trail per move
+  (`COLOR_MOTIVO`). Bot turns are paced: each heuristic in `bot.js` is a
+  generator that `yield`s after Fase A and Fase B, and
+  `jugarTurnoAutomataPasoAPaso()` + `nextTurn()` wait for scenes plus
+  `pausaTrasPaso()` (speed setting `#selRitmoBots`) between steps; the
+  arena still runs them straight through via `decidirYJugarTurno()`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current
@@ -559,6 +572,7 @@ node tests/motor-adaptadores.mjs
 node tests/vista-mesa.mjs
 node tests/bot-busqueda.mjs
 node tests/aprendizaje.mjs
+node tests/historial.mjs
 ```
 
 ```bash

@@ -731,7 +731,7 @@ test('listaPortalesConDestino etiqueta cada Portal en tercera persona, nunca en 
     'su propio Portal 1',
     'el Portal 1 de Ana',
     'el Portal 2 de Ana',
-    'el Portal Neutral 1',
+    'el Portal central 1',
   ]);
   lista.forEach(p => assert.ok(!/\btu\b/i.test(p.etiqueta), `no debe usar segunda persona: "${p.etiqueta}"`));
 });
