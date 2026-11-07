@@ -4,6 +4,23 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.33.0.87] - 2026-11-07
+
+### Cambiado
+- **Menú de inicio por asientos.** Tras elegir el número de jugadoras,
+  cada asiento se configura por separado: 👤 Persona (con su nombre) o
+  🤖 Autómata (con su propio nivel: Normal, Difícil o Experta). Sustituye
+  a los campos "Autómatas (bots)" + dificultad global + botón
+  "Continuar": las filas aparecen al momento y ya no es obligatorio que
+  las autómatas sean los últimos asientos. `js/setup.js` (nuevas
+  `crearJugadoras()`, `normalizarAsientos()`, `NIVELES_AUTOMATA`),
+  `index.html`, estilos en `mesa3d.css`; `js/mesa3d.js` pierde el
+  selector − / + de `#numBots`.
+- La configuración del menú (número, asientos, niveles, set) se recuerda
+  en este dispositivo (`localStorage['invocadores.menuInicio']`).
+- Un nombre vacío toma uno por defecto que no esté usado; dos nombres
+  iguales se numeran.
+
 ## [1.32.4.143] - 2026-11-07
 
 ### Corregido

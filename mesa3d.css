@@ -60,7 +60,23 @@ body.vista-mesa #setup select { -webkit-appearance: none; appearance: none; padd
   background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
 body.vista-mesa #setup select option { color: #111; }
 body.vista-mesa #setup input[readonly] { color: #c9bfe8; background-color: rgba(123, 92, 255, .14); }
-body.vista-mesa #nameForm { display: flex; flex-direction: column; gap: 8px; }
+/* Asientos: persona (nombre) o autómata (nivel) */
+.lista-jugadores { display: flex; flex-direction: column; gap: 10px; }
+.fila-jugador { display: flex; flex-direction: column; gap: 8px; }
+.fila-cabecera { display: flex; align-items: center; gap: 10px; }
+.tipo-jugador { display: flex; flex: 1; gap: 4px; }
+.tipo-jugador button { flex: 1; cursor: pointer; }
+body.vista-mesa .nota-setup { margin: 0 0 8px; font-size: .85rem; color: #b8acd9; }
+body.vista-mesa .fila-jugador { padding: 10px; border-radius: 16px; background: rgba(8, 4, 22, .35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+body.vista-mesa .fila-auto { box-shadow: inset 0 0 0 1px rgba(244, 210, 122, .35); }
+body.vista-mesa .fila-num { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  font-weight: 800; color: #1c1238; background: linear-gradient(180deg, #f4d27a, #e0a93a); }
+body.vista-mesa .tipo-jugador { padding: 3px; border-radius: 12px; background: rgba(8, 4, 22, .55); }
+body.vista-mesa .tipo-jugador button { min-height: 38px; border: 0; border-radius: 10px; font-size: .92rem; font-weight: 700;
+  color: #b8acd9; background: transparent; transition: background .2s, color .2s; }
+body.vista-mesa .tipo-jugador button.activo { color: #fff; background: linear-gradient(180deg, #7b5cff, #4b2fc4); box-shadow: 0 2px 0 #2d1a80; }
+body.vista-mesa .nombre-bot { font-weight: 800; color: #f4d27a; padding: 0 4px; }
 body.vista-mesa .error-msg { color: #ff8a8a; font-size: .85rem; margin-top: 6px; }
 
 /* Selector numérico con − y + (lo añade js/mesa3d.js) */

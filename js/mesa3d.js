@@ -114,9 +114,8 @@ function prepararPantallaInicio() {
     titulo.before(heroe);
   }
   const numJug = document.querySelector('#numPlayers');
-  const numBots = document.querySelector('#numBots');
-  const limites = { numPlayers: () => [2, 5], numBots: () => [0, parseInt(numJug?.value, 10) || 5] };
-  [numJug, numBots].forEach(input => {
+  const limites = { numPlayers: () => [2, 5] };
+  [numJug].forEach(input => {
     if (!input || input.parentElement.classList.contains('m-paso-campo')) return;
     const caja = document.createElement('span');
     caja.className = 'm-paso m-paso-campo';
@@ -141,7 +140,6 @@ function prepararPantallaInicio() {
     mas.addEventListener('click', () => ajustar(1));
   });
   function sincronizar() {
-    if (numBots && numJug && parseInt(numBots.value, 10) > parseInt(numJug.value, 10)) numBots.value = numJug.value;
     document.querySelectorAll('.m-paso-campo').forEach(caja => {
       const input = caja.querySelector('input');
       const [min, max] = limites[input.id]();
@@ -151,7 +149,6 @@ function prepararPantallaInicio() {
     });
   }
   numJug?.addEventListener('input', sincronizar);
-  numBots?.addEventListener('input', sincronizar);
   sincronizar();
 }
 

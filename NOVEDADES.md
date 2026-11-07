@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.33.0.87 - 2026-11-07
+
+- Menú de inicio renovado: después de elegir cuántas jugáis, decides en
+  cada asiento si juega una persona (y escribes su nombre) o una autómata
+  (y eliges su nivel: Normal, Difícil o Experta). Cada autómata puede
+  tener un nivel distinto y sentarse en cualquier sitio.
+- El menú recuerda la última configuración que usaste.
+
 ## 1.32.4.143 - 2026-11-07
 
 - Al terminar la partida, "Ver cómo ha quedado la mesa" ya muestra las
