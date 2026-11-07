@@ -30,6 +30,7 @@
       <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
       <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
       <button id="btnSalir" class="btn secondary hidden" type="button" title="Vuelve al menú de inicio; la partida queda guardada para retomarla">🚪 Salir</button>
+      <button id="btnHistorial" class="btn secondary hidden" type="button" title="Todas las jugadas de la partida, turno a turno">📜 Historial</button>
       <button id="btnVista" class="btn secondary" type="button" title="Cambia a la vista Mesa 3D, pensada para móvil">📱 Mesa 3D</button>
       <button id="btnEspectaculo" class="btn secondary" type="button" aria-pressed="true" title="Activa o desactiva las escenas animadas">✨ Escenas: sí</button>
       <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">❓ Ayuda</button>
@@ -68,6 +69,14 @@
           <option value="normal" selected>Normal (heurística directa)</option>
           <option value="dificil">Difícil (conteo de cartas y valor esperado)</option>
           <option value="experta">Experta (simula sus jugadas en mundos posibles)</option>
+        </select>
+      </label>
+
+      <label id="lblRitmoBots" class="hidden">Ritmo de los autómatas:
+        <select id="selRitmoBots">
+          <option value="rapido">Rápido</option>
+          <option value="normal" selected>Normal (pausa tras cada acción)</option>
+          <option value="pausado">Pausado (para seguir cada jugada con calma)</option>
         </select>
       </label>
 

@@ -4,6 +4,7 @@ import { rutaFigura, rutaCriatura } from './espectaculo.js';
 import { LEVELS, INVOCATION_SETS, actualizarClarividente } from './utils.js';
 import { aplicarEleccionClarividente } from './motor/habilidades.js';
 import { renderMesa3D, pickerMesa, vistaMesaActiva, hayPickerMesaAbierto } from './mesa3d.js';
+import { atributosDestacado } from './narrador.js';
 
 /**
  * Resuelve, para una jugadora que acaba de perder la visibilidad de su
@@ -271,6 +272,8 @@ export function pickerPortal(title, opciones, cb, onCancel) {
  *   sin selección).
  */
 function portalCardHtml(stack, label, destKeyJugar, keyObjetivo) {
+  // Resaltado de lo último que ha pasado (js/narrador.js).
+  const traza = atributosDestacado(keyObjetivo);
   const topCard = stack.at(-1);
   // aspecto || name (ítem 14 de DEUDA_TECNICA.md): la imagen sigue la
   // apariencia (disfraz del Metamorfo), nunca la identidad real.
@@ -284,14 +287,14 @@ function portalCardHtml(stack, label, destKeyJugar, keyObjetivo) {
   if (objetivo) {
     const opcion = objetivo.opciones.find(o => o.val === keyObjetivo);
     if (!opcion || opcion.disabled) {
-      return `<div class="card target-portal-disabled"><div class="card-label">🚫 ${label} (${stack.length})</div>${body}</div>`;
+      return `<div class="card target-portal-disabled ${traza.clase}" data-clave="${keyObjetivo}"${traza.attrs}><div class="card-label">🚫 ${label} (${stack.length})</div>${body}</div>`;
     }
-    return `<div class="card target-portal" onclick="window.selectPortalObjetivo('${keyObjetivo}')"><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
+    return `<div class="card target-portal ${traza.clase}" data-clave="${keyObjetivo}"${traza.attrs} onclick="window.selectPortalObjetivo('${keyObjetivo}')"><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
   }
 
   const haySeleccion = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
   const targetClass = haySeleccion ? ' target-portal' : '';
-  return `<div class="card${targetClass}" ${portalPlayAttrs(destKeyJugar)}><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
+  return `<div class="card${targetClass} ${traza.clase}" data-clave="${keyObjetivo}"${traza.attrs} ${portalPlayAttrs(destKeyJugar)}><div class="card-label">${label} (${stack.length})</div>${body}</div>`;
 }
 
 /**
@@ -375,7 +378,7 @@ function renderBoardGrid(players, neutrals) {
     const esHumanaActiva = esActiva && p.tipo !== 'auto';
     const colorClass = ['player-red', 'player-blue', 'player-yellow', 'player-purple'][i % 4];
     const turnoClass = esActiva ? 'turno-activo' : 'turno-inactivo';
-    html += `<div class="board-col section ${colorClass} ${turnoClass}">`;
+    html += `<div class="board-col section ${colorClass} ${turnoClass}" data-jugadora-col="${i}">`;
 
     const gemasTxt = esHumanaActiva
       ? `G ${sumaGemas(p.gems)} total — ${gemDotsHtml(p.gems, { mostrarValorReal: true })}`
@@ -389,7 +392,7 @@ function renderBoardGrid(players, neutrals) {
     });
     html += '</div>';
 
-    html += '<h5>Mano</h5><div class="board-hand">';
+    html += `<h5>Mano</h5><div class="board-hand" data-mano-de="${i}">`;
     if (esHumanaActiva) {
       p.hand.forEach((c, idx) => {
         const visible = c.vis?.owner || p.hasClariActivo;

@@ -24,6 +24,7 @@ import { rutaFigura, rutaCriatura, espectaculoActivo, fijarEspectaculo } from '.
 import { estado } from './motor/estado.js';
 import { render } from './render.js';
 import { opcionesFaseB } from './motor/acciones.js';
+import { atributosDestacado, abrirHistorial } from './narrador.js';
 import {
   construirVistaMesa, elegirAsientoPropio, claveJugar, claveObjetivo, firmaPortal,
   cambioPortal, pistaTurno, contarHumanas,
@@ -292,8 +293,10 @@ function portalHtml(pv, { dest, obj, clave, etiqueta, tam, aria = etiqueta }) {
     : `<span class="m-portal-vacio"><img src="assets/portal.jpg" alt="" draggable="false"></span>`;
   const nombreTop = pv.top?.visible ? pv.top.nombre : (pv.top ? 'Carta oculta' : 'Vacío');
 
-  return `<button type="button" class="m-portal m-portal--${tam} ${estadoCls} ${esperandoVuelo ? 'esperando-vuelo' : ''}"`
-    + ` data-dest="${dest}" data-obj="${obj}" data-clave="${clave}"`
+  // Resaltado de lo último que ha pasado (js/narrador.js).
+  const traza = atributosDestacado(clave);
+  return `<button type="button" class="m-portal m-portal--${tam} ${estadoCls} ${esperandoVuelo ? 'esperando-vuelo' : ''} ${traza.clase}"`
+    + ` data-dest="${dest}" data-obj="${obj}" data-clave="${clave}"${traza.attrs}`
     + ` aria-label="${escapeHtml(aria)}: ${escapeHtml(nombreTop)}, ${pv.altura} carta${pv.altura === 1 ? '' : 's'}">`
     + `<span class="m-runa"></span>`
     + `<span class="m-pila capas-${capas}">${cuerpo}</span>`
@@ -326,7 +329,7 @@ function rivalHtml(a, turno, unico) {
   return `<section class="m-rival ${a.activa ? 'activa' : ''} ${unico ? 'unico' : ''}" style="--color:${color}">`
     + `<header class="m-rival-cab"><span class="m-nombre">${nombreAsiento(a)}${a.activa ? ' <span class="m-turno-punto"></span>' : ''}</span>${gemasHtml(a.gemas, a.idx)}</header>`
     + `<div class="m-rival-cuerpo"><div class="m-portales">${portales}</div>`
-    + `<div class="m-mano-mini" aria-label="Mano de ${escapeHtml(a.nombre)}">${mano}</div></div>`
+    + `<div class="m-mano-mini" data-mano-de="${a.idx}" aria-label="Mano de ${escapeHtml(a.nombre)}">${mano}</div></div>`
     + (a.clarividente ? `<span class="m-sello" title="Clarividente visible: su mano queda oculta">👁️</span>` : '')
     + `</section>`;
 }
@@ -440,6 +443,7 @@ export function renderMesa3D() {
     <div class="m-fondo" aria-hidden="true"><span class="m-estrellas"></span><span class="m-niebla"></span></div>
     <header class="m-barra">
       <button type="button" class="m-btn-icono" data-accion="menu" aria-label="Menú">☰</button>
+      <button type="button" class="m-btn-icono" data-accion="historial" aria-label="Historial de jugadas" title="Historial de jugadas">📜</button>
       ${invocacionHtml(v.invocacion)}
       <span class="m-mazo" title="Cartas en el mazo"><span class="m-mazo-pila"></span><b>${v.mazo}</b></span>
     </header>
@@ -459,7 +463,7 @@ export function renderMesa3D() {
         ${v.propio.clarividente ? '<span class="m-sello-txt">👁️ Clarividente: ves tus dos cartas</span>' : ''}
         ${gemasHtml(v.propio.gemas, v.propio.idx)}
       </div>
-      <div class="m-mano ${puedeJugar ? 'puede-jugar' : ''}">${manoPropiaHtml(v.propio, puedeJugar)}</div>
+      <div class="m-mano ${puedeJugar ? 'puede-jugar' : ''}" data-mano-de="${v.propio.idx}">${manoPropiaHtml(v.propio, puedeJugar)}</div>
       <div class="m-acciones">${acciones}</div>
     </footer>`;
 
@@ -775,6 +779,7 @@ function tocarPortal(portal) {
 function ejecutarAccion(accion) {
   switch (accion) {
     case 'menu': return abrirMenu();
+    case 'historial': return abrirHistorial();
     case 'invocacion': return verInvocacion();
     case 'habilidad': return document.querySelector('#btnAbility')?.click();
     case 'terminar': return document.querySelector('#btnEndTurn')?.click();
@@ -911,6 +916,7 @@ function abrirMenu() {
       <button type="button" class="m-opcion" data-menu="escenas">✨ Escenas animadas: ${esc ? 'sí' : 'no'}</button>
       <button type="button" class="m-opcion" data-menu="pantalla">⛶ Pantalla completa</button>
       <button type="button" class="m-opcion" data-menu="ayuda">❓ Carta de ayuda</button>
+      <button type="button" class="m-opcion" data-menu="historial">📜 Historial de jugadas</button>
       <a class="m-opcion" href="docs/reglamento/reglamento-invocadores.pdf" target="_blank" rel="noopener">📖 Reglamento</a>
       <button type="button" class="m-opcion" data-menu="clasica">▦ Cambiar a la vista clásica</button>
       <button type="button" class="m-opcion" data-menu="salir">🚪 Salir al menú de inicio</button>
@@ -927,6 +933,7 @@ function accionMenu(opcion) {
     else el.requestFullscreen?.().catch(() => mostrarAviso('Este navegador no permite pantalla completa'));
     return;
   }
+  if (opcion === 'historial') { cerrarHoja(); abrirHistorial(); return; }
   if (opcion === 'ayuda') {
     abrirHoja({
       tipo: 'info', titulo: 'Carta de ayuda',

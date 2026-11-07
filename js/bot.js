@@ -19,7 +19,7 @@ import {
 import { estado } from './motor/estado.js';
 import { aplicarHabilidad } from './motor/habilidades.js';
 import { completarActivacion, jugarCarta } from './motor/acciones.js';
-import { ejecutarJugada, ejecutarFinDeTurno } from './actions.js';
+import { ejecutarJugada, ejecutarFinDeTurno, conHistorialHabilidad } from './actions.js';
 import { envolverHabilidad } from './espectaculo.js';
 import { render } from './render.js';
 import {
@@ -162,7 +162,7 @@ function personajesVisiblesActuales(vista) {
 /**
  * Lista de todos los Portales como destinos jugables, con su estado y una
  * etiqueta legible EN TERCERA PERSONA — quien lee el resumen del turno
- * (`mostrarResumenTurnoBot`) es siempre la persona humana observando la
+ * (historial de jugadas, js/historial.js) es siempre la persona humana observando la
  * partida, nunca la propia autómata, así que la etiqueta nunca puede decir
  * "tu Portal" (bug corregido: antes se generaba en segunda persona, como si
  * la autómata se hablase a sí misma). "su propio Portal" cuando es el
@@ -182,7 +182,7 @@ export function listaPortalesConDestino(vista) {
     });
   });
   vista.neutrales.forEach((estado, idx) => {
-    lista.push({ destKey: `n:${idx}`, esPropio: false, etiqueta: `el Portal Neutral ${idx + 1}`, estado });
+    lista.push({ destKey: `n:${idx}`, esPropio: false, etiqueta: `el Portal central ${idx + 1}`, estado });
   });
   return lista;
 }
@@ -1061,7 +1061,7 @@ export function crearUiAutomata(vista, preferidosPorPaso) {
 /** Etiqueta EN TERCERA PERSONA de un Portal identificado con clave "playerIdx:portalIdx"/"n:k" (formato de habilidad, ver `listaPortalesFormatoHabilidad`) — usada para describir en el resumen del turno sobre qué Portal actuó una habilidad. */
 function etiquetaPortalPorClaveHabilidad(key, vista) {
   if (key === undefined || key === null) return 'un Portal';
-  if (key.startsWith('n:')) return `el Portal Neutral ${parseInt(key.slice(2), 10) + 1}`;
+  if (key.startsWith('n:')) return `el Portal central ${parseInt(key.slice(2), 10) + 1}`;
   const [pi, pj] = key.split(':').map(Number);
   const j = vista.jugadoras.find(x => x.idx === pi);
   if (!j) return `el Portal ${pj + 1}`;
@@ -1116,11 +1116,15 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
   // aplica y marca la habilidad como usada (completarActivacion, motor), y
   // refresca la UI. usarAsterisco: false → el autómata paga con una Gema de
   // valor 1 si la tiene y solo revela el asterisco si no le queda otra.
-  const alAplicar = envolverHabilidad(name, botIdx, stack, () => {
-    completarActivacion(estado.partida, { origen: val, personaje: name, usarAsterisco: false });
-    render(players, neutrals, levelIdx);
-  });
   const ui = crearUiAutomata(vista, objetivoPreferido);
+  // Historial de jugadas: qué eligió y qué Portales cambiaron.
+  const alAplicar = envolverHabilidad(name, botIdx, stack, conHistorialHabilidad(name, botIdx, val, {
+    detalle: () => describirObjetivoHabilidad(name, ui.elegidos, vista),
+    elegidos: () => ui.elegidos,
+  }, () => {
+      completarActivacion(estado.partida, { origen: val, personaje: name, usarAsterisco: false });
+      render(players, neutrals, levelIdx);
+    }));
   aplicarHabilidad(estado.partida, { personaje: name, jugadora: botIdx, pila: stack }, ui, alAplicar);
   // Un Cronomante del autómata que se cancelara a medias (no debería: sus
   // opciones vienen de la misma partida) no puede quedar pendiente para la
@@ -1129,26 +1133,9 @@ function activarHabilidadFaseB(players, neutrals, botIdx, levelIdx, need, decisi
   return describirObjetivoHabilidad(name, ui.elegidos, vista);
 }
 
-// ---------- Resumen del turno (comunicación, sin desvelar la carta oculta) ----------
-
-/**
- * Mensaje del autómata SIEMPRE en tercera persona (lo lee quien observa la
- * partida, nunca la propia autómata — bug corregido en esta tarea, ver
- * `listaPortalesConDestino`/`describirObjetivoHabilidad`).
- */
-function mostrarResumenTurnoBot(resumen) {
-  const cartaTxt = resumen.usoConocida ? resumen.cartaJugada : 'una carta que no conocía';
-  let msg = `🤖 ${resumen.jugadora} jugó ${cartaTxt} en ${resumen.etiquetaPortal}.`;
-  if (resumen.habilidad) {
-    msg += ` Activó su habilidad de ${resumen.habilidad}`;
-    msg += resumen.detalleHabilidad ? `: ${resumen.detalleHabilidad}.` : '.';
-  }
-  alert(msg);
-}
-
 // ---------- Orquestación por dificultad ----------
 
-function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto, ejecutor) {
+function* decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto, ejecutor) {
   const { levelIdx, invocationSet } = contexto;
   const lvl = LEVELS[levelIdx];
   const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
@@ -1162,6 +1149,7 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto, ejecutor)
   actualizarMemoriaBot(memoriaBot, vistaAntes);
   const decisionA = decidirJugadaFaseA(vistaAntes, need);
   ejecutor.jugar(players, botIdx, decisionA);
+  yield 'faseA';
 
   const resumen = {
     jugadora: players[botIdx].name,
@@ -1180,6 +1168,7 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto, ejecutor)
   if (decisionB) {
     resumen.detalleHabilidad = ejecutor.activar(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
     resumen.habilidad = decisionB.name;
+    yield 'faseB';
   }
 
   ejecutor.resumen(resumen);
@@ -1199,7 +1188,7 @@ function decidirYJugarTurnoNormal(players, neutrals, botIdx, contexto, ejecutor)
  * Portal nuevo) — así la memoria queda lo más al día posible en cada
  * decisión, sin depender de que este bot mire fuera de sus propios turnos.
  */
-function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecutor) {
+function* decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecutor) {
   const { levelIdx, invocationSet } = contexto;
   const lvl = LEVELS[levelIdx];
   const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
@@ -1209,6 +1198,7 @@ function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecutor
   actualizarMemoriaBot(memoriaBot, vistaAntes);
   const decisionA = decidirJugadaFaseADificil(vistaAntes, memoriaBot, need, invocationSet, lvl);
   ejecutor.jugar(players, botIdx, decisionA);
+  yield 'faseA';
 
   const resumen = {
     jugadora: players[botIdx].name,
@@ -1224,6 +1214,7 @@ function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecutor
   if (decisionB) {
     resumen.detalleHabilidad = ejecutor.activar(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
     resumen.habilidad = decisionB.name;
+    yield 'faseB';
   }
 
   ejecutor.resumen(resumen);
@@ -1242,19 +1233,19 @@ function decidirYJugarTurnoDificil(players, neutrals, botIdx, contexto, ejecutor
  * puntúa 'dificil' (`evaluarJugadasFaseA`), así que nunca propone jugar una
  * carta oculta que no tiene.
  */
-function decidirYJugarTurnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
+function* decidirYJugarTurnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
   // La 'experta' tiene su propio peso de rival (BUSQUEDA.rival), también
   // para las rivales que simula: se aplica solo durante su turno.
   const rivalPrevio = PESOS.rival;
   PESOS.rival = BUSQUEDA.rival;
   try {
-    turnoExperta(players, neutrals, botIdx, contexto, ejecutor);
+    yield* turnoExperta(players, neutrals, botIdx, contexto, ejecutor);
   } finally {
     PESOS.rival = rivalPrevio;
   }
 }
 
-function turnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
+function* turnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
   const { levelIdx, invocationSet } = contexto;
   const lvl = LEVELS[levelIdx];
   const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
@@ -1271,6 +1262,7 @@ function turnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
   const etiquetas = new Map(listaPortalesConDestino(vistaAntes).map(p => [p.destKey, p.etiqueta]));
   const decisionA = { ...elegida, etiqueta: etiquetas.get(elegida.destKey) };
   ejecutor.jugar(players, botIdx, decisionA);
+  yield 'faseA';
 
   const resumen = {
     jugadora: players[botIdx].name,
@@ -1291,6 +1283,7 @@ function turnoExperta(players, neutrals, botIdx, contexto, ejecutor) {
     const decisionB = { val: b.origen, stack, name: stack.at(-1).name, objetivoPreferido: b.guion };
     resumen.detalleHabilidad = ejecutor.activar(players, neutrals, botIdx, levelIdx, need, decisionB, vistaTrasA);
     resumen.habilidad = decisionB.name;
+    yield 'faseB';
   }
 
   ejecutor.resumen(resumen);
@@ -1326,7 +1319,7 @@ function simularTurnoRival(mundo, idx, invocationSet) {
   try {
     const comoPersona = mundo.players[idx].tipo !== 'auto' && modeloUtilizable(modeloPersonas);
     const turno = comoPersona ? decidirYJugarTurnoComoPersona : decidirYJugarTurnoDificil;
-    turno(mundo.players, mundo.neutrals, idx, { levelIdx: mundo.levelIdx, invocationSet }, EJECUTOR_MOTOR_SILENCIOSO);
+    completarTurno(turno(mundo.players, mundo.neutrals, idx, { levelIdx: mundo.levelIdx, invocationSet }, EJECUTOR_MOTOR_SILENCIOSO));
   } finally {
     estado.partida = real;
   }
@@ -1337,7 +1330,7 @@ function simularTurnoRival(mundo, idx, invocationSet) {
  * con `elegirJugadaComoPersona()` (js/aprendizaje.js) sobre lo que esa
  * persona sabe en el mundo; Fase B con la heurística 'dificil'.
  */
-function decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecutor) {
+function* decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecutor) {
   const { levelIdx, invocationSet } = contexto;
   const lvl = LEVELS[levelIdx];
   const need = lvl ? INVOCATION_SETS[invocationSet][lvl].need : [];
@@ -1347,9 +1340,13 @@ function decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecuto
   const valorGemaNivel = lvl ? valorMedioGemaNivel(invocationSet, lvl) : 0;
   const jugada = elegirJugadaComoPersona(vista, need, valorGemaNivel, probabilidades.probabilidadPorNombre, modeloPersonas);
   ejecutor.jugar(players, idx, jugada);
+  yield 'faseA';
   const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, idx);
   const decisionB = decidirHabilidadFaseBDificil(vistaTrasA, players, neutrals, idx, need, memoria, invocationSet, lvl);
-  if (decisionB) ejecutor.activar(players, neutrals, idx, levelIdx, need, decisionB, vistaTrasA);
+  if (decisionB) {
+    ejecutor.activar(players, neutrals, idx, levelIdx, need, decisionB, vistaTrasA);
+    yield 'faseB';
+  }
 }
 
 const HEURISTICAS_POR_DIFICULTAD = {
@@ -1363,21 +1360,52 @@ const HEURISTICAS_POR_DIFICULTAD = {
  * `botIdx`, según `players[botIdx].dificultad`.
  */
 export function decidirYJugarTurno(players, neutrals, botIdx, contexto, ejecutor = EJECUTOR_WEB) {
+  completarTurno(crearTurno(players, neutrals, botIdx, contexto, ejecutor));
+}
+
+/**
+ * Cada heurística es un generador que se detiene (`yield 'faseA'` /
+ * `yield 'faseB'`) tras cada acción, para que la web pueda enseñarla con
+ * calma antes de seguir. Sin pausas (simulaciones, arena) se recorre del
+ * tirón con `completarTurno`.
+ */
+function crearTurno(players, neutrals, botIdx, contexto, ejecutor) {
   const dificultad = players[botIdx].dificultad || 'normal';
   const heuristica = HEURISTICAS_POR_DIFICULTAD[dificultad] || decidirYJugarTurnoNormal;
-  heuristica(players, neutrals, botIdx, contexto, ejecutor);
+  return heuristica(players, neutrals, botIdx, contexto, ejecutor);
+}
+
+function completarTurno(turno) {
+  for (const _ of turno) { /* sin pausas */ }
+}
+
+/**
+ * Turno de la autómata en la web, paso a paso: tras cada acción llama a
+ * `esperar(fase, seguir, abortar)`, que decide cuándo continuar (cuando
+ * acaben las escenas y haya pasado la pausa) o abandona el turno (si se
+ * salió de la partida mientras tanto).
+ */
+export function jugarTurnoAutomataPasoAPaso(players, neutrals, botIdx, contexto, esperar) {
+  const turno = crearTurno(players, neutrals, botIdx, contexto, EJECUTOR_WEB);
+  const paso = () => {
+    const r = turno.next();
+    if (!r.done) esperar(r.value, paso, () => turno.return());
+  };
+  paso();
 }
 
 // ---------- Ejecutores: quién lleva a cabo lo que la autómata decide ----------
 
 /**
  * Ejecutor de la web: las mismas acciones que una jugadora humana
- * (actions.js), con render, modo espectáculo y resumen del turno en alert().
+ * (actions.js), con render y modo espectáculo; lo que hace se narra paso a
+ * paso desde el historial de jugadas (js/narrador.js).
  */
 const EJECUTOR_WEB = {
   jugar: jugarCartaFaseA,
   activar: activarHabilidadFaseB,
-  resumen: mostrarResumenTurnoBot,
+  // Lo que hace se narra paso a paso desde el historial (js/narrador.js).
+  resumen() {},
   terminar: ejecutarFinDeTurno,
 };
 
