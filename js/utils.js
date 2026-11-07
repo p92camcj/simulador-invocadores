@@ -159,7 +159,7 @@ export function draw(player, visible, mazo = globalThis.window?.deck) {
 /**
  * Repone la mano de `player` a las 2 cartas habituales (una visible para su
  * dueña, una oculta) robando del mazo lo que falte. Misma lógica que ya usaba
- * `#btnEndTurn.onclick` (`actions.js`) al terminar el turno — centralizada
+ * `ejecutarFinDeTurno()` (`actions.js`, vía `terminarTurno()` del motor) al terminar el turno — centralizada
  * aquí porque la habilidad activa del Maestro (`abilities.js`, "la jugadora
  * afectada repone mano robando del mazo") necesita exactamente el mismo
  * comportamiento, no una copia con matices distintos.

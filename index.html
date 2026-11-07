@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="vista-mesa">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
@@ -18,20 +18,13 @@
     }
   </script>
 </head>
-<body>
+<body class="vista-mesa">
   <div class="container">
     <h1 id="mainTitle">Simulador «Invocadores»</h1>
     <p id="mainSubtitle" style="text-align: center; margin-top: 0;">
       Un juego diseñado por <a href="https://www.elmeepleazul.es" target="_blank" rel="noopener noreferrer">@elmeepleazul</a>
     </p>
     <div class="header-bar">
-      <button id="btnCtrlPlay" class="btn primary hidden">Jugar una carta</button>
-      <button id="btnPlayCancel" class="btn secondary cancel hidden">Cancelar selección</button>
-      <button id="btnAbility" class="btn secondary hidden">Activar habilidad</button>
-      <button id="btnEndTurn" class="btn end hidden">Terminar turno</button>
-      <button id="btnSalir" class="btn secondary hidden" type="button" title="Vuelve al menú de inicio; la partida queda guardada para retomarla">🚪 Salir</button>
-      <button id="btnHistorial" class="btn secondary hidden" type="button" title="Todas las jugadas de la partida, turno a turno">📜 Historial</button>
-      <button id="btnVista" class="btn secondary" type="button" title="La vista clásica está congelada y se retirará: vuelve a la Mesa 3D">📱 Volver a la Mesa 3D</button>
       <button id="btnEspectaculo" class="btn secondary" type="button" aria-pressed="true" title="Activa o desactiva las escenas animadas">✨ Escenas: sí</button>
       <button id="btnHelp" class="btn secondary" onclick="document.getElementById('helpModal').classList.remove('hidden')">❓ Ayuda</button>
       <a id="btnReglamento" class="btn secondary" href="docs/reglamento/reglamento-invocadores.pdf" target="_blank" rel="noopener">📖 Reglamento</a>
@@ -108,35 +101,6 @@
         <button id="btnStart" class="btn primary">Iniciar</button>
       </div>
     </div>
-    <div id="ctrlPlay" class="section hidden">
-      <div class="play-title">
-        <span>Jugar carta</span>
-        <button class="close-btn" onclick="document.getElementById('ctrlPlay').classList.add('hidden')">✖</button>
-      </div>
-
-      <div class="play-line">
-        <select id="selCard"></select>
-        <select id="selDest"></select>
-        <button id="btnPlay" class="btn primary">Jugar</button>
-        <button id="ctrlPlayCancel" class="btn secondary cancel">Cancelar</button>
-      </div>
-    </div>
-
-    <div id="picker" class="section hidden">
-      <h3 id="pickerTitle"></h3>
-      <select id="pickerSelect"></select>
-      <div>
-        <button id="pickerOk" class="btn primary">OK</button>
-        <button id="pickerCancel" class="btn secondary">Cancelar</button>
-      </div>
-    </div>
-    <div id="info" class="section hidden">
-      <h2 id="lblTurn"></h2>
-      <h3>Invocación: <span id="lblInv"></span></h3>
-      <div id="invStatus" class="status"></div>
-    </div>
-    <div id="boardNeutrals" class="board-neutrals hidden"></div>
-    <div id="boardGrid" class="section board-grid hidden"></div>
   </div>
   <script type="module" src="js/index.js"></script>
   

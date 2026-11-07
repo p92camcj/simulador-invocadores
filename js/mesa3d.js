@@ -1,77 +1,46 @@
 // js/mesa3d.js
 //
-// Vista "Mesa 3D": la interfaz principal desde 1.32.1 (la clásica está
-// congelada y solo se abre con ?vista=clasica). Pensada para jugar con el
-// dedo en un móvil, también se usa en ordenador. Mesa en perspectiva con cartas 3D (CSS 3D,
-// sin librerías), tu mano abajo en abanico, los rivales arriba y los
-// Portales centrales en medio.
+// Vista "Mesa 3D": la interfaz del simulador (la vista clásica en columnas
+// se retiró en 1.32.3). Pensada para jugar con el dedo en un móvil, también
+// se usa en ordenador. Mesa en perspectiva con cartas 3D (CSS 3D, sin
+// librerías), tu mano abajo en abanico, los rivales arriba y los Portales
+// centrales en medio.
 //
 // No contiene reglas. Lee lo que se enseña de `construirVistaMesa()`
-// (js/vista-mesa.js, puro) y actúa con las mismas funciones que la vista
-// clásica: window.selectHandCard, window.tryPlayOnPortal,
-// window.selectPortalObjetivo y los botones #btnAbility, #btnEndTurn y
-// #btnPlayCancel (actions.js). Así las dos vistas no pueden divergir.
+// (js/vista-mesa.js, puro) y actúa con las acciones de la interfaz de
+// actions.js (seleccionarCartaMano, jugarEnPortal, elegirPortalObjetivo,
+// activarHabilidad, cancelarSeleccion, ejecutarFinDeTurno) y salirAlMenu
+// (game.js), las mismas que usa el autómata para jugar y terminar turno.
 //
 // Se engancha en tres sitios:
 // - render() (render.js) llama a renderMesa3D() en cada pintado.
-// - picker() (render.js) delega en pickerMesa() mientras la vista esté
-//   activa: hoja inferior con botones grandes en vez de un <select>.
-// - nextTurn() (game.js) llama a anunciarTurnoMesa() en vez de alert().
-// Además, mientras la vista esté activa, alert() se muestra como aviso
-// flotante que no bloquea la partida.
+// - picker() (render.js) delega en pickerMesa(): hoja inferior con botones
+//   grandes.
+// - nextTurn() (game.js) llama a anunciarTurnoMesa().
+// Además, durante la partida alert() se muestra como aviso flotante que no
+// bloquea.
 
 import { cardImages, CARTA_OCULTA_IMG, escapeHtml, iconos } from './utils.js';
 import { rutaFigura, rutaCriatura, espectaculoActivo, fijarEspectaculo } from './espectaculo.js';
 import { estado } from './motor/estado.js';
-import { render } from './render.js';
 import { opcionesFaseB } from './motor/acciones.js';
 import { atributosDestacado, abrirHistorial } from './narrador.js';
+import {
+  seleccionarCartaMano, jugarEnPortal, elegirPortalObjetivo, activarHabilidad,
+  cancelarSeleccion, ejecutarFinDeTurno,
+} from './actions.js';
+import { salirAlMenu } from './game.js';
 import {
   construirVistaMesa, elegirAsientoPropio, claveJugar, claveObjetivo, firmaPortal,
   cambioPortal, pistaTurno, contarHumanas,
 } from './vista-mesa.js';
 
-const CLAVE_VISTA = 'invocadores.vista';
 const COLORES_JUGADORA = ['#ff6b6b', '#4dabf7', '#ffd43b', '#b197fc', '#69db7c'];
 const DURACION_ANIM = 750;
 
-// ---------- Preferencia de vista ----------
-
-// Desde 1.32.1 la Mesa 3D es la única vista mantenida, también en
-// ordenador. La clásica queda congelada (deprecated): solo se abre con
-// ?vista=clasica en la URL, no se recuerda y se retirará más adelante.
-function vistaPorDefecto() {
-  try {
-    if (new URLSearchParams(location.search).get('vista') === 'clasica') return 'clasica';
-  } catch { /* sin URL */ }
-  return 'mesa';
-}
-
-let vista = 'mesa';
-
-export function vistaMesaActiva() {
-  return vista === 'mesa';
-}
-
-/** Cambia de vista ('mesa' | 'clasica') y repinta. No se guarda: la clásica está congelada. */
-export function fijarVista(nueva) {
-  vista = nueva === 'mesa' ? 'mesa' : 'clasica';
-  try { localStorage.removeItem(CLAVE_VISTA); } catch { /* nada */ }
-  document.body.classList.toggle('vista-mesa', vista === 'mesa');
-  document.documentElement.classList.toggle('vista-mesa', vista === 'mesa');
-  if (vista !== 'mesa') {
-    cerrarHoja();
-    document.body.classList.remove('mesa-en-partida');
-  }
-  ultimoHtml = '';
-  if (estado.partida.players.length && document.querySelector('#setup')?.classList.contains('hidden')) {
-    render(estado.partida.players, estado.partida.neutrals, estado.partida.levelIdx);
-  }
-}
-
-/** Retardo antes de que juegue una autómata: algo más lento en la mesa. */
+/** Retardo antes de que juegue una autómata. */
 export function retardoAutomata() {
-  return vistaMesaActiva() ? 1300 : 500;
+  return 1300;
 }
 
 /** Al volver al menú: la mesa desaparece. */
@@ -110,16 +79,13 @@ let invocacionesVistas = null;
 // ---------- Inicialización ----------
 
 export function initMesa3D() {
-  vista = vistaPorDefecto();
-  document.body.classList.toggle('vista-mesa', vista === 'mesa');
-  document.documentElement.classList.toggle('vista-mesa', vista === 'mesa');
-
-  document.querySelector('#btnVista')?.addEventListener('click', () => fijarVista('mesa'));
+  // Preferencia de la antigua vista clásica (retirada en 1.32.3).
+  try { localStorage.removeItem('invocadores.vista'); } catch { /* nada */ }
 
   // alert() → aviso flotante mientras se juega en la mesa.
   const alertOriginal = window.alert.bind(window);
   window.alert = msg => {
-    if (vistaMesaActiva() && document.body.classList.contains('mesa-en-partida')) mostrarAviso(String(msg));
+    if (document.body.classList.contains('mesa-en-partida')) mostrarAviso(String(msg));
     else alertOriginal(msg);
   };
 
@@ -135,8 +101,7 @@ export function initMesa3D() {
 
 /**
  * Pantalla de inicio: héroe con las criaturas y botones − / + en los campos
- * numéricos. Solo se ven en la vista Mesa 3D (mesa3d.css); en la clásica
- * quedan ocultos y los campos funcionan como siempre.
+ * numéricos (mesa3d.css).
  */
 function prepararPantallaInicio() {
   const titulo = document.querySelector('#mainTitle');
@@ -175,8 +140,6 @@ function prepararPantallaInicio() {
     menos.addEventListener('click', () => ajustar(-1));
     mas.addEventListener('click', () => ajustar(1));
   });
-  // Los botones de la caja numérica (no los de clase .m-paso) siguen visibles en
-  // la clásica: allí la caja no oculta nada, solo añade − y +.
   function sincronizar() {
     if (numBots && numJug && parseInt(numBots.value, 10) > parseInt(numJug.value, 10)) numBots.value = numJug.value;
     document.querySelectorAll('.m-paso-campo').forEach(caja => {
@@ -369,12 +332,8 @@ function manoPropiaHtml(a, puedeJugar) {
 
 // ---------- Pintado ----------
 
-/**
- * Pinta la mesa. La llama render() (render.js) en cada pintado; no hace
- * nada si la vista activa es la clásica.
- */
+/** Pinta la mesa. La llama render() (render.js) en cada pintado. */
 export function renderMesa3D() {
-  if (!vistaMesaActiva()) return;
   const partida = estado.partida;
   if (!partida.players.length) return;
   if (!document.querySelector('#setup')?.classList.contains('hidden')) return;
@@ -491,7 +450,7 @@ function programarLimpieza() {
   if (limpiezaProgramada) return;
   limpiezaProgramada = setTimeout(() => {
     limpiezaProgramada = null;
-    if (vistaMesaActiva() && estado.partida.players.length) renderMesa3D();
+    if (estado.partida.players.length) renderMesa3D();
   }, DURACION_ANIM + 30);
 }
 
@@ -515,7 +474,7 @@ function jugarEn(dest, clave, rectOrigen) {
   const rect = rectOrigen || document.querySelector(`[data-mano="${idx}"]`)?.getBoundingClientRect();
   vuelo = { dest, clave, rect, src: img, lanzado: false };
   const antes = estado.partida.played;
-  window.tryPlayOnPortal(dest);
+  jugarEnPortal(dest);
   if (antes || !estado.partida.played) {
     vuelo = null;
     mostrarAviso('No puedes jugar esa carta ahí');
@@ -671,7 +630,7 @@ function alMoverArrastre(e) {
   if (!arrastre.activo) {
     if (Math.hypot(dx, dy) < 12) return;
     arrastre.activo = true;
-    if (window.selectedCardIdx !== arrastre.idx) window.selectHandCard(arrastre.idx);
+    if (window.selectedCardIdx !== arrastre.idx) seleccionarCartaMano(arrastre.idx);
     const origen = document.querySelector(`[data-mano="${arrastre.idx}"]`);
     const r = origen?.getBoundingClientRect();
     if (!r) { arrastre = null; return; }
@@ -733,7 +692,7 @@ function alClicar(e) {
   if (cartaMano) {
     const idx = parseInt(cartaMano.dataset.mano, 10);
     if (puedeJugarAhora()) {
-      window.selectHandCard(idx);
+      seleccionarCartaMano(idx);
     } else {
       inspeccionarCarta(cartaMano, 'Carta de tu mano');
     }
@@ -759,7 +718,7 @@ function tocarPortal(portal) {
       return;
     }
     cerrarHoja();
-    window.selectPortalObjetivo(portal.dataset.obj);
+    elegirPortalObjetivo(portal.dataset.obj);
     return;
   }
   const haySel = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
@@ -776,9 +735,9 @@ function ejecutarAccion(accion) {
     case 'menu': return abrirMenu();
     case 'historial': return abrirHistorial();
     case 'invocacion': return verInvocacion();
-    case 'habilidad': return document.querySelector('#btnAbility')?.click();
-    case 'terminar': return document.querySelector('#btnEndTurn')?.click();
-    case 'cancelar': return document.querySelector('#btnPlayCancel')?.click();
+    case 'habilidad': return activarHabilidad();
+    case 'terminar': return ejecutarFinDeTurno();
+    case 'cancelar': return cancelarSeleccion();
     default: return undefined;
   }
 }
@@ -935,7 +894,7 @@ function accionMenu(opcion) {
     });
     return;
   }
-  if (opcion === 'salir') { cerrarHoja(); document.querySelector('#btnSalir')?.click(); }
+  if (opcion === 'salir') { cerrarHoja(); salirAlMenu(); }
 }
 
 /** Aviso público de cuántos Portales impiden aún la invocación (vacíos o boca abajo). */
@@ -995,11 +954,11 @@ function inspeccionarCarta(el, titulo, portal, activable) {
 
 /**
  * Activa la habilidad de un origen concreto ('own:j' | 'central:k') por el
- * mismo camino que el botón Habilidad: se pulsa #btnAbility y se contesta
- * su primer picker con ese origen.
+ * mismo camino que el botón Habilidad: activarHabilidad() y se contesta su
+ * primer picker con ese origen.
  */
 function activarDesde(origen) {
-  document.querySelector('#btnAbility')?.click();
+  activarHabilidad();
   const h = hojaActual;
   if (h?.tipo === 'picker' && h.opciones?.some(o => o.val === origen && !o.disabled)) {
     cerrarHoja();
@@ -1035,11 +994,9 @@ export function mostrarAviso(texto, { duracion } = {}) {
 /**
  * Cambio de turno en la mesa (sustituye al alert() de nextTurn). Con varias
  * humanas compartiendo el móvil sale un telón para pasarlo sin enseñar la
- * mano; contra autómatas, solo un rótulo. Devuelve false si la mesa no está
- * activa (entonces game.js usa el alert de siempre).
+ * mano; contra autómatas, solo un rótulo.
  */
 export function anunciarTurnoMesa(jugadora, esAutomata) {
-  if (!vistaMesaActiva()) return false;
   document.querySelector('.m-telon')?.remove();
   const humanas = contarHumanas(estado.partida.players);
   if (!esAutomata && humanas > 1) {

@@ -1,6 +1,7 @@
 /* mesa3d.css — Vista "Mesa 3D" (js/mesa3d.js). Solo CSS 3D, sin librerías.
-   Todo cuelga de #mesa3d o de body.vista-mesa, así que no toca la vista
-   clásica ni el modo espectáculo. */
+   Es la única vista desde 1.32.3. Todo cuelga de #mesa3d o de
+   body.vista-mesa (clase fija en index.html), así que no toca el modo
+   espectáculo. */
 
 #mesa3d { display: none; }
 
@@ -109,7 +110,7 @@ body.vista-mesa #version-info { background: rgba(28, 18, 60, .7) !important; col
 @keyframes m-heroe-gira { to { transform: translateX(-50%) rotateX(74deg) rotate(360deg); } }
 @keyframes m-heroe-flota { 50% { translate: 0 -10px; } }
 
-/* Durante la partida en la mesa, la vista clásica se aparta. */
+/* Durante la partida, la pantalla de inicio se aparta y queda la mesa. */
 body.vista-mesa.mesa-en-partida { overflow: hidden; overscroll-behavior: none; }
 body.vista-mesa.mesa-en-partida .container,
 body.vista-mesa.mesa-en-partida #pwa-install-container,

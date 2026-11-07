@@ -4,6 +4,32 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.32.3.88] - 2026-11-07
+
+### Eliminado
+- **Vista clásica** (congelada en 1.32.1, resuelve el ítem 17 de
+  `docs/DEUDA_TECNICA.md`). `render.js` pierde el tablero en columnas
+  (`renderBoardGrid`, `renderBoardNeutrals`, `portalCardHtml`, Gemas por
+  nivel, panel de la invocación) y el `picker()` de `<select>`: ahora
+  `render()` solo resuelve la Clarividente y llama a `renderMesa3D()`, y
+  `picker()` siempre usa `pickerMesa()`. `actions.js` pierde el panel de
+  jugar carta con `<select>`, el arrastre nativo y `initActions()`.
+  `index.html` pierde los botones de partida de la cabecera (`#btnCtrlPlay`,
+  `#btnPlayCancel`, `#btnAbility`, `#btnEndTurn`, `#btnSalir`,
+  `#btnHistorial`, `#btnVista`) y los bloques `#ctrlPlay`, `#picker`,
+  `#info`, `#boardNeutrals` y `#boardGrid`; `style.css` sus estilos (de 684
+  a unas 350 líneas). `?vista=clasica` ya no hace nada.
+
+### Cambiado
+- La Mesa 3D ya no pulsa botones ocultos: llama a las nuevas funciones
+  exportadas de `actions.js` (`seleccionarCartaMano`, `jugarEnPortal`,
+  `elegirPortalObjetivo`, `activarHabilidad`, `cancelarSeleccion`,
+  `ejecutarFinDeTurno`) y a `salirAlMenu()` (`game.js`). `vistaMesaActiva()`
+  y `fijarVista()` desaparecen; `body.vista-mesa` es una clase fija en
+  `index.html`. `finalizarPartida()`, `salirAlMenu()` y el pago con Gema de
+  asterisco usan siempre el marcador y las hojas de la mesa (sin
+  `confirm()`), y `nextTurn()` siempre anuncia el turno con
+  `anunciarTurnoMesa()`.
 ## [1.32.2.82] - 2026-11-07
 
 ### Corregido

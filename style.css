@@ -32,67 +32,6 @@ h1, h2, h3, h4, h5 {
   border: 1px solid var(--border);
   border-radius: 6px;
 }
-.flex {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.portal, .handbox {
-  flex: 1 1 310px;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px;
-  margin: 4px 0;
-  background: #fff;
-  border: 1px solid #999;
-  border-radius: 4px;
-  cursor: pointer;
-  user-select: none;
-}
-.card-label {
-  font-size: 0.8rem;
-  color: #555;
-  text-align: center;
-}
-/* Proporción real de las cartas físicas: 362x504 (~0.72:1) */
-.card-img {
-  display: block;
-  width: 100%;
-  max-width: 120px;
-  aspect-ratio: 362 / 504;
-  object-fit: contain;
-  border-radius: 6px;
-}
-/* Carta de la mano elegida para jugar (Tarea D: clic o drag&drop). */
-.card.selected {
-  border: 2px solid var(--prim);
-  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.35);
-}
-/* Portal clicable como destino mientras hay una carta seleccionada. */
-.card.target-portal {
-  border: 2px dashed var(--prim);
-}
-.card-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 120px;
-  aspect-ratio: 362 / 504;
-  border: 1px dashed #ccc;
-  border-radius: 6px;
-  color: #999;
-  font-size: 0.85rem;
-}
-
 .help-cards {
   display: flex;
   gap: 12px;
@@ -133,36 +72,6 @@ select {
   width: 100%;
   padding: 4px;
 }
-.status span {
-  margin-right: 4px;
-}
-.present {
-  color: green;
-  font-weight: 700;
-}
-.missing {
-  color: red;
-}
-.duplicate {
-  color: orange;
-  text-decoration: line-through;
-}
-
-
-.player-red {
-  background-color: #ffe5e5;
-}
-.player-blue {
-  background-color: #e5ecff;
-}
-.player-yellow {
-  background-color: #fffbe5;
-}
-.player-purple {
-  background-color: #f3e5ff;
-}
-
-
 .header-bar {
   position: sticky;
   top: 0;
@@ -194,15 +103,6 @@ select {
 
 .btn.primary:hover {
   background-color: #0b5ed7;
-}
-
-.btn.end {
-  background-color: #dc3545;
-  color: #fff;
-}
-
-.btn.end:hover {
-  background-color: #c82333;
 }
 
 .error-msg {
@@ -261,127 +161,11 @@ select {
   font-size: 0.92rem;
 }
 
-/* Fila de Portales centrales/neutrales (Tarea 2): a lo ancho de todo el
-   contenedor, por encima del grid de columnas de jugadoras de abajo —
-   nunca mezclada entre ellas, para que no pase desapercibida como zona
-   compartida. Fondo propio para diferenciarla; oculta por completo
-   (`.hidden`) cuando la partida no tiene Portales centrales (ver
-   renderBoardNeutrals() en render.js). */
-.board-neutrals {
-  margin: 14px 0;
-  padding: 10px;
-  background: #eef2ff;
-  border: 1px dashed var(--prim);
-  border-radius: 6px;
-}
-.board-neutrals h4 {
-  margin: 0 0 6px;
-  color: #333;
-}
-.board-neutrals .board-portals {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-.board-neutrals .board-portals .card {
-  margin: 0;
-}
-
-/* Tablero único (Tarea C, revisión): una columna por jugadora, siempre
-   con la visibilidad real de la partida (los Portales centrales van
-   aparte, en `.board-neutrals` de arriba — ver Tarea 2).
-   `grid-template-columns` se fija desde JS (renderBoardGrid() en
-   render.js) como `repeat(N, minmax(240px, 1fr))`: cada columna crece
-   para llenar el ancho disponible cuando cabe, y el scroll horizontal de
-   abajo solo entra en juego cuando ni el mínimo de 240px por columna cabe
-   — mismo criterio para cualquier tamaño de pantalla, sin rama de código
-   distinta para escritorio/móvil. */
-.board-grid {
-  display: grid;
-  gap: 10px;
-  overflow-x: auto;
-}
-.board-col h4 {
-  margin: 0 0 6px;
-}
-/* Tarea 5: círculos de color por nivel/color de invocación en vez de
-   texto plano (ver gemDotsHtml() en render.js). Mapeo de colores fijo
-   según las reglas del juego: azul = Gemas unitarias de valor 1, amarillo
-   = primera invocación completada (nivel C), rojo = siguiente invocación
-   (nivel B), morado = última invocación (nivel A). El borde oscuro es
-   para que el círculo siga siendo visible sobre cualquier color de fondo
-   de columna (`.player-yellow`, etc.). */
-.gem-breakdown {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 8px;
-  font-size: 0.85rem;
-  font-weight: normal;
-  vertical-align: middle;
-}
-.gem-dot {
-  display: inline-block;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  margin-right: 2px;
-  vertical-align: middle;
-}
-.gem-dot--unitaria {
-  background-color: #2196f3;
-}
-.gem-dot--c {
-  background-color: #fbc02d;
-}
-.gem-dot--b {
-  background-color: #e53935;
-}
-.gem-dot--a {
-  background-color: #8e24aa;
-}
-.board-portals .card {
-  margin: 4px auto;
-}
-.board-hand {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-top: 4px;
-  border-top: 1px dashed var(--border);
-  padding-top: 6px;
-}
-.board-hand .card {
-  margin: 0;
-}
-/* Columna de la jugadora con el turno: resaltada, conserva su color de
-   identidad. Las demás se atenúan sin dejar de ser legibles. */
-.board-col.turno-activo {
-  border: 2px solid var(--prim);
-  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.35), 0 2px 8px rgba(13, 110, 253, 0.25);
-}
-.board-col.turno-inactivo {
-  opacity: 0.72;
-}
-/* Portal marcado como objetivo NO válido de una habilidad en curso
-   (Tarea D, revisión): no responde al clic. */
-.card.target-portal-disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 /* Mejoras visuales específicas para móviles */
 @media (max-width: 768px) {
 
-  /* Tarea 2: en pantallas estrechas, la fila de botones de cabecera ya no
-     cabe en una sola línea (jugar carta / cancelar selección / activar
-     habilidad / terminar turno / ver ayuda). `.header-bar` ya tiene
-     `flex-wrap: wrap` de forma general (no rompe nada en escritorio, donde
-     los botones siguen cabiendo en una fila); aquí solo se ajusta el
-     reparto para que las filas envueltas queden centradas y compactas en
-     vez de con los huecos grandes de `space-between`. */
+  /* En pantallas estrechas la fila de botones de cabecera se envuelve
+     centrada y compacta. */
   .header-bar {
     justify-content: center;
     gap: 6px 8px;
@@ -408,72 +192,8 @@ select {
     padding: 8px;
   }
 
-  .portal, .handbox {
-    flex: 1 1 100%;
-  }
-
-  .card-img, .card-empty {
-    max-width: 84px;
-  }
-
-  .card-label {
-    font-size: 0.72rem;
-  }
-
   .help-card-img {
     max-width: 46%;
-  }
-
-  #ctrlPlay {
-    position: fixed;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    padding: 12px 16px;
-    border: 1px dashed #ccc;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    z-index: 9999;
-    max-width: 95%;
-    width: auto;
-  }
-
-  #ctrlPlay label {
-    font-size: 0.9rem;
-    margin-right: 5px;
-  }
-
-  #ctrlPlay select {
-    font-size: 0.95rem;
-    padding: 4px 6px;
-    width: auto;
-    /* Tarea 3: 160px truncaba sin elipsis opciones largas de #selDest
-       ("Beto P1 (Carta Oculta)", nombres de autómata + personaje...),
-       perdiendo justo la info de "qué hay en el top" que este selector
-       existe para mostrar. `.play-line` ya envuelve cada `<select>` a su
-       propia fila en viewports estrechos, así que hay margen de sobra para
-       ampliarlo sin romper el layout. */
-    max-width: 100%;
-  }
-
-  #ctrlPlay button {
-    padding: 6px 12px;
-    font-size: 0.95rem;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  #ctrlPlay button[type="submit"] {
-    background-color: #0d6efd;
-    color: white;
-  }
-
-  #ctrlPlay button.cancel {
-    background-color: #6c757d;
-    color: white;
   }
 
   .play-title {
@@ -491,30 +211,6 @@ select {
     font-size: 1.2rem;
     cursor: pointer;
     color: #888;
-  }
-
-  .play-line {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .play-line select {
-    font-size: 0.95rem;
-    padding: 6px;
-    min-width: 110px;
-    /* Ver nota de #ctrlPlay select más arriba (Tarea 3). */
-    max-width: 100%;
-  }
-
-  .play-line button {
-    padding: 6px 12px;
-    font-size: 0.95rem;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    white-space: nowrap;
   }
 
   #pwa-install-container {
@@ -549,35 +245,7 @@ select {
     max-height: 90vh;
   }
 
-  /* No hace falta ninguna regla de grid específica aquí: el
-     `minmax(240px, 1fr)` que fija render.js ya decide por sí solo si las
-     columnas caben (crecen) o no (scroll horizontal de `.board-grid`),
-     igual en móvil que en escritorio. */
 }
-
-/* Retratos del arte original en el panel de la invocación activa */
-.mini-fig {
-  height: 34px;
-  width: auto;
-  vertical-align: middle;
-}
-.mini-criatura {
-  height: 64px;
-  width: auto;
-  vertical-align: middle;
-  margin-left: 6px;
-  filter: drop-shadow(0 0 4px rgba(108, 78, 182, 0.6));
-}
-
-/* Metamorfo transformado: su carta con la ficha del personaje encima. */
-.carta-con-ficha { position: relative; width: 100%; max-width: 120px; }
-.carta-con-ficha .card-img { filter: saturate(.6) brightness(.9); box-shadow: 0 0 0 2px #ff9ad6, 0 0 10px #7fb4ff; }
-.ficha-metamorfo { position: absolute; left: 50%; top: 20%; width: 58%; aspect-ratio: 1; transform: translateX(-50%);
-  border-radius: 50%; object-fit: cover; object-position: 50% 3%; background: #efe7ff; opacity: .9;
-  box-shadow: 0 0 0 3px #f4d27a, 0 0 0 5px #8a5a12, 0 3px 8px rgba(0, 0, 0, .5); }
-.ficha-metamorfo-cinta { position: absolute; left: 4%; right: 4%; bottom: 7%; border-radius: 999px; text-align: center;
-  font-size: .72rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  background: linear-gradient(90deg, #ff6fc0, #8f7bff, #5fb4ff); }
 
 /* Panel "Aprendizaje de las autómatas" (pantalla de configuración) */
 .panel-aprendizaje {
@@ -624,9 +292,8 @@ body.mesa-en-partida .narrador { bottom: calc(env(safe-area-inset-bottom, 0px) +
 .narrador-cerrar { padding: 4px 7px; }
 @media (max-width: 520px) { .narrador-btn { display: none; } }
 
-.card.traza-destacado { position: relative; border-color: var(--traza); box-shadow: 0 0 0 3px var(--traza), 0 0 16px var(--traza); }
 .m-portal.traza-destacado .m-pila { box-shadow: 0 0 0 3px var(--traza), 0 0 22px var(--traza); border-radius: 8px; }
-.card.traza-destacado::before, .m-portal.traza-destacado::before {
+.m-portal.traza-destacado::before {
   content: attr(data-paso); position: absolute; top: -9px; right: -7px; z-index: 3;
   width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
   background: var(--traza); color: #1a1033; font: bold 13px/1 Arial, sans-serif;

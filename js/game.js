@@ -2,7 +2,6 @@
 import { aprenderAlTerminarPartida } from './aprendizaje-navegador.js';
 import { shuffle, draw, composicionMazoTotal, calcularResultadoFinal } from './utils.js';
 import { render } from './render.js';
-import { initActions } from './actions.js';
 import { jugarTurnoAutomataPasoAPaso } from './bot.js';
 import { registrarEnHistorial } from './historial.js';
 import { pausaTrasPaso, pausaAntesDeJugar, reiniciarNarrador } from './narrador.js';
@@ -11,7 +10,7 @@ import { initSetup } from './setup.js';
 import { $ } from './utils.js';
 import { estado, reiniciarCamposDeTurno, reiniciarPartida, cargarPartida } from './motor/estado.js';
 import { comprobarFinPorManoVacia } from './motor/acciones.js';
-import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, vistaMesaActiva, mostrarFinMesa, preguntarMesa } from './mesa3d.js';
+import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, mostrarFinMesa, preguntarMesa } from './mesa3d.js';
 import { detenerEspectaculo, cuandoTermineEspectaculo } from './espectaculo.js';
 import { guardarPartidaEnCurso, leerPartidaGuardada, borrarPartidaGuardada } from './partida-guardada.js';
 
@@ -64,7 +63,6 @@ export function initGame() {
   window.invocacionesCompletadas = [];
 
   // Configurar controladores de acciones
-  initActions();
 
   // Iniciar primer turno
   nextTurn();
@@ -73,7 +71,7 @@ export function initGame() {
 }
 
 /**
- * Ejecuta el cambio de turno: alerta, actualiza etiqueta y renderiza.
+ * Ejecuta el cambio de turno: lo anuncia en la mesa y repinta.
  */
 export function nextTurn() {
   reiniciarCamposDeTurno();
@@ -91,24 +89,11 @@ export function nextTurn() {
   // retomar la partida no salga dos veces).
   registrarEnHistorial(estado.partida, { tipo: 'turno', jugadora: window.turn, texto: `Turno de ${current.name}` });
 
-  // Durante el turno de una autómata se ocultan los controles de acción
-  // humanos (jugar carta/activar habilidad/terminar turno) para que nadie
-  // interfiera a mitad de su turno — el propio bot los sigue invocando por
-  // JS (window.tryPlayOnPortal, #btnEndTurn.click()), ocultarlos con CSS
-  // no le afecta a él, solo a los clics humanos.
-  const esBot = current.tipo === 'auto';
-  document.querySelector('#btnCtrlPlay')?.classList.toggle('hidden', esBot);
-  document.querySelector('#btnAbility')?.classList.toggle('hidden', esBot);
-  document.querySelector('#btnEndTurn')?.classList.toggle('hidden', esBot);
-
   // En la Mesa 3D el cambio de turno es un telón o un rótulo (js/mesa3d.js).
-  // Con una autómata no hay alert(): su turno se narra paso a paso en
-  // pantalla (js/narrador.js) sin bloquear.
-  if (!anunciarTurnoMesa(current, esBot) && !esBot) {
-    alert('Turno de ' + current.name);
-  }
-  document.querySelector('#lblTurn').textContent =
-  `Turno de: ${current.name} — Mazo: ${window.deck.length}`;
+  // El turno de una autómata además se narra paso a paso (js/narrador.js),
+  // y mientras tanto la mesa no deja jugar a nadie (mesa3d.js).
+  const esBot = current.tipo === 'auto';
+  anunciarTurnoMesa(current, esBot);
   render(window.players, window.neutrals, window.levelIdx);
 
   if (esBot) {
@@ -132,21 +117,6 @@ export function nextTurn() {
   }
 }
 
-/**
- * Construye el texto del recuento final de Gemas y el veredicto (ganadora
- * única, o empate compartido con el motivo del desempate) a partir de
- * `calcularResultadoFinal()` (`utils.js`) — ver REGLAMENTO.md, "Final de la
- * partida". Solo formatea texto plano, sin mutar nada.
- */
-function construirMensajeResultadoFinal(players, invocacionesCompletadas) {
-  const { stats, ganadores, motivoDesempate } = calcularResultadoFinal(players, invocacionesCompletadas);
-  const lineas = stats.map(s => `- ${s.nombre}: ${s.total} Gema${s.total === 1 ? '' : 's'}`);
-  const veredicto = ganadores.length === 1
-    ? `Ganadora: ${ganadores[0].nombre}` + (motivoDesempate ? ` (desempate: ${motivoDesempate})` : '')
-    : `Empate compartido entre ${ganadores.map(g => g.nombre).join(', ')}` + (motivoDesempate ? ` (${motivoDesempate})` : '');
-  return `Recuento final de Gemas:\n${lineas.join('\n')}\n\n${veredicto}`;
-}
-
 // Finaliza la partida: muestra el recuento final de Gemas y la ganadora (o
 // el empate) según REGLAMENTO.md, "Final de la partida", y luego pregunta
 // si queremos una nueva partida.
@@ -155,49 +125,18 @@ export function finalizarPartida(motivo) {
   borrarPartidaGuardada();
   // Las autómatas aprenden de las jugadas de las personas de esta partida.
   aprenderAlTerminarPartida();
-  // En la Mesa 3D, marcador final propio en vez del confirm() del navegador.
-  if (vistaMesaActiva()) {
-    window.juegoTerminado = true;
-    const resultado = calcularResultadoFinal(window.players, window.invocacionesCompletadas || []);
-    mostrarFinMesa({ motivo, resultado }, () => resetJuego());
-    return;
-  }
-  const resultado = construirMensajeResultadoFinal(window.players, window.invocacionesCompletadas || []);
-  const jugarOtra = confirm(`${motivo}\n\n${resultado}\n\n¿Quieres jugar otra vez?`);
-  if (jugarOtra) {
-    // Reset completo
-    resetJuego(); // o podríamos llamar a initSetup() si quieres mantener el estado sin recarga
-  } else {
-    window.juegoTerminado = true;
-    document.body.innerHTML = `
-      <div style="text-align:center; padding: 40px;">
-        <h2>Gracias por jugar a «Invocadores» 🧙‍♂️</h2>
-        <p>Puedes cerrar esta pestaña o recargar la página si quieres volver a empezar.</p>
-        <button onclick="location.reload()" style="padding:10px 20px; font-size:1rem;">Volver a empezar</button>
-      </div>
-    `;
-  }
+  // Marcador final de la mesa, con el botón de jugar otra vez.
+  window.juegoTerminado = true;
+  const resultado = calcularResultadoFinal(window.players, window.invocacionesCompletadas || []);
+  mostrarFinMesa({ motivo, resultado }, () => resetJuego());
 }
 
 
 
 export function resetJuego() {
-  // Ocultar zonas de juego
-  $('#info')?.classList.add('hidden');
-  $('#boardNeutrals')?.classList.add('hidden');
-  $('#boardGrid')?.classList.add('hidden');
-  $('#btnPlayCancel')?.classList.add('hidden');
-  $('#ctrlPlay')?.classList.add('hidden');
-
   // Mostrar zona de configuración
   $('#setup')?.classList.remove('hidden');
-  $('#btnEndTurn')?.classList.add('hidden');
-  $('#btnCtrlPlay')?.classList.add('hidden');
-  $('#btnAbility')?.classList.add('hidden');
-  $('#btnSalir')?.classList.add('hidden');
-  $('#btnHistorial')?.classList.add('hidden');
   reiniciarNarrador();
-  $('#picker')?.classList.add('hidden');
   $('#helpModal')?.classList.add('hidden');
 
   // Mostrar título y subtítulo
@@ -215,17 +154,9 @@ export function resetJuego() {
 
 
 
-/** Oculta el menú de inicio y muestra el tablero y los controles de turno. */
+/** Oculta el menú de inicio; la mesa aparece con el primer render(). */
 export function mostrarTablero() {
   $('#setup')?.classList.add('hidden');
-  $('#info')?.classList.remove('hidden');
-  $('#boardNeutrals')?.classList.remove('hidden');
-  $('#boardGrid')?.classList.remove('hidden');
-  $('#btnEndTurn')?.classList.remove('hidden');
-  $('#btnCtrlPlay')?.classList.remove('hidden');
-  $('#btnAbility')?.classList.remove('hidden');
-  $('#btnSalir')?.classList.remove('hidden');
-  $('#btnHistorial')?.classList.remove('hidden');
   $('#mainTitle')?.classList.add('hidden');
   $('#mainSubtitle')?.classList.add('hidden');
 }
@@ -247,14 +178,10 @@ export function salirAlMenu() {
   const aviso = aMedias
     ? `Lo hecho en este turno no se guarda: al retomar, ${actual.name} empezará su turno de nuevo.`
     : 'La partida queda guardada y podrás retomarla desde el menú de inicio.';
-  if (vistaMesaActiva()) {
-    preguntarMesa(`¿Salir al menú de inicio? ${aviso}`, [
-      { val: 'salir', lbl: '🚪 Salir al menú' },
-      { val: 'seguir', lbl: 'Seguir jugando' },
-    ], val => { if (val === 'salir') volverAlMenu(); });
-    return;
-  }
-  if (confirm(`¿Salir al menú de inicio?\n\n${aviso}`)) volverAlMenu();
+  preguntarMesa(`¿Salir al menú de inicio? ${aviso}`, [
+    { val: 'salir', lbl: '🚪 Salir al menú' },
+    { val: 'seguir', lbl: 'Seguir jugando' },
+  ], val => { if (val === 'salir') volverAlMenu(); });
 }
 
 function volverAlMenu() {
@@ -273,7 +200,6 @@ export function retomarPartida() {
   reiniciarNarrador();
   cargarPartida(registro.partida);
   mostrarTablero();
-  initActions();
   nextTurn();
   return true;
 }

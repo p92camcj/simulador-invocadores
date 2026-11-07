@@ -93,7 +93,7 @@ export function invocacionCerrada(tablero, need) {
 /**
  * Gemas que ganaría cada jugadora (array indexado por jugadora) si la
  * invocación se cierra con este tablero — mismas reglas que
- * `#btnEndTurn` (actions.js) y `aplicarBonusPasivosInvocacion()` (utils.js):
+ * `terminarTurno()` (motor/acciones.js) y `aplicarBonusPasivosInvocacion()` (utils.js):
  * requisito visible no duplicado en un Portal con dueña → una Gema del
  * nivel (se usa su valor medio, la Gema concreta es al azar); Maestro
  * requisito, único y sin Pícaro visible → 3 Gemas de 1; cada Pícaro visible

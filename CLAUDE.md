@@ -161,8 +161,8 @@ every other ability (see below), so the broken call site no longer exists.
 
 Turn sequence is split into two independent, explicit steps (Fase A / Fase
 B in the rulebook's "Secuencia del turno"): playing a card
-(`#btnPlay`/`btnCtrlPlay` in `actions.js`) never auto-triggers an ability
-anymore. Activating an ability is a separate action (`#btnAbility`) the
+(`ejecutarJugada()` in `actions.js`) never auto-triggers an ability
+anymore. Activating an ability is a separate action (`activarHabilidad()`) the
 active player may use **at most once per turn**, on either the top card of
 one of their own Portals (free) or a central/neutral Portal (costs 1 unit
 Gem, or free by revealing a previously-earned asterisk Gem) —
@@ -373,21 +373,15 @@ in `nextTurn()`.
   separately from `case 'Maestro'` itself — pure functions with no DOM/
   `picker()` dependency, so `tests/run-tests.mjs` can exercise the real
   selection/movement logic directly.
-- **`js/render.js`** — pure-ish DOM rendering (`render()`, which draws the
-  single interactive board grid into `#boardGrid` — one column per player
-  in fixed index order plus a final "Neutrales" column, always with real
-  visibility rules, never an "everything visible" mode) and the generic
-  `picker()` modal used by several abilities, plus `pickerPortal()` (same
-  modal, but also lets the matching Portal in the grid itself be clicked as
-  an alternative — used by the ability cases that target a Portal:
-  Ocultista, Cronista, Cronomante's first picker, Estratega's both
-  pickers). Does not own game state. A column's own "visible" hand card
-  (owner-only) only ever renders for a HUMAN active player
-  (`esHumanaActiva = esActiva && p.tipo !== 'auto'`) — an autómata never
-  has "its own screen" watching this single shared display, so it's always
-  treated like a non-active player's hand (only its public "oculta" card
-  shows, no click/drag handlers), even on its own turn. Same flag gates the
-  exact-Gem-total breakdown vs. the by-level-only one.
+- **`js/render.js`** — since 1.32.3 a thin layer: `render()` runs the
+  Clarividente transitions (`gestionarTransicionesClarividente()`: when a
+  player loses her visible Clarividente she must pick which hand card to
+  keep seeing — a human via `picker()`, a bot by heuristic) and then
+  `renderMesa3D()`; `picker()` always delegates to `pickerMesa()` (bottom
+  sheet); `pickerPortal()` also lets the valid Portals be tapped on the
+  table (`window.pickerObjetivoPortal`). Used by the ability cases that
+  target a Portal: Ocultista, Cronista, Cronomante's first picker,
+  Estratega's both pickers. Does not own game state.
 - **`js/utils.js`** — constants (`LEVELS`, `INVOCATION_SETS`,
   `INVOCATION_ASTERISCO`, `PERSONAJES_CON_HABILIDAD`,
   `PERSONAJES_NO_ANIMALES`, `CANTIDADES_MODO_NORMAL`, `CANTIDADES_ANIMALES`,
@@ -412,7 +406,7 @@ in `nextTurn()`.
   `anunciarCartaJugada()` in `actions.js`, `envolverHabilidad()` wrapping
   the Fase-B `onComplete` in both `actions.js` and `bot.js` (snapshots the
   public table before/after and diffs it), `anunciarInvocacion()` replacing
-  the invocation `alert()`. While scenes are playing, `#btnEndTurn` defers
+  the invocation `alert()`. While scenes are playing, `ejecutarFinDeTurno()` defers
   the turn advance (`hayEspectaculoEnCurso()`/`cuandoTermineEspectaculo()`,
   guard `window.avanceTurnoPendiente`). Same hidden-info rule as
   `render.js`: a card's face is only shown if it is public on the table.
@@ -422,9 +416,9 @@ in `nextTurn()`.
   and `assets/portal.jpg` by `node tools/rasterizar_svg.cjs && python3
   tools/generar_figuras.py` (re-run both if the SVGs change; `build/` is
   ignored) — the project owner explicitly asked not to invent new
-  character art. `render.js` also uses `rutaFigura()`/`rutaCriatura()` for
-  small portraits in the active-invocation panel of the classic view. The
-  classic card images (`assets/cards/*.png`, incl. the `carta-oculta-reverso.png`
+  character art. `mesa3d.js` also uses `rutaFigura()`/`rutaCriatura()` for
+  the Metamorfo token and the invocation panel. The
+  card images (`assets/cards/*.png`, incl. the `carta-oculta-reverso.png`
   back from `portal.svg`) are generated from the full-card SVGs in
   `assets/cartas/` by `node tools/rasterizar_svg.cjs cartas && python3
   tools/generar_cartas.py` (same file names and 362x504 size). **Since
@@ -436,21 +430,20 @@ in `nextTurn()`.
   `#chkEspectaculo` (setup), stored in `localStorage`.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
-  (the owner chose it over Three.js). **Since 1.32.1 it is the only
-  maintained view, on desktop too**: the classic board (`render.js`'s
-  grid, `style.css`, `#boardGrid`/`#ctrlPlay`/`#picker` in `index.html`) is
-  frozen/deprecated — reachable only with `?vista=clasica` in the URL, not
-  remembered, no setup selector — and will be deleted later
-  (`docs/DEUDA_TECNICA.md` item 17). Don't add features to it. Holds no
-  rules: it acts through the same hooks as the classic view
-  (`window.selectHandCard`/`tryPlayOnPortal`/`selectPortalObjetivo`,
-  clicking `#btnAbility`/`#btnEndTurn`/`#btnPlayCancel`). Wired in at
+  (the owner chose it over Three.js). **It is the only view, on desktop
+  too**: the classic column board was frozen in 1.32.1 and deleted in
+  1.32.3 (`body.vista-mesa` is now a fixed class in `index.html`;
+  `style.css` keeps only the setup screen, modals, narrator and history).
+  Holds no rules: it calls the UI actions exported by `actions.js`
+  (`seleccionarCartaMano`, `jugarEnPortal`, `elegirPortalObjetivo`,
+  `activarHabilidad`, `cancelarSeleccion`, `ejecutarFinDeTurno`) and
+  `salirAlMenu()` (`game.js`). Wired in at
   `render()` (calls `renderMesa3D()`), `picker()` (delegates to
   `pickerMesa()`, a bottom sheet), `nextTurn()` (`anunciarTurnoMesa()`:
-  hand-off curtain with several humans, instead of `alert()`) and
-  `resetJuego()` (`salirDeMesa()`); while active it also turns `alert()`
+  hand-off curtain with several humans) and
+  `resetJuego()` (`salirDeMesa()`); during a game it also turns `alert()`
   into non-blocking toasts, the asterisk-Gem `confirm()` into a sheet
-  (`preguntarMesa()`) and the end-of-game `confirm()` into a scoreboard
+  (`preguntarMesa()`) and shows the end-of-game scoreboard
   (`mostrarFinMesa()`, called from `finalizarPartida()`). Board changes
   fire visual effects (`lanzarEfectos()`), presentation only. What each seat shows comes from the pure
   `construirVistaMesa()` (`js/vista-mesa.js`, tests in
@@ -460,8 +453,8 @@ in `nextTurn()`.
   sees her own owner-visible card all the time.
 - **`js/partida-guardada.js`** — (1.31.0) leave and resume a game. At the
   start of every turn `nextTurn()` saves `serializarPartida()` to
-  `localStorage['invocadores.partidaGuardada']`; `#btnSalir` (classic
-  header) and "Salir al menú de inicio" (Mesa 3D ☰ menu) call
+  `localStorage['invocadores.partidaGuardada']`; "Salir al menú de
+  inicio" (Mesa 3D ☰ menu) calls
   `salirAlMenu()` (`game.js`), and the setup screen's `#panelRetomar`
   offers `retomarPartida()`, which replays that turn from its start.
   Saving at turn start is deliberate: no pickers, scenes or abilities half

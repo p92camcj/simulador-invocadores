@@ -29,6 +29,20 @@
 
 ## Resueltos
 
+### ~~17. Vista clásica congelada pendiente de borrar~~ (resuelto)
+
+Resuelto en 1.32.3. La vista clásica se congeló en 1.32.1 y se borró en
+1.32.3: el tablero en columnas y el `picker()` de `<select>` de
+`render.js`, el panel de jugar carta con `<select>` y el arrastre nativo de
+`actions.js`, la cabecera de botones de partida y los bloques `#ctrlPlay`,
+`#picker`, `#info`, `#boardNeutrals` y `#boardGrid` de `index.html`, y sus
+estilos en `style.css`. Lo que la Mesa 3D usaba por debajo se quedó, pero
+ya sin pasar por la clásica: la elección de la Clarividente sigue en
+`render()`; los botones ocultos que la mesa pulsaba con `.click()` son
+ahora funciones exportadas de `actions.js` (`activarHabilidad`,
+`cancelarSeleccion`, `ejecutarFinDeTurno`, `seleccionarCartaMano`,
+`jugarEnPortal`, `elegirPortalObjetivo`) y `salirAlMenu()` de `game.js`.
+
 ### ~~16. Activar la habilidad de un Portal central era gratis sin Gemas para pagarla~~ (resuelto)
 
 - **Cómo se descubrió**: al evaluar el ítem 10 (`alert()`/`confirm()`
@@ -417,19 +431,6 @@ identidad vs. apariencia del Metamorfo) se resolvieron el 2026-07-21, ver
 ---
 
 ## Prioridad Baja
-
-### 17. Vista clásica congelada pendiente de borrar
-
-Desde 1.32.1 la Mesa 3D es la única vista mantenida y la clásica solo se
-abre con `?vista=clasica`. Falta borrarla: `renderBoardGrid`/
-`renderBoardNeutrals`/`portalCardHtml` y el `picker()` de `<select>` en
-`render.js`, sus estilos en `style.css`, y `#boardGrid`, `#boardNeutrals`,
-`#ctrlPlay`, `#picker` e `#info` en `index.html`. Antes hay que sacar de la
-clásica lo que la Mesa 3D usa por debajo: la elección de la Clarividente
-(`gestionarTransicionesClarividente` en `render.js`, que es lógica y no
-pintado), los botones ocultos `#btnAbility`/`#btnEndTurn`/`#btnPlayCancel`/
-`#btnSalir` que la mesa pulsa con `.click()` (mejor llamar a funciones de
-`actions.js`/`game.js`) y `pickerPortal()`.
 
 ### 8. Nombres de personaje como strings mágicos repetidos sin roster centralizado (parcialmente mitigado)
 
