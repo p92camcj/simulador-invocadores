@@ -126,7 +126,7 @@ function pilaDeOrigen(partida, botIdx, origen) {
  * elige la primera, para que el enumerador pueda generar las hermanas.
  * Devuelve false si el guion no es aplicable en este mundo.
  */
-function aplicarConGuion(partida, botIdx, origen, guion, descubrir) {
+export function aplicarConGuion(partida, botIdx, origen, guion, descubrir) {
   const pila = pilaDeOrigen(partida, botIdx, origen);
   const personaje = pila?.at(-1)?.name;
   if (!personaje) return false;

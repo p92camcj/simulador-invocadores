@@ -18,6 +18,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/bot-estrategia.js](#jsbot-estrategiajs)
 - [js/bot-busqueda.js](#jsbot-busquedajs)
 - [tools/arena.mjs](#toolsarenamjs)
+- [tools/equilibrio.mjs](#toolsequilibriomjs)
 - [js/setup.js](#jssetupjs)
 - [js/render.js](#jsrenderjs)
 - [js/actions.js](#jsactionsjs)
@@ -225,6 +226,7 @@ completo (Fase A + Fase B) con el motor real sobre mundos posibles
 | `BUSQUEDA` | `objeto` | `{ mundos: 8, ronda: 1, rival: 0.5 }`: mundos posibles por decisión; si se simula la ronda de las rivales tras el turno propio; y el `PESOS.rival` que usa la experta (lo aplica `bot.js` solo durante su turno). |
 | `determinizar(partida, botIdx)` | `función` | Copia de la partida con la carta oculta de la bot, las cartas privadas de las rivales (y su mano entera si tienen la Clarividente visible) y el mazo repartidos al azar entre los personajes que la bot aún no ha visto (composición menos todas las cartas de los Portales y las de mano que ve), y las Gemas ajenas con el valor medio de su nivel. `tests/bot-busqueda.mjs` comprueba que no filtra nada oculto. |
 | `enumerarFasesB(partida, botIdx)` | `función` | `[null, { origen, guion }...]`: no activar nada, o cada habilidad activable (`opcionesActivarHabilidad`) con cada combinación de elecciones, descubiertas recorriendo las peticiones `ui.pedir` del motor en copias desechables. |
+| `aplicarConGuion(partida, botIdx, origen, guion, descubrir?)` | `función` | Aplica en `partida` la habilidad del origen (`'own:j'`/`'central:k'`) siguiendo las elecciones `guion` y cobra la activación; `false` si el guion no es aplicable. Exportada (1.34.1) para la saboteadora de `tools/equilibrio.mjs`. |
 | `puntuarMundo(antes, despues, botIdx, construirVista, probabilidadPorNombre)` | `función` | Gemas ganadas por la bot − `PESOS.rival` × las de la rival que más gana, más `valorPosicional` y `valorAmenazaSiguiente` (`bot-estrategia.js`) sobre la mesa que queda. |
 | `elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre, jugarRival)` | `función` | Media, entre mundos, del mejor turno (mejor Fase B) tras cada candidata de Fase A; devuelve la mejor con su `valor`. Con `BUSQUEDA.ronda`, tras ese turno juega en el mundo el turno de cada rival con `jugarRival(mundo, idx)` (en `bot.js`, la heurística `'dificil'`) y puntúa toda la ronda: Gemas propias − `PESOS.rival` × las de la mejor rival, más `valorPosicional`. |
 | `elegirFaseBExperta(partida, botIdx, construirVista, probabilidadPorNombre)` | `función` | Con la Fase A ya jugada: la Fase B (o ninguna) con mejor media entre mundos, como `{ origen, guion, valor }` o `null`. `bot.js` pasa `guion` como `objetivoPreferido` a `crearUiAutomata`. |
@@ -271,6 +273,7 @@ Azar con semilla (`sembrarAzar`).
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
+| `gestionarClarividente(partida)` | `función` | Exportada en 1.34.1: elección de la Clarividente al dejar de estar visible, como `render.js` (la usa también `tools/equilibrio.mjs`). |
 | `sembrarAzar(semilla)` | `función` | Sustituye `Math.random` por un generador con semilla (mulberry32). |
 | `prepararPartida(dificultades, invocationSet)` | `función` | Partida nueva sin DOM, una autómata por dificultad. |
 | `jugarPartida(asientos, invocationSet, perfiles)` | `función` | Partida completa; asiento `'nivel'` o `'nivel@perfil'` (con `perfiles[perfil]` como `PESOS` y `BUSQUEDA` en sus turnos). Devuelve `{ puntos, ganadoras, invocaciones, turnos }`. |
@@ -278,6 +281,27 @@ Azar con semilla (`sembrarAzar`).
 
 `tools/ajustar-pesos.mjs`: búsqueda aleatoria de `PESOS` enfrentando cada
 candidata a los pesos actuales en 2 y 3 jugadoras.
+
+---
+
+## tools/equilibrio.mjs
+**Propósito:** (1.34.1) análisis de equilibrio por simulación masiva, sin
+navegador, con el motor y las autómatas de la web. Añade dos perfiles que
+solo existen aquí: `'caotico'` (carta y Portal al azar; la mitad de los
+turnos, una habilidad al azar) y `'saboteador'` (prueba cada jugada en 4
+mundos posibles con `determinizar`/`enumerarFasesB`/`aplicarConGuion` y
+elige la que deja la invocación más lejos y reparte menos Gemas). Asiento
+`'nivel-sin:A+B'` = juego restringido (nunca activa esas habilidades;
+`'sin:todas'` = ninguna). Informe de resultados: Claude Doc «Invocadores:
+análisis de equilibrio por simulación» (2026-11-07).
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `leerAsiento(spec)` | `función` | `'dificil@b-sin:Cronista'` → `{ nivel, perfil, prohibidas }`. |
+| `distanciaACierre(partida)` | `función` | Cota inferior de cartas que faltan para cerrar la invocación activa: `max(Portales sin carta visible, requisitos sin ver)`. |
+| `jugarPartidaAnalisis(asientos, opciones, perfiles)` | `función` | Una partida con métricas: puntos, ganadoras, invocaciones (nivel y turno), Gemas por personaje, bonus de Pícaro/Maestro, Entusiasta, duplicados, Gemas perdidas en Portales centrales, habilidades y jugadas por asiento, autómata central e intercambio. |
+| `resumir(registros)` | `función` | Resumen con IC 95 %: victorias por perfil, por posición en el turno y por asiento de la mesa, invocaciones, niveles alcanzados, cómo acaba, victorias compartidas, margen, si gana la líder tras la primera invocación, victorias según uso de cada habilidad. |
+| `experimento({ mesa, partidas, opciones, semilla, rotar, perfiles, cantidades, apartar })` | `función` | Varias partidas rotando asientos; `cantidades` cambia copias de personajes del modo y `apartar` las cartas apartadas, solo durante el experimento. CLI: `node tools/equilibrio.mjs --mesa saboteador,experta,experta --partidas 120 --modo normal`. |
 
 ---
 

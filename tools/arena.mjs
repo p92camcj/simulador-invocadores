@@ -91,7 +91,7 @@ export function prepararPartida(dificultades, opciones = 'normal') {
  * invocación activa; si no, al azar). Mientras la tenía visible veía las
  * dos, así que no es hacer trampa.
  */
-function gestionarClarividente(partida) {
+export function gestionarClarividente(partida) {
   const need = invocacionDePartida(partida)?.need || null;
   partida.players.forEach(p => {
     const ahora = tieneClarividenteVisible(p);

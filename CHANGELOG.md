@@ -4,6 +4,27 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.34.1.149] - 2026-11-07
+
+### Añadido
+- **`tools/equilibrio.mjs`**: análisis de equilibrio por simulación masiva
+  sobre el motor y las autómatas de la web. Perfiles solo de análisis
+  `'caotico'` (jugadas legales al azar) y `'saboteador'` (busca, en 4
+  mundos posibles, la jugada que deja la invocación más lejos y reparte
+  menos Gemas); juego restringido `'nivel-sin:Habilidad'` y `'-sin:todas'`;
+  `--cantidades` y `--apartar` para variar el mazo; métricas por partida
+  (posición, Gemas por personaje, bonus, Entusiasta, duplicados, Portales
+  centrales, autómata central e intercambio) con IC 95 %. Resultados de
+  ~367.000 partidas en el Claude Doc «Invocadores: análisis de equilibrio
+  por simulación».
+
+### Cambiado
+- `aplicarConGuion()` (`js/bot-busqueda.js`) y `gestionarClarividente()`
+  (`tools/arena.mjs`) pasan a exportarse para reutilizarlas. Sin cambios de
+  comportamiento ni de reglas.
+
+---
+
 ## [1.34.0.147] - 2026-11-07
 
 ### Añadido
