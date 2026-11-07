@@ -4,6 +4,18 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.31.2.78] - 2026-11-07
+
+### Cambiado
+- **La Mesa 3D es la única vista mantenida, también en ordenador.** La
+  vista clásica (tablero en columnas) queda congelada (deprecated): se
+  quitan el selector "Vista de juego" del setup y la opción "Cambiar a la
+  vista clásica" del menú ☰; `vistaPorDefecto()` (`js/mesa3d.js`) devuelve
+  siempre `'mesa'` salvo con `?vista=clasica` en la URL, y ya no se guarda
+  la preferencia (se borra la clave `invocadores.vista`). En la clásica,
+  `#btnVista` pasa a "📱 Volver a la Mesa 3D". Su código se borrará más
+  adelante (`docs/DEUDA_TECNICA.md` ítem 17).
+
 ## [1.31.1.77] - 2026-11-06
 
 ### Corregido

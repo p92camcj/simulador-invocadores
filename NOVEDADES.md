@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.31.2.78 - 2026-11-07
+
+- La Mesa 3D pasa a ser la forma de jugar en todos los dispositivos,
+  también en el ordenador. La vista clásica en columnas deja de ofrecerse
+  y de actualizarse, y desaparecerá en una versión futura.
+
 ## 1.31.1.77 - 2026-11-06
 
 - En la escena de la Estratega, el personaje que cambia del Portal de la
