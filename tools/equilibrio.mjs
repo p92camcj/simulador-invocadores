@@ -445,10 +445,17 @@ export function resumir(registros) {
  *   vuelven al mazo barajado); esas 3 cartas salen del juego.
  * - 'cartasVuelven': igual, pero al completarse la invocación sus 3 cartas
  *   vuelven al mazo barajado antes de robar las de la siguiente.
+ * - 'escalonada': la C sale solo de las fichas de los personajes frecuentes
+ *   (4 copias o más; si no llegan a 3, los 3 con más copias); la B y la A,
+ *   de toda la bolsa, y cada una se saca al completarse la anterior
+ *   ("la C desbloquea el resto de fichas").
+ * - 'escalonadaA': igual, pero la A lleva al menos un personaje de los más
+ *   escasos (los de menos copias del mazo).
  * Las de fichas y las uniformes se deciden al empezar la partida (la bolsa
- * no depende del juego); las de cartas, al empezar cada invocación.
+ * no depende del juego); las de cartas y las escalonadas, al empezar cada
+ * invocación.
  */
-export const FORMAS_ALEATORIAS = ['uniforme', 'ordenada', 'fichas', 'fichasSinRepetir', 'cartas', 'cartasVuelven'];
+export const FORMAS_ALEATORIAS = ['uniforme', 'ordenada', 'fichas', 'fichasSinRepetir', 'cartas', 'cartasVuelven', 'escalonada', 'escalonadaA'];
 const NIVELES_ALEATORIOS = ['C', 'B', 'A'];
 const elegible = n => n !== 'Metamorfo' && n !== 'Entusiasta';
 const barajar = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -513,8 +520,41 @@ function robarRequisitos(partida, set, nivel, acumular) {
   return trio.length === 3;
 }
 
+/** Trío de la invocación `nivel` en las formas escalonadas. */
+function trioEscalonado(comp, nivel, forma) {
+  const fichas = nombres => nombres.flatMap(n => Array(comp[n]).fill(n));
+  const todos = Object.keys(comp);
+  if (nivel === 'C') {
+    let frec = todos.filter(n => comp[n] >= 4);
+    if (frec.length < 3) frec = [...todos].sort((a, b) => comp[b] - comp[a]).slice(0, 3);
+    return sacarTrio(fichas(frec));
+  }
+  if (nivel === 'A' && forma === 'escalonadaA') {
+    const min = Math.min(...todos.map(n => comp[n]));
+    const escaso = barajar(todos.filter(n => comp[n] === min))[0];
+    const resto = sacarTrio(fichas(todos.filter(n => n !== escaso)));
+    return [escaso, ...resto.slice(0, 2)];
+  }
+  return sacarTrio(fichas(todos));
+}
+
+/** Ganchos de la partida para las formas escalonadas. */
+function ganchosEscalonados(forma, set) {
+  return {
+    inicio(partida) {
+      const comp = composicionElegible(partida);
+      NIVELES_ALEATORIOS.forEach(nv => { set[nv].need = trioEscalonado(comp, nv, forma); });
+    },
+    siguiente(partida) {
+      const nivel = NIVELES_ALEATORIOS[partida.levelIdx];
+      if (nivel) set[nivel].need = trioEscalonado(composicionElegible(partida), nivel, forma);
+    },
+  };
+}
+
 /** Ganchos de la partida para las formas de cartas (o null para las demás). */
 function ganchosCartas(forma, set) {
+  if (forma === 'escalonada' || forma === 'escalonadaA') return ganchosEscalonados(forma, set);
   if (forma !== 'cartas' && forma !== 'cartasVuelven') return null;
   // Mientras no se roban, las invocaciones futuras muestran una suposición
   // (para que la Experta, si mira más allá de un cierre, no vea vacío).
@@ -547,7 +587,7 @@ export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal'
       const asientos = rotar ? mesa.map((_, i) => mesa[(i + g) % mesa.length]) : mesa;
       if (aleatorias) {
         const cfg = { ...opciones, invocationSet: 'normal' };
-        const set = forma.startsWith('cartas') ? setVacio() : setAleatorio(cfg, forma);
+        const set = forma.startsWith('cartas') || forma.startsWith('escalonada') ? setVacio() : setAleatorio(cfg, forma);
         if (!set) throw new Error(`Este modo no tiene personajes suficientes para requisitos '${forma}'`);
         INVOCATION_SETS.aleatorio = set;
         ganchosRequisitos = ganchosCartas(forma, set);

@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.34.4.155 - 2026-11-08
+
+- Nuevas simulaciones para el autor: requisitos sorteados por fichas en
+  dos bolsas, con la primera invocación siempre de personajes comunes.
+  El juego que juegas no cambia.
+
+---
+
 ## 1.34.3.153 - 2026-11-08
 
 - Más simulaciones para el autor: distintas formas de sortear los
