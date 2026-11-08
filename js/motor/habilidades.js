@@ -35,6 +35,7 @@ import {
   todosLosPortales, reponerManoSiFalta, tieneClarividenteVisible,
 } from '../utils.js';
 
+import { VARIANTES } from './variantes.js';
 const invalida = motivo => ({ tipo: 'accionInvalida', motivo });
 
 /**
@@ -302,8 +303,10 @@ function maestro(partida, { jugadora }, ui, alAplicar) {
 function metamorfo(partida, { jugadora, pila }, ui, alAplicar) {
   const { players, neutrals } = partida;
   const owner = players[jugadora];
+  // Variante de análisis (js/motor/variantes.js): gratis en un Portal propio.
+  const gratis = VARIANTES.metamorfoGratisPropio && owner.portals.includes(pila);
   // La transformación solo se paga con una Gema de valor 1 (no se da cambio).
-  if (contarGemasUnitarias(owner) === 0) {
+  if (!gratis && contarGemasUnitarias(owner) === 0) {
     ui.avisar(invalida('No tienes ninguna Gema de valor 1 con la que pagar la transformación (no se da cambio).'));
     return;
   }
@@ -316,7 +319,7 @@ function metamorfo(partida, { jugadora, pila }, ui, alAplicar) {
   ui.pedir(
     { tipo: 'eleccion', pregunta: 'Metamorfo cambia a', opciones: opciones.map(m => ({ val: m, lbl: m })) },
     v => {
-      if (!gastarGemaUnitaria(owner)) return;
+      if (!gratis && !gastarGemaUnitaria(owner)) return;
       // Solo apariencia: `.name` sigue siendo 'Metamorfo' (protecciones y
       // bonus pasivos miran la identidad real); `.aspecto` cuenta para la
       // invocación y es lo que se muestra.

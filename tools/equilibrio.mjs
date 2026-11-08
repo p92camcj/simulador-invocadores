@@ -40,6 +40,8 @@ import {
 } from '../js/utils.js';
 import { decidirYJugarTurno, crearEjecutorMotor } from '../js/bot.js';
 import { PESOS } from '../js/bot-estrategia.js';
+import { VARIANTES, reiniciarVariantes } from '../js/motor/variantes.js';
+import { INVOCATION_SETS, composicionMazoTotal } from '../js/utils.js';
 import { BUSQUEDA, determinizar, enumerarFasesB, aplicarConGuion } from '../js/bot-busqueda.js';
 import { sembrarAzar, prepararPartida, gestionarClarividente } from './arena.mjs';
 
@@ -77,7 +79,7 @@ function pilaOrigen(partida, idx, origen) {
 }
 
 /** Turno de la "niña de 5 años": todo al azar, pero legal. */
-function turnoCaotico(partida, idx, registro, probB = 0.5) {
+function turnoCaotico(partida, idx, registro, probB = 0.5, sinPagar = false) {
   const p = partida.players[idx];
   const cartaIdx = Math.floor(Math.random() * p.hand.length);
   const destino = azar(destinosDe(partida, idx));
@@ -90,10 +92,13 @@ function turnoCaotico(partida, idx, registro, probB = 0.5) {
   const o = azar(ops);
   const pila = pilaOrigen(partida, idx, o.val);
   const personaje = pila.at(-1).name;
+  // 'peque': regla de casa en la que la jugadora pequeña no paga Gemas.
+  const gemasAntes = sinPagar ? p.gems.map(g => ({ ...g })) : null;
   aplicarHabilidad(partida, { personaje, jugadora: idx, pila }, uiAlAzar, () => {
     registro.habilidad(idx, personaje, o.val);
     completarActivacion(partida, { origen: o.val, personaje, usarAsterisco: false });
   });
+  if (gemasAntes) p.gems = gemasAntes;
   partida.cronomantePortalInvestigado = null;
 }
 
@@ -198,6 +203,8 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
   const busqDe = info.map(a => ({ ...baseBusqueda, ...solo(perfiles[a.perfil], baseBusqueda) }));
   const niveles = info.map(a => (['normal', 'dificil', 'experta'].includes(a.nivel) ? a.nivel : 'normal'));
   const partida = prepararPartida(niveles, opciones);
+  // Las 3 Gemas de partida (para la variante gemasInicialesNoPuntuan).
+  partida.players.forEach(p => p.gems.forEach(g => { g.inicial = true; }));
   estado.partida = partida;
   const n = asientos.length;
 
@@ -245,6 +252,7 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
     Object.assign(BUSQUEDA, busqDe[t]);
     const nivel = info[t].nivel;
     if (nivel === 'caotico') turnoCaotico(partida, t, registro);
+    else if (nivel === 'peque') turnoCaotico(partida, t, registro, 0.5, true);
     else if (nivel === 'saboteador') turnoSaboteador(partida, t, registro);
     else decidirYJugarTurno(partida.players, partida.neutrals, t, configPartida(partida), ejecutor);
     gestionarClarividente(partida);
@@ -284,7 +292,16 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
   Object.assign(BUSQUEDA, baseBusqueda);
 
   const ultimas = partida.automataCentral ? jugadorasConMenosPuntos(partida.players) : [];
-  const cambian = ultimas.filter(i => convieneIntercambioAutomata(partida.players, partida.automataCentral, i));
+  // Variantes del intercambio con la autómata central (opciones.intercambio):
+  // 'siempre' (reglamento), 'siAutomataGana' (solo si la autómata va
+  // primera, sin empate) o 'mitad' (solo con menos de la mitad de sus puntos).
+  const ptsAut = partida.automataCentral ? sumaGemas(partida.automataCentral.gems) : 0;
+  const permitido = i => {
+    if (opciones.intercambio === 'siAutomataGana') return partida.players.every(p => sumaGemas(p.gems) < ptsAut);
+    if (opciones.intercambio === 'mitad') return sumaGemas(partida.players[i].gems) < ptsAut / 2;
+    return true;
+  };
+  const cambian = ultimas.filter(i => permitido(i) && convieneIntercambioAutomata(partida.players, partida.automataCentral, i));
   const res = partida.automataCentral
     ? resultadoFinalExperto(partida.players, partida.automataCentral, partida.invocacionesCompletadas, cambian)
     : calcularResultadoFinal(partida.players, partida.invocacionesCompletadas);
@@ -408,8 +425,31 @@ export function resumir(registros) {
   };
 }
 
-export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal' }, semilla = 1, rotar = true, perfiles = {}, cantidades = null, apartar = null }) {
+/**
+ * Requisitos al azar (idea de Julio, 2026-11-08): en cada partida, cada
+ * invocación C, B y A pide 3 personajes al azar del mazo del modo, sin
+ * repetir entre invocaciones (ni Metamorfo ni Entusiasta). Gemas como el
+ * set normal. Devuelve el set o null si no hay 9 personajes distintos.
+ */
+export function setAleatorio(opciones) {
+  const nombres = Object.keys(composicionMazoTotal({ ...opciones, entusiasta: false }))
+    .filter(n => n !== 'Metamorfo' && n !== 'Entusiasta');
+  if (nombres.length < 9) return null;
+  const bolsa = [...nombres];
+  for (let i = bolsa.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bolsa[i], bolsa[j]] = [bolsa[j], bolsa[i]]; }
+  const base = INVOCATION_SETS.normal;
+  return {
+    C: { nombre: 'C al azar', need: bolsa.slice(0, 3), gemas: base.C.gemas },
+    B: { nombre: 'B al azar', need: bolsa.slice(3, 6), gemas: base.B.gemas },
+    A: { nombre: 'A al azar', need: bolsa.slice(6, 9), gemas: base.A.gemas },
+  };
+}
+
+export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal' }, semilla = 1, rotar = true, perfiles = {}, cantidades = null, apartar = null, variantes = null, aleatorias = false }) {
   const modo = MODOS_JUEGO[opciones.modo || 'normal'];
+  if (variantes) Object.assign(VARIANTES, variantes);
+  const setsOrig = modo.sets;
+  if (aleatorias) { modo.sets = [...modo.sets, 'aleatorio']; opciones = { ...opciones, invocationSet: 'aleatorio' }; }
   const cantOrig = modo.cantidades; const apartarOrig = modo.apartar;
   if (cantidades) modo.cantidades = Object.fromEntries(Object.entries({ ...modo.cantidades, ...cantidades }).filter(([, v]) => v > 0));
   if (apartar !== null) modo.apartar = apartar;
@@ -418,6 +458,11 @@ export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal'
   try {
     for (let g = 0; g < partidas; g++) {
       const asientos = rotar ? mesa.map((_, i) => mesa[(i + g) % mesa.length]) : mesa;
+      if (aleatorias) {
+        const set = setAleatorio({ ...opciones, invocationSet: 'normal' });
+        if (!set) throw new Error('Este modo no tiene 9 personajes distintos para requisitos al azar');
+        INVOCATION_SETS.aleatorio = set;
+      }
       const reg = jugarPartidaAnalisis(asientos, opciones, perfiles);
       // Asiento de la mesa original (`--mesa`) que ocupa cada posición: con
       // la rotación, el asiento j de la mesa siempre tiene al j+1 detrás.
@@ -425,7 +470,9 @@ export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal'
       regs.push(reg);
     }
   } finally {
-    modo.cantidades = cantOrig; modo.apartar = apartarOrig;
+    modo.cantidades = cantOrig; modo.apartar = apartarOrig; modo.sets = setsOrig;
+    delete INVOCATION_SETS.aleatorio;
+    reiniciarVariantes();
   }
   return resumir(regs);
 }
@@ -438,7 +485,7 @@ if (esPrincipal) {
     return acc;
   }, []));
   const t0 = Date.now();
-  const opciones = { modo: args.modo || 'normal', invocationSet: args.set, entusiasta: args.entusiasta === '1', madain: args.madain === '1' };
+  const opciones = { modo: args.modo || 'normal', invocationSet: args.set, entusiasta: args.entusiasta === '1', madain: args.madain === '1', intercambio: args.intercambio || 'siempre' };
   const res = experimento({
     mesa: (args.mesa || 'dificil,dificil,dificil').split(','),
     partidas: +(args.partidas || 1000),
@@ -448,6 +495,8 @@ if (esPrincipal) {
     perfiles: args.perfiles ? JSON.parse(args.perfiles) : {},
     cantidades: args.cantidades ? JSON.parse(args.cantidades) : null,
     apartar: args.apartar !== undefined ? +args.apartar : null,
+    variantes: args.variantes ? JSON.parse(args.variantes) : null,
+    aleatorias: args.aleatorias === '1',
   });
-  console.log(JSON.stringify({ etiqueta: args.etiqueta || null, mesa: args.mesa, opciones, cantidades: args.cantidades || null, apartar: args.apartar ?? null, ...res, segundos: (Date.now() - t0) / 1000 }, null, 1));
+  console.log(JSON.stringify({ etiqueta: args.etiqueta || null, mesa: args.mesa, opciones, cantidades: args.cantidades || null, apartar: args.apartar ?? null, variantes: args.variantes || null, aleatorias: args.aleatorias === '1', ...res, segundos: (Date.now() - t0) / 1000 }, null, 1));
 }

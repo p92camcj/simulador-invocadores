@@ -4,6 +4,28 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.34.2.151] - 2026-11-08
+
+### Añadido
+- **`js/motor/variantes.js`**: interruptores de variantes de reglas solo para
+  análisis (`gemasInicialesNoPuntuan`, `duplicadoDaGema`,
+  `metamorfoGratisPropio`, `maestroSoloPicaroPropio`), todos apagados; la
+  web nunca los cambia. Ganchos en `sumaGemas`, `gastarGemaUnitaria`,
+  `aplicarBonusPasivosInvocacion` (`utils.js`), `resolverInvocacion`
+  (`motor/acciones.js`) y el Metamorfo (`motor/habilidades.js`). Las Gemas
+  de partida se marcan `inicial` solo en el análisis.
+- **`tools/equilibrio.mjs`**: `--variantes JSON`, `--aleatorias 1`
+  (`setAleatorio()`: requisitos al azar, 3 personajes distintos por nivel),
+  `--intercambio siempre|siAutomataGana|mitad` (límite al intercambio con la
+  autómata central) y el perfil `'peque'` (al azar y sin pagar Gemas).
+  Resultados de ~69.000 partidas en el Claude Doc del análisis de equilibrio.
+
+### Cambiado
+- `service-worker.js` guarda también `js/motor/variantes.js` para jugar sin
+  conexión. Sin cambios de reglas ni de comportamiento en la web.
+
+---
+
 ## [1.34.1.149] - 2026-11-07
 
 ### Añadido

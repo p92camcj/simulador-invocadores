@@ -1,3 +1,5 @@
+import { VARIANTES } from './motor/variantes.js';
+
 // utils.js
 // ---------- Constantes generales ----------
 export const LEVELS = ['C', 'B', 'A'];
@@ -459,7 +461,9 @@ export function opcionesActivarHabilidad(playerIdx, players, neutrals) {
 // `revelada`: Gema de asterisco ya usada (bocarriba, valor público, no reutilizable).
 
 export function sumaGemas(gems) {
-  return gems.reduce((acc, g) => acc + (g.valor || 0), 0);
+  // Variante de análisis (js/motor/variantes.js): las Gemas de partida no puntúan.
+  const cuenta = g => !(VARIANTES.gemasInicialesNoPuntuan && g.inicial);
+  return gems.reduce((acc, g) => acc + (cuenta(g) ? (g.valor || 0) : 0), 0);
 }
 
 /**
@@ -511,7 +515,10 @@ export function contarGemasUnitarias(player) {
  * superior (REGLAMENTO.md, fase B). Devuelve false (sin tocar nada) en ese caso.
  */
 export function gastarGemaUnitaria(player) {
-  const idxUnitaria = player.gems.findIndex(g => g.valor === 1 && !g.esAsterisco);
+  // Con la variante de Gemas de partida sin puntos, se paga primero con ellas.
+  const inicial = VARIANTES.gemasInicialesNoPuntuan
+    ? player.gems.findIndex(g => g.valor === 1 && !g.esAsterisco && g.inicial) : -1;
+  const idxUnitaria = inicial >= 0 ? inicial : player.gems.findIndex(g => g.valor === 1 && !g.esAsterisco);
   if (idxUnitaria === -1) return false;
   player.gems.splice(idxUnitaria, 1);
   return true;
@@ -604,8 +611,12 @@ export function aplicarBonusPasivosInvocacion(players, neutrals, need, automata 
   const cobradora = playerIdx => (playerIdx !== null ? players[playerIdx] : automata);
   const unitaria = () => ({ valor: 1, nivel: 'unitaria' });
 
-  const hayPicaroVisible = portales.some(({ stack }) => cimaVisibleEs(stack, 'Pícaro'));
   const maestros = portales.filter(({ stack }) => cimaVisibleEs(stack, 'Maestro'));
+  // Variante de análisis (js/motor/variantes.js): solo anula un Pícaro de la
+  // misma dueña que el Maestro.
+  const anulaPicaro = ({ stack, playerIdx }) => cimaVisibleEs(stack, 'Pícaro')
+    && (!VARIANTES.maestroSoloPicaroPropio || (maestros.length === 1 && playerIdx === maestros[0].playerIdx));
+  const hayPicaroVisible = portales.some(anulaPicaro);
   if (need.includes('Maestro') && !hayPicaroVisible && maestros.length === 1) {
     cobradora(maestros[0].playerIdx)?.gems.push(unitaria(), unitaria(), unitaria());
   }

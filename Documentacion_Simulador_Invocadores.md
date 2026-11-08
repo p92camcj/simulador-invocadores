@@ -31,6 +31,7 @@ Este documento sirve como **guía de referencia** para el código modularizado d
 - [js/motor/estado.js](#jsmotorestadojs)
 - [js/motor/acciones.js](#jsmotoraccionesjs)
 - [js/motor/habilidades.js](#jsmotorhabilidadesjs)
+- [js/motor/variantes.js](#jsmotorvariantesjs)
 
 ---
 
@@ -293,7 +294,12 @@ mundos posibles con `determinizar`/`enumerarFasesB`/`aplicarConGuion` y
 elige la que deja la invocación más lejos y reparte menos Gemas). Asiento
 `'nivel-sin:A+B'` = juego restringido (nunca activa esas habilidades;
 `'sin:todas'` = ninguna). Informe de resultados: Claude Doc «Invocadores:
-análisis de equilibrio por simulación» (2026-11-07).
+análisis de equilibrio por simulación» (2026-11-07). Desde 1.34.2 también
+el perfil `'peque'` (como `'caotico'`, pero no paga Gemas al activar: regla
+de casa para una niña pequeña) y variantes de reglas que solo existen en el
+análisis (`js/motor/variantes.js`): CLI `--variantes '{"duplicadoDaGema":true}'`,
+`--aleatorias 1` (requisitos al azar) e `--intercambio siempre|siAutomataGana|mitad`
+(límite al intercambio con la autómata central de Experto).
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
@@ -301,7 +307,8 @@ análisis de equilibrio por simulación» (2026-11-07).
 | `distanciaACierre(partida)` | `función` | Cota inferior de cartas que faltan para cerrar la invocación activa: `max(Portales sin carta visible, requisitos sin ver)`. |
 | `jugarPartidaAnalisis(asientos, opciones, perfiles)` | `función` | Una partida con métricas: puntos, ganadoras, invocaciones (nivel y turno), Gemas por personaje, bonus de Pícaro/Maestro, Entusiasta, duplicados, Gemas perdidas en Portales centrales, habilidades y jugadas por asiento, autómata central e intercambio. |
 | `resumir(registros)` | `función` | Resumen con IC 95 %: victorias por perfil, por posición en el turno y por asiento de la mesa, invocaciones, niveles alcanzados, cómo acaba, victorias compartidas, margen, si gana la líder tras la primera invocación, victorias según uso de cada habilidad. |
-| `experimento({ mesa, partidas, opciones, semilla, rotar, perfiles, cantidades, apartar })` | `función` | Varias partidas rotando asientos; `cantidades` cambia copias de personajes del modo y `apartar` las cartas apartadas, solo durante el experimento. CLI: `node tools/equilibrio.mjs --mesa saboteador,experta,experta --partidas 120 --modo normal`. |
+| `setAleatorio(opciones)` | `función` | (1.34.2) Set de requisitos al azar: baraja los personajes del modo (sin Metamorfo ni Entusiasta) y da 3 distintos a C, B y A con las Gemas del set normal; `null` si hay menos de 9. |
+| `experimento({ mesa, partidas, opciones, semilla, rotar, perfiles, cantidades, apartar, variantes, aleatorias })` | `función` | Varias partidas rotando asientos; `cantidades` cambia copias de personajes del modo y `apartar` las cartas apartadas, solo durante el experimento; `variantes` activa interruptores de `VARIANTES` y `aleatorias` usa `setAleatorio()` en cada partida (todo se restaura al terminar). CLI: `node tools/equilibrio.mjs --mesa saboteador,experta,experta --partidas 120 --modo normal`. |
 
 ---
 
@@ -564,3 +571,17 @@ Interacción: tocar una carta de la mano la levanta y los Portales brillan; toca
 | `bajarCartaMaestro(players, neutrals, targetIdx, portalIdx, mazo = [])` | `función` | Efecto del Maestro ya decidido: mueve la carta al Portal propio `portalIdx` de esa jugadora, re-dispara Centinela si hace falta y repone su mano desde `mazo`. |
 | `aplicarEleccionClarividente(player, idxElegida)` | `función` | Al dejar de ver su Clarividente, la jugadora se queda viendo la carta `idxElegida` (0 o 1) y la otra la ve el resto. Devuelve `false` si no tiene dos cartas. La decisión (picker humano o heurística del autómata) está en `render.js`. |
 
+---
+
+## js/motor/variantes.js
+**Propósito:** (1.34.2) interruptores de variantes de reglas que solo usa
+`tools/equilibrio.mjs` para medir propuestas. Todos apagados: así el juego
+es el del reglamento, y la web nunca los cambia. Los leen
+`sumaGemas`/`gastarGemaUnitaria`/`aplicarBonusPasivosInvocacion`
+(`utils.js`), `resolverInvocacion` (`acciones.js`) y el Metamorfo
+(`habilidades.js`).
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `VARIANTES` | `objeto` | `gemasInicialesNoPuntuan` (las 3 Gemas de partida, marcadas `inicial`, pagan pero no puntúan), `duplicadoDaGema` (cada copia de un requisito duplicado da 1 Gema a su dueña), `metamorfoGratisPropio` (transformarse en un Portal propio no cuesta), `maestroSoloPicaroPropio` (el bonus del Maestro solo lo anula un Pícaro de la misma dueña). |
+| `reiniciarVariantes()` | `función` | Devuelve todas a su valor del reglamento (apagadas). |
