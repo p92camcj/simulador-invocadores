@@ -4,6 +4,17 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.34.4.155] - 2026-11-08
+
+### Añadido
+- **`tools/equilibrio.mjs`**: formas `escalonada` (la C sale de las fichas
+  de los personajes frecuentes; la B y la A, de toda la bolsa, cada una al
+  completarse la anterior) y `escalonadaA` (además, la A lleva un
+  personaje escaso). Resultados de ~34.000 partidas en el Claude Doc del
+  análisis de equilibrio. Sin cambios en la web.
+
+---
+
 ## [1.34.3.153] - 2026-11-08
 
 ### Añadido
