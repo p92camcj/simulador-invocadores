@@ -4,6 +4,23 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.34.3.153] - 2026-11-08
+
+### Añadido
+- **`tools/equilibrio.mjs`**: `--aleatorias` acepta ahora una forma de
+  sortear requisitos (`FORMAS_ALEATORIAS`): `uniforme` (o `1`), `ordenada`,
+  `fichas` (una por copia del mazo), `fichasSinRepetir`, `cartas` (robadas
+  del mazo al empezar cada invocación, salen del juego) y `cartasVuelven`
+  (vuelven al mazo al completarse). Resultados de ~76.000 partidas en el
+  Claude Doc del análisis de equilibrio.
+
+### Cambiado
+- `determinizar()` (`js/bot-busqueda.js`) descuenta `partida.cartasRequisito`
+  (solo existe en el análisis), para que la Experta no imagine en manos
+  ajenas las cartas requisito que están a la vista. Sin cambios en la web.
+
+---
+
 ## [1.34.2.151] - 2026-11-08
 
 ### Añadido

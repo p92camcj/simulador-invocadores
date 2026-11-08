@@ -205,6 +205,7 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
   const partida = prepararPartida(niveles, opciones);
   // Las 3 Gemas de partida (para la variante gemasInicialesNoPuntuan).
   partida.players.forEach(p => p.gems.forEach(g => { g.inicial = true; }));
+  if (ganchosRequisitos) ganchosRequisitos.inicio(partida);
   estado.partida = partida;
   const n = asientos.length;
 
@@ -283,6 +284,7 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
       const max = Math.max(...pts);
       r.lideresTrasInvocacion.push(pts.map((v, i) => (v === max ? i : -1)).filter(i => i >= 0));
       if (partida.juegoTerminado) fin = 'ultimaInvocacion';
+      else if (ganchosRequisitos) ganchosRequisitos.siguiente(partida);
     }
     if (!partida.juegoTerminado) pasarTurno(partida);
     turnos++;
@@ -426,29 +428,114 @@ export function resumir(registros) {
 }
 
 /**
- * Requisitos al azar (idea de Julio, 2026-11-08): en cada partida, cada
- * invocación C, B y A pide 3 personajes al azar del mazo del modo, sin
- * repetir entre invocaciones (ni Metamorfo ni Entusiasta). Gemas como el
- * set normal. Devuelve el set o null si no hay 9 personajes distintos.
+ * Requisitos al azar (ideas de Julio, 2026-11-08). Cada invocación C, B y A
+ * pide 3 personajes distintos (nunca Metamorfo ni Entusiasta); Gemas como el
+ * set normal. Formas de sortearlos (`aleatorias`):
+ * - 'uniforme' (o '1'): 9 personajes distintos al azar, cada uno igual de
+ *   probable, sin repetir entre invocaciones.
+ * - 'ordenada': como 'uniforme', pero el trío con más copias en el mazo va a
+ *   la C y el de menos a la A.
+ * - 'fichas': una ficha por cada copia del personaje en el mazo; cada
+ *   invocación saca fichas hasta tener 3 personajes distintos y las
+ *   devuelve después (un personaje puede repetirse entre invocaciones).
+ * - 'fichasSinRepetir': igual, pero las fichas de los personajes ya elegidos
+ *   salen de la bolsa para las invocaciones siguientes.
+ * - 'cartas': al empezar cada invocación se roban cartas del mazo hasta
+ *   tener 3 personajes distintos (las repetidas, Metamorfo y Entusiasta
+ *   vuelven al mazo barajado); esas 3 cartas salen del juego.
+ * - 'cartasVuelven': igual, pero al completarse la invocación sus 3 cartas
+ *   vuelven al mazo barajado antes de robar las de la siguiente.
+ * Las de fichas y las uniformes se deciden al empezar la partida (la bolsa
+ * no depende del juego); las de cartas, al empezar cada invocación.
  */
-export function setAleatorio(opciones) {
-  const nombres = Object.keys(composicionMazoTotal({ ...opciones, entusiasta: false }))
-    .filter(n => n !== 'Metamorfo' && n !== 'Entusiasta');
-  if (nombres.length < 9) return null;
-  const bolsa = [...nombres];
-  for (let i = bolsa.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bolsa[i], bolsa[j]] = [bolsa[j], bolsa[i]]; }
-  const base = INVOCATION_SETS.normal;
+export const FORMAS_ALEATORIAS = ['uniforme', 'ordenada', 'fichas', 'fichasSinRepetir', 'cartas', 'cartasVuelven'];
+const NIVELES_ALEATORIOS = ['C', 'B', 'A'];
+const elegible = n => n !== 'Metamorfo' && n !== 'Entusiasta';
+const barajar = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const composicionElegible = opciones => Object.fromEntries(Object.entries(composicionMazoTotal({ ...opciones, entusiasta: false })).filter(([n]) => elegible(n)));
+const setVacio = () => Object.fromEntries(NIVELES_ALEATORIOS.map(nv => [nv, { nombre: `${nv} al azar`, need: [], gemas: INVOCATION_SETS.normal[nv].gemas }]));
+
+/** Saca de `bolsa` (nombres con repetición) 3 personajes distintos. */
+function sacarTrio(bolsa) {
+  const b = barajar([...bolsa]);
+  const trio = [];
+  for (const n of b) { if (!trio.includes(n)) trio.push(n); if (trio.length === 3) return trio; }
+  return null;
+}
+
+/** Set completo decidido al empezar (formas uniformes y de fichas), o null. */
+export function setAleatorio(opciones, forma = 'uniforme') {
+  const comp = composicionElegible(opciones);
+  const nombres = Object.keys(comp);
+  const set = setVacio();
+  if (forma === 'uniforme' || forma === 'ordenada') {
+    if (nombres.length < 9) return null;
+    const bolsa = barajar([...nombres]).slice(0, 9);
+    const trios = [bolsa.slice(0, 3), bolsa.slice(3, 6), bolsa.slice(6, 9)];
+    if (forma === 'ordenada') {
+      const copias = t => t.reduce((a, n) => a + comp[n], 0);
+      trios.sort((x, y) => copias(y) - copias(x));
+    }
+    NIVELES_ALEATORIOS.forEach((nv, i) => { set[nv].need = trios[i]; });
+    return set;
+  }
+  if (forma === 'fichas' || forma === 'fichasSinRepetir') {
+    let bolsa = Object.entries(comp).flatMap(([n, k]) => Array(k).fill(n));
+    for (const nv of NIVELES_ALEATORIOS) {
+      const trio = sacarTrio(bolsa);
+      if (!trio) return null;
+      set[nv].need = trio;
+      if (forma === 'fichasSinRepetir') bolsa = bolsa.filter(n => !trio.includes(n));
+    }
+    return set;
+  }
+  return null;
+}
+
+/**
+ * Formas de cartas: roba del mazo real de `partida` las cartas requisito de
+ * la invocación `nivel` (las deja en `partida.cartasRequisito`, públicas, que
+ * la Experta descuenta al imaginar mundos). Devuelve false si el mazo no da
+ * 3 personajes distintos (la invocación queda imposible).
+ */
+function robarRequisitos(partida, set, nivel, acumular) {
+  const trio = [];
+  const devolver = [];
+  while (trio.length < 3 && partida.deck.length) {
+    const c = partida.deck.pop();
+    if (elegible(c.name) && !trio.some(t => t.name === c.name)) trio.push(c); else devolver.push(c);
+  }
+  partida.deck.push(...devolver);
+  barajar(partida.deck);
+  partida.cartasRequisito = [...(acumular ? partida.cartasRequisito || [] : []), ...trio.map(c => c.name)];
+  partida._cartasRequisito = trio;
+  set[nivel].need = trio.length === 3 ? trio.map(c => c.name) : ['(imposible)'];
+  return trio.length === 3;
+}
+
+/** Ganchos de la partida para las formas de cartas (o null para las demás). */
+function ganchosCartas(forma, set) {
+  if (forma !== 'cartas' && forma !== 'cartasVuelven') return null;
+  // Mientras no se roban, las invocaciones futuras muestran una suposición
+  // (para que la Experta, si mira más allá de un cierre, no vea vacío).
   return {
-    C: { nombre: 'C al azar', need: bolsa.slice(0, 3), gemas: base.C.gemas },
-    B: { nombre: 'B al azar', need: bolsa.slice(3, 6), gemas: base.B.gemas },
-    A: { nombre: 'A al azar', need: bolsa.slice(6, 9), gemas: base.A.gemas },
+    inicio(partida) { NIVELES_ALEATORIOS.forEach(nv => { set[nv].need = sacarTrio(Object.entries(composicionElegible(partida)).flatMap(([n, k]) => Array(k).fill(n))); }); robarRequisitos(partida, set, 'C', false); },
+    siguiente(partida) {
+      if (forma === 'cartasVuelven') { partida.deck.push(...(partida._cartasRequisito || [])); barajar(partida.deck); }
+      partida._cartasRequisito = [];
+      const nivel = NIVELES_ALEATORIOS[partida.levelIdx];
+      if (nivel) robarRequisitos(partida, set, nivel, forma === 'cartas');
+    },
   };
 }
+let ganchosRequisitos = null;
 
 export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal' }, semilla = 1, rotar = true, perfiles = {}, cantidades = null, apartar = null, variantes = null, aleatorias = false }) {
   const modo = MODOS_JUEGO[opciones.modo || 'normal'];
   if (variantes) Object.assign(VARIANTES, variantes);
   const setsOrig = modo.sets;
+  const forma = aleatorias === true || aleatorias === '1' ? 'uniforme' : aleatorias;
+  if (forma && !FORMAS_ALEATORIAS.includes(forma)) throw new Error(`Forma de requisitos desconocida: ${forma}`);
   if (aleatorias) { modo.sets = [...modo.sets, 'aleatorio']; opciones = { ...opciones, invocationSet: 'aleatorio' }; }
   const cantOrig = modo.cantidades; const apartarOrig = modo.apartar;
   if (cantidades) modo.cantidades = Object.fromEntries(Object.entries({ ...modo.cantidades, ...cantidades }).filter(([, v]) => v > 0));
@@ -459,9 +546,11 @@ export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal'
     for (let g = 0; g < partidas; g++) {
       const asientos = rotar ? mesa.map((_, i) => mesa[(i + g) % mesa.length]) : mesa;
       if (aleatorias) {
-        const set = setAleatorio({ ...opciones, invocationSet: 'normal' });
-        if (!set) throw new Error('Este modo no tiene 9 personajes distintos para requisitos al azar');
+        const cfg = { ...opciones, invocationSet: 'normal' };
+        const set = forma.startsWith('cartas') ? setVacio() : setAleatorio(cfg, forma);
+        if (!set) throw new Error(`Este modo no tiene personajes suficientes para requisitos '${forma}'`);
         INVOCATION_SETS.aleatorio = set;
+        ganchosRequisitos = ganchosCartas(forma, set);
       }
       const reg = jugarPartidaAnalisis(asientos, opciones, perfiles);
       // Asiento de la mesa original (`--mesa`) que ocupa cada posición: con
@@ -472,6 +561,7 @@ export function experimento({ mesa, partidas = 1000, opciones = { modo: 'normal'
   } finally {
     modo.cantidades = cantOrig; modo.apartar = apartarOrig; modo.sets = setsOrig;
     delete INVOCATION_SETS.aleatorio;
+    ganchosRequisitos = null;
     reiniciarVariantes();
   }
   return resumir(regs);
@@ -496,7 +586,7 @@ if (esPrincipal) {
     cantidades: args.cantidades ? JSON.parse(args.cantidades) : null,
     apartar: args.apartar !== undefined ? +args.apartar : null,
     variantes: args.variantes ? JSON.parse(args.variantes) : null,
-    aleatorias: args.aleatorias === '1',
+    aleatorias: args.aleatorias || false,
   });
-  console.log(JSON.stringify({ etiqueta: args.etiqueta || null, mesa: args.mesa, opciones, cantidades: args.cantidades || null, apartar: args.apartar ?? null, variantes: args.variantes || null, aleatorias: args.aleatorias === '1', ...res, segundos: (Date.now() - t0) / 1000 }, null, 1));
+  console.log(JSON.stringify({ etiqueta: args.etiqueta || null, mesa: args.mesa, opciones, cantidades: args.cantidades || null, apartar: args.apartar ?? null, variantes: args.variantes || null, aleatorias: args.aleatorias || false, ...res, segundos: (Date.now() - t0) / 1000 }, null, 1));
 }

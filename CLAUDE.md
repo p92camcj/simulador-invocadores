@@ -309,7 +309,8 @@ in `nextTurn()`.
   the Claude Doc "Invocadores: análisis de equilibrio por simulación".
   Since 1.34.2 it can also switch on analysis-only rule variants
   (`js/motor/variantes.js`, all off by default and never touched by the
-  web: `--variantes`, `--aleatorias 1` for random requirements,
+  web: `--variantes`, `--aleatorias <forma>` for random requirements (uniform, ordered,
+  weighted tokens, or cards drawn from the deck — see `FORMAS_ALEATORIAS`),
   `--intercambio` to limit the Experto swap) and a `'peque'` seat (chaotic,
   never pays Gems). Results of the 2026-11-08 run are in the same Doc.
 - **`js/game.js`** — builds the character deck (`initGame`, via
