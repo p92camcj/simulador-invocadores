@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.34.2.151 - 2026-11-08
+
+- Hemos probado en simulación los cambios de reglas propuestos al autor
+  (Gemas iniciales, duplicados, Metamorfo, Maestro, intercambio con la
+  autómata central y requisitos al azar) para que pueda decidir con datos.
+  El juego que juegas no cambia.
+
+---
+
 ## 1.34.1.149 - 2026-11-07
 
 - Hemos jugado cientos de miles de partidas simuladas entre autómatas

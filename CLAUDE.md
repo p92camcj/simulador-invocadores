@@ -305,8 +305,13 @@ in `nextTurn()`.
   Experta, for the play that keeps the invocation furthest and hands out
   fewest Gems), restricted play `'dificil-sin:Cronista'` / `'-sin:todas'`,
   deck overrides (`--cantidades`, `--apartar`) and per-game metrics with
-  95 % CIs. Results of the first run (2026-11-07, ~280,000 games) are in
+  95 % CIs. Results of the first run (2026-11-07, ~367,000 games) are in
   the Claude Doc "Invocadores: análisis de equilibrio por simulación".
+  Since 1.34.2 it can also switch on analysis-only rule variants
+  (`js/motor/variantes.js`, all off by default and never touched by the
+  web: `--variantes`, `--aleatorias 1` for random requirements,
+  `--intercambio` to limit the Experto swap) and a `'peque'` seat (chaotic,
+  never pays Gems). Results of the 2026-11-08 run are in the same Doc.
 - **`js/game.js`** — builds the character deck (`initGame`, via
   `prepararMazo(estado.partida)` in `utils.js`, and the central autómata in
   Experto), turn advancement and the "no cards left" end condition

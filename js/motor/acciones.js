@@ -26,6 +26,7 @@ import {
   pagarActivacionPortalCentral, opcionesActivarHabilidad,
 } from '../utils.js';
 import { ocultarOtrasCentinelas } from './habilidades.js';
+import { VARIANTES } from './variantes.js';
 
 const invalida = motivo => [{ tipo: 'accionInvalida', motivo }];
 
@@ -106,7 +107,14 @@ export function resolverInvocacion(partida) {
     // Solo cobra si el personaje está en un único Portal. Un Portal central
     // no tiene dueña: su Gema se pierde, salvo en Modo Experto, donde los
     // Portales centrales son de la autómata central y la cobra ella.
-    if (arr.length !== 1) return;
+    if (arr.length !== 1) {
+      // Variante de análisis (js/motor/variantes.js): cada copia duplicada
+      // da una Gema de valor 1 a su dueña (en Experto, la central a la autómata).
+      if (VARIANTES.duplicadoDaGema) {
+        arr.forEach(i => (i !== null ? players[i] : automata)?.gems.push({ valor: 1, nivel: 'unitaria' }));
+      }
+      return;
+    }
     const quien = arr[0] !== null ? players[arr[0]] : automata;
     if (!quien) return;
     const gema = pool.shift();
