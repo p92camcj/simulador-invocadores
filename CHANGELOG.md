@@ -4,6 +4,18 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.34.5.157] - 2026-11-08
+
+### Añadido
+- **`tools/equilibrio.mjs`**: `--derrota N` (derrota colectiva: con menos de
+  N invocaciones no gana nadie; antes de llegar a N las Expertas cooperan) y
+  el perfil `'oportunista'` (bloqueadora racional: bloquea solo si va
+  primera y no arriesga la derrota colectiva). Métricas `derrotaColectiva` y
+  `turnosBloqueandoPorPartida`. Resultados de ~27.000 partidas en el Claude
+  Doc del análisis de equilibrio. Sin cambios en la web.
+
+---
+
 ## [1.34.4.155] - 2026-11-08
 
 ### Añadido

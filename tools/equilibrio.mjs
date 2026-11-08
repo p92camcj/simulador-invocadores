@@ -191,6 +191,19 @@ function instantaneaPortales(partida) {
 }
 
 /**
+ * Bloqueadora racional ('oportunista'): juega como la Experta, pero bloquea
+ * como la saboteadora cuando eso le conviene: va primera (sola o empatada)
+ * y bloquear ya no puede hacerle perder por la derrota colectiva (o no hay
+ * esa regla, o ya se ha completado el mínimo de invocaciones).
+ */
+function bloqueoConviene(partida, idx, opciones) {
+  const minimo = opciones.derrotaColectiva || 0;
+  if (partida.invocacionesCompletadas.length < minimo) return false;
+  const pts = partida.players.map(p => sumaGemas(p.gems));
+  return pts[idx] >= Math.max(...pts.filter((_, i) => i !== idx));
+}
+
+/**
  * Juega una partida. `asientos` = specs por posición (0 empieza).
  * Devuelve un registro con todo lo que se mide.
  */
@@ -201,7 +214,7 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
   const solo = (obj, ref) => Object.fromEntries(Object.entries(obj || {}).filter(([k]) => k in ref));
   const pesosDe = info.map(a => ({ ...base, ...solo(perfiles[a.perfil], base) }));
   const busqDe = info.map(a => ({ ...baseBusqueda, ...solo(perfiles[a.perfil], baseBusqueda) }));
-  const niveles = info.map(a => (['normal', 'dificil', 'experta'].includes(a.nivel) ? a.nivel : 'normal'));
+  const niveles = info.map(a => (a.nivel === 'oportunista' ? 'experta' : ['normal', 'dificil', 'experta'].includes(a.nivel) ? a.nivel : 'normal'));
   const partida = prepararPartida(niveles, opciones);
   // Las 3 Gemas de partida (para la variante gemasInicialesNoPuntuan).
   partida.players.forEach(p => p.gems.forEach(g => { g.inicial = true; }));
@@ -219,6 +232,7 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
     bonusPicaro: 0, bonusMaestro: 0, entusiastaPierde: 0, entusiastaSinEfecto: 0,
     invocaciones: [], // { nivel, turno, ganadasPor: [idx...] }
     lideresTrasInvocacion: [],
+    turnosBloqueando: 0,
   };
   const registro = {
     jugada(idx, d) {
@@ -252,9 +266,16 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
     Object.assign(PESOS, pesosDe[t]);
     Object.assign(BUSQUEDA, busqDe[t]);
     const nivel = info[t].nivel;
+    // Con derrota colectiva, mientras no se llegue al mínimo de invocaciones
+    // las Expertas (y la oportunista) cooperan: no les importa lo que gane la
+    // rival, porque si no se invoca pierden todas.
+    if (opciones.derrotaColectiva && partida.invocacionesCompletadas.length < opciones.derrotaColectiva && (nivel === 'experta' || nivel === 'oportunista')) {
+      PESOS.rival = 0; BUSQUEDA.rival = 0;
+    }
     if (nivel === 'caotico') turnoCaotico(partida, t, registro);
     else if (nivel === 'peque') turnoCaotico(partida, t, registro, 0.5, true);
     else if (nivel === 'saboteador') turnoSaboteador(partida, t, registro);
+    else if (nivel === 'oportunista' && bloqueoConviene(partida, t, opciones)) { r.turnosBloqueando++; turnoSaboteador(partida, t, registro); }
     else decidirYJugarTurno(partida.players, partida.neutrals, t, configPartida(partida), ejecutor);
     gestionarClarividente(partida);
     if (!partida.played) throw new Error(`El asiento ${t} (${asientos[t]}) no jugó carta`);
@@ -314,6 +335,10 @@ export function jugarPartidaAnalisis(asientos, opciones, perfiles = {}) {
   r.ganaQuienIntercambia = cambian.some(i => res.ganadores.some(g => !g.esAutomataCentral && (g.idx ?? partida.players.findIndex(p => p.name === g.nombre)) === i));
   r.ganadoras = res.ganadores.filter(g => !g.esAutomataCentral)
     .map(g => g.idx ?? partida.players.findIndex(p => p.name === g.nombre));
+  // Derrota colectiva (opciones.derrotaColectiva = N): si se completan menos
+  // de N invocaciones, no gana nadie.
+  r.derrotaColectiva = !!opciones.derrotaColectiva && partida.invocacionesCompletadas.length < opciones.derrotaColectiva;
+  if (r.derrotaColectiva) r.ganadoras = [];
   r.turnos = turnos;
   r.fin = fin;
   r.cartasMazoAlFinal = partida.deck.length;
@@ -346,8 +371,11 @@ export function resumir(registros) {
   let ganaAutomata = 0; let intercambios = 0; let puntosAutomata = 0; let ganaIntercambio = 0; let conIntercambio = 0;
   const tot = { duplicados: 0, centralPerdidas: 0, centralAutomata: 0, bonusPicaro: 0, bonusMaestro: 0, entusiastaPierde: 0, entusiastaSinEfecto: 0 };
   const turnos = []; const ptsGanador = [];
+  let derrotas = 0; let bloqueos = 0;
   registros.forEach(r => {
-    const share = 1 / r.ganadoras.length;
+    if (r.derrotaColectiva) derrotas++;
+    bloqueos += r.turnosBloqueando || 0;
+    const share = r.ganadoras.length ? 1 / r.ganadoras.length : 0;
     if (r.ganadoras.length > 1) empates++;
     if (r.ganadoras.length === n) empateTotal++;
     if (!r.invocaciones.length) ceroInv++;
@@ -413,6 +441,7 @@ export function resumir(registros) {
     fin: Object.fromEntries(Object.entries(fines).map(([k, v]) => [k, red(v / N)])),
     turnosMedios: red(media(turnos), 1),
     victoriaCompartida: red(empates / N), empateTotal: red(empateTotal / N),
+    derrotaColectiva: red(derrotas / N), turnosBloqueandoPorPartida: red(bloqueos / N, 2),
     margenMedio: red(margen / N, 2), puntosGanadorMedio: red(media(ptsGanador), 2),
     liderTrasPrimeraInvocacionGana: conLider ? red(liderGana / conLider) : null,
     gemasInvocacionPorPersonajePorPartida: Object.fromEntries(Object.entries(gemasPersonaje).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, red(v / N)])),
@@ -615,7 +644,7 @@ if (esPrincipal) {
     return acc;
   }, []));
   const t0 = Date.now();
-  const opciones = { modo: args.modo || 'normal', invocationSet: args.set, entusiasta: args.entusiasta === '1', madain: args.madain === '1', intercambio: args.intercambio || 'siempre' };
+  const opciones = { modo: args.modo || 'normal', invocationSet: args.set, entusiasta: args.entusiasta === '1', madain: args.madain === '1', intercambio: args.intercambio || 'siempre', derrotaColectiva: +(args.derrota || 0) };
   const res = experimento({
     mesa: (args.mesa || 'dificil,dificil,dificil').split(','),
     partidas: +(args.partidas || 1000),
