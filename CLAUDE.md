@@ -312,7 +312,9 @@ in `nextTurn()`.
   web: `--variantes`, `--aleatorias <forma>` for random requirements (uniform, ordered,
   weighted tokens, or cards drawn from the deck — see `FORMAS_ALEATORIAS`),
   `--intercambio` to limit the Experto swap) and a `'peque'` seat (chaotic,
-  never pays Gems). Results of the 2026-11-08 run are in the same Doc.
+  never pays Gems). Since 1.34.5, `--derrota N` (collective defeat: fewer
+  than N invocations and nobody wins) and an `'oportunista'` seat (rational
+  blocker). Results of the 2026-11-08 runs are in the same Doc.
 - **`js/game.js`** — builds the character deck (`initGame`, via
   `prepararMazo(estado.partida)` in `utils.js`, and the central autómata in
   Experto), turn advancement and the "no cards left" end condition

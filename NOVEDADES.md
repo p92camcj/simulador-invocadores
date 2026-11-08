@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.34.5.157 - 2026-11-08
+
+- Simulaciones para el autor sobre qué pasa si, cuando no se completa
+  ninguna invocación, no gana nadie. El juego que juegas no cambia.
+
+---
+
 ## 1.34.4.155 - 2026-11-08
 
 - Nuevas simulaciones para el autor: requisitos sorteados por fichas en

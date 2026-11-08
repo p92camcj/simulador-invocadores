@@ -300,6 +300,12 @@ de casa para una niña pequeña) y variantes de reglas que solo existen en el
 análisis (`js/motor/variantes.js`): CLI `--variantes '{"duplicadoDaGema":true}'`,
 `--aleatorias 1|ordenada|fichas|fichasSinRepetir|cartas|cartasVuelven|escalonada|escalonadaA` (requisitos al azar) e `--intercambio siempre|siAutomataGana|mitad`
 (límite al intercambio con la autómata central de Experto).
+Desde 1.34.5, `--derrota N` (derrota colectiva: con menos de N invocaciones
+no gana nadie; mientras no se llega a N, las Expertas cooperan con
+`PESOS.rival`/`BUSQUEDA.rival` a 0) y el perfil `'oportunista'` (bloqueadora
+racional: juega como la Experta y bloquea como la saboteadora cuando va
+primera y ya no arriesga la derrota colectiva). El resumen añade
+`derrotaColectiva` y `turnosBloqueandoPorPartida`.
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
