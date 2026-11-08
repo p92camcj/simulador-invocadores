@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.34.3.153 - 2026-11-08
+
+- Más simulaciones para el autor: distintas formas de sortear los
+  personajes que pide cada invocación (con fichas o con cartas del mazo).
+  El juego que juegas no cambia.
+
+---
+
 ## 1.34.2.151 - 2026-11-08
 
 - Hemos probado en simulación los cambios de reglas propuestos al autor

@@ -68,6 +68,9 @@ export function determinizar(partida, botIdx) {
   const porVer = { ...composicionMazoTotal(mundo) };
   const restar = nombre => { if (porVer[nombre] > 0) porVer[nombre]--; };
   todosLosPortales(mundo.players, mundo.neutrals).forEach(({ stack }) => stack.forEach(c => restar(c.name)));
+  // Cartas sacadas del mazo como requisito (solo en el análisis de
+  // equilibrio, tools/equilibrio.mjs): están bocarriba, se conocen.
+  (mundo.cartasRequisito || []).forEach(restar);
 
   const huecos = [];
   mundo.players.forEach((p, i) => {

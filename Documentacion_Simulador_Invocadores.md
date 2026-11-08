@@ -225,7 +225,7 @@ completo (Fase A + Fase B) con el motor real sobre mundos posibles
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
 | `BUSQUEDA` | `objeto` | `{ mundos: 8, ronda: 1, rival: 0.5 }`: mundos posibles por decisión; si se simula la ronda de las rivales tras el turno propio; y el `PESOS.rival` que usa la experta (lo aplica `bot.js` solo durante su turno). |
-| `determinizar(partida, botIdx)` | `función` | Copia de la partida con la carta oculta de la bot, las cartas privadas de las rivales (y su mano entera si tienen la Clarividente visible) y el mazo repartidos al azar entre los personajes que la bot aún no ha visto (composición menos todas las cartas de los Portales y las de mano que ve), y las Gemas ajenas con el valor medio de su nivel. `tests/bot-busqueda.mjs` comprueba que no filtra nada oculto. |
+| `determinizar(partida, botIdx)` | `función` | Copia de la partida con la carta oculta de la bot, las cartas privadas de las rivales (y su mano entera si tienen la Clarividente visible) y el mazo repartidos al azar entre los personajes que la bot aún no ha visto (composición menos todas las cartas de los Portales, las de mano que ve y, en el análisis de equilibrio, las de `partida.cartasRequisito`), y las Gemas ajenas con el valor medio de su nivel. `tests/bot-busqueda.mjs` comprueba que no filtra nada oculto. |
 | `enumerarFasesB(partida, botIdx)` | `función` | `[null, { origen, guion }...]`: no activar nada, o cada habilidad activable (`opcionesActivarHabilidad`) con cada combinación de elecciones, descubiertas recorriendo las peticiones `ui.pedir` del motor en copias desechables. |
 | `aplicarConGuion(partida, botIdx, origen, guion, descubrir?)` | `función` | Aplica en `partida` la habilidad del origen (`'own:j'`/`'central:k'`) siguiendo las elecciones `guion` y cobra la activación; `false` si el guion no es aplicable. Exportada (1.34.1) para la saboteadora de `tools/equilibrio.mjs`. |
 | `puntuarMundo(antes, despues, botIdx, construirVista, probabilidadPorNombre)` | `función` | Gemas ganadas por la bot − `PESOS.rival` × las de la rival que más gana, más `valorPosicional` y `valorAmenazaSiguiente` (`bot-estrategia.js`) sobre la mesa que queda. |
@@ -298,7 +298,7 @@ análisis de equilibrio por simulación» (2026-11-07). Desde 1.34.2 también
 el perfil `'peque'` (como `'caotico'`, pero no paga Gemas al activar: regla
 de casa para una niña pequeña) y variantes de reglas que solo existen en el
 análisis (`js/motor/variantes.js`): CLI `--variantes '{"duplicadoDaGema":true}'`,
-`--aleatorias 1` (requisitos al azar) e `--intercambio siempre|siAutomataGana|mitad`
+`--aleatorias 1|ordenada|fichas|fichasSinRepetir|cartas|cartasVuelven` (requisitos al azar) e `--intercambio siempre|siAutomataGana|mitad`
 (límite al intercambio con la autómata central de Experto).
 
 | Nombre | Tipo | Descripción |
@@ -307,7 +307,8 @@ análisis (`js/motor/variantes.js`): CLI `--variantes '{"duplicadoDaGema":true}'
 | `distanciaACierre(partida)` | `función` | Cota inferior de cartas que faltan para cerrar la invocación activa: `max(Portales sin carta visible, requisitos sin ver)`. |
 | `jugarPartidaAnalisis(asientos, opciones, perfiles)` | `función` | Una partida con métricas: puntos, ganadoras, invocaciones (nivel y turno), Gemas por personaje, bonus de Pícaro/Maestro, Entusiasta, duplicados, Gemas perdidas en Portales centrales, habilidades y jugadas por asiento, autómata central e intercambio. |
 | `resumir(registros)` | `función` | Resumen con IC 95 %: victorias por perfil, por posición en el turno y por asiento de la mesa, invocaciones, niveles alcanzados, cómo acaba, victorias compartidas, margen, si gana la líder tras la primera invocación, victorias según uso de cada habilidad. |
-| `setAleatorio(opciones)` | `función` | (1.34.2) Set de requisitos al azar: baraja los personajes del modo (sin Metamorfo ni Entusiasta) y da 3 distintos a C, B y A con las Gemas del set normal; `null` si hay menos de 9. |
+| `FORMAS_ALEATORIAS` | `array` | (1.34.3) Formas de sortear requisitos: `'uniforme'`, `'ordenada'` (el trío con más copias va a la C), `'fichas'` (una ficha por copia; 3 personajes distintos por invocación, se pueden repetir entre invocaciones), `'fichasSinRepetir'`, `'cartas'` (al empezar cada invocación se roban del mazo hasta 3 personajes distintos, que salen del juego; quedan en `partida.cartasRequisito`, que `determinizar` descuenta) y `'cartasVuelven'` (al completarse vuelven al mazo). |
+| `setAleatorio(opciones, forma = 'uniforme')` | `función` | Set de requisitos decidido al empezar (formas uniformes y de fichas): 3 personajes distintos para C, B y A (sin Metamorfo ni Entusiasta) con las Gemas del set normal; `null` si no hay personajes suficientes. Las formas de cartas se resuelven con ganchos al empezar la partida y tras cada invocación. |
 | `experimento({ mesa, partidas, opciones, semilla, rotar, perfiles, cantidades, apartar, variantes, aleatorias })` | `función` | Varias partidas rotando asientos; `cantidades` cambia copias de personajes del modo y `apartar` las cartas apartadas, solo durante el experimento; `variantes` activa interruptores de `VARIANTES` y `aleatorias` usa `setAleatorio()` en cada partida (todo se restaura al terminar). CLI: `node tools/equilibrio.mjs --mesa saboteador,experta,experta --partidas 120 --modo normal`. |
 
 ---
