@@ -13,7 +13,9 @@ import {
   anunciarCartaJugada, envolverHabilidad, anunciarInvocacion, cuandoTermineEspectaculo,
   hayEspectaculoEnCurso
 } from './espectaculo.js';
-import { preguntarMesa } from './mesa3d.js';
+import {
+  esInvitada, enviarJugada, enviarActivar, enviarFinTurno, preguntarJugadora, asientoLocal,
+} from './red/sala.js';
 import {
   registrarEnHistorial, claveDeDestino, claveDeOrigenHabilidad, fotoPortales, portalesCambiados,
   pilaDeClave, textoJugada, textoHabilidad, textoInvocacion, trazosHabilidad,
@@ -28,6 +30,15 @@ import {
  */
 export function ejecutarJugada(cartaIdx, destKey) {
   if (cartaIdx === null || cartaIdx === undefined) return false;
+  // Partida online: la invitada manda la jugada a la mesa, que la ejecuta.
+  if (esInvitada()) {
+    const valida = enviarJugada(cartaIdx, destKey);
+    if (valida) {
+      window.selectedCardIdx = null;
+      render(estado.partida.players, estado.partida.neutrals, estado.partida.levelIdx);
+    }
+    return valida;
+  }
   // Aprendizaje de las autómatas: lo que sabía la persona y lo que eligió.
   const ejemplo = prepararEjemploPersona(estado.partida, cartaIdx, destKey);
   const jugadora = estado.partida.turn;
@@ -97,7 +108,7 @@ function preguntarUsoAsterisco(player, responder) {
     responder(false);
     return;
   }
-  preguntarMesa(`${player.name}: ¿cómo pagas el acceso al Portal central?`, [
+  preguntarJugadora(estado.partida.players.indexOf(player), `${player.name}: ¿cómo pagas el acceso al Portal central?`, [
     { val: 'asterisco', lbl: '✦ Revelar mi Gema de asterisco (gratis)' },
     { val: 'unidad', lbl: '💎 Pagar 1 Gema de valor 1' },
   ], val => responder(val === 'asterisco'));
@@ -111,6 +122,7 @@ function preguntarUsoAsterisco(player, responder) {
  */
 export function ejecutarFinDeTurno() {
   if (estado.partida.juegoTerminado) return;
+  if (esInvitada()) { enviarFinTurno(); return; }
   if (window.avanceTurnoPendiente) return;
   const eventos = terminarTurno(estado.partida);
   const invalida = eventos.find(e => e.tipo === 'accionInvalida');
@@ -161,15 +173,18 @@ const repintar = () => render(P().players, P().neutrals, window.levelIdx);
  */
 export function seleccionarCartaMano(idx) {
   if (window.played) return;
+  // Partida online: solo se juega en el propio turno.
+  const propio = asientoLocal();
+  if (propio !== null && propio !== window.turn) return;
   const pl = P().players[window.turn];
   if (!pl?.hand[idx]) return;
   window.selectedCardIdx = (window.selectedCardIdx === idx) ? null : idx;
   repintar();
 }
 
-/** Toque en un Portal: juega ahí la carta seleccionada (si hay una). */
+/** Toque en un Portal: juega ahí la carta seleccionada (si hay una). Devuelve true si vale. */
 export function jugarEnPortal(destKey) {
-  ejecutarJugada(window.selectedCardIdx, destKey);
+  return ejecutarJugada(window.selectedCardIdx, destKey);
 }
 
 /** Deshace la selección de carta de la mano. */
@@ -196,10 +211,13 @@ export function elegirPortalObjetivo(key) {
 /**
  * Activar habilidad (Fase B, opcional, una vez por turno): la del personaje
  * visible en uno de tus propios Portales (gratis) o en un Portal central
- * (pagando, ver utils.js).
+ * (pagando, ver utils.js). `origenPreferido` (solo online): el Portal que
+ * la invitada ha tocado dos veces, para no volver a preguntárselo.
  */
-export function activarHabilidad() {
+export function activarHabilidad(origenPreferido = null) {
   if (window.juegoTerminado) return;
+  // Partida online: la mesa abre la habilidad y manda las preguntas aquí.
+  if (esInvitada()) { enviarActivar(origenPreferido); return; }
   const invalida = validarFaseB(estado.partida)[0];
   if (invalida) {
     alert(invalida.motivo);

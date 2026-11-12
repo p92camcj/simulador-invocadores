@@ -521,6 +521,25 @@ in `nextTurn()`.
   `jugarTurnoAutomataPasoAPaso()` + `nextTurn()` wait for scenes plus
   `pausaTrasPaso()` (speed setting `#selRitmoBots`) between steps; the
   arena still runs them straight through via `decidirYJugarTurno()`.
+- **`js/red/`** — (1.38.0) online play, each person on their own device
+  (`docs/MEJORAS_FUTURAS.md`, "Multijugador por red"). Host-authoritative
+  over PeerJS/WebRTC (`vendor/peerjs/`, free PeerJS broker + its TURN, no
+  server of ours): the device that creates the room (`sala.js`) runs the
+  real engine and the bots and sends each guest only
+  `sanearPartidaParaAsiento()` (`sanear.js`, pure, `tests/red.mjs`): hidden
+  card names, the deck, others' Gem values and `idRed` never leave the
+  host. Guests render that copy with the normal Mesa/Escenario code and
+  send intents; `actions.js` (`ejecutarJugada`, `activarHabilidad`,
+  `ejecutarFinDeTurno`) forwards them when `esInvitada()`, and the host runs
+  them through the same functions inside `conDecisor(asiento, ...)`.
+  `picker()`/`pickerPortal()` (`render.js`) and `preguntarJugadora()` route
+  a question to the device of whoever must answer (`decisorRemoto()`), and
+  `alert()` inside `conDecisor` goes to that guest. Players on other
+  devices carry `idRed`; `asientoLocal()` pins each device's own seat and
+  `construirVistaMesa(..., { pantallaPrivada })` shows her hand all the
+  time (no hand-off curtain online). Test in one browser with `?red=local`
+  (BroadcastChannel) and two tabs, or against a local PeerJS server with
+  `?servidorRed=127.0.0.1:9000`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current
@@ -617,6 +636,7 @@ node tests/bot-busqueda.mjs
 node tests/aprendizaje.mjs
 node tests/historial.mjs
 node tests/modos.mjs
+node tests/red.mjs
 ```
 
 ```bash
@@ -681,11 +701,11 @@ concreta, pregúntalo antes de decidir por tu cuenta.
 
 ## Future direction (context, not yet implemented)
 
-The long-term goal is a multiplayer digital version where each player uses
-their own phone, joining a "room" either over the same Wi-Fi network or via
-a small hosted server. Nothing in the current codebase supports this yet —
-today's app assumes one shared screen and trusts every player to look away
-during hidden-card moments. Keep this in mind when making architectural
-decisions (e.g. don't couple game logic too tightly to direct DOM
-manipulation if it can reasonably be avoided), but don't build networking
-speculatively until it's actually scoped.
+Online play with each player on their own device exists since 1.38.0
+(`js/red/`, option A of the proposal agreed with the owner on 2026-11-12:
+direct WebRTC with the room creator's device as the authoritative table).
+Its limit: the host must keep the app open, and the host could peek with
+dev tools. If that ever matters (or turn-by-turn "play over days" is
+wanted), the same message protocol can move to a small server (e.g.
+Cloudflare Workers + Durable Objects running `js/motor/` unchanged). Keep
+game logic decoupled from the DOM so that stays possible.

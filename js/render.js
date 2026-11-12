@@ -8,6 +8,7 @@ import { actualizarClarividente, invocacionDePartida } from './utils.js';
 import { estado } from './motor/estado.js';
 import { aplicarEleccionClarividente } from './motor/habilidades.js';
 import { renderMesa3D, pickerMesa, hayPickerMesaAbierto } from './mesa3d.js';
+import { esInvitada, decisorRemoto, pedirRemoto, conDecisor, trasRepintar } from './red/sala.js';
 
 /**
  * Resuelve, para una jugadora que acaba de perder la visibilidad de su
@@ -62,7 +63,8 @@ function resolverEleccionClarividente(player) {
     // mismo picker, porque el reglamento exige que la jugadora SÍ elija.
     elegir,
   );
-  elegir();
+  // Partida online: la pregunta va al dispositivo de esa jugadora.
+  conDecisor(estado.partida.players.indexOf(player), elegir);
 }
 
 /**
@@ -77,6 +79,8 @@ function resolverEleccionClarividente(player) {
  * `render()` (que ocurre constantemente tras cualquier acción del juego).
  */
 function gestionarTransicionesClarividente(players) {
+  // En una partida online la invitada solo pinta: la elección la pide la mesa.
+  if (esInvitada()) return;
   actualizarClarividente(players);
   const pickerEnCurso = !!window.pickerObjetivoPortal || hayPickerMesaAbierto();
   players.forEach(player => {
@@ -105,6 +109,12 @@ function gestionarTransicionesClarividente(players) {
  * @param {Function} [onCancel] - Se llama al cancelar, en vez de `cb`
  */
 export function picker(title, options, cb, onCancel) {
+  // Partida online: si decide alguien de otro dispositivo, la pregunta viaja allí.
+  const remoto = decisorRemoto();
+  if (remoto !== null) {
+    pedirRemoto(remoto, 'picker', title, options, cb, onCancel);
+    return;
+  }
   pickerMesa(title, options, cb, onCancel);
 }
 
@@ -119,6 +129,11 @@ export function picker(title, options, cb, onCancel) {
  * no hay validación duplicada.
  */
 export function pickerPortal(title, opciones, cb, onCancel) {
+  const remoto = decisorRemoto();
+  if (remoto !== null) {
+    pedirRemoto(remoto, 'portal', title, opciones, cb, onCancel);
+    return;
+  }
   window.pickerObjetivoPortal = { opciones, cb };
   render(window.players, window.neutrals, window.levelIdx);
   picker(title, opciones, val => {
@@ -144,4 +159,6 @@ export function pickerPortal(title, opciones, cb, onCancel) {
 export function render(players, neutrals, levelIdx) {
   gestionarTransicionesClarividente(players);
   renderMesa3D();
+  // Partida online: la mesa manda a cada invitada lo que ha cambiado.
+  trasRepintar();
 }
