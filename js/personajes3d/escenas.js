@@ -172,22 +172,17 @@ function escudos(i) {
 const ESCENAS = [];
 const escena = (id, grupo, titulo, run) => ESCENAS.push({ id, grupo, titulo, run });
 
-escena('0', 'Comparativa', 'Modelo 3D frente a ilustración recortada', async () => {
-  const z0 = POS[0].z + 2.2;
-  sin(plano({ objetivo: V(0, 1.0, z0 + 1.6), ancho: 5.6, alto: 3.6, polar: 1.3 }, 0));
-  const m = actor('Clarividente', V(-1.15, 0, z0)), l = actor('lamina:Clarividente', V(1.15, 0, z0));
-  di('La misma Clarividente de dos maneras. Izquierda: modelo 3D articulado. Derecha: tu ilustración recortada, de pie en el mundo 3D.');
-  S.aparece(); await Promise.all([aparecer(m, 0.7), aparecer(l, 0.7)]); await espera(1.6);
-  di('Caminar: el modelo mueve piernas, brazos y capa; la ilustración solo puede balancearse.');
-  await Promise.all([caminar(m, V(-1.15, 0, z0 + 2.2), { vel: 0.9 }), caminar(l, V(1.15, 0, z0 + 2.2), { vel: 0.9 })]);
-  await espera(0.8);
-  di('Conjurar: el modelo alza el orbe; la ilustración se estira y brilla. Al girar la cámara, el modelo tiene volumen y la ilustración siempre te mira de frente.');
-  S.cargar(330, 1.2); const [a, b] = await Promise.all([conjurar(m, { pose: 'orbeAlto', lanza: 'orbeAlto', dur: 1.3 }), conjurar(l, { pose: 'orbeAlto', lanza: 'orbeAlto', dur: 1.3 })]);
-  S.clarividente(); sin(destello(a, col('Clarividente'), 2, 0.8)); sin(destello(b, col('Clarividente'), 2, 0.8));
-  chispas(a, { n: 30, color: col('Clarividente'), color2: 0xffffff, vel: 0.9, vida: 1.3 }); chispas(b, { n: 30, color: col('Clarividente'), color2: 0xffffff, vel: 0.9, vida: 1.3 });
-  await plano({ objetivo: V(0, 1.0, z0 + 2.2), ancho: 5.6, alto: 3.6, polar: 1.25, azimut: 0.9 }, 2.5);
-  await plano({ objetivo: V(0, 1.0, z0 + 2.2), ancho: 5.6, alto: 3.6, polar: 1.25, azimut: -0.9 }, 4);
-  await plano({ objetivo: V(0, 1.0, z0 + 2.2), ancho: 5.6, alto: 3.6, polar: 1.3, azimut: 0 }, 2); await espera(1.5);
+escena('0', 'Galería', 'Todos los personajes, de cerca', async () => {
+  const nombres = ['Aprendiz', 'Centinela', 'Clarividente', 'Cronista', 'Cronomante', 'Entusiasta', 'Estratega', 'Maestro', 'Metamorfo', 'Ocultista', 'Pícaro', 'Lumo', 'Reena', 'Sora'];
+  portales.forEach(p => { p.visible = false; });
+  const xs = i => (i - (nombres.length - 1) / 2) * 1.35, as = nombres.map((n, i) => actor(n, V(xs(i), 0, 9.5)));
+  const ver = (i0, i1) => ({ objetivo: V((xs(i0) + xs(i1)) / 2, 0.95, 9.5), ancho: xs(i1) - xs(i0) + 1.5, alto: 2.5, polar: 1.42 });
+  sin(plano(ver(0, 3), 0)); di('Los personajes, de cerca: telas con trama, bordados y pliegues; brazos y piernas articulados.');
+  await espera(4.5);
+  for (const [i0, i1] of [[3, 6], [7, 10], [10, 13]]) { await plano(ver(i0, i1), 2.2); await espera(3.6); }
+  di('Y en movimiento.'); await plano({ objetivo: V(0, 1, 10.5), ancho: 15, alto: 4.2, polar: 1.3 }, 2.2);
+  await Promise.all(as.map((a, i) => caminar(a, V(xs(i) * 0.9, 0, 12.2), { vel: 0.9 })));
+  as.forEach((a, i) => { if (INFO[a.userData.nombre].manos.length) posar(a, i % 2 ? 'alzar' : 'celebrar', 4); }); await espera(2.5); as.forEach(a => posar(a, null, 4)); await espera(2);
 });
 
 escena('1', 'Manos', 'Mi mano', async () => {

@@ -21,7 +21,7 @@ export const INFO = {
   'Lumo':         { color: 0xfff0a0, color2: 0xa8ffb0, manos: [] },
   'Maestro':      { color: 0xffb84a, color2: 0xff6a5a, manos: ['D', 'I'], pose: 'ofrenda' },
   'Metamorfo':    { color: 0xff9ad8, color2: 0xd9b0ff, manos: ['D', 'I'], pose: 'ofrenda', aura: 0.8 },
-  'Ocultista':    { color: 0x4a9cff, color2: 0x9ad8ff, manos: ['D', 'I'], pose: 'juntas', aura: 0.6 },
+  'Ocultista':    { color: 0x4a9cff, color2: 0x9ad8ff, manos: ['D', 'I'], pose: 'juntas', aura: 0.6, vuela: 0.2 },
   'Pícaro':       { color: 0x6fb8ff, color2: 0xffffff, manos: ['D'], pose: 'orbe' },
   'Reena':        { color: 0xffa8c8, color2: 0xfff0f6, manos: [] },
   'Sora':         { color: 0xffb060, color2: 0xfff0b0, manos: [], vuela: 0.4 },
@@ -146,21 +146,30 @@ function animar(a, dt, t) {
     m.raiz.position.y = Math.abs(sw) * 0.05 * w; m.raiz.rotation.z = sw * 0.035 * w + resp * 0.006;
     m.raiz.scale.set(1 - 0.04 * u.gesto, 1 + 0.06 * u.gesto + resp * 0.008, 1);
   } else if (m.tipo === 'humano' || m.tipo === 'criatura') {
-    const bal = sw * 0.28 * w * (1 - P.firme);
-    A.brazoI.rotation.set(P.bIx - bal, 0, P.bIz + resp * 0.02); A.codoI.rotation.x = P.cI;
-    A.brazoD.rotation.set(P.bDx + bal, 0, P.bDz - resp * 0.02); A.codoD.rotation.x = P.cD;
-    A.cabeza.rotation.set(P.cabx + resp * 0.012, P.caby, 0);
-    A.torso.rotation.set(P.torx + resp * 0.008, P.tory + sw * 0.05 * w, m.tipo === 'criatura' ? Math.sin(t * 0.8) * 0.04 : 0);
+    const bal = sw * 0.34 * w * (1 - P.firme), lento = Math.sin(t * 0.9 + u.f0 * 2);
+    // Hombro, codo y muñeca: el codo acompaña el braceo y la muñeca nunca queda rígida.
+    A.brazoI.rotation.set(P.bIx - bal, 0, P.bIz + resp * 0.025); A.codoI.rotation.x = P.cI - (0.22 + Math.max(0, -sw) * 0.5) * w * (1 - P.firme) + resp * 0.03;
+    A.brazoD.rotation.set(P.bDx + bal, 0, P.bDz - resp * 0.025); A.codoD.rotation.x = P.cD - (0.22 + Math.max(0, sw) * 0.5) * w * (1 - P.firme) - resp * 0.03;
+    if (A.munecaI) { A.munecaI.rotation.set(-0.12 + lento * 0.09 + P.cI * 0.12, 0, 0.1 + resp * 0.05); A.munecaD.rotation.set(-0.12 - lento * 0.09 + P.cD * 0.12, 0, -0.1 - resp * 0.05);
+      A.dedosI.rotation.x = -0.35 + Math.sin(t * 1.3 + u.f0) * 0.14; A.dedosD.rotation.x = -0.35 + Math.sin(t * 1.1 + u.f0 + 2) * 0.14; }
+    A.cabeza.rotation.set(P.cabx + resp * 0.014, P.caby + lento * 0.035 * (1 - w), lento * 0.012);
+    A.torso.rotation.set(P.torx + resp * 0.01 + 0.03 * w, P.tory + sw * 0.07 * w, m.tipo === 'criatura' ? Math.sin(t * 0.8) * 0.04 : -sw * 0.012 * w);
     if (m.tipo === 'humano') {
-      A.piernaI.rotation.x = -sw * 0.5 * w; A.piernaD.rotation.x = sw * 0.5 * w;
-      A.rodillaI.rotation.x = Math.max(0, cw) * 0.8 * w; A.rodillaD.rotation.x = Math.max(0, -cw) * 0.8 * w;
-      A.cadera.position.y = 0.88 + Math.abs(cw) * 0.025 * w + resp * 0.004;
-      if (A.falda) { A.falda.rotation.x = sw * 0.05 * w; A.falda.rotation.z = cw * 0.03 * w; }
+      A.cadera.position.y = 0.88 + Math.abs(cw) * 0.03 * w + resp * 0.004 - 0.012 * (1 - w);
+      A.cadera.rotation.set(0, -sw * 0.06 * w, lento * 0.012 * (1 - w));
+      if (A.piernaI) {   // cadera, rodilla y tobillo: zancada con flexión y apoyo de talón
+        const quieto = (1 - w) * 0.05;
+        A.piernaI.rotation.x = -sw * 0.52 * w - quieto; A.piernaD.rotation.x = sw * 0.52 * w - quieto;
+        A.rodillaI.rotation.x = (Math.max(0, cw) * 0.95 + 0.08) * w + quieto * 2; A.rodillaD.rotation.x = (Math.max(0, -cw) * 0.95 + 0.08) * w + quieto * 2;
+        A.tobilloI.rotation.x = -(A.piernaI.rotation.x + A.rodillaI.rotation.x) * 0.75 + Math.max(0, cw) * 0.35 * w;
+        A.tobilloD.rotation.x = -(A.piernaD.rotation.x + A.rodillaD.rotation.x) * 0.75 + Math.max(0, -cw) * 0.35 * w;
+      }
+      if (A.falda) { A.falda.rotation.x = sw * 0.05 * w + (u.vuelo ? Math.sin(t * 1.3 + u.f0) * 0.05 : 0); A.falda.rotation.z = cw * 0.03 * w + (u.vuelo ? Math.sin(t * 1.7) * 0.03 : 0); }
       if (A.lanza && !u.lanzaLibre) A.lanza.rotation.x = -(A.brazoD.rotation.x + A.codoD.rotation.x);
       if (A.libro) A.libro.rotation.x = -(A.brazoI.rotation.x + A.codoI.rotation.x) + 0.25;
     } else if (A.halo) A.halo.rotation.z = t * 0.3;
   } else if (m.tipo === 'cuadrupedo') {
-    A.patas.forEach((p, i) => { p.rotation.x = Math.sin(u.fase + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.55 * w; });
+    A.patas.forEach((p, i) => { const f = u.fase + (i === 0 || i === 3 ? 0 : Math.PI); p.rotation.x = Math.sin(f) * 0.55 * w; if (A.rodillas) A.rodillas[i].rotation.x = (i < 2 ? -1 : 1) * (Math.max(0, Math.cos(f)) * 0.9 * w + 0.06); });
     A.torso.position.y += 0; A.torso.rotation.x = Math.sin(u.fase * 2) * 0.03 * w + (u.inclina ?? 0);
     A.cola.rotation.z = Math.sin(t * (u.alegre ? 16 : 5) + u.f0) * (u.alegre ? 0.7 : 0.25);
     A.cabeza.rotation.set(resp * 0.04 + (u.cabx ?? 0), Math.sin(t * 0.7 + u.f0) * 0.15, Math.sin(t * 1.1 + u.f0) * 0.06);
