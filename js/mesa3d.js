@@ -592,7 +592,12 @@ function alTocarEscenario(t) {
   const objetivo = window.pickerObjetivoPortal;
   if (objetivo) {
     const op = objetivo.opciones.find(o => o.val === clave);
-    if (!op || op.disabled) { mostrarAviso('Ese Portal no es un objetivo válido'); return; }
+    if (!op || op.disabled) {
+      // Escenario: si lo protege una Centinela, el hechizo rebota en sus escudos.
+      const rebota = op?.disabled && escenarioActivo() && tablero()?.rebotar?.(clave, origenEscenario);
+      mostrarAviso(rebota ? 'La Centinela protege ese Portal: la magia rebota en sus escudos' : 'Ese Portal no es un objetivo válido');
+      return;
+    }
     cerrarHoja();
     elegirPortalObjetivo(clave);
     return;
@@ -1214,7 +1219,10 @@ function inspeccionarCarta(el, titulo, portal, activable) {
  * mismo camino que el botón Habilidad: activarHabilidad() y se contesta su
  * primer picker con ese origen.
  */
+let origenEscenario = null;   // Portal del Escenario desde el que se lanzó la última habilidad
 function activarDesde(origen) {
+  const [tipo, k] = String(origen).split(':');
+  origenEscenario = tipo === 'own' ? `${estado.partida.turn}:${k}` : `n:${k}`;
   activarHabilidad();
   const h = hojaActual;
   if (h?.tipo === 'picker' && h.opciones?.some(o => o.val === origen && !o.disabled)) {

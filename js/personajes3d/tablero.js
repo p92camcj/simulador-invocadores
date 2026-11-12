@@ -15,11 +15,11 @@
 // diferencia. espectaculo.js le avisa además de quién ha jugado, qué
 // habilidad se ha activado y qué invocación se ha completado, y espera a que
 // termine (ocupado / cuandoLibre) antes de pasar el turno.
-import { THREE, mundo, crearMundo, tw, espera, V, lineal, sale, entra, mezcla, arco, pausar, reanudar, siempre, siempreReal, cadaFrame, temblar, cancelarTodo, CANCELADO } from './mundo.js';
+import { THREE, mundo, crearMundo, tw, espera, V, lineal, sale, entra, rebote, mezcla, arco, pausar, reanudar, siempre, siempreReal, cadaFrame, temblar, cancelarTodo, CANCELADO } from './mundo.js';
 import { crearEfectos, chispas, humo, onda, destello, rayo, gema, quitar } from './efectos.js';
 import { crearPortal, encender, VARIANTES, ALTURA_TARIMA, texturaDisco, nombrarPortal } from './portales.js';
 import { crearActor, quitarActor, INFO, posar, mano, cabeza, pecho, mirar, saltar, caminar, quitarCapa, aclararCapa, opacarCapa, conjurar, transformar, opacidad, materialesDe } from './personajes.js';
-import { runa, ojoDeLuz, hazDeLuz, relojArena, orbe, quitarOrbe, COLORES_ORBES, limpiarMagia } from './magia.js';
+import { runa, ojoDeLuz, hazDeLuz, relojArena, orbe, quitarOrbe, COLORES_ORBES, limpiarMagia, crearEscudos } from './magia.js';
 import { S, iniciarAudio, ponerSonido, sonidoActivo } from './sonido.js';
 import { crearAmbiente, sonidoAmbiente, fijarAmbiente as fijarAmb, ambienteActual, OPCIONES_AMBIENTE } from './ambiente.js';
 import { velocidadAnimaciones, alCambiarVelocidad } from '../velocidad.js';
@@ -64,7 +64,7 @@ export function iniciar() {
   crearEfectos();
   controles(lienzo);
   siempre(seguirActores);
-  siempreReal(seguirMesa);
+  siempreReal(seguirMesa); siempreReal(seguirEscudos);
   pausar();
   // Al girar el móvil la mesa se vuelve a disponer (vertical: más estrecha y alargada).
   window.addEventListener('resize', () => { if (visible && construido && ultimaVista && !pendiente) { pendiente = ultimaVista; if (!temporizador && !trabajando) temporizador = setTimeout(procesar, 0); } });
@@ -96,6 +96,7 @@ export function reiniciar() {
   manos.clear();
   for (const p of portales.values()) { p.g.visible = false; p.actor = null; }
   for (const e of gemasAsiento.values()) { e.g.visible = false; e.firma = null; }
+  quitarEscudos();
   if (visible) { visible = false; lienzo.classList.add('oculto'); pausar(); sonidoAmbiente(false); }
 }
 
@@ -335,7 +336,7 @@ function construir(v) {
     manos.set(a.idx, a.mano.map((cv, k) => nuevaMano(a.idx, cv, k === 0 ? -1 : 1, null)));
   }
   pintarEstados(v);
-  actualizarGemas(v);
+  actualizarGemas(v); actualizarEscudos(v, false);
   encuadrar(true);
   construido = true;
 }
@@ -457,10 +458,11 @@ function pintarEstados(v) {
 
 const gemasAsiento = new Map();   // idx → { g, firma, piezas, rotulo }
 const TIPO_GEMA = { unitaria: 'azul', C: 'C', B: 'B', A: 'A', '*': 'A' };
+const unidadesPrevias = new Map();   // idx → Gemas de 1 que tenía (para saber si la Entusiasta ha regalado una)
 function actualizarGemas(v) {
   const vistos = new Set();
   for (const a of [v.propio, ...v.rivales]) {
-    vistos.add(a.idx);
+    vistos.add(a.idx); unidadesPrevias.set(a.idx, a.gemas.porNivel.unitaria);
     const gm = a.gemas, propio = a.idx === v.propio.idx;
     const firma = JSON.stringify([gm.porNivel, gm.reveladas, propio ? gm.total : null]);
     let e = gemasAsiento.get(a.idx);
@@ -507,7 +509,7 @@ function colocarGemas(dt, t) {
 
 // ----------------------------------------------------------- animaciones
 
-const sobre = clave => portales.get(clave).g.position.clone().add(V(0, ALTURA_TARIMA, 0));
+const sobre = clave => (portales.get(clave)?.g.position.clone() ?? V()).add(V(0, ALTURA_TARIMA, 0));
 const local = (clave, x, z) => { const g = portales.get(clave).g, r = g.rotation.y; return V(g.position.x + x * Math.cos(r) + z * Math.sin(r), 0, g.position.z - x * Math.sin(r) + z * Math.cos(r)); };
 const escalon = (clave, k) => { const p = local(clave, 0, k ? 1.0 : 1.66); p.y = k ? ALTURA_TARIMA : 0; return p; };
 
@@ -575,7 +577,7 @@ async function surgir(p, cv) {
 }
 
 /** Una carta llega a un Portal: la figura camina, sube la escalinata y, si es pública, se quita el manto por el camino. */
-async function entrar(p, viajero, pv) {
+async function entrar(p, viajero, pv, mover = null) {
   const clave = claveDe(p), viejo = p.actor, cv = pv.top;
   let a = viajero?.actor;
   if (!a) { a = figura({ visible: false }, (disp.mazo ?? V()).clone(), 0, true); humo(a.position.clone().add(V(0, 0.5, 0)), { n: 8 }); }
@@ -586,7 +588,8 @@ async function entrar(p, viajero, pv) {
   if (nombre && INFO[nombre] && a.userData.capa) rev = quitarCapa(a, nombre);
   else if (!cv?.visible && a.userData.capa?.userData.translucida) rev = opacarCapa(a);
   try {
-    await subir(a, clave, { antesDeEntrar: () => { hundir(viejo).catch(() => {}); } });
+    if (mover) await mover(a, clave, () => { hundir(viejo).catch(() => {}); });
+    else await subir(a, clave, { antesDeEntrar: () => { hundir(viejo).catch(() => {}); } });
   } finally {
     if (p.actor === a && a.parent && a.userData.ocupado) a.userData.ancla = { tipo: 'portal', clave };
   }
@@ -596,7 +599,16 @@ async function entrar(p, viajero, pv) {
   // Sin modelo posible (o se volteó por el camino): se cambia por la figura correcta.
   const bien = cv?.visible ? !!a.userData.modelo || !INFO[nombre] : !a.userData.modelo;
   if (!bien || (cv?.visible && !INFO[nombre])) { retirar(a); p.actor = null; await surgir(p, cv); }
-  else { a.userData.ocupado = false; if (cv?.ficha) marcaMetamorfo(a, true); }
+  else {
+    if (cv?.ficha) marcaMetamorfo(a, true);
+    // Cada cual llega a su manera: la Centinela planta la lanza, los animales hacen su gracia.
+    try {
+      if (cv?.visible && !cv.ficha && a.userData.modelo) {
+        if (cv.nombre === 'Centinela') await plantarLanza(a);
+        else if (['Reena', 'Sora', 'Lumo'].includes(cv.nombre)) await gracia(a, clave);
+      }
+    } finally { a.userData.ocupado = false; a.userData.alegre = false; }
+  }
 }
 
 /** El de arriba se va (Cronista): baja por la escalinata y se pone el manto; debajo reaparece el anterior. */
@@ -620,15 +632,35 @@ async function voltear(p, pv) {
     return;
   }
   S.velo(); p.actor = null;
+  // La sombra envuelve a quien se oculta.
+  if (a && cv && !cv.visible) { const pos = a.position.clone(); tw(1.2, () => humo(pos, { n: 2, color: 0x141230, radio: 0.4, sube: 1.4, alfa: 0.85 })).catch(() => {}); }
+  else if (cv?.visible) chispas(sobre(claveDe(p) ?? '').add(V(0, 1.1, 0)), { n: 30, color: INFO.Ocultista.color, color2: 0xffffff, vel: 0.9, vida: 1.2 });
   await Promise.all([disolver(a), cv ? surgir(p, cv) : Promise.resolve()]);
 }
 
 /** El Metamorfo se transforma (o vuelve a ser él): gira como un remolino. */
-async function metamorfosis(p, pv) {
+async function metamorfosis(p, pv, pagador = null) {
   const a = p.actor, cv = pv.top, nuevo = cv.ficha || 'Metamorfo';
   if (!a?.userData.modelo || !INFO[nuevo]) return voltear(p, pv);
-  a.userData.ocupado = true; S.metamorfo(); marcaMetamorfo(a, false);
-  await transformar(a, nuevo, kl => { if (Math.random() < 0.8) chispas(a.position.clone().add(V(0, 0.4 + kl * 1.4, 0)), { n: 3, color: 0xff9ad8, color2: 0xd9b0ff, vel: 0.9, dir: V(0, 0.6, 0), vida: 0.9, giro: 6 }); });
+  a.userData.ocupado = true; marcaMetamorfo(a, false);
+  const col = INFO.Metamorfo.color, col2 = INFO.Metamorfo.color2;
+  const r = runa(a.position, col, 1.0, 3);
+  try {
+    // Transformarse cuesta una Gema azul de quien juega: vuela desde sus Gemas hasta él.
+    const sg = cv.ficha && pagador !== null ? sitioGemas(pagador) : null;
+    if (sg) {
+      const g = gema('azul', 1), de = sg.pos.clone().setY(0.4), hasta = pecho(a).add(V(0, 0, 0.3)); g.position.copy(de);
+      posar(a, 'abierto', 5); S.gemaVuela();
+      try { await tw(0.9, k => g.position.copy(arco(de, hasta, k, 1.0))); S.pagar(); chispas(g.position, { n: 22, color: 0x4aa8ff, color2: 0xffffff, vel: 0.8 }); } finally { quitar(g); }
+    }
+    posar(a, 'alzar', 5); S.cargar(196, 0.8); await espera(0.8); S.metamorfo();
+    await transformar(a, nuevo, kl => { const fz = Math.sin(kl * Math.PI), o = a.position;
+      for (let i = 0; i < 5; i++) { const an = kl * 30 + i * 1.257, y = ((kl * 2.2 + i * 0.2) % 1) * 2.1, rr = 0.25 + (1 - Math.abs(y / 2.1 - 0.5) * 2) * 0.5; chispas(V(o.x + Math.cos(an) * rr, o.y + y, o.z + Math.sin(an) * rr), { n: fz, color: col, color2: col2, vel: 0.08, vida: 0.8, tam: 0.11, giro: 6, radio: 0.02 }); }
+      if (Math.random() < 0.6 * fz) humo(o, { n: 1, color: 0xf0a8d0, radio: 0.5, alfa: 0.35, alto: 1.6 }); },
+      // Sea quien sea ahora, conserva su melena rosa: sigue siendo él.
+      m => { if (nuevo !== 'Metamorfo') m.art?.pelo?.forEach(q => q.color.set(0xf0b8d8)); });
+    S.impacto(523); onda(a.position.clone(), col, 1, 30);
+  } finally { r.userData.apagar(); }
   a.userData.cv = cv; a.userData.ocupado = false;
   if (cv.ficha) marcaMetamorfo(a, true);
 }
@@ -694,13 +726,164 @@ async function cambiarMano(h, cv) {
   await tw(0.6, k => opacidad(nueva, k, ms));
 }
 
+
+/** Cronista: escribe en su libro a quien ocupa un Portal; se deshace en letras de luz que vuelan hasta sus páginas. */
+async function cronista(hab, p, pv) {
+  const clave = claveDe(p), a = p.actor, quien = portales.get(hab.origen)?.actor; p.actor = null;
+  const color = INFO.Cronista.color, conModelo = quien?.userData.modelo && quien !== a;
+  const r = quien && quien !== a ? runa(quien.position, color, 0.95) : null;
+  let libro = () => (quien && quien !== a ? quien.position.clone() : sobre(hab.origen)).add(V(0, 1.3, 0));
+  if (conModelo) {
+    mirar(quien, p.g.position); posar(quien, 'leer', 5);
+    const L = quien.userData.modelo.art?.libro; if (L) libro = () => L.getWorldPosition(new THREE.Vector3());
+    S.cargar(260, 0.9); await espera(0.9);
+  }
+  S.cronista();
+  if (a) {
+    a.userData.ocupado = true; a.userData.ancla = null;
+    const ms = materialesDe(a), pc = a.position.clone().add(V(0, 1.1, 0));
+    await tw(1.5, (k, kl) => { opacidad(a, 1 - k, ms); chispas(arco(pc, libro(), (kl * 3) % 1, 1.0), { n: 3, color, color2: 0xffffff, vel: 0.15, vida: 0.5, tam: 0.12 }); });
+    retirar(a);
+  }
+  const L = libro();
+  destello(L, color, 1.2, 0.5).catch(() => {}); encender(p.g, 0.3);
+  if (pv.top) await espera(0.4).then(() => surgir(p, pv.top));
+  return { libro: L, usado: false, fin: () => { if (conModelo && !quien.userData.ocupado) posar(quien, null, 4); r?.userData.apagar(); } };
+}
+
+/** Maestro: su magia de colores toma la carta de la mano de un rival y la lleva flotando hasta su Portal. */
+async function vueloMaestro(hab, a, clave, alLlegar) {
+  const quien = portales.get(hab.origen)?.actor, color = INFO.Maestro.color;
+  const r = quien ? runa(quien.position, color, 0.95) : null;
+  const cs = [0xe04a4a, 0x5ab8e8, 0x5fd0a0, 0xf0c84a];
+  let orb = () => {};
+  try {
+    let desde = sobre(hab.origen).add(V(0, 1.6, 0));
+    S.maestro();
+    if (quien?.userData.modelo) { mirar(quien, a.position); desde = await conjurar(quien, { dur: 1.3, lanza: 'abierto' }); }
+    S.lanzar();
+    const otra = quien?.userData.modelo ? mano(quien, 1) : desde;
+    await Promise.all(cs.map((cc, i) => rayo(i % 2 ? otra : desde, pecho(a), cc, { lado: (i - 1.5) * 0.25, alto: 1.2 + i * 0.2, dur: 0.7 + i * 0.08 })));
+    S.levita(); a.userData.elevaObj = 1.1;
+    orb = cadaFrame((dt, tt) => { for (let i = 0; i < 2; i++) { const an = tt * 5 + i * Math.PI; chispas(pecho(a).add(V(Math.cos(an) * 0.7, 0, Math.sin(an) * 0.7)), { n: 1, color: cs[(i + Math.floor(tt * 4)) % 4], vel: 0.1, vida: 0.5 }); } });
+    await espera(0.9);
+    const de = a.position.clone(), hasta = sobre(clave);
+    a.userData.rumbo = Math.atan2(hasta.x - de.x, hasta.z - de.z);
+    let avisado = false;
+    await tw(1.8, k => { a.position.lerpVectors(de, hasta, k); if (!avisado && k > 0.7) { avisado = true; alLlegar(); } });
+    a.userData.rumbo = portales.get(clave).g.rotation.y;
+  } finally {
+    a.userData.elevaObj = 0; espera(0.5).then(orb, orb);
+    if (quien?.userData.modelo && !quien.userData.ocupado) posar(quien, null, 4);
+    r?.userData.apagar();
+  }
+  await espera(0.5);
+}
+
+/** Aprendiz: con más ímpetu que oficio, levanta un remolino y las dos manos se cruzan por el aire sin girarse. */
+async function trueque(hab, A, B, v, morfos) {
+  const quien = portales.get(hab.origen)?.actor, color = INFO.Aprendiz.color;
+  const r = quien ? runa(quien.position, color, 0.95) : null;
+  const LA = manos.get(A), LB = manos.get(B), mov = [];
+  enfocar([...LA, ...LB].map(h => h.actor.position), { ancho: 9 });
+  try {
+    if (quien?.userData.modelo) { S.cargar(300, 1.0); await conjurar(quien, { dur: 1.0, lanza: 'celebrar' }); }
+    S.aprendiz();
+    const pasar = (lista, idx, otra) => lista.map((h, i) => {
+      const lado = otra[i]?.lado ?? h.lado, hasta = posMano(idx, lado).pos.clone();
+      h.actor.userData.ocupado = true; h.actor.userData.ancla = { tipo: 'mano', idx, lado };
+      mov.push({ a: h.actor, de: h.actor.position.clone(), hasta }); h.lado = lado; h.idx = idx; return h;
+    });
+    const nA = pasar(LB, A, LA), nB = pasar(LA, B, LB);
+    manos.set(A, nA); manos.set(B, nB);
+    if (quien?.userData.modelo) espera(0.9).then(() => { posar(quien, 'apuro', 10); S.ups(); }, () => {});
+    await tw(2.4, (k, kl) => mov.forEach(m => {
+      m.a.position.copy(arco(m.de, m.hasta, k, 1.8, 0.3)); m.a.userData.rumbo = kl * Math.PI * 4;
+      if (Math.random() < 0.7) chispas(m.a.position.clone().add(V(0, 1, 0)), { n: 2, color: 0xfff3d6, color2: color, vel: 0.9, vida: 0.8, tam: 0.2, giro: 6, radio: 0.5 });
+    }));
+    S.impacto(330);
+  } finally {
+    mov.forEach(m => { m.a.userData.ocupado = false; });
+    if (quien?.userData.modelo && !quien.userData.ocupado) posar(quien, null, 4);
+    r?.userData.apagar();
+  }
+  // Lo que cada figura deja ver ahora se compara de nuevo, ya en su nueva mano.
+  for (let i = morfos.length - 1; i >= 0; i--) morfos.splice(i, 1);
+  for (const a of [v.propio, ...v.rivales]) {
+    const lista = manos.get(a.idx) ?? [];
+    lista.forEach((h, i) => { if (!h.actor || !a.mano[i]) return; const f = firmaMano(a.mano[i]); if (h.firma !== f) morfos.push([h, a.mano[i]]); else h.cv = a.mano[i]; });
+  }
+}
+
+/** Pícaro (pasiva): con sigilo, baja de su Portal, le roba una Gema azul a la criatura y la deja con las de su dueña. */
+async function roboPicaro(p, cr, C, R) {
+  const a = p.actor, clave = claveDe(p), idx = +clave.split(':')[0];
+  a.userData.ocupado = true;
+  const pie = local(clave, 0, 2.15);
+  // Hasta dónde se acerca: lo más cerca del centro sin meterse en un Portal central.
+  const centrales = [...portales.entries()].filter(([k, q]) => k.startsWith('n:') && q.g.visible).map(([, q]) => q.g.position);
+  let alto = pie.clone();
+  for (let t = 0; t <= 1; t += 0.04) { const q = pie.clone().lerp(R, t); if (centrales.some(c => Math.hypot(c.x - q.x, c.z - q.z) < 2.1)) break; alto = q; }
+  const azul = gema('azul', 1.1); azul.position.copy(C);
+  let lleva = () => {};
+  try {
+    const flota = alto.clone().add(V(0, 1.7, 0)), de0 = C.clone();
+    S.gemaVuela(); tw(1.2, k => azul.position.copy(arco(de0, flota, k, 0.6))).catch(() => {});
+    posar(a, 'sigilo', 6); await bajar(a, clave);
+    const cerca = alto.clone().lerp(pie, Math.min(1, 0.9 / Math.max(0.9, alto.distanceTo(pie))));
+    await caminar(a, cerca, { vel: 2.6, mudo: true, cadencia: 11 });
+    posar(a, 'orbeAlto', 12); S.gemaVuela();
+    const de1 = azul.position.clone(); await tw(0.45, k => azul.position.copy(arco(de1, mano(a).add(V(0, 0.25, 0)), k, 0.3)));
+    S.picaro(); chispas(azul.position, { n: 14, color: INFO['Pícaro'].color, vel: 0.6 });
+    lleva = cadaFrame(() => azul.position.copy(mano(a)).add(V(0, 0.22, 0)));
+    posar(cr, 'dudaI', 5); S.duda(); await espera(0.5); posar(a, 'sigilo', 8);
+    await caminar(a, pie, { vel: 3.0, mudo: true, cadencia: 12 }); posar(cr, 'ofrenda', 3);
+    await subir(a, clave, { vel: 2.4 }); posar(a, 'reverencia', 8); await espera(0.4);
+    lleva(); lleva = () => {};
+    const de2 = azul.position.clone(), hasta = (sitioGemas(idx)?.pos ?? pie).clone().setY(0.4);
+    await tw(0.6, k => azul.position.copy(arco(de2, hasta, k, 0.8)));
+    S.gema(2); chispas(azul.position, { n: 12, color: 0x4aa8ff, vel: 0.5 });
+    await espera(0.4);
+  } finally {
+    lleva(); quitar(azul); posar(a, null, 4);
+    a.userData.ancla = { tipo: 'portal', clave }; a.userData.ocupado = false;
+  }
+}
+
+/** Entusiasta (pasiva): lo celebra con tanto ímpetu que le lanza a la criatura una Gema azul de su dueña. */
+async function ofrendaEntusiasta(p, cr, C) {
+  const a = p.actor, clave = claveDe(p), idx = +clave.split(':')[0];
+  a.userData.ocupado = true;
+  const g = gema('azul', 1), sg = sitioGemas(idx); g.position.copy((sg?.pos ?? a.position).clone().setY(0.4));
+  let lleva = () => {};
+  try {
+    posar(a, 'celebrar', 10); S.entusiasta(); S.boing(); await saltar(a, 0.45, 0.45);
+    S.boing(); S.entusiasta(); await saltar(a, 0.6, 0.6, Math.PI * 2);
+    S.gemaVuela(); posar(a, 'senalar', 10);
+    const de = g.position.clone(); await tw(0.6, k => g.position.copy(arco(de, mano(a).add(V(0, 0.2, 0)), k, 0.6))); S.picaro();
+    lleva = cadaFrame(() => g.position.copy(mano(a)).add(V(0, 0.2, 0)));
+    mirar(a, C); posar(a, 'alzar', 7); S.boing(); await saltar(a, 0.35, 0.4); await espera(0.25);
+    lleva(); lleva = () => {}; posar(a, 'lanzar', 18); S.lanzar(700);
+    const de2 = g.position.clone();
+    await tw(1.4, k => { g.position.copy(arco(de2, C, k, 2.4)); chispas(g.position, { n: 1, color: 0x4aa8ff, color2: 0xffffff, vel: 0.06, vida: 0.9, tam: 0.1 }); });
+    S.gema(4); destello(C, 0x4aa8ff, 2.6, 0.8).catch(() => {}); chispas(C, { n: 30, color: 0x4aa8ff, color2: 0xffffff, vel: 0.9, vida: 1.2 }); posar(cr, 'alzar', 5);
+    posar(a, 'celebrar', 8); S.entusiasta(); await saltar(a, 0.4, 0.45); await espera(0.4);
+    posar(a, 'apuro', 10); S.ups(); await espera(1.0); posar(cr, 'ofrenda', 3);
+  } finally {
+    lleva(); quitar(g); posar(a, null, 4); a.userData.rumbo = p.g.rotation.y; a.userData.ocupado = false;
+  }
+}
+
 /** Conjuro de quien activa una habilidad, hacia lo que ha cambiado. */
 async function conjuro(an, destinos) {
   const p = portales.get(an.origen), a = p?.actor;
   const color = INFO[an.nombre]?.color ?? 0xffffff, color2 = INFO[an.nombre]?.color2 ?? 0xffffff;
   if (!a?.userData.modelo) return;
-  S.cargar(220, 0.9);
-  const desde = await conjurar(a, {});
+  const r = runa(a.position, color, 0.95); espera(2.4).then(() => r.userData.apagar(), () => r.userData.apagar());
+  if (an.nombre === 'Ocultista') S.ocultista();
+  S.cargar(an.nombre === 'Ocultista' ? 110 : 220, 0.9);
+  if (destinos[0]) mirar(a, destinos[0]);
+  const desde = await conjurar(a, an.nombre === 'Ocultista' ? { pose: 'juntas' } : {});
   S.lanzar(600);
   const lista = destinos.length ? destinos : [sobre(an.origen).add(V(0, 1.2, 0))];
   if (an.nombre === 'Cronomante') { const rj = relojArena(lista[0].clone().add(V(0, 3.2, 0)), color, color2, 0.5); S.cronomante(); espera(2.6).then(() => { rj.parar(); rj.apagar(); }, () => rj.apagar()); }
@@ -726,23 +909,44 @@ async function invocar(an, v, nuevos = []) {
   const ALTO_CR = 4.4, sitioCr = R.clone().add(V(0, 0, -0.9)), F = sitioCr.clone().add(V(0, ALTO_CR + 2.2, 0));
   // Cámara: se aleja y mira más de frente para ver a la criatura en lo alto.
   enfocar([...ps.map(p => p.g.position)], { y: 3.6, alto: 12, ancho: (camBase.ancho ?? 12) * 0.95, polar: 1.22 });
-  S.invInicio(3.2);
-  for (const p of ps) { encender(p.g, 1.6); S.runa(Math.random() * 8 | 0); onda(p.g.position.clone().add(V(0, ALTURA_TARIMA, 0)), p.g.userData.tono, 1, 22, 1.8); await espera(0.15); }
+  const CARGA = 5.2;
+  S.invInicio(CARGA);
+  // Las runas de cada Portal despiertan una a una y lanzan su luz hacia lo alto.
+  let nr = 0;
+  for (const p of ps) {
+    const base = p.g.position.clone().add(V(0, ALTURA_TARIMA, 0));
+    encender(p.g, 1.8); S.runa(nr++ * 2 % 9); onda(base, p.g.userData.tono, 1, 26, 1.8);
+    chispas(base, { n: 26, color: p.g.userData.tono, color2: 0xffffff, vel: 0.5, dir: V(0, 3.2, 0), vida: 1.6, radio: 0.8, tam: 0.16 });
+    await espera(0.3);
+  }
   // El gran círculo lleva la misma estrella que tendrá el Portal que nazca de él.
   const puntas = nuevos[0]?.g.userData.variante?.puntas ?? 8;
   const gran = runa(R, tono, 5.4, 0.5, puntas), gran2 = runa(R.clone().add(V(0, 0.01, 0)), tono2, 3.3, -0.9, 6);
   const req = ps.map(p => p.actor).filter(a => a?.userData.modelo && a.userData.cv?.visible && an.need?.includes(a.userData.cv.ficha || a.userData.cv.nombre));
   req.forEach(a => { mirar(a, F); posar(a, 'alzar', 4); a.userData.elevaObj = 0.25; });
-  await tw(3.2, (k, kl) => {
-    for (const a of req) chispas(arco(mano(a), F, (kl * 3 + a.position.x * 0.1) % 1, 1.4), { n: 2, color: INFO[a.userData.nombre]?.color ?? tono, color2: 0xffffff, vel: 0.12, vida: 0.5, tam: 0.14 });
-    const ang = kl * 26, r = 2.4 * (1 - kl) + 0.2;
-    chispas(F.clone().add(V(Math.cos(ang) * r, Math.sin(ang * 0.7) * 0.4, Math.sin(ang) * r)), { n: 2, color: tono, color2: tono2, vel: 0.1, vida: 0.7, tam: 0.2 });
+  const bases = ps.map(p => ({ pos: p.g.position.clone().add(V(0, ALTURA_TARIMA + 0.3, 0)), tono: p.g.userData.tono }));
+  let pulso = 0;
+  await tw(CARGA, (k, kl) => {
+    // Los requeridos funden su magia en el cielo…
+    for (const a of req) chispas(arco(mano(a), F, (kl * 4 + a.position.x * 0.1) % 1, 1.4), { n: 2, color: INFO[a.userData.nombre]?.color ?? tono, color2: 0xffffff, vel: 0.12, vida: 0.5, tam: 0.14 + kl * 0.1 });
+    // …y cada Portal le envía un hilo de luz de su color.
+    bases.forEach((b, i) => { if ((i + Math.floor(kl * 240)) % 2 === 0) chispas(arco(b.pos, F, (kl * 3 + i * 0.17) % 1, 2.2, i % 2 ? 0.25 : -0.25), { n: 1, color: b.tono, color2: 0xffffff, vel: 0.08, vida: 0.6, tam: 0.12 + kl * 0.08 }); });
+    // Tres brazos de espiral que se cierran sobre el punto donde se abrirá el umbral.
+    for (let j = 0; j < 3; j++) { const ang = kl * 30 + j * 2.094, r = 3.0 * (1 - kl) + 0.2; chispas(F.clone().add(V(Math.cos(ang) * r, Math.sin(ang * 0.7) * 0.5, Math.sin(ang) * r)), { n: 1, color: j ? tono2 : tono, color2: 0xffffff, vel: 0.1, vida: 0.8, tam: 0.2 }); }
+    // El gran círculo levanta una cortina de luz que crece.
+    for (let j = 0; j < 2; j++) { const ang = Math.random() * 6.283; if (Math.random() < 0.3 + kl) chispas(R.clone().add(V(Math.cos(ang) * 5.3, 0.05, Math.sin(ang) * 5.3)), { n: 1, color: j ? tono2 : tono, vel: 0.1, dir: V(0, 1.5 + kl * 3, 0), vida: 1.3, tam: 0.15 }); }
     if (Math.random() < kl) chispas(R.clone().add(V((Math.random() - 0.5) * 8, 0.1, (Math.random() - 0.5) * 8)), { n: 1, color: tono, vel: 0.1, dir: V(0, 2.5, 0), vida: 1.2 });
-    mundo.cam.temblor = Math.max(mundo.cam.temblor, kl * kl * 0.05);
+    // Latidos cada vez más seguidos.
+    const lat = Math.floor(kl * kl * 9); if (lat !== pulso) { pulso = lat; onda(R, lat % 2 ? tono2 : tono, 1.5 + kl * 2, 34, 1.6); S.runa(lat); destello(F, tono, 1.5 + kl * 4, 0.5).catch(() => {}); }
+    mundo.cam.temblor = Math.max(mundo.cam.temblor, kl * kl * 0.06);
   }, lineal);
-  S.invBoom(); temblar(0.5);
-  destello(F, 0xffffff, 11, 1.3).catch(() => {}); onda(R, tono, 3, 60, 4); onda(R, tono2, 2, 40, 2.5);
-  chispas(F, { n: 110, color: tono, color2: tono2, vel: 3, vida: 1.7, grav: 0.8, tam: 0.22 });
+  // ¡Estallido! Se abre el umbral: columna de luz, fogonazo y rayos hacia cada Portal.
+  S.invBoom(); temblar(0.6); fogonazo(0.8);
+  destello(F, 0xffffff, 12, 1.4).catch(() => {}); onda(R, tono, 3, 60, 4); onda(R, tono2, 2, 40, 2.5);
+  espera(0.35).then(() => onda(R, 0xffffff, 2.5, 50, 3), () => {}); espera(0.7).then(() => onda(R, tono, 2, 44, 3), () => {});
+  chispas(F, { n: 130, color: tono, color2: tono2, vel: 3.2, vida: 1.8, grav: 0.8, tam: 0.22 });
+  bases.forEach((b, i) => espera(i * 0.07).then(() => rayo(F, b.pos, b.tono, { color2: 0xffffff, alto: 0.6, dur: 0.7, lado: i % 2 ? 0.3 : -0.3 }), () => {}).then(() => { destello(b.pos, b.tono, 1.6, 0.5).catch(() => {}); }, () => {}));
+  const columna = hazDeLuz(F.clone().add(V(0, 9, 0)), R.clone().setY(0.1), tono);
   req.forEach(a => { posar(a, null, 3); a.userData.elevaObj = 0; });
   // La criatura sube desde el suelo hasta quedar flotando en lo alto.
   const cr = crearActor(nombre, sitioCr.clone().setY(-4), { fijo: true }); actores.add(cr);
@@ -750,11 +954,17 @@ async function invocar(an, v, nuevos = []) {
   const ms = materialesDe(cr); opacidad(cr, 0, ms);
   const alred = (ancho, y0, y1) => sitioCr.clone().add(V((Math.random() - 0.5) * ancho, y0 + Math.random() * (y1 - y0), (Math.random() - 0.5) * 1.2));
   S.invCoro(9);
-  await tw(3.0, (k, kl) => { cr.position.y = mezcla(-4, ALTO_CR, k); opacidad(cr, Math.min(1, kl * 2), ms);
-    for (let i = 0; i < 3; i++) chispas(alred(2.4, cr.position.y, cr.position.y + 4), { n: 1, color: tono, color2: tono2, vel: 0.3, dir: V(0, 1.2, 0), vida: 1.1, tam: 0.2 }); }, sale);
-  let flota = true;
-  const parar = cadaFrame((dt, t) => { if (!flota) return; cr.position.y = ALTO_CR + Math.sin(t * 1.1) * 0.15; if (Math.random() < 0.5) chispas(alred(2, ALTO_CR, ALTO_CR + 4), { n: 1, color: tono, color2: tono2, vel: 0.2, dir: V(0, 0.5, 0), vida: 1 }); });
-  posar(cr, 'alzar', 3); await espera(0.8);
+  await tw(3.6, (k, kl) => { cr.position.y = mezcla(-4, ALTO_CR, k); opacidad(cr, Math.min(1, kl * 2), ms);
+    for (let i = 0; i < 3; i++) chispas(alred(2.4, cr.position.y, cr.position.y + 4), { n: 1, color: tono, color2: tono2, vel: 0.3, dir: V(0, 1.2, 0), vida: 1.1, tam: 0.2 });
+    for (let j = 0; j < 2; j++) { const ang = kl * 22 + j * Math.PI, y = cr.position.y + ((kl * 3 + j * 0.5) % 1) * 4.2; chispas(V(sitioCr.x + Math.cos(ang) * 1.5, y, sitioCr.z + Math.sin(ang) * 1.5), { n: 2, color: j ? tono2 : 0xffffff, color2: tono, vel: 0.06, vida: 0.9, tam: 0.16 }); } }, sale);
+  columna.apagar();
+  S.impacto(392); onda(R, tono2, 2, 40, 2.4); destello(sitioCr.clone().setY(ALTO_CR + 2), tono, 5, 0.9).catch(() => {});
+  let flota = true, latido = 0;
+  const parar = cadaFrame((dt, t) => { if (!flota) return; cr.position.y = ALTO_CR + Math.sin(t * 1.1) * 0.15; if (Math.random() < 0.5) chispas(alred(2, ALTO_CR, ALTO_CR + 4), { n: 1, color: tono, color2: tono2, vel: 0.2, dir: V(0, 0.5, 0), vida: 1 });
+    // Su presencia late sobre la mesa y llueve polvo de luz.
+    latido += dt; if (latido > 1.7) { latido = 0; onda(R, tono, 1.2, 30, 2.6); }
+    if (Math.random() < 0.35) chispas(R.clone().add(V((Math.random() - 0.5) * 9, ALTO_CR + 1 + Math.random() * 2, (Math.random() - 0.5) * 6)), { n: 1, color: tono2, color2: 0xffffff, vel: 0.05, grav: 0.5, vida: 2.2, tam: 0.1 }); });
+  posar(cr, 'alzar', 3); await espera(1.2);
   // Sus Gemas orbitan a su alrededor…
   const tipo = INFO[nombre].gema ?? (an.nivel === '*' ? 'A' : an.nivel);
   const entregas = [];
@@ -772,7 +982,7 @@ async function invocar(an, v, nuevos = []) {
   const orbita = cadaFrame((dt, t) => gs.forEach(g => { g.rotation.y += dt * 2.5; if (g.userData.orbita) { g.userData.an += dt * 1.3; g.position.set(C.x + Math.cos(g.userData.an) * radio, C.y + Math.sin(g.userData.an * 2 + t) * 0.15, C.z + Math.sin(g.userData.an) * radio * 0.55); } }));
   try {
     gs.forEach((g, i) => espera(i * 0.12).then(() => S.gema(i), () => {}));
-    posar(cr, 'ofrenda', 3); await espera(1.4);
+    posar(cr, 'ofrenda', 3); await espera(2.2);
     // …y vuelan hasta quienes la invocaron: primero al personaje requerido, luego delante de su dueña.
     let n = 0;
     for (const e of entregas) {
@@ -780,7 +990,7 @@ async function invocar(an, v, nuevos = []) {
       const de = g.position.clone();
       if (e.actor) {
         const cab = cabeza(e.actor).add(V(0, 0.15, 0));
-        await tw(1.2, k => g.position.copy(arco(de, cab, k, 2.0, n % 2 ? 0.12 : -0.12)));
+        await tw(1.4, k => { g.position.copy(arco(de, cab, k, 2.0, n % 2 ? 0.12 : -0.12)); chispas(g.position, { n: 1, color: tono, color2: 0xffffff, vel: 0.05, vida: 0.8, tam: 0.1 }); });
         S.gema(n * 2); chispas(g.position, { n: 22, color: tono, color2: 0xffffff, vel: 0.7 });
         posar(e.actor, 'celebrar', 8); saltar(e.actor, 0.2, 0.4).catch(() => {}); espera(1.1).then(() => posar(e.actor, null, 4), () => {});
       }
@@ -789,6 +999,10 @@ async function invocar(an, v, nuevos = []) {
       await espera(0.35);
     }
     await espera(0.9);
+    // Pasivas: el Pícaro le roba una Gema azul; la Entusiasta le regala una de su dueña.
+    const enSuPortal = nom => ps.filter(p => !claveDe(p)?.startsWith('n:') && p.actor?.userData.modelo && !p.actor.userData.ocupado && p.actor.userData.cv?.visible && !p.actor.userData.cv.ficha && p.actor.userData.cv.nombre === nom);
+    for (const p of enSuPortal('Pícaro')) await roboPicaro(p, cr, C, R);
+    for (const p of enSuPortal('Entusiasta')) if ((unidadesPrevias.get(+claveDe(p).split(':')[0]) ?? 0) > 0) await ofrendaEntusiasta(p, cr, C);
     // Las que nadie recibe se van con la criatura.
     const resto = gs.slice(n); resto.forEach(g => { g.userData.orbita = false; });
     await Promise.all(resto.map((g, i) => espera(i * 0.15).then(() => { const de = g.position.clone(), a = C.clone().add(V(0, -0.8, 0)); return tw(0.8, k => g.position.copy(arco(de, a, k, 0.3))); }).then(() => { chispas(g.position, { n: 8, color: tono, vel: 0.4 }); quitar(g); })));
@@ -796,8 +1010,11 @@ async function invocar(an, v, nuevos = []) {
   // La criatura parte; el círculo de la invocación se encoge y queda como la runa del Portal nuevo.
   posar(cr, 'alzar', 3); S.seMarcha(); flota = false; gran2.userData.apagar(1.5);
   const y0 = cr.position.y;
-  await tw(2.2, (k) => { opacidad(cr, 1 - k, ms); cr.position.y = y0 + k * 3; chispas(alred(1.6, y0 + 1, y0 + 6), { n: 2, color: tono, color2: tono2, vel: 0.4, dir: V(0, 2, 0), vida: 1.2 }); }, entra);
+  await tw(2.8, (k, kl) => { opacidad(cr, 1 - k, ms); cr.position.y = y0 + k * 3; chispas(alred(1.6, y0 + 1, y0 + 6), { n: 2, color: tono, color2: tono2, vel: 0.4, dir: V(0, 2, 0), vida: 1.2 });
+    for (let j = 0; j < 2; j++) { const ang = kl * 26 + j * Math.PI, rr = 1.6 * (1 - kl) + 0.1; chispas(V(sitioCr.x + Math.cos(ang) * rr, cr.position.y + 1 + kl * 3, sitioCr.z + Math.sin(ang) * rr), { n: 1, color: 0xffffff, color2: tono, vel: 0.05, vida: 0.8, tam: 0.14 }); } }, entra);
   parar(); retirar(cr);
+  const adios = sitioCr.clone().setY(y0 + 5);
+  destello(adios, 0xffffff, 6, 0.9).catch(() => {}); chispas(adios, { n: 70, color: tono, color2: tono2, vel: 2.2, vida: 1.6, grav: 1.2, tam: 0.18 }); onda(R, tono, 2, 44, 3); fogonazo(0.25);
   const nuevo = nuevos[0];
   if (nuevo) {
     const destino = posPortal(claveDe(nuevo))?.setY(0.04) ?? R;
@@ -823,6 +1040,124 @@ async function alzarPortal(p, runaGuia = null) {
   S.golpeSuelo(); temblar(0.3); encender(p.g, 1.6); S.runa(9); onda(V(x, 0, z), p.g.userData.tono, 1.2, 40, 2.4);
   runaGuia?.userData.apagar(1.2);
   espera(1.3).then(() => encender(p.g, 0.6), () => {});
+}
+
+
+// ------------------------------------------------- escudos de la Centinela
+// Mientras una Centinela está a la vista, sus escudos flotan en corro
+// alrededor de los Portales que protege (todos los de su dueña, o el Portal
+// central en el que esté). Si alguien intenta un hechizo contra ellos, rebota.
+
+const escudosPortal = new Map();   // clave → { g, k (0..1 aparición), fuera }
+function protegidos(v) {
+  const s = new Set();
+  const esC = pv => pv?.top?.visible && pv.top.nombre === 'Centinela';
+  for (const a of [v.propio, ...v.rivales]) if (a.portales.some(esC)) a.portales.forEach((_, j) => s.add(`${a.idx}:${j}`));
+  v.centrales.forEach((pv, c) => { if (esC(pv)) s.add(`n:${c}`); });
+  return s;
+}
+function actualizarEscudos(v, conSonido = true) {
+  const quiero = protegidos(v);
+  let nuevos = 0;
+  for (const clave of quiero) {
+    const e = escudosPortal.get(clave);
+    if (e) { e.fuera = false; continue; }
+    if (!portales.get(clave)?.g.visible) continue;
+    const g = crearEscudos(); g.scale.setScalar(0.01); mundo.escena.add(g);
+    escudosPortal.set(clave, { g, k: 0, fuera: false }); nuevos++;
+  }
+  for (const [clave, e] of escudosPortal) if (!quiero.has(clave)) e.fuera = true;
+  if (nuevos && conSonido) S.clang();
+}
+function quitarEscudos() { for (const e of escudosPortal.values()) quitar(e.g); escudosPortal.clear(); }
+function seguirEscudos(dt, t) {
+  for (const [clave, e] of escudosPortal) {
+    const p = portales.get(clave);
+    if (!p?.g.visible) e.fuera = true;
+    e.k = THREE.MathUtils.clamp(e.k + dt * (e.fuera ? -2.5 : 1.8), 0, 1);
+    if (e.fuera && e.k <= 0) { quitar(e.g); escudosPortal.delete(clave); continue; }
+    if (p) e.g.position.copy(p.g.position).add(V(0, ALTURA_TARIMA + Math.sin(t * 1.6 + p.g.position.x) * 0.06, 0));
+    e.g.rotation.y += dt * 0.7; e.g.scale.setScalar(Math.max(0.01, rebote(e.k)));
+    e.golpe = Math.max(0, (e.golpe ?? 0) - dt * 2.5);
+    if (e.golpe > 0) e.g.scale.multiplyScalar(1 + e.golpe * 0.18);
+  }
+}
+
+/**
+ * Alguien apunta un hechizo a un Portal protegido: el rayo sale de quien
+ * conjura, choca contra los escudos y sale rebotado. Devuelve false si ese
+ * Portal no tiene escudos (y entonces no hay nada que enseñar).
+ */
+export function rebotar(clave, origen = null) {
+  if (origen) ultimoOrigen = origen;
+  const e = escudosPortal.get(clave), p = portales.get(clave);
+  if (!e || e.fuera || !p || !visible) return false;
+  const quien = ultimoOrigen ? portales.get(ultimoOrigen)?.actor : null;
+  const nombre = quien?.userData.cv?.visible ? quien.userData.cv.nombre : null;
+  const color = INFO[nombre]?.color ?? 0xb48cff, color2 = INFO[nombre]?.color2 ?? 0xffffff;
+  const centro = sobre(clave);
+  (async () => {
+    let desde = quien ? quien.position.clone().add(V(0, 1.5, 0)) : centro.clone().add(V(0, 5, 4));
+    const r = quien ? runa(quien.position, color, 0.95) : null;
+    try {
+      if (quien?.userData.modelo && !quien.userData.ocupado) { mirar(quien, p.g.position); S.cargar(110, 0.8); desde = await conjurar(quien, { pose: 'juntas', dur: 0.8 }); }
+      const dir = desde.clone().sub(centro).setY(0); if (dir.lengthSq() < 0.01) dir.set(0, 0, 1); dir.normalize();
+      const choque = centro.clone().addScaledVector(dir, 1.5).add(V(0, 1.0, 0));
+      // La Centinela de ese asiento se pone en guardia.
+      const guardianas = [...portales.values()].map(q => q.actor).filter(a => a?.userData.modelo && a.userData.cv?.visible && a.userData.cv.nombre === 'Centinela' && !a.userData.ocupado);
+      guardianas.forEach(a => posar(a, 'bloqueo', 14));
+      S.lanzar(300); await rayo(desde, choque, color, { color2, alto: 1.6, dur: 0.8, tam: 0.8 });
+      S.clang(); temblar(0.3); e.golpe = 1;
+      chispas(choque, { n: 40, color: 0xffb060, color2: 0xfff0c0, vel: 2.4, grav: 5, vida: 0.8, tam: 0.1 });
+      onda(centro, 0xffc070, 1.2, 28, 1.4); destello(choque, 0xffe0a0, 2.2, 0.5).catch(() => {});
+      S.zas();
+      const lejos = choque.clone().addScaledVector(dir, 3.5).add(V((Math.random() - 0.5) * 3, 5, 0));
+      rayo(choque, lejos, color, { alto: 0.3, dur: 0.6 }).catch(() => {});
+      if (quien?.userData.modelo && !quien.userData.ocupado) posar(quien, 'apuro', 6);
+      await espera(1.4);
+      guardianas.forEach(a => { if (!a.userData.ocupado) posar(a, null, 5); });
+      if (quien?.userData.modelo && !quien.userData.ocupado) posar(quien, null, 4);
+    } finally { r?.userData.apagar(); }
+  })().catch(() => {});
+  return true;
+}
+let ultimoOrigen = null;
+
+/** La Centinela, al llegar: planta la lanza y se pone en guardia. */
+async function plantarLanza(a) {
+  posar(a, 'lanzaAlta', 7); await espera(0.55); posar(a, 'lanzaGolpe', 20); await espera(0.14);
+  S.golpeSuelo(); temblar(0.22); humo(a.position.clone().add(V(-0.3, 0, 0.3)), { n: 10, color: 0xa89a88, radio: 0.4, sube: 0.3 });
+  await espera(0.3); posar(a, 'bloqueo', 14); await espera(0.9); posar(a, 'guardia', 5);
+  espera(1.2).then(() => posar(a, null, 4), () => {});
+}
+
+/** Los animales no tienen habilidad, pero al llegar hacen su gracia. */
+async function gracia(a, clave) {
+  const nombre = a.userData.nombre, o = sobre(clave);
+  a.userData.alegre = true;
+  if (nombre === 'Reena') {
+    for (const [x, z] of [[0.5, 0.2], [0, 0.55], [-0.5, 0.2], [0, 0]]) await caminar(a, o.clone().add(V(x, 0, z)), { vel: 2.4, mudo: true });
+    S.reena(); await saltar(a, 0.35, 0.35); await saltar(a, 0.45, 0.4, Math.PI * 2);
+  } else if (nombre === 'Sora') {
+    S.sora(); await espera(0.4); S.aleteo(); a.userData.mudo = true; a.userData.andandoObj = 1;
+    await tw(3.0, (k, kl) => { const an = k * Math.PI * 2; a.position.set(o.x + Math.sin(an) * 1.35, o.y + Math.sin(kl * Math.PI) * 1.5, o.z + 0.3 - Math.cos(an) * 1.0 + 0.7 * Math.sin(kl * Math.PI)); a.userData.rumbo = an + Math.PI / 2;
+      if (Math.random() < 0.3) chispas(a.position.clone().add(V(0, 0.7, 0)), { n: 1, color: INFO.Sora.color, vel: 0.2, grav: 0.8, vida: 1.2 }); });
+    a.position.copy(o); a.userData.andandoObj = 0; a.userData.mudo = false; S.sora();
+  } else if (nombre === 'Lumo') {
+    S.lumo();
+    for (const [x, z] of [[-0.45, 0.3], [0.45, 0.3], [0, 0]]) { saltar(a, 0.3, 0.5).catch(() => {}); await caminar(a, o.clone().add(V(x, 0, z)), { vel: 1.6, mudo: true }); }
+    a.userData.inclina = 0.3; a.userData.cabx = 0.5; await espera(0.8); a.userData.inclina = 0; a.userData.cabx = 0;
+  } else return;
+  S.tierno();
+  for (let i = 0; i < 3; i++) { chispas(cabeza(a), { n: 8, color: 0xff8ab0, color2: INFO[nombre].color2, vel: 0.25, dir: V(0, 0.7, 0), vida: 1.4, tam: 0.2 }); await espera(0.3); }
+}
+
+// Destello a pantalla completa (la criatura cruza el umbral).
+let velo = null;
+function fogonazo(fuerza = 0.8) {
+  if (!velo) { velo = document.createElement('div'); velo.style.cssText = 'position:fixed;inset:0;z-index:41;pointer-events:none;background:#fff;opacity:0;transition:opacity .7s ease-out'; document.body.appendChild(velo); }
+  velo.style.transition = 'none'; velo.style.opacity = String(fuerza);
+  requestAnimationFrame(() => requestAnimationFrame(() => { velo.style.transition = 'opacity .8s ease-out'; velo.style.opacity = '0'; }));
 }
 
 // ------------------------------------------------------- comparar y animar
@@ -895,7 +1230,15 @@ async function aplicar(v, an) {
   // Si pasa lejos de quien mira, la cámara se acerca para verlo bien.
   const implicados = [...new Set([hab?.origen, ...cambios.map(c => claveDe(c.p))].filter(k => k && portales.has(k)))];
   if (hab && implicados.some(lejano)) enfocar(implicados.map(k => portales.get(k).g.position));
-  if (hab && hab.nombre !== 'Estratega' && !cambios.some(c => c.p.crono)) await conjuro(hab, [...cambios.filter(c => claveDe(c.p) !== hab.origen).map(c => sobre(claveDe(c.p)).add(V(0, 1.2, 0))), ...morfos.map(([h]) => h.actor.position.clone().add(V(0, 1.1, 0)))].slice(0, 4));
+  // Escenas con puesta en escena propia (las demás usan el conjuro general).
+  const asientoDe = h => { for (const [idx, l] of manos) if (l.includes(h)) return idx; return null; };
+  const cCronista = hab?.nombre === 'Cronista' ? cambios.find(c => !c.cruce && c.tipo === 'sale') : null;
+  const cMaestro = hab?.nombre === 'Maestro' && viajeros.length ? cambios.find(c => !c.cruce && c.tipo === 'entra') : null;
+  const cambiadas = [...new Set(morfos.map(([h]) => asientoDe(h)))].filter(x => x !== null);
+  const hayTrueque = hab?.nombre === 'Aprendiz' && cambiadas.length === 2 && cambiadas.every(x => (manos.get(x) ?? []).every(h => h.actor)) && manos.get(cambiadas[0]).length === manos.get(cambiadas[1]).length;
+  if (hayTrueque) await trueque(hab, cambiadas[0], cambiadas[1], v, morfos);
+  let cron = null;
+  if (hab && hab.nombre !== 'Estratega' && !cCronista && !cMaestro && !hayTrueque && !cambios.some(c => c.p.crono)) await conjuro(hab, [...cambios.filter(c => claveDe(c.p) !== hab.origen).map(c => sobre(claveDe(c.p)).add(V(0, 1.2, 0))), ...morfos.map(([h]) => h.actor.position.clone().add(V(0, 1.1, 0)))].slice(0, 4));
 
   // Clarividente que acaba de quedar visible en el Portal de su dueña: su ojo de luz alcanza la mano.
   const clarividentes = cambios.filter(c => !c.cruce && c.pv.top?.visible && c.pv.top.nombre === 'Clarividente' && !c.pv.top.ficha && !claveDe(c.p).startsWith('n:') && !(c.antes ?? '').includes('Clarividente'));
@@ -908,15 +1251,18 @@ async function aplicar(v, an) {
   for (const c of cambios) {
     if (c.cruce) continue;
     if (c.p.crono) tareas.push(finCronomante(c.p, c.pv));
+    else if (c === cMaestro) tareas.push(entrar(c.p, viajeros.shift(), c.pv, (a, clave, alLlegar) => vueloMaestro(hab, a, clave, alLlegar)));
     else if (c.tipo === 'entra') tareas.push(entrar(c.p, viajeros.shift(), c.pv));
+    else if (c === cCronista) tareas.push(cronista(hab, c.p, c.pv).then(x => { cron = x; }));
     else if (c.tipo === 'sale') tareas.push(salir(c.p, c.pv).then(pie => { salidaHacia ??= pie; }));
-    else if (c.tipo === 'transforma') tareas.push(metamorfosis(c.p, c.pv));
+    else if (c.tipo === 'transforma') tareas.push(metamorfosis(c.p, c.pv, hab?.nombre === 'Metamorfo' ? v.activa.idx : null));
     else tareas.push(voltear(c.p, c.pv));
   }
   for (const [h, cv] of morfos) if (!morfosLuego.some(([x]) => x === h)) tareas.push(cambiarMano(h, cv));
   await Promise.all(tareas);
   for (const vj of viajeros) disolver(vj.actor).catch(() => {});
   for (const c of clarividentes) await clarividente(c.p, morfosLuego);
+  actualizarEscudos(v);
   soltarFoco();
 
   const invocaciones = an.filter(x => x.tipo === 'invocacion');
@@ -928,12 +1274,16 @@ async function aplicar(v, an) {
   for (const h of llegan) {
     const s = disp.asientos.get(h.idx), hueco = posMano(h.idx, h.lado);
     const desde = salidaHacia ?? (s && hueco ? hueco.pos.clone().addScaledVector(s.t, h.lado * 3.4) : disp.mazo.clone());
-    const n = nuevaMano(h.idx, h.cv, h.lado, desde);
-    humo(desde.clone().add(V(0, 0.5, 0)), { n: 6, radio: 0.3, color: 0x6a62a8, tam: 0.4 });
+    // Cronista: lo que escribió en su libro vuela hasta la mano y aparece allí.
+    const delLibro = cron && !cron.usado && hueco;
+    if (delLibro) { cron.usado = true; S.lanzar(700); await rayo(cron.libro, hueco.pos.clone().add(V(0, 0.9, 0)), INFO.Cronista.color, { alto: 0.8, dur: 0.6 }); chispas(hueco.pos.clone().add(V(0, 0.8, 0)), { n: 20, color: INFO.Cronista.color, vel: 0.6, vida: 1 }); }
+    const n = nuevaMano(h.idx, h.cv, h.lado, delLibro ? hueco.pos.clone() : desde);
+    if (!delLibro) humo(desde.clone().add(V(0, 0.5, 0)), { n: 6, radio: 0.3, color: 0x6a62a8, tam: 0.4 });
     const ms = materialesDe(n.actor); opacidad(n.actor, 0, ms); tw(0.6, k => opacidad(n.actor, k, ms)).catch(() => {});
     const lista = manos.get(h.idx); const i = lista.indexOf(h); if (i >= 0) lista[i] = n; else retirar(n.actor);
   }
   if (llegan.length) { S.aparece(); await espera(Math.min(2.2, 0.8 + llegan.length * 0.2)); }
+  cron?.fin();
   actualizarGemas(v);
 }
 

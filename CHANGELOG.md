@@ -4,6 +4,29 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.37.2.175] - 2026-11-12
+
+### Recuperado de la maqueta (Escenario)
+- **Centinela**: al llegar planta la lanza y sus escudos flotan en corro
+  alrededor de los Portales que protege (todos los de su dueña, o el Portal
+  central en el que esté) mientras siga a la vista. Si se apunta una
+  habilidad a un Portal protegido, el hechizo sale de quien conjura, choca
+  con los escudos y rebota (`rebotar()` en `tablero.js`, `crearEscudos()` en
+  `magia.js`).
+- **Invocación** más larga y con más magia: las runas despiertan una a una,
+  cada Portal envía un hilo de luz, espiral triple, latidos, fogonazo,
+  columna de luz, rayos hacia cada Portal, la criatura sube en una doble
+  hélice y late mientras flota; despedida con estallido.
+- **Pícaro** (pasiva): baja con sigilo, le roba una Gema azul a la criatura
+  y la deja con las de su dueña. **Entusiasta** (pasiva): le lanza a la
+  criatura una Gema azul de su dueña.
+- **Cronista** (lee su libro y el personaje vuela a sus páginas en letras de
+  luz), **Maestro** (rayos de colores y la carta llega flotando al Portal),
+  **Aprendiz** (las dos manos se cruzan por el aire en un remolino),
+  **Ocultista** (sombra que envuelve), **Metamorfo** (paga la Gema azul,
+  remolino y conserva su melena rosa) y la gracia de **Reena, Sora y Lumo**
+  al llegar.
+
 ## [1.37.1.174] - 2026-11-12
 
 ### Corregido / recuperado (Escenario)
