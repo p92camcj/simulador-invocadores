@@ -3,7 +3,7 @@
 // estrella rúnica, dos pilares altos unidos por un arco con una aguja, dos
 // pilares bajos, piedras con ojos rúnicos y escalinata). Cada variante
 // cambia qué está roto, la estrella y el tono, pero son la misma familia.
-import { THREE, mundo, siempre } from './mundo.js';
+import { THREE, mundo, siempreReal as siempre } from './mundo.js';
 import { texturaBrillo } from './efectos.js';
 
 export const ALTURA_TARIMA = 0.32;

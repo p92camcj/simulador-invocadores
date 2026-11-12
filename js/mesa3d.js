@@ -961,17 +961,27 @@ function abrirHoja({ tipo, titulo, cuerpo = '', botones = [], alElegir, alCancel
  */
 export function pickerMesa(titulo, opciones, cb, onCancel) {
   const dePortal = !!window.pickerObjetivoPortal;
+  // Cronomante en el Escenario: el pasado del Portal elegido se alza como
+  // ecos sobre él y se toca el que se quiere traer al presente.
+  const T = escenarioActivo() && !dePortal && estado.partida.cronomantePortalInvestigado ? tablero() : null;
+  const conEcos = !!T?.mostrarEcos && opciones.length > 1;
+  const elegir = conEcos ? val => { T.elegirEco(val); cb(val); } : cb;
   abrirHoja({
     tipo: 'picker',
-    titulo: dePortal ? (escenarioActivo() ? `${titulo} Toca un Portal que brille.` : `${titulo} — toca un Portal o elige:`) : titulo,
+    titulo: dePortal ? (escenarioActivo() ? `${titulo} Toca un Portal que brille.` : `${titulo} — toca un Portal o elige:`)
+      : conEcos ? `${titulo} Toca su eco sobre el Portal.` : titulo,
     botones: opciones.map(o => ({ val: o.val, lbl: o.lbl, disabled: !!o.disabled })),
-    alElegir: cb,
-    alCancelar: () => onCancel?.(),
-    compacta: dePortal,
+    alElegir: elegir,
+    alCancelar: () => { if (conEcos) T.quitarEcos(); onCancel?.(); },
+    compacta: dePortal || conEcos,
   });
+  if (conEcos && !T.mostrarEcos(estado.partida.cronomantePortalInvestigado, opciones, val => { cerrarHoja(); elegir(val); })) {
+    document.querySelector('.m-hoja-capa')?.classList.remove('compacta');
+    return;
+  }
   // En el Escenario 3D el objetivo se toca en la propia mesa: la hoja se queda
   // en una franja pequeña, con la lista de Portales plegada por si se prefiere.
-  if (dePortal && escenarioActivo()) {
+  if ((dePortal || conEcos) && escenarioActivo()) {
     const hoja = document.querySelector('.m-hoja-capa .m-hoja');
     hoja?.classList.add('mini');
     const btn = document.createElement('button');

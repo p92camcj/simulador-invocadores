@@ -24,6 +24,7 @@ let generacion = 0;
 const tweens = new Set();
 const porFrame = new Set();   // se borran al cambiar de escena
 const fijos = new Set();      // viven siempre (orbes de los Portales, partículas)
+const reales = new Set();     // como fijos, pero con el reloj real: no los cambia la velocidad de las animaciones
 
 /** Anima durante `dur` segundos; `fn(kSuavizado, kLineal)`. Promesa cancelable. */
 export function tw(dur, fn, ease = suave) {
@@ -35,6 +36,8 @@ export function tw(dur, fn, ease = suave) {
 export const espera = s => tw(s, null);
 export function cadaFrame(fn) { porFrame.add(fn); return () => porFrame.delete(fn); }
 export function siempre(fn) { fijos.add(fn); return () => fijos.delete(fn); }
+/** Como siempre(), pero a ritmo real (runas de los Portales, cámara, ambiente): no se acelera ni se frena. */
+export function siempreReal(fn) { reales.add(fn); return () => reales.delete(fn); }
 export function cancelarTodo() {
   generacion++;
   for (const t of tweens) t.rej(CANCELADO);
@@ -91,7 +94,8 @@ export function crearMundo(lienzo, calidad, { controles = true } = {}) {
   if (controles) controlesTactiles(lienzo);
   let acum = 0, cuadros = 0; antesBucle = performance.now();
   bucle = ahora => {
-    const dt = Math.min(0.05, Math.max(0, (ahora - antesBucle) / 1000)) * (mundo.velocidad ?? 1); antesBucle = ahora;
+    const dtReal = Math.min(0.05, Math.max(0, (ahora - antesBucle) / 1000)), dt = dtReal * (mundo.velocidad ?? 1); antesBucle = ahora;
+    mundo.tiempoReal = (mundo.tiempoReal ?? 0) + dtReal;
     mundo.tiempo += dt; acum += dt; cuadros++;
     if (acum >= 0.5) { mundo.fps = Math.round(cuadros / acum); acum = 0; cuadros = 0; }
     for (const t of [...tweens]) {
@@ -101,6 +105,7 @@ export function crearMundo(lienzo, calidad, { controles = true } = {}) {
     }
     for (const f of [...porFrame]) f(dt, mundo.tiempo);
     for (const f of fijos) f(dt, mundo.tiempo);
+    for (const f of reales) f(dtReal, mundo.tiempoReal);
     colocarCamara();
     renderer.render(escena, camara);
   };

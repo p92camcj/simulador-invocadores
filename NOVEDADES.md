@@ -6,6 +6,22 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.37.1.174 - 2026-11-12
+
+- **Vuelve la magia de la maqueta al Escenario**: la Estratega levanta los
+  Portales con sus orbes y los hace girar, la Clarividente abre su ojo de
+  luz y el Cronomante enseña los ecos del Portal para que elijas tocándolos,
+  con su reloj de arena flotando encima.
+- **Invocaciones más vistosas**: la criatura aparece muy alta sobre el
+  centro, reparte las Gemas una a una y deja un rastro de runa hasta el
+  Portal nuevo.
+- **Tus Gemas, delante de tus Portales**: todos ven cuántas tiene cada
+  uno; el valor solo lo ves tú.
+- Las cartas nuevas llegan por los lados, la mano acompaña al Portal que
+  mueves, los Portales se tocan por la base y la cámara se acerca sola a
+  las habilidades lejanas.
+- El deslizador de velocidad ya no acelera las runas del suelo.
+
 ## 1.37.0.171 - 2026-11-12
 
 - **Elige el ambiente del Escenario** desde el menú ☰: la hora del día

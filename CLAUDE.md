@@ -464,7 +464,14 @@ in `nextTurn()`.
   device's real hour, sky/weather, ground or "sin decorado" with a palette;
   `localStorage['inv3d.ambiente']`). The 🐢–🐇 speed slider
   (`js/velocidad.js`) is in the top bar of both views and the setup screen
-  and scales Mesa scenes, bot pauses and the Escenario. The prototype page `prototipos/personajes-3d.html` runs the
+  and scales Mesa scenes, bot pauses and the Escenario (only characters
+  and ability scenes: Portal runes, ambience and camera use
+  `siempreReal()` from `mundo.js`, real time). Since 1.37.1 the Escenario
+  reuses the prototype's magic pieces from `js/personajes3d/magia.js`
+  (Estratega levitation, Clarividente eye, Cronomante hourglass and
+  tappable echoes via `mostrarEcos()`), shows each seat's Gems in front of
+  its Portals (count public, total only to its owner) and auto-zooms on
+  abilities applied to far Portals. The prototype page `prototipos/personajes-3d.html` runs the
   predefined scenes of `escenas.js` with the same models.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
