@@ -8,6 +8,8 @@ import {
 import { PESOS } from '../js/bot-estrategia.js';
 import { sembrarAzar, jugarPartida, torneo } from '../tools/arena.mjs';
 import { obtenerModeloPersonas } from '../js/bot.js';
+import { MODELO_PERSONAS_BASE } from '../js/aprendizaje-base.js';
+import fs from 'node:fs';
 
 let ok = 0;
 function test(nombre, fn) {
@@ -76,6 +78,22 @@ test('elegirJugadaComoPersona devuelve una jugada posible', () => {
 
 test('torneo con aprendizaje: la Experta juega contra personas simuladas y el modelo se limpia al acabar', () => {
   const r = torneo({ partidas: 2, mesa: ['experta', 'persona@h', 'persona@h'], perfiles: { h: PERFIL }, aprender: true, semilla: 8 });
+  assert.equal(r.partidas, 2);
+  assert.equal(obtenerModeloPersonas(), null);
+});
+
+test('el modelo de serie es utilizable y coincide con las jugadas reales de datos/aprendizaje/', () => {
+  assert.ok(modeloUtilizable(MODELO_PERSONAS_BASE));
+  const ejemplos = fs.readdirSync(new URL('../datos/aprendizaje/', import.meta.url))
+    .filter(f => f.endsWith('.json'))
+    .flatMap(f => normalizarAlmacen(JSON.parse(fs.readFileSync(new URL(`../datos/aprendizaje/${f}`, import.meta.url), 'utf8'))).ejemplos);
+  assert.equal(ejemplos.length, MODELO_PERSONAS_BASE.ejemplos, 'regenera js/aprendizaje-base.js con node tools/modelo-base.mjs');
+  // Ninguna jugada guardada lleva nombres de personas.
+  ejemplos.forEach(e => e.vista.jugadoras.forEach(j => assert.equal(j.nombre, undefined)));
+});
+
+test('asiento imitacion: juega sorteando con su propio modelo, y la Experta empieza con el que se le da', () => {
+  const r = torneo({ partidas: 2, mesa: ['experta', 'imitacion'], modeloExperta: MODELO_PERSONAS_BASE, modeloImitacion: MODELO_PERSONAS_BASE, semilla: 3 });
   assert.equal(r.partidas, 2);
   assert.equal(obtenerModeloPersonas(), null);
 });

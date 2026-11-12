@@ -1337,9 +1337,11 @@ function simularTurnoRival(mundo, idx, cfg) {
 /**
  * Turno simulado de una persona según el modelo aprendido: Fase A sorteada
  * con `elegirJugadaComoPersona()` (js/aprendizaje.js) sobre lo que esa
- * persona sabe en el mundo; Fase B con la heurística 'dificil'.
+ * persona sabe en el mundo; Fase B con la heurística 'dificil'. `modelo`
+ * es el de la Experta salvo que se pase otro (el simulador de partidas lo
+ * usa para sentar a una persona imitada con su propio modelo).
  */
-function* decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecutor) {
+export function* decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecutor, modelo = modeloPersonas) {
   // `contexto` es la configuración pública de la partida (configPartida).
   const cfg = contexto;
   const { levelIdx } = cfg;
@@ -1350,7 +1352,7 @@ function* decidirYJugarTurnoComoPersona(players, neutrals, idx, contexto, ejecut
   const vista = construirEstadoVisibleParaBot(players, neutrals, idx);
   const probabilidades = estimarProbabilidadesPersonajes(vista, memoria, cfg);
   const valorGemaNivel = lvl ? valorMedioGemaNivel(cfg, lvl) : 0;
-  const jugada = elegirJugadaComoPersona(vista, need, valorGemaNivel, probabilidades.probabilidadPorNombre, modeloPersonas);
+  const jugada = elegirJugadaComoPersona(vista, need, valorGemaNivel, probabilidades.probabilidadPorNombre, modelo);
   ejecutor.jugar(players, idx, jugada);
   yield 'faseA';
   const vistaTrasA = construirEstadoVisibleParaBot(players, neutrals, idx);

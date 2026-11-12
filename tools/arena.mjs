@@ -27,8 +27,12 @@ import {
   invocacionDePartida, configPartida, MODOS_JUEGO, modoDe, crearAutomataCentral, resultadoFinalExperto,
   jugadorasConMenosPuntos, convieneIntercambioAutomata,
 } from '../js/utils.js';
-import { decidirYJugarTurno, crearEjecutorMotor, construirEstadoVisibleParaBot, establecerModeloPersonas } from '../js/bot.js';
-import { crearEjemplo, ajustarModelo, conPesos, MAX_EJEMPLOS } from '../js/aprendizaje.js';
+import {
+  decidirYJugarTurno, decidirYJugarTurnoComoPersona, crearEjecutorMotor, construirEstadoVisibleParaBot, establecerModeloPersonas,
+} from '../js/bot.js';
+import { crearEjemplo, ajustarModelo, conPesos, MAX_EJEMPLOS, normalizarAlmacen, modeloUtilizable } from '../js/aprendizaje.js';
+import { MODELO_PERSONAS_BASE } from '../js/aprendizaje-base.js';
+import fs from 'node:fs';
 import { estimarProbabilidadesPersonajes, valorMedioGemaNivel } from '../js/bot-probabilidad.js';
 import { evaluarJugadasFaseA } from '../js/bot-estrategia.js';
 import { PESOS } from '../js/bot-estrategia.js';
@@ -68,10 +72,13 @@ export function prepararPartida(dificultades, opciones = 'normal') {
   const n = dificultades.length;
   // 'persona' = una persona simulada (para probar el aprendizaje): para el
   // motor y para las autómatas es una jugadora humana; la juega la
-  // heurística 'dificil' con los pesos de su perfil.
+  // heurística 'dificil' con los pesos de su perfil. 'imitacion' = una
+  // persona simulada que juega sorteando con un modelo aprendido de
+  // personas reales (opción --imitar), como las prevé la Experta.
+  const esPersona = d => d === 'persona' || d === 'imitacion';
   partida.players = dificultades.map((dificultad, i) => ({
-    name: `${dificultad}-${i}`, tipo: dificultad === 'persona' ? 'humano' : 'auto',
-    dificultad: dificultad === 'persona' ? 'dificil' : dificultad, hand: [], portals: [],
+    name: `${dificultad}-${i}`, tipo: esPersona(dificultad) ? 'humano' : 'auto',
+    dificultad: esPersona(dificultad) ? 'dificil' : dificultad, hand: [], portals: [],
     gems: Array.from({ length: 3 }, () => ({ valor: 1, nivel: 'unitaria' })),
   }));
   // Reparto de Portales del reglamento (setup.js).
@@ -112,7 +119,7 @@ export function gestionarClarividente(partida) {
  * `perfiles[perfil]` (para enfrentar dos ajustes de pesos en la misma mesa).
  * Devuelve { puntos, ganadoras, invocaciones, turnos }.
  */
-export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, registro = null) {
+export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, registro = null, modeloImitacion = null) {
   // `invocationSet`: un set o las opciones de partida (opcionesDePartida).
   const base = { ...PESOS };
   const baseBusqueda = { ...BUSQUEDA };
@@ -131,7 +138,13 @@ export function jugarPartida(asientos, invocationSet = 'normal', perfiles = {}, 
     Object.assign(PESOS, pesosDe[partida.turn]);
     Object.assign(BUSQUEDA, busquedaDe[partida.turn]);
     if (registro && partida.players[partida.turn].tipo !== 'auto') registrarComoNavegador(partida, registro);
-    decidirYJugarTurno(partida.players, partida.neutrals, partida.turn, configPartida(partida), ejecutor);
+    if (dificultades[partida.turn] === 'imitacion') {
+      if (!modeloUtilizable(modeloImitacion)) throw new Error("El asiento 'imitacion' necesita --imitar <archivo de aprendizaje>");
+      for (const _ of decidirYJugarTurnoComoPersona(partida.players, partida.neutrals, partida.turn, configPartida(partida), ejecutor, modeloImitacion)) { /* sin pausas */ }
+      ejecutor.terminar();
+    } else {
+      decidirYJugarTurno(partida.players, partida.neutrals, partida.turn, configPartida(partida), ejecutor);
+    }
     gestionarClarividente(partida);
     if (!partida.played) throw new Error(`La autómata ${partida.turn} no jugó carta (turno ${turnos})`);
     terminarTurno(partida);
@@ -184,7 +197,10 @@ function registrarComoNavegador(partida, registro) {
  * rotando asientos. Devuelve, por dificultad, el % de victorias (los empates
  * se reparten) y los puntos medios, más las invocaciones medias por partida.
  */
-export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'], set = 'normal', semilla = 1, perfiles = {}, aprender = false } = {}) {
+export function torneo({
+  partidas = 500, mesa = ['dificil', 'normal', 'normal'], set = 'normal', semilla = 1, perfiles = {}, aprender = false,
+  modeloExperta = null, modeloImitacion = null,
+} = {}) {
   sembrarAzar(semilla);
   const n = mesa.length;
   const stats = {};
@@ -194,12 +210,14 @@ export function torneo({ partidas = 500, mesa = ['dificil', 'normal', 'normal'],
   // Con `aprender`, como en la web: las jugadas de las 'persona' se
   // registran y, al acabar cada partida, se reajusta el modelo que usa la
   // Experta para preverlas.
+  // `modeloExperta`: el modelo de personas con el que empieza la Experta
+  // (p. ej. el de serie, MODELO_PERSONAS_BASE); `null` = sin modelo.
   let ejemplos = [];
-  establecerModeloPersonas(null);
+  establecerModeloPersonas(modeloExperta);
   for (let g = 0; g < partidas; g++) {
     const rot = mesa.map((_, i) => mesa[(i + g) % n]);
     const registro = aprender ? [] : null;
-    const r = jugarPartida(rot, set, perfiles, registro);
+    const r = jugarPartida(rot, set, perfiles, registro, modeloImitacion);
     if (aprender && registro.length) {
       ejemplos = ejemplos.concat(registro).slice(-MAX_EJEMPLOS);
       establecerModeloPersonas(ajustarModelo(ejemplos));
@@ -243,6 +261,20 @@ if (esPrincipal) {
   const set = args.modo
     ? { modo: args.modo, invocationSet: args.set, entusiasta: args.entusiasta === '1', madain: args.madain === '1' }
     : (args.set || 'normal');
-  const r = torneo({ partidas: +(args.partidas || 500), mesa, set, semilla: +(args.semilla || 1), perfiles, aprender: args.aprender === '1' });
+  // --imitar <archivo exportado desde la web>: modelo con el que juegan los
+  // asientos 'imitacion' (el guardado en el archivo o, si no trae, ajustado
+  // a sus jugadas). --modelo-experta base|ninguno|<archivo>: con qué modelo
+  // de personas empieza la Experta (por defecto 'base', como en la web).
+  const modeloDeArchivo = ruta => {
+    const almacen = normalizarAlmacen(JSON.parse(fs.readFileSync(ruta, 'utf8')));
+    return modeloUtilizable(almacen.modelo) ? almacen.modelo : ajustarModelo(almacen.ejemplos);
+  };
+  const modeloImitacion = args.imitar ? modeloDeArchivo(args.imitar) : null;
+  const me = args['modelo-experta'] || 'base';
+  const modeloExperta = me === 'ninguno' ? null : me === 'base' ? MODELO_PERSONAS_BASE : modeloDeArchivo(me);
+  const r = torneo({
+    partidas: +(args.partidas || 500), mesa, set, semilla: +(args.semilla || 1), perfiles, aprender: args.aprender === '1',
+    modeloExperta, modeloImitacion,
+  });
   console.log(JSON.stringify({ ...r, pesos: PESOS, segundos: (Date.now() - t0) / 1000 }, null, 1));
 }

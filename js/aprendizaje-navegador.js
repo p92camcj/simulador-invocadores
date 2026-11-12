@@ -12,6 +12,7 @@ import {
   crearAlmacenVacio, normalizarAlmacen, crearEjemplo, anadirEjemplos, ajustarModelo,
   modeloUtilizable, MIN_EJEMPLOS_MODELO,
 } from './aprendizaje.js';
+import { MODELO_PERSONAS_BASE } from './aprendizaje-base.js';
 import { construirEstadoVisibleParaBot, establecerModeloPersonas } from './bot.js';
 import { estimarProbabilidadesPersonajes, valorMedioGemaNivel } from './bot-probabilidad.js';
 import { configPartida, invocacionDePartida } from './utils.js';
@@ -33,8 +34,15 @@ function guardar() {
   try { localStorage.setItem(CLAVE, JSON.stringify(almacen)); } catch { /* sin espacio o bloqueado: se sigue sin guardar */ }
 }
 
+// Hasta que este dispositivo tenga su propio modelo, la Experta usa el de
+// serie (js/aprendizaje-base.js, ajustado con partidas reales exportadas).
+function modeloEnUso() {
+  if (modeloUtilizable(almacen.modelo)) return almacen.modelo;
+  return modeloUtilizable(MODELO_PERSONAS_BASE) ? MODELO_PERSONAS_BASE : null;
+}
+
 function aplicarModelo() {
-  establecerModeloPersonas(modeloUtilizable(almacen.modelo) ? almacen.modelo : null);
+  establecerModeloPersonas(modeloEnUso());
 }
 
 /** Carga lo aprendido, se lo da a las autómatas y prepara el panel de configuración. */
@@ -110,10 +118,11 @@ function reajustar() {
 
 function textoPanel() {
   const n = almacen.ejemplos.length;
-  if (!n) return 'Las autómatas aprenden de cómo juegan las personas en este dispositivo. Aún no hay jugadas registradas.';
+  const deSerie = `Mientras, la Experta usa lo aprendido de serie en ${MODELO_PERSONAS_BASE.ejemplos} jugadas de partidas reales.`;
+  if (!n) return `Las autómatas aprenden de cómo juegan las personas en este dispositivo. Aún no hay jugadas registradas. ${deSerie}`;
   const base = `Han observado ${n} jugadas de personas en ${almacen.partidas} partidas.`;
   if (!modeloUtilizable(almacen.modelo)) {
-    return `${base} Empezarán a usarlo a partir de ${MIN_EJEMPLOS_MODELO} jugadas.`;
+    return `${base} Empezarán a usarlo a partir de ${MIN_EJEMPLOS_MODELO} jugadas. ${deSerie}`;
   }
   const pct = Math.round(almacen.modelo.acierto * 100);
   return `${base} La Experta ya lo usa para prever vuestras jugadas (acierta la jugada exacta el ${pct} % de las veces).`;
