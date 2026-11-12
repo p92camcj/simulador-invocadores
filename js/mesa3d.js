@@ -22,6 +22,7 @@
 
 import { cardImages, CARTA_OCULTA_IMG, escapeHtml, iconos, MODOS_JUEGO, modoDe, datosInvocacion } from './utils.js';
 import { rutaFigura, rutaCriatura, espectaculoActivo, fijarEspectaculo } from './espectaculo.js';
+import { deslizadorVelocidadHtml, conectarDeslizadores } from './velocidad.js';
 import { escenarioActivo, fijarEscenario, sonido3dActivo, fijarSonido3D, tablero, cargarTablero, reiniciarEscenario } from './escenas3d.js';
 import { estado } from './motor/estado.js';
 import { opcionesFaseB } from './motor/acciones.js';
@@ -93,6 +94,7 @@ export function initMesa3D() {
 
   prepararPantallaInicio();
 
+  conectarDeslizadores();
   const raiz = asegurarRaiz();
   raiz.addEventListener('click', alClicar);
   raiz.addEventListener('pointerdown', alEmpezarArrastre);
@@ -414,6 +416,7 @@ export function renderMesa3D() {
       <button type="button" class="m-btn-icono" data-accion="historial" aria-label="Historial de jugadas" title="Historial de jugadas">📜</button>
       ${invocacionHtml(v.invocacion)}
       <span class="m-mazo" title="Cartas en el mazo"><span class="m-mazo-pila"></span><b>${v.mazo}</b></span>
+      ${deslizadorVelocidadHtml('m-velocidad--barra')}
     </header>
     ${requeridosHtml(v.invocacion)}`;
 
@@ -910,6 +913,7 @@ export function hayPickerMesaAbierto() {
 }
 
 function cerrarHoja() {
+  if (hojaActual?.panoramica) tablero()?.vistaPanoramica(false);
   document.querySelector('.m-hoja-capa')?.remove();
   hojaActual = null;
 }
@@ -1045,6 +1049,7 @@ function abrirMenu() {
       ${escenarioActivo() ? '' : `<button type="button" class="m-opcion" data-menu="escenas">✨ Escenas animadas: ${esc ? 'sí' : 'no'}</button>`}
       <button type="button" class="m-opcion" data-menu="modo">${escenarioActivo() ? '🎴 Cambiar a la Mesa (cartas)' : '🧙 Cambiar al Escenario 3D (en pruebas)'}</button>
       ${escenarioActivo() ? `<button type="button" class="m-opcion" data-menu="sonido3d">${sonido3dActivo() ? '🔊' : '🔇'} Sonido del Escenario: ${sonido3dActivo() ? 'sí' : 'no'}</button>
+      <button type="button" class="m-opcion" data-menu="ambiente">🌄 Ambiente: hora, cielo y suelo</button>
       <button type="button" class="m-opcion" data-menu="encuadre">🎯 Ver toda la mesa</button>
       <button type="button" class="m-opcion" data-menu="recolocar">↺ Devolver los Portales a su sitio</button>` : ''}
       <button type="button" class="m-opcion" data-menu="pantalla">⛶ Pantalla completa</button>
@@ -1056,6 +1061,41 @@ function abrirMenu() {
   });
 }
 
+/**
+ * Panel "Ambiente" del Escenario: hora, cielo y suelo (o sin decorado con
+ * una paleta), y la velocidad de las animaciones. Cada toque se ve al
+ * momento en el Escenario, que queda visible detrás (hoja compacta).
+ */
+function abrirAmbiente(refrescar = false) {
+  const T = tablero();
+  if (!T) return;
+  const a = T.ambienteActual(), O = T.OPCIONES_AMBIENTE;
+  const sinDecorado = a.suelo === 'ninguno';
+  const fila = (campo, titulo, apagada = false) => `<div class="m-amb-fila ${apagada ? 'apagada' : ''}"><span class="m-amb-titulo">${titulo}</span><div class="m-amb-chips">`
+    + O[campo].map(([val, icono, txt]) => campo === 'paleta'
+      ? `<button type="button" class="m-amb-chip ${a[campo] === val ? 'activa' : ''}" data-menu="amb:${campo}:${val}" title="${escapeHtml(txt)}"><span class="m-amb-muestra" style="background:${icono}"></span>${escapeHtml(txt)}</button>`
+      : `<button type="button" class="m-amb-chip ${a[campo] === val ? 'activa' : ''}" data-menu="amb:${campo}:${val}">${icono} ${escapeHtml(txt)}</button>`).join('')
+    + `</div></div>`;
+  const cuerpo = `<div class="m-ambiente">
+      ${fila('suelo', 'Suelo')}
+      ${sinDecorado ? fila('paleta', 'Color') : fila('hora', 'Hora') + fila('cielo', 'Cielo')}
+      <div class="m-amb-fila"><span class="m-amb-titulo">Velocidad</span>${deslizadorVelocidadHtml()}</div>
+    </div>`;
+  const capa = document.querySelector('.m-hoja-capa');
+  const actual = capa?.querySelector('.m-ambiente');
+  if (refrescar && actual) {
+    // Se cambia solo el contenido, sin volver a abrir la hoja (que no salte).
+    const filas = actual.parentElement;
+    const scroll = [...actual.querySelectorAll('.m-amb-chips')].map(e => e.scrollLeft);
+    actual.outerHTML = cuerpo;
+    filas.querySelectorAll('.m-amb-chips').forEach((e, i) => { e.scrollLeft = scroll[i] ?? 0; });
+    return;
+  }
+  abrirHoja({ tipo: 'info', titulo: 'Ambiente del Escenario', cuerpo, compacta: true });
+  hojaActual.panoramica = true;
+  T.vistaPanoramica(true);
+}
+
 function accionMenu(opcion) {
   if (opcion === 'escenas') { fijarEspectaculo(!espectaculoActivo()); abrirMenu(); return; }
   if (opcion === 'modo') {
@@ -1064,6 +1104,13 @@ function accionMenu(opcion) {
     mostrarAviso(escenarioActivo() ? 'Escenario 3D: toca tus figuras y los Portales para jugar' : 'Vuelves a la Mesa');
     ultimoHtml = '';
     renderMesa3D();
+    return;
+  }
+  if (opcion === 'ambiente') { abrirAmbiente(); return; }
+  if (opcion.startsWith('amb:')) {
+    const [, campo, valor] = opcion.split(':');
+    tablero()?.fijarAmbiente({ [campo]: valor });
+    abrirAmbiente(true);
     return;
   }
   if (opcion === 'encuadre') { cerrarHoja(); tablero()?.reencuadrar(); return; }

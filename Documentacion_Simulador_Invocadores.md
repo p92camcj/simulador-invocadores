@@ -507,7 +507,16 @@ la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
   `puntoEnPantalla()` / `queHayEn()`. Gestos: arrastrar gira, pellizco o
   rueda acercan, dos dedos (o clic derecho / mayúsculas) desplazan, mantener
   pulsado un Portal lo mueve (`localStorage['inv3d.tablero']`), doble toque
-  en un hueco vuelve a ver toda la mesa.
+  en un hueco vuelve a ver toda la mesa. Desde 1.37.0 también
+  `fijarAmbiente(cambio)`, `ambienteActual()`, `OPCIONES_AMBIENTE` y
+  `vistaPanoramica(si)` (levanta la cámara mientras se elige el ambiente).
+- `ambiente.js` (1.37.0): hora (amanecer, día, atardecer, noche u hora real
+  del dispositivo, mezclada poco a poco), cielo (despejado, nubes, cubierto,
+  lluvia, tormenta con relámpagos y truenos), suelo (empedrado, hierba,
+  madera, arena con mar) o sin decorado con paleta. `crearAmbiente()`,
+  `fijarAmbiente({ hora, cielo, suelo, paleta })` (guardado en
+  `localStorage['inv3d.ambiente']`), `ambienteActual()`,
+  `sonidoAmbiente(si)`, `OPCIONES_AMBIENTE`. Texturas dibujadas con canvas.
 - `escenas.js`: `ESCENAS` (escenas de la maqueta), `reproducir(id)`,
   `ponerNombres(nombres)`, `montarEscenario()`, `configurar()`,
   `modoColocar()`, `restablecerPortales()`.
@@ -520,8 +529,23 @@ la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
 - `efectos.js`: partículas (`chispas`, `absorber`, `humo`, `onda`), `rayo`,
   `destello`, `gema`.
 - `mundo.js`: renderizador, cámara, tweens, `pausar()` / `reanudar()`,
-  `siempre(fn)` (devuelve con qué darlo de baja).
-- `sonido.js`: sonidos sintetizados con Web Audio (`S`).
+  `siempre(fn)` (devuelve con qué darlo de baja). Guarda `mundo.luces`
+  (`hemi`, `sol`) y `mundo.decorado` (suelo y estrellas por defecto, que el
+  ambiente oculta).
+- `sonido.js`: sonidos sintetizados con Web Audio (`S`), y desde 1.37.0
+  `ambienteSonoro(capas)` ('lluvia', 'tormenta', 'mar', 'viento',
+  'grillos', 'pajaros') y `trueno(cerca)`.
+
+## js/velocidad.js
+**Propósito (1.37.0):** velocidad de las animaciones, un factor entre 0,4
+(🐢) y 2,5 (🐇) guardado en `localStorage['invocadores.velocidad']`. Lo
+leen las escenas de la Mesa (`espectaculo.js`), las pausas de las autómatas
+(`narrador.js`) y el Escenario (`mundo.velocidad`). Exporta
+`velocidadAnimaciones()`, `fijarVelocidadAnimaciones(v)`,
+`alCambiarVelocidad(fn)`, `posicionDeVelocidad(v)` / `velocidadDePosicion(p)`
+(escala del deslizador 0-100, 50 = normal), `deslizadorVelocidadHtml(clase)`
+y `conectarDeslizadores()` (un oyente para todos los `input[data-velocidad]`:
+pantalla de inicio, barra de la partida y panel Ambiente).
 
 ## js/espectaculo.js
 **Propósito:** **Modo espectáculo**: capa de presentación que escenifica a pantalla completa lo que ya ha pasado en la partida (bajar una carta a un Portal, aplicar una habilidad, completar una invocación). No decide nada ni cambia reglas. Usa el arte original de `assets/personajes/*.svg` (personajes de cuerpo entero, la carta del Portal y las criaturas de Cirelia, Baelorith y Aelgorth), convertido con `node tools/rasterizar_svg.cjs && python3 tools/generar_figuras.py` en `assets/figuras/*.webp`, `assets/invocaciones/*.webp` y `assets/portal.jpg`, y los estilos de `espectaculo.css`. Solo muestra la cara de una carta si es pública en la mesa (o lo era antes de la acción); manos y cartas tapadas se dibujan siempre con el reverso. Las escenas van en cola, se aceleran si se acumulan (turnos seguidos de autómatas) y se saltan con un clic o Escape. Respeta `prefers-reduced-motion`.

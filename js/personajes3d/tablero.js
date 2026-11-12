@@ -19,7 +19,10 @@ import { THREE, mundo, crearMundo, tw, espera, V, lineal, sale, arco, pausar, re
 import { crearEfectos, chispas, humo, onda, destello, rayo, gema, quitar } from './efectos.js';
 import { crearPortal, encender, VARIANTES, ALTURA_TARIMA, texturaDisco, nombrarPortal } from './portales.js';
 import { crearActor, quitarActor, INFO, posar, mano, caminar, quitarCapa, aclararCapa, opacarCapa, conjurar, transformar, opacidad, materialesDe } from './personajes.js';
-import { S, iniciarAudio, ponerSonido } from './sonido.js';
+import { S, iniciarAudio, ponerSonido, sonidoActivo } from './sonido.js';
+import { crearAmbiente, sonidoAmbiente, fijarAmbiente as fijarAmb, ambienteActual, OPCIONES_AMBIENTE } from './ambiente.js';
+import { velocidadAnimaciones, alCambiarVelocidad } from '../velocidad.js';
+export { OPCIONES_AMBIENTE, ambienteActual };
 import { firmaPortal, cambioPortal } from '../vista-mesa.js';
 
 const SEP = 3.5;                 // distancia entre Portales vecinos
@@ -54,7 +57,9 @@ export function iniciar() {
   try { calidad = localStorage.getItem('inv3d.calidad') ?? (Math.min(innerWidth, innerHeight) < 600 ? 'baja' : 'alta'); } catch { /* por defecto */ }
   try { crearMundo(lienzo, calidad, { controles: false }); } catch (e) { lienzo.remove(); lienzo = null; throw e; }
   mundo.escena.fog.density = 0.017;
-  mundo.velocidad = 1.5;
+  mundo.velocidad = 1.5 * velocidadAnimaciones();
+  alCambiarVelocidad(v => { mundo.velocidad = 1.5 * v; });
+  crearAmbiente();
   crearEfectos();
   controles(lienzo);
   siempre(seguir);
@@ -68,12 +73,14 @@ export function mostrar() {
   if (!lienzo) iniciar();
   if (visible) return;
   visible = true; lienzo.classList.remove('oculto'); reanudar();
+  sonidoAmbiente(true);
 }
 
 /** Se oculta (vuelta a la Mesa): se corta lo que estuviera en marcha y la próxima vez se monta de cero. */
 export function ocultar() {
   if (!lienzo || !visible) return;
   visible = false; lienzo.classList.add('oculto');
+  sonidoAmbiente(false);
   cortar(); pausar(); construido = false;
   avisarLibres();
 }
@@ -86,13 +93,15 @@ export function reiniciar() {
   for (const a of [...actores]) retirar(a);
   manos.clear();
   for (const p of portales.values()) { p.g.visible = false; p.actor = null; }
-  if (visible) { visible = false; lienzo.classList.add('oculto'); pausar(); }
+  if (visible) { visible = false; lienzo.classList.add('oculto'); pausar(); sonidoAmbiente(false); }
 }
 
 function cortar() { pendiente = null; anuncios = []; clearTimeout(temporizador); temporizador = null; cancelarTodo(); trabajando = false; }
 
 export function fijarAlTocar(fn) { alTocar = fn; }
 export function fijarSonido(si, gesto = false) { ponerSonido(si); if (si && gesto) iniciarAudio(); }
+/** Ambiente del Escenario (hora, cielo, suelo, paleta): ver ambiente.js. */
+export function fijarAmbiente(cambio) { fijarAmb(cambio); }
 
 // ------------------------------------------------- cola de actualizaciones
 
@@ -135,7 +144,7 @@ async function procesar() {
       const v = pendiente ?? ultimaVista; pendiente = null;
       const an = anuncios; anuncios = [];
       if (!v) break;
-      mundo.velocidad = pendiente ? 2.4 : 1.5;
+      mundo.velocidad = 1.5 * velocidadAnimaciones();
       if (!construido) construir(v); else await aplicar(v, an);
       ultimaVista = v;
     }
@@ -748,6 +757,7 @@ function controles(el) {
   const fin = () => { clearTimeout(largo); largo = null; };
   el.addEventListener('contextmenu', e => e.preventDefault());
   el.addEventListener('pointerdown', e => {
+    if (sonidoActivo()) iniciarAudio();   // el audio solo puede arrancar tras un toque
     el.setPointerCapture?.(e.pointerId);
     dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (dedos.size === 1) {
@@ -821,6 +831,18 @@ function desplazar(dx, dy) {
 }
 
 /** Vuelve a la vista de toda la mesa (doble toque en un hueco, o botón). */
+/** Mientras se elige el ambiente, la cámara se levanta para enseñar el cielo y el horizonte. */
+let panoramica = null;
+export function vistaPanoramica(si) {
+  const u = mundo.usuario;
+  if (si === !!panoramica) return;
+  const de = { polar: u.polar, zoom: u.zoom };
+  let a;
+  if (si) { panoramica = de; a = { polar: 0.42, zoom: Math.max(u.zoom, 1.12) }; }
+  else { a = panoramica; panoramica = null; }
+  tw(0.9, k => { u.polar = de.polar + (a.polar - de.polar) * k; u.zoom = de.zoom + (a.zoom - de.zoom) * k; }).catch(() => {});
+}
+
 export function reencuadrar() { pan.set(0, 0, 0); Object.assign(mundo.usuario, { azimut: 0, polar: 0, zoom: 1 }); }
 
 /** Devuelve los Portales a su sitio de siempre. */

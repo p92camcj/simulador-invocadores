@@ -16,6 +16,7 @@ export function iniciarAudio() {
   rev = ctx.createConvolver(); rev.buffer = ir; const g = ctx.createGain(); g.gain.value = 0.5; rev.connect(g); g.connect(maestro);
   bufRuido = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const d = bufRuido.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  if (capasDeseadas.length) ambienteSonoro(capasDeseadas);
 }
 export function ponerSonido(si) { activo = si; if (maestro) maestro.gain.value = si ? 0.85 : 0; }
 export const sonidoActivo = () => activo;
@@ -117,3 +118,52 @@ const SON = {
 };
 /** S.nombre(...) reproduce un efecto; si el audio no está iniciado o está apagado, no hace nada. */
 export const S = new Proxy(SON, { get: (o, k) => (...a) => { if (ctx && activo && o[k]) try { o[k](...a); } catch (e) { console.warn(e); } } });
+
+// ------------------------------------------------------- sonido ambiente
+// Capas suaves y continuas según el ambiente del Escenario (ambiente.js):
+// 'lluvia', 'tormenta', 'mar', 'viento', 'grillos', 'pajaros'. Todo sintetizado.
+let capasDeseadas = [], capas = [];
+
+function bucleRuido(filtros, vol) {
+  const s = ctx.createBufferSource(); s.buffer = bufRuido; s.loop = true;
+  const g = ctx.createGain(); g.gain.value = 0;
+  let n = s; for (const [tipo, f, q] of filtros) { const fl = ctx.createBiquadFilter(); fl.type = tipo; fl.frequency.value = f; fl.Q.value = q ?? 0.7; n.connect(fl); n = fl; }
+  n.connect(g); g.connect(maestro);
+  s.start(ctx.currentTime, Math.random() * 1.5);
+  g.gain.setTargetAtTime(vol, ctx.currentTime, 1.2);   // entra poco a poco
+  return { g, para: () => { g.gain.setTargetAtTime(0, ctx.currentTime, 0.6); setTimeout(() => { try { s.stop(); } catch { /* ya parado */ } g.disconnect(); }, 3000); } };
+}
+function vaiven(capa, periodo, prof) {   // ola: el volumen sube y baja despacio
+  const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 1 / periodo; lg.gain.value = prof;
+  l.connect(lg); lg.connect(capa.g.gain); l.start();
+  const para = capa.para; capa.para = () => { para(); try { l.stop(); } catch { /* nada */ } };
+  return capa;
+}
+function salteado(fn, min, max) {   // sonidos sueltos cada cierto tiempo (grillos, pájaros)
+  let t = null, vivo = true;
+  const otro = () => { if (!vivo) return; fn(); t = setTimeout(otro, (min + Math.random() * (max - min)) * 1000); };
+  t = setTimeout(otro, Math.random() * min * 1000);
+  return { para: () => { vivo = false; clearTimeout(t); } };
+}
+const CAPAS = {
+  lluvia: () => [bucleRuido([['highpass', 900], ['lowpass', 6500]], 0.05), bucleRuido([['lowpass', 380]], 0.03)],
+  tormenta: () => [bucleRuido([['highpass', 700], ['lowpass', 7000]], 0.08), vaiven(bucleRuido([['bandpass', 260, 0.6]], 0.05), 9, 0.03)],
+  mar: () => [vaiven(bucleRuido([['lowpass', 650]], 0.06), 7.5, 0.05), vaiven(bucleRuido([['bandpass', 2400, 0.5]], 0.012), 7.5, 0.011)],
+  viento: () => [vaiven(bucleRuido([['bandpass', 420, 0.8]], 0.03), 11, 0.02)],
+  grillos: () => [salteado(() => { const f = 4200 + Math.random() * 500, p = Math.random() * 1.4 - 0.7; for (let i = 0; i < 3; i++) tono({ f, dur: 0.04, vol: 0.018, t: i * 0.07, eco: 0.1, pan: p }); }, 0.6, 1.8)],
+  pajaros: () => [salteado(() => { const f = 2300 + Math.random() * 1200, p = Math.random() * 1.6 - 0.8, n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) tono({ f: f * (1 + i * 0.06), f2: f * 1.35, dur: 0.09, vol: 0.022, t: i * 0.13, eco: 0.25, pan: p, vib: 30, vibProf: 0.04 }); }, 2.5, 7)],
+};
+/** Pone las capas de sonido ambiente (lista de nombres); [] lo apaga. */
+export function ambienteSonoro(lista = []) {
+  capasDeseadas = lista;
+  capas.forEach(c => c.para()); capas = [];
+  if (!ctx) return;
+  for (const n of lista) if (CAPAS[n]) capas.push(...CAPAS[n]());
+}
+/** Trueno: retumbo grave; `cerca` (0..1) añade el chasquido. */
+export function trueno(cerca = 0.5) {
+  if (!ctx || !activo) return;
+  ruido({ dur: 3.2 + Math.random() * 1.5, vol: 0.22 + cerca * 0.15, f: 260, f2: 60, atk: 0.06 + (1 - cerca) * 0.3, eco: 0.5 });
+  tono({ f: 48, f2: 30, dur: 2.5, vol: 0.18 * (0.5 + cerca), atk: 0.1 });
+  if (cerca > 0.6) ruido({ dur: 0.35, vol: 0.18, filtro: 'bandpass', f: 2200, f2: 500, q: 0.8 });
+}

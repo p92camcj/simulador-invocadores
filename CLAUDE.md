@@ -459,7 +459,12 @@ in `nextTurn()`.
   `import()` only when Escenario is chosen — never import it statically
   from game modules and don't add it to `urlsToCache`. Same hidden-info
   rule: a card the viewer can't see is an opaque hooded figure with no
-  model inside. The prototype page `prototipos/personajes-3d.html` runs the
+  model inside. Since 1.37.0 the Escenario has an ambience
+  (`js/personajes3d/ambiente.js`, ☰ → "Ambiente": time of day incl. the
+  device's real hour, sky/weather, ground or "sin decorado" with a palette;
+  `localStorage['inv3d.ambiente']`). The 🐢–🐇 speed slider
+  (`js/velocidad.js`) is in the top bar of both views and the setup screen
+  and scales Mesa scenes, bot pauses and the Escenario. The prototype page `prototipos/personajes-3d.html` runs the
   predefined scenes of `escenas.js` with the same models.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D

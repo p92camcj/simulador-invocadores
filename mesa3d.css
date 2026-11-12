@@ -625,3 +625,29 @@ body.modo-escenario #mesa3d > .m-hueco3d { pointer-events: none; }
 .m-hoja.mini .m-opciones { display: none; }
 .m-hoja.mini { padding-bottom: 10px; }
 .m-hoja-lista { display: block; margin: 0 auto 8px; }
+
+/* ---------- Velocidad de las animaciones (🐢 … 🐇) y panel Ambiente ---------- */
+.m-velocidad { display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: 1rem; line-height: 1; }
+.m-velocidad input[type=range] { width: 110px; accent-color: #b48cff; margin: 0; height: 28px; }
+.m-velocidad--barra { padding: 0 8px; height: 42px; border-radius: 12px; background: var(--vidrio);
+  box-shadow: inset 0 0 0 1px #ffffff22; }
+/* En el móvil la barra no da para más: se queda el conejo y, al tocarlo, sale el deslizador. */
+@media (max-width: 560px) {
+  .m-velocidad--barra { position: relative; width: 42px; padding: 0; justify-content: center; font-size: 1.15rem; }
+  .m-velocidad--barra > span:first-child { display: none; }
+  .m-velocidad--barra input[type=range] { position: absolute; top: 50px; right: 0; width: 0; opacity: 0; pointer-events: none;
+    z-index: 70; box-sizing: content-box; }
+  .m-velocidad--barra:focus-within input[type=range] { width: 200px; opacity: 1; pointer-events: auto; height: 30px;
+    padding: 8px 14px; border-radius: 14px; background: #1b1233ee; box-shadow: 0 6px 20px #000a, inset 0 0 0 1px #b48cff66; }
+}
+.lbl-velocidad .m-velocidad input[type=range] { width: 180px; }
+.m-ambiente { display: flex; flex-direction: column; gap: 8px; }
+.m-amb-fila { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.m-amb-titulo { flex: none; width: 74px; font-size: .8rem; opacity: .8; text-align: left; }
+.m-amb-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; min-width: 0; }
+.m-amb-chips::-webkit-scrollbar { display: none; }
+.m-amb-chip { flex: none; white-space: nowrap; padding: 7px 11px; border-radius: 999px; font-size: .85rem;
+  background: #ffffff12 !important; box-shadow: inset 0 0 0 1px #ffffff26; color: inherit; }
+.m-amb-chip.activa { background: #b48cff40 !important; box-shadow: inset 0 0 0 2px #c8a8ff; }
+.m-amb-muestra { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px;
+  margin-right: 5px; box-shadow: 0 0 0 1px #ffffff55; }

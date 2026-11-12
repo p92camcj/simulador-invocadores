@@ -6,6 +6,22 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.37.0.171 - 2026-11-12
+
+- **Elige el ambiente del Escenario** desde el menú ☰: la hora del día
+  (amanecer, pleno día, atardecer, noche estrellada o la hora real de tu
+  móvil), el cielo (despejado, con nubes, cubierto, lluvia o tormenta con
+  relámpagos y truenos) y el suelo (empedrado antiguo, hierba, tablero de
+  madera o arena con el mar de fondo). Si prefieres algo sencillo, "Sin
+  decorado" deja un fondo liso con la paleta de color que quieras.
+- La luz cambia con la hora: más amarilla al amanecer, naranja rojiza al
+  atardecer y de luna por la noche.
+- Con el sonido activado se oye un ambiente suave: lluvia, olas, grillos
+  de noche o pájaros de día.
+- Nuevo deslizador de velocidad, de la tortuga 🐢 al conejo 🐇, siempre a
+  mano arriba de la pantalla (en la Mesa y en el Escenario) y en el menú de
+  inicio: acelera o frena las animaciones y los turnos de las autómatas.
+
 ## 1.36.0.170 - 2026-11-12
 
 - Nuevo y en pruebas: el **Escenario**. Ahora hay dos formas de ver la
