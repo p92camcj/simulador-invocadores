@@ -453,7 +453,7 @@ function criatura(nombre) {
 const LAMINAS = { 'Clarividente': { archivo: 'clarividente', alto: 1.7, razon: 475 / 747, mano: [0.33, 0.55] } };
 /** Alternativa a comparar: la ilustración original recortada, de pie y siempre de frente a la cámara. */
 function lamina(nombre) {
-  const d = LAMINAS[nombre], tex = new THREE.TextureLoader().load('../assets/figuras/' + d.archivo + '.webp'); tex.colorSpace = THREE.SRGBColorSpace;
+  const d = LAMINAS[nombre], tex = new THREE.TextureLoader().load(new URL('../../assets/figuras/' + d.archivo + '.webp', import.meta.url).href); tex.colorSpace = THREE.SRGBColorSpace;
   const g = new THREE.Group(), geo = new THREE.PlaneGeometry(d.alto * d.razon, d.alto); geo.translate(0, d.alto / 2, 0);
   const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, side: THREE.DoubleSide })); m.renderOrder = 5; g.add(m);
   return { raiz: g, art: { telas: [], flotantes: [], pelo: [] }, tipo: 'lamina', alto: d.alto, ancho: d.alto * d.razon, manoUV: d.mano };

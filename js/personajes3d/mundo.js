@@ -42,7 +42,12 @@ export function cancelarTodo() {
 }
 export const generacionActual = () => generacion;
 
-export function crearMundo(lienzo, calidad) {
+let bucle = null, antesBucle = 0;
+/** Detiene el dibujo (lienzo oculto) sin perder nada. */
+export function pausar() { mundo.renderer?.setAnimationLoop(null); }
+export function reanudar() { if (!mundo.renderer) return; ajustarTamano(); antesBucle = performance.now(); mundo.renderer.setAnimationLoop(bucle); }
+
+export function crearMundo(lienzo, calidad, { controles = true } = {}) {
   mundo.calidad = calidad; mundo.lienzo = lienzo;
   const alta = calidad === 'alta';
   const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: alta, powerPreference: 'high-performance' });
@@ -79,10 +84,10 @@ export function crearMundo(lienzo, calidad) {
 
   ajustarTamano();
   window.addEventListener('resize', ajustarTamano);
-  controlesTactiles(lienzo);
-  let antes = performance.now(), acum = 0, cuadros = 0;
-  renderer.setAnimationLoop(ahora => {
-    const dt = Math.min(0.05, (ahora - antes) / 1000) * (mundo.velocidad ?? 1); antes = ahora;
+  if (controles) controlesTactiles(lienzo);
+  let acum = 0, cuadros = 0; antesBucle = performance.now();
+  bucle = ahora => {
+    const dt = Math.min(0.05, Math.max(0, (ahora - antesBucle) / 1000)) * (mundo.velocidad ?? 1); antesBucle = ahora;
     mundo.tiempo += dt; acum += dt; cuadros++;
     if (acum >= 0.5) { mundo.fps = Math.round(cuadros / acum); acum = 0; cuadros = 0; }
     for (const t of [...tweens]) {
@@ -94,13 +99,14 @@ export function crearMundo(lienzo, calidad) {
     for (const f of fijos) f(dt, mundo.tiempo);
     colocarCamara();
     renderer.render(escena, camara);
-  });
+  };
+  renderer.setAnimationLoop(bucle);
   return mundo;
 }
 
 function ajustarTamano() {
   const { renderer, camara, lienzo } = mundo;
-  const w = lienzo.clientWidth, h = lienzo.clientHeight;
+  const w = lienzo.clientWidth, h = lienzo.clientHeight; if (!w || !h) return;
   renderer.setSize(w, h, false);
   camara.aspect = w / h; camara.fov = w < h ? 58 : 42; camara.updateProjectionMatrix();
 }

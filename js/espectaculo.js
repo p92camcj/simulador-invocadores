@@ -22,6 +22,8 @@
 // - cuandoTermineEspectaculo() / hayEspectaculoEnCurso() → espera a que acabe la cola
 // - espectaculoActivo() / fijarEspectaculo(bool)      → interruptor (setup.js / index.html)
 
+import { escenas3dActivas, reproducir3D, detener3D } from './escenas3d.js';
+
 const CLAVE_PREFERENCIA = 'invocadores.espectaculo';
 
 const ARCHIVO_FIGURA = {
@@ -185,6 +187,14 @@ export function detenerEspectaculo() {
   if (saltarActual) saltarActual();
 }
 
+/** Nombres para los pergaminos de los Portales 3D: quien actúa y las dos siguientes. */
+function nombresDesde(actorIdx) {
+  const js = window.players ?? [];
+  if (!js.length) return [];
+  const i0 = Number.isInteger(actorIdx) ? actorIdx : 0;
+  return [0, 1, 2].filter(k => k < js.length).map(k => js[(i0 + k) % js.length].name);
+}
+
 function encolar(escena) {
   if (!espectaculoActivo()) return;
   cola.push(escena);
@@ -227,6 +237,23 @@ function siguiente() {
     return;
   }
   reproduciendo = true;
+  // Personajes 3D (opcional): si la escena trae un descriptor `tres` y la
+  // jugadora lo ha activado, se ve la animación 3D en lugar de la 2D. Si no
+  // se puede (sin WebGL, sin red la primera vez…), se cae a la escena 2D.
+  if (escena.tres && escenas3dActivas() && !escena.sin3d) {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    const fin3d = () => detener3D();
+    saltarActual = fin3d;
+    const ritmo3d = cola.length >= 2 ? 0.55 : cola.length === 1 ? 0.8 : 1;
+    reproducir3D(escena.tres, { titulo: escena.titulo, subtitulo: escena.subtitulo, nombres: nombresDesde(escena.actor), ritmo: ritmo3d })
+      .then(visto => {
+        if (saltarActual === fin3d) saltarActual = null;
+        if (visto === null) { escena.sin3d = true; cola.unshift(escena); }
+        siguiente();
+      });
+    return;
+  }
   const reducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Si se acumulan escenas (p. ej. turnos seguidos de autómatas), se
   // aceleran para no ir por detrás de la partida.
@@ -341,8 +368,13 @@ export function anunciarCartaJugada(jugadoraIdx, destKey) {
   const jugadora = window.players[jugadoraIdx]?.name ?? '';
   const esCentinela = top.name === 'Centinela';
 
+  const [tpClave, duenoClave] = clave.split(':');
   encolar({
     tipo: 'carta',
+    tres: top.vis?.public !== false ? { tipo: 'carta', nombre, anterior: anteriorPublica, central: tpClave === 'n', propio: tpClave === 'n' || +duenoClave === jugadoraIdx } : null,
+    actor: jugadoraIdx,
+    titulo: nombre,
+    subtitulo: `${jugadora} lo invoca en ${frasePortal(clave, jugadoraIdx)}`,
     duracion: 2300,
     html: `
       <div class="esp-fondo" style="${vars(nombre)}"></div>
@@ -403,7 +435,13 @@ function anunciarHabilidad(name, ownerIdx, claveOrigen, antes, despues) {
     Estratega: escenaEstratega,
     Aprendiz: escenaAprendiz,
   }[name] || escenaGenerica)({ name, jugadora, ownerIdx, claveOrigen, origen, cambios, antes, despues });
-  if (escena) encolar(escena);
+  if (escena) encolar({
+    ...escena,
+    tres: { tipo: 'habilidad', nombre: name, aspecto: name === 'Metamorfo' ? origen?.nombre : undefined },
+    actor: ownerIdx,
+    titulo: name,
+    subtitulo: `${jugadora} activa su habilidad`,
+  });
 }
 
 function cabecera(name, jugadora, lema) {
@@ -616,8 +654,12 @@ export function anunciarInvocacion({ nivel, nombre, need, recompensas, gemasAuto
     .map(r => `<li>${esc(r.jugadora)} <b>+${r.gemas}</b> ${r.gemas === 1 ? 'Gema' : 'Gemas'}</li>`).join('')
     + (gemasAutomata > 0 ? `<li>🤖 Autómata central <b>+${gemasAutomata}</b> ${gemasAutomata === 1 ? 'Gema' : 'Gemas'}</li>` : '')
     + entusiastas.filter(e => e.perdida).map(e => `<li>🎉 ${esc(e.jugadora)} <b>−1</b> (Entusiasta)</li>`).join('');
+  const resumenGemas = recompensas.filter(r => r.gemas > 0).map(r => `${r.jugadora} +${r.gemas}`).join(' · ');
   encolar({
     tipo: 'invocacion',
+    tres: { tipo: 'invocacion', criatura: nombre, nivel, need },
+    titulo: nombre,
+    subtitulo: `Invocación ${nivel === '*' ? 'final' : nivel} completada${resumenGemas ? ` · ${resumenGemas}` : ''}`,
     duracion: 5200,
     html: `
       <div class="esp-fondo esp-fondo--invocacion" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'};--c2:#1a1033;"></div>

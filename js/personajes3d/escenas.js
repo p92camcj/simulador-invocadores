@@ -18,9 +18,9 @@ const portales = [];
 let temporales = [], ui = { di() {}, flash() {} };
 export function configurar(o) { ui = o; }
 
-export function montarEscenario() {
+export function montarEscenario({ colocar = true } = {}) {
   VARIANTES.forEach((v, i) => { const p = crearPortal(v, i + 1); p.position.copy(POS[i]); mundo.escena.add(p); portales.push(p); });
-  portales[5].visible = false; orientar(); prepararColocacion(); ponerNombres(['Julio', 'Adrián', 'Autómata']);
+  portales[5].visible = false; orientar(); if (colocar) prepararColocacion(); ponerNombres(['Julio', 'Adrián', 'Autómata']);
 }
 /** Pergamino con el nombre sobre el Portal de cada jugadora (los centrales no llevan). */
 export function ponerNombres(nombres) { for (let i = 0; i < 3; i++) nombrarPortal(portales[i], nombres[i] ?? null); }
@@ -184,6 +184,7 @@ function escudos(i) {
 
 // ============================================================== escenas
 const ESCENAS = [];
+const ctx = {};   // datos que el juego pasa a una escena (p. ej. en quién se transforma el Metamorfo)
 const escena = (id, grupo, titulo, run) => ESCENAS.push({ id, grupo, titulo, run });
 
 escena('0', 'Galería', 'Todos los personajes, de cerca', async () => {
@@ -535,7 +536,7 @@ escena('6.13', 'Habilidades', 'Metamorfo', async () => {
   di('…y gira sobre sí mismo como un remolino hasta adoptar el aspecto de otro personaje (aquí, el Cronomante). Conserva su melena rosa y su humo: sigue siendo él.');
   const r = runa(c.position, col('Metamorfo'), 1.0, 3);
   posar(c, 'alzar', 5); S.cargar(196, 0.8); await espera(0.8); S.metamorfo();
-  await transformar(c, 'Cronomante', kl => { const fz = Math.sin(kl * Math.PI), o = c.position;
+  await transformar(c, ctx.aspecto ?? 'Cronomante', kl => { const fz = Math.sin(kl * Math.PI), o = c.position;
     for (let i = 0; i < 5; i++) { const an = kl * 30 + i * 1.257, y = ((kl * 2.2 + i * 0.2) % 1) * 2.1, r = 0.25 + (1 - Math.abs(y / 2.1 - 0.5) * 2) * 0.5; chispas(V(o.x + Math.cos(an) * r, o.y + y, o.z + Math.sin(an) * r), { n: fz, color: col('Metamorfo'), color2: col2('Metamorfo'), vel: 0.08, vida: 0.8, tam: 0.11, giro: 6, radio: 0.02 }); }
     if (Math.random() < 0.6 * fz) humo(o, { n: 1, color: 0xf0a8d0, radio: 0.5, alfa: 0.35, alto: 1.6 }); },
     m => m.art.pelo.forEach(p => p.color.set(0xf0b8d8)));
@@ -694,6 +695,44 @@ export function modoColocar(si) {
   if (si) { ui.di('Arrastra cada Portal a donde mejor te quede en tu pantalla. Un gancho lo levanta por arriba y lo suelta donde lo dejes.'); sin(plano({ objetivo: V(0, 0, 1.5), ancho: 15, alto: 15, polar: 0.42, azimut: 0 }, 0.8)); }
 }
 export function restablecerPortales() { POS_INICIAL.forEach(([x, z], i) => { POS[i].set(x, 0, z); portales[i].position.copy(POS[i]); }); orientar(); try { localStorage.removeItem('inv3d.portales'); } catch { /* sin almacenamiento */ } }
+
+// --------------------------------------------- escenas que dispara el juego
+// El juego no conoce este módulo: espectaculo.js manda un descriptor con lo
+// que ya es público en la mesa (quién baja a qué Portal, qué habilidad se ha
+// usado, qué criatura llega) y aquí se elige la animación predefinida.
+const CRIATURA_POR_NIVEL = { C: 'Cirelia', B: 'Baelorith', A: 'Aelgorth', '*': 'Aelgorth' };
+/** Fase A: un personaje baja a un Portal (propio, de otra jugadora o central), tapando o no a otro. */
+async function cartaDeJuego({ nombre, anterior, propio = true, central = false }) {
+  const jug = propio ? 0 : 1, pi = central ? 3 : jug;
+  sin(plano(central ? dos(hueco(jug, 1), POS[3], 3.6) : propio ? { ...T.mio(), ancho: 5.8 } : T.rival(1), 0));
+  const viejo = anterior && INFO[anterior] ? actor(anterior, sobre(pi)) : null;
+  const nuevo = actor(nombre, hueco(jug, 1), { capa: 'translucida' }); actor(null, hueco(jug, -1), { capa: 'opaca' });
+  await espera(0.5);
+  if (!central) sin(plano({ ...(propio ? T.mio() : T.rival(1)), azimut: 0.35, ancho: 5.8 }, 3));
+  let hecho = false, fuera = null;
+  await subir(nuevo, pi, { vel: 1.0, enMarcha: k => { if (!hecho && k > 0.15) { hecho = true; sin(quitarCapa(nuevo)); } if (viejo && !fuera && k > 0.55) fuera = marcharse(viejo, pi); } });
+  if (viejo && !fuera) fuera = marcharse(viejo, pi);
+  llegada(pi, col(nombre)); if (nombre === 'Centinela') { escudos(pi); S.clang(); }
+  if (INFO[nombre].manos.length) { posar(nuevo, 'celebrar', 6); await espera(0.9); posar(nuevo, null, 4); } else { nuevo.userData.alegre = true; await saltar(nuevo, 0.25, 0.4); }
+  if (fuera) await sin(fuera);
+  await espera(1.3);
+}
+/** Lanza la animación que corresponde a un descriptor del juego. true = vista entera, false = saltada, null = no hay animación 3D para eso. */
+export async function escenaDeJuego(d) {
+  let fn = null;
+  if (d.tipo === 'carta' && INFO[d.nombre]) fn = () => cartaDeJuego(d);
+  else if (d.tipo === 'habilidad') { const e = ESCENAS.find(x => x.grupo === 'Habilidades' && x.titulo === d.nombre); if (e) fn = () => { ctx.aspecto = INFO[d.aspecto] && d.aspecto !== 'Metamorfo' ? d.aspecto : undefined; return e.run(); }; }
+  else if (d.tipo === 'invocacion') {
+    const criatura = INFO[d.criatura]?.gema ? d.criatura : CRIATURA_POR_NIVEL[d.nivel], need = (d.need ?? []).filter(n => INFO[n]).slice(0, 5);
+    const relleno = ['Lumo', 'Reena', 'Sora', 'Aprendiz', 'Cronista'].filter(n => !need.includes(n));
+    if (criatura && need.length) fn = () => invocacion({ criatura, need, mesa: [...need, ...relleno].slice(0, 5) });
+  }
+  if (!fn) return null;
+  limpiar();
+  try { await fn(); return true; } catch (err) { if (err !== CANCELADO) { console.error(err); return null; } return false; }
+}
+/** Corta la escena en curso (la jugadora ha tocado para saltarla). */
+export function detenerEscena() { cancelarTodo(); }
 
 export { ESCENAS };
 /** Lanza una escena (cancela la que hubiera). Devuelve true si llegó al final. */

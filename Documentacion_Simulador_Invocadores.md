@@ -465,6 +465,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ---
 
+## js/escenas3d.js
+
+Interruptor y cargador perezoso de las escenas con personajes 3D (1.35.0).
+Solo presentación; no toca reglas.
+
+- `escenas3dActivas()` / `fijarEscenas3D(valor)`: preferencia guardada en
+  `localStorage['invocadores.personajes3d']` (desactivada por defecto). Al
+  activarla se empieza a descargar `js/personajes3d/juego.js` (y con él
+  Three.js).
+- `sonido3dActivo()` / `fijarSonido3D(valor)`: sonido sintetizado de las
+  escenas 3D (`localStorage['inv3d.sonido']`, apagado por defecto).
+- `reproducir3D(descriptor, opciones)`: reproduce una escena a pantalla
+  completa; devuelve `true` si se vio o se saltó y `null` si no se pudo
+  (entonces `espectaculo.js` usa la escena 2D).
+- `detener3D()`: salta la escena en curso.
+- `initEscenas3D()`: enlaza `#chk3D` de la pantalla de inicio.
+
+## js/personajes3d/
+
+Motor de las escenas 3D (Three.js vendorizado en `vendor/three`). Lo usan
+el juego (a través de `juego.js`) y la maqueta `prototipos/personajes-3d.html`
+(a través de `main.js`).
+
+- `juego.js`: `reproducirEscenaJuego(descriptor, { titulo, subtitulo, nombres, ritmo })`,
+  `saltar()`, `fijarSonido(si, gesto)`.
+- `escenas.js`: `ESCENAS` (escenas de la maqueta), `reproducir(id)`,
+  `escenaDeJuego(descriptor)` (descriptor `{ tipo: 'carta' | 'habilidad' | 'invocacion', ... }`
+  solo con datos públicos), `detenerEscena()`, `ponerNombres(nombres)`,
+  `montarEscenario()`, `configurar()`, `modoColocar()`, `restablecerPortales()`.
+- `modelos.js`: `construirModelo(nombre)` (personajes, animales y criaturas
+  hechos por código, con telas pintadas y articulaciones).
+- `personajes.js`: actores (`crearActor`, `caminar`, `conjurar`,
+  `quitarCapa`, `transformar`…), `INFO`, `POSES`.
+- `portales.js`: `crearPortal`, `encender`, `nombrarPortal`, `pergamino`.
+- `efectos.js`: partículas (`chispas`, `absorber`, `humo`, `onda`), `rayo`,
+  `destello`, `gema`.
+- `mundo.js`: renderizador, cámara, tweens, `pausar()` / `reanudar()`.
+- `sonido.js`: sonidos sintetizados con Web Audio (`S`).
+
 ## js/espectaculo.js
 **Propósito:** **Modo espectáculo**: capa de presentación que escenifica a pantalla completa lo que ya ha pasado en la partida (bajar una carta a un Portal, aplicar una habilidad, completar una invocación). No decide nada ni cambia reglas. Usa el arte original de `assets/personajes/*.svg` (personajes de cuerpo entero, la carta del Portal y las criaturas de Cirelia, Baelorith y Aelgorth), convertido con `node tools/rasterizar_svg.cjs && python3 tools/generar_figuras.py` en `assets/figuras/*.webp`, `assets/invocaciones/*.webp` y `assets/portal.jpg`, y los estilos de `espectaculo.css`. Solo muestra la cara de una carta si es pública en la mesa (o lo era antes de la acción); manos y cartas tapadas se dibujan siempre con el reverso. Las escenas van en cola, se aceleran si se acumulan (turnos seguidos de autómatas) y se saltan con un clic o Escape. Respeta `prefers-reduced-motion`.
 
