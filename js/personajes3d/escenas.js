@@ -7,6 +7,7 @@ import { crearPortal, encender, VARIANTES, ALTURA_TARIMA, texturaDisco, nombrarP
 import { crearActor, quitarActor, INFO, posar, mirar, mano, cabeza, pecho, altura, aparecer, desvanecer, opacidad, materialesDe, caminar, quitarCapa, aclararCapa, opacarCapa, conjurar, saltar, transformar } from './personajes.js';
 import { chispas, humo, onda, destello, rayo, anilloRunico, gema, quitar, luz } from './efectos.js';
 import { S } from './sonido.js';
+import { runa, ojoDeLuz, hazDeLuz, relojArena, limpiarMagia } from './magia.js';
 
 // Portales de los jugadores al triple de distancia entre sí que los centrales (equidistantes y juntos).
 // Se pueden recolocar arrastrando (modo «Colocar Portales»); la colocación se guarda en el dispositivo.
@@ -27,7 +28,7 @@ export function ponerNombres(nombres) { for (let i = 0; i < 3; i++) nombrarPorta
 /** Los Portales de los rivales se giran un poco hacia el centro de la mesa. */
 function orientar() { const c = centro(); for (const i of [1, 2]) portales[i].rotation.y = Math.atan2(c.x - POS[i].x, c.z - POS[i].z) * 0.55; }
 function limpiar() {
-  cancelarTodo();
+  cancelarTodo(); limpiarMagia();
   for (const o of temporales) o.parent?.remove(o);
   temporales = [];
   portales.forEach((p, i) => { p.position.copy(POS[i]); p.visible = i < 5; encender(p, 0.6); });
@@ -57,14 +58,6 @@ const T = {
 function dos(a, b, margen = 3.2, o = {}) {
   const m = a.clone().lerp(b, 0.5); m.y = 1.0; const d = b.clone().sub(a);
   return { objetivo: m, ancho: Math.abs(d.x) + margen, alto: Math.abs(d.z) * 0.55 + 3.4, polar: 1.08, azimut: Math.sign(d.x || 1) * -0.25, ...o };
-}
-/** Círculo rúnico que aparece girando bajo alguien o sobre un Portal. */
-function runa(p, color, radio = 1, giro = 0.8, puntas = 8) {
-  const m = temp(anilloRunico(texturaDisco(puntas), p, color, radio));
-  sin(tw(0.5, k => { m.material.opacity = 0.9 * k; }));
-  cadaFrame(dt => { m.rotation.z += giro * dt; });
-  m.userData.apagar = (dur = 0.6) => sin(tw(dur, k => { m.material.opacity = 0.9 * (1 - k); }).then(() => quitar(m)));
-  return m;
 }
 /** Gesto + rayo + impacto: el hechizo genérico dirigido a un punto. */
 async function hechizo(a, destino, o = {}) {
@@ -130,45 +123,7 @@ async function destelloInvocacion(color = 0xffe9a0) { S.invBoom(); ui.flash(0.5)
 
 function lienzoTex(t, pintar) { const c = document.createElement('canvas'); c.width = c.height = t; const x = c.getContext('2d'); x.strokeStyle = x.fillStyle = '#fff'; x.lineCap = 'round'; x.shadowColor = '#fff'; x.shadowBlur = t / 50; pintar(x, t); return new THREE.CanvasTexture(c); }
 const planoLuz = (tex, color, w, h) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-let texEsfera, texAguja, texOjo, texHaz;
-/** Ojo de luz que se abre sobre la Clarividente. */
-function ojoDeLuz(p, color) {
-  texOjo ??= lienzoTex(256, (x, t) => { const c = t / 2; x.lineWidth = 5; x.beginPath(); x.moveTo(8, c); x.quadraticCurveTo(c, c - 110, t - 8, c); x.quadraticCurveTo(c, c + 110, 8, c); x.stroke();
-    x.lineWidth = 4; x.beginPath(); x.arc(c, c, 44, 0, 7); x.stroke(); x.beginPath(); x.arc(c, c, 16, 0, 7); x.fill();
-    x.lineWidth = 2; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; x.beginPath(); x.moveTo(c + Math.cos(a) * 22, c + Math.sin(a) * 22); x.lineTo(c + Math.cos(a) * 40, c + Math.sin(a) * 40); x.stroke(); } });
-  const s = temp(new THREE.Sprite(new THREE.SpriteMaterial({ map: texOjo, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
-  s.position.copy(p); s.scale.set(1.7, 0.01, 1); s.renderOrder = 22; mundo.escena.add(s);
-  return { s, abrir: () => { sin(destello(p, color, 2.4, 0.7)); return tw(0.7, k => { s.scale.y = 0.01 + 1.69 * k; }, rebote); }, cerrar: () => sin(tw(0.5, k => { s.scale.y = 1.7 * (1 - k) + 0.01; s.material.opacity = 1 - k; }).then(() => quitar(s))) };
-}
-/** Haz cónico de luz entre dos puntos. */
-function hazDeLuz(a, b, color) {
-  texHaz ??= (() => { const c = document.createElement('canvas'); c.width = 8; c.height = 64; const x = c.getContext('2d'); const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,.12)'); x.fillStyle = g; x.fillRect(0, 0, 8, 64); return new THREE.CanvasTexture(c); })();
-  const d = b.clone().sub(a), l = d.length();
-  const m = temp(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.7, l, 14, 1, true), new THREE.MeshBasicMaterial({ map: texHaz, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })));
-  m.position.copy(a).lerp(b, 0.5); m.quaternion.setFromUnitVectors(V(0, 1, 0), d.clone().normalize().negate()); m.renderOrder = 14; mundo.escena.add(m);
-  let k0 = 0; sin(tw(0.5, k => { k0 = k; })); const fin = cadaFrame((dt, t) => { m.material.opacity = k0 * (0.3 + Math.sin(t * 9) * 0.07); m.rotateY(dt); });
-  return { apagar: () => sin(tw(0.6, k => { k0 = 1 - k; }).then(() => { fin(); quitar(m); })) };
-}
-
-/** Reloj de arena de luz: la arena sube, contra la gravedad (Cronomante). */
-function relojArena(p, color, color2) {
-  const g = temp(new THREE.Group()); g.position.copy(p); mundo.escena.add(g);
-  const vidrio = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-  const oro = new THREE.MeshBasicMaterial({ color: 0xe8c880, transparent: true }), arena = new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true });
-  const pz = (geo, mat, y, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.y = y; m.rotation.x = rx; g.add(m); return m; };
-  pz(new THREE.ConeGeometry(0.5, 0.78, 16, 1, true), vidrio, 0.39, Math.PI); pz(new THREE.ConeGeometry(0.5, 0.78, 16, 1, true), vidrio, -0.39);
-  for (const y of [0.82, -0.82]) pz(new THREE.CylinderGeometry(0.58, 0.58, 0.07, 16), oro, y);
-  for (let i = 0; i < 3; i++) { const m = pz(new THREE.CylinderGeometry(0.028, 0.028, 1.6, 6), oro, 0); m.position.x = Math.cos(i * 2.094) * 0.53; m.position.z = Math.sin(i * 2.094) * 0.53; }
-  const abajo = pz(new THREE.ConeGeometry(0.44, 0.62, 14), arena, -0.46), arriba = pz(new THREE.ConeGeometry(0.44, 0.62, 14), arena, 0.46, Math.PI);
-  g.scale.setScalar(0.01); let k = 0, vivo = true;
-  sin(tw(0.8, q => { g.scale.setScalar(0.9 * q); g.rotation.z = (1 - q) * Math.PI; }, rebote));
-  cadaFrame(dt => { g.rotation.y += dt * 0.5; if (!vivo) return; k = Math.min(1, k + dt / 5.5);
-    abajo.scale.set(1 - 0.75 * k, 1 - 0.85 * k, 1 - 0.75 * k); abajo.position.y = -0.77 + 0.31 * (1 - 0.85 * k);
-    arriba.scale.set(0.2 + 0.8 * k, 0.15 + 0.85 * k, 0.2 + 0.8 * k); arriba.position.y = 0.08 + 0.31 * (0.15 + 0.85 * k) + (1 - k) * 0.45;
-    const o = g.position; chispas(V(o.x, o.y - 0.55 + Math.random() * 1.1, o.z), { n: 2, color: 0xffe2a0, color2, vel: 0.04, dir: V(0, 1.5, 0), vida: 0.45, tam: 0.07, radio: 0.03 });
-    if (Math.random() < 0.5) chispas(V(o.x, o.y - 1.2, o.z), { n: 1, color, color2, vel: 0.5, dir: V(0, 1.2, 0), vida: 0.9, tam: 0.1, radio: 0.5, giro: -4 }); });
-  return { g, parar() { vivo = false; }, apagar() { sin(tw(0.8, q => { g.scale.setScalar(1.25 * (1 - q) + 0.01); }, entra).then(() => quitar(g))); } };
-}
+let texEsfera, texAguja;
 /** Escudos que giran alrededor del Portal de la Centinela: señal de que está protegido. */
 function escudos(i) {
   const grupo = temp(new THREE.Group()); grupo.position.copy(sobre(i)); mundo.escena.add(grupo);

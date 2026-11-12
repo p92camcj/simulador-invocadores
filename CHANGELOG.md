@@ -4,6 +4,37 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.37.1.174] - 2026-11-12
+
+### Corregido / recuperado (Escenario)
+- **Estratega**: vuelve la escena de la maqueta: runa bajo el Estratega,
+  orbes de colores que levantan los dos Portales, giro en semicírculo y
+  bajada (`levitar()` en `tablero.js`).
+- **Invocación**: la criatura flota muy por encima de los Portales
+  centrales (ya no se solapa), la cámara se abre para verla, las Gemas
+  vuelan una a una hasta el personaje requerido y luego a las Gemas de su
+  asiento, y la gran runa se encoge hasta el Portal nuevo, que sube desde
+  el suelo.
+- **Gemas en la mesa**: cada asiento tiene delante sus Gemas (cuántas y de
+  qué nivel, públicas); el total solo lo ve su dueña y el valor de una Gema
+  de asterisco solo cuando se ha revelado. El encuadre las incluye.
+- **Mano**: las cartas robadas llegan andando por el lateral de su lado,
+  no desde el centro; al mover un Portal manteniéndolo pulsado, la mano lo
+  acompaña.
+- **Toques**: los Portales se tocan por la base o por la figura que tienen
+  encima, no por el arco de piedra (que tapaba Portales de detrás).
+- **Zoom automático** al aplicar una habilidad sobre un Portal lejano.
+- **Clarividente**: ojo de luz sobre la figura y haz hasta su mano.
+- **Cronomante**: tras elegir el Portal, las cartas de debajo se alzan como
+  ecos tocables sobre él (la de arriba también se puede tocar para dejarla),
+  con el reloj de arena más pequeño y más alto; la lista sigue disponible.
+- **Velocidad**: el deslizador 🐢–🐇 solo cambia personajes y habilidades;
+  las runas del suelo, el ambiente y la cámara van a ritmo real
+  (`siempreReal()` en `mundo.js`).
+- Piezas de magia comunes con la maqueta en `js/personajes3d/magia.js`.
+- Revelar la Gema de asterisco para pagar un Portal central: comprobado que
+  funciona también en el Escenario (pregunta al pagar si hay Gemas de 1).
+
 ## [1.37.0.171] - 2026-11-12
 
 ### Añadido

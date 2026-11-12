@@ -510,6 +510,19 @@ la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
   en un hueco vuelve a ver toda la mesa. Desde 1.37.0 también
   `fijarAmbiente(cambio)`, `ambienteActual()`, `OPCIONES_AMBIENTE` y
   `vistaPanoramica(si)` (levanta la cámara mientras se elige el ambiente).
+  Desde 1.37.1 el Cronomante se elige tocando: `mostrarEcos(clave,
+  opciones, alElegir)` alza las cartas de debajo como ecos tocables (con el
+  reloj de arena encima del Portal), `elegirEco(val)` y `quitarEcos()`; lo
+  llama `pickerMesa()` (`mesa3d.js`). También dibuja las Gemas de cada
+  asiento delante de sus Portales (cantidad y nivel públicos, total solo
+  para su dueña), acerca la cámara a las habilidades en Portales lejanos y
+  una figura subida a un Portal cuenta como un toque en ese Portal.
+- `magia.js` (1.37.1): piezas de magia compartidas por la maqueta y el
+  Escenario: `runa()`, `ojoDeLuz()`, `hazDeLuz()`, `relojArena()`, `orbe()`
+  / `quitarOrbe()`, `COLORES_ORBES` y `limpiarMagia()`.
+- `mundo.js`: además de `siempre(fn)` (con el tiempo escalado por el
+  deslizador de velocidad), desde 1.37.1 `siempreReal(fn)` para lo que no
+  debe cambiar de ritmo (runas del suelo, ambiente, cámara).
 - `ambiente.js` (1.37.0): hora (amanecer, día, atardecer, noche u hora real
   del dispositivo, mezclada poco a poco), cielo (despejado, nubes, cubierto,
   lluvia, tormenta con relámpagos y truenos), suelo (empedrado, hierba,

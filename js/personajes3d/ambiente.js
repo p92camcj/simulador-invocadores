@@ -12,7 +12,7 @@
 //   imágenes de terceros.
 //
 // Lo elegido se guarda en el dispositivo (localStorage 'inv3d.ambiente').
-import { THREE, mundo, siempre } from './mundo.js';
+import { THREE, mundo, siempreReal } from './mundo.js';
 import { ambienteSonoro, trueno } from './sonido.js';
 
 const CLAVE = 'inv3d.ambiente';
@@ -570,5 +570,5 @@ function bucle() {
     }
   };
   // siempre() da el tiempo ya escalado por la velocidad; aquí se usa el reloj real.
-  siempre(paso);
+  siempreReal(paso);
 }
