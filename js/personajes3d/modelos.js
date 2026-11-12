@@ -302,8 +302,8 @@ function humano(p) {
     for (const s of [1, -1]) pieza(torso, ESF_BAJA, M(0xe8c060, { emisivo: 0x6a4a10 }), s * 0.13 * a, 0.5, 0.09, 0.024);   // broches
   }
   if (p.cuelloAlto) { const ca2 = p.cuelloAlto, mc = M(ca2.c, { doble: true, mapa: texturaLisa(ca2.c, p.tejidoCapa ?? 'terciopelo') });   // cuello alto y abierto por delante
-    pieza(torso, new THREE.CylinderGeometry(0.17, 0.095, 0.2, 14, 1, true, 0.85, Math.PI * 2 - 1.7), mc, 0, 0.6, -0.015);
-    const rb = pieza(torso, new THREE.TorusGeometry(0.17, 0.011, 5, 18, Math.PI * 2 - 1.7), M(ca2.c2 ?? 0xe0aa48, { emisivo: 0x6a4a10 }), 0, 0.7, -0.015); rb.rotation.set(Math.PI / 2, 0, Math.PI / 2 + 0.85); }
+    pieza(torso, new THREE.CylinderGeometry(0.155, 0.095, 0.15, 14, 1, true, 0.85, Math.PI * 2 - 1.7), mc, 0, 0.585, -0.02);
+    const rb = pieza(torso, new THREE.TorusGeometry(0.155, 0.009, 5, 18, Math.PI * 2 - 1.7), M(ca2.c2 ?? 0xe0aa48, { emisivo: 0x6a4a10 }), 0, 0.66, -0.02); rb.rotation.set(Math.PI / 2, 0, Math.PI / 2 + 0.85); }
   if (p.capelina) { const cp = p.capelina, L = cp.largo ?? 0.3;   // esclavina sobre los hombros
     const geo = new THREE.LatheGeometry(perfil([[0.07, 0.565], [0.17 * a, 0.52], [0.285 * a, 0.48 - L * 0.25], [(0.3 + L * 0.25) * a, 0.5 - L]]), 20), q = geo.attributes.position;
     for (let i = 0; i < q.count; i++) { const k = Math.max(0, (0.5 - q.getY(i)) / L), an = Math.atan2(q.getX(i), q.getZ(i)), o2 = 1 + Math.sin(an * 8) * 0.05 * k; q.setX(i, q.getX(i) * o2); q.setZ(i, q.getZ(i) * o2); if (cp.picos && k > 0.99) q.setY(i, q.getY(i) - Math.abs(Math.sin(an)) * cp.picos); }
@@ -331,8 +331,7 @@ const HUMANOS = {
     mangas: { c: 0x23988c, anchas: true }, tunica: { c: 0xf0dca0, c2: 0xc8a040, largo: 1, vuelo: 0.42, panel: true, panelC: 0x1f8a80, gemas: [0x5fe8ff, 0xf0c84a] }, capa: { c: 0x1f8a80, largo: 1, ancho: 0.6 } },
   'Cronista': { tejido: 'terciopelo', motivo: 'hojas', alto: 1.55, ancho: 1.52, barriga: 0.55, caraAncha: 1.13, papada: true, piel: 0xf6ccb0, iris: 0x4a8a5a, rasgos: { boca: 'amplia', mofletes: true, cejas: 'arqueadas', ojoT: 0.9, pestanas: true },
     pelo: { c: 0xd8401c, largo: 0.3, rizos: true, volumen: 1.2 }, torso: { c: 0x2f8f7a, c2: 0xf0c84a, banda: 0x7a4aa0 }, cinturon: 0xc8a040, joya: 0x3fd8e0, joyas: [0x3fd8e0, 0xe04a4a],
-    mangas: { c: 0x2f8f7a, anchas: true }, tunica: { c: 0x2f8f7a, c2: 0xf0c84a, largo: 1, vuelo: 0.56, panel: true, panelC: 0xf4e0a8, gemas: [0xe04a4a, 0x3fd8e0], cMotivo: 0x8fd8b8 }, capa: { c: 0x8a5ab0, c2: 0xf0c84a, largo: 0.95, ancho: 0.6 },
-    capelina: { c: 0x8a5ab0, c2: 0xf0c84a, largo: 0.2, broche: 0x3fd8e0 } },
+    mangas: { c: 0x2f8f7a, anchas: true }, tunica: { c: 0x2f8f7a, c2: 0xf0c84a, largo: 1, vuelo: 0.56, panel: true, panelC: 0xf4e0a8, gemas: [0xe04a4a, 0x3fd8e0], cMotivo: 0x8fd8b8 }, capa: { c: 0x8a5ab0, c2: 0xf0c84a, largo: 0.95, ancho: 0.6 }, },
   'Cronomante': { tejido: 'lino', motivo: 'relojes', cierre: 'botones', iris: 0x3a7ab0, alto: 1.8, ancho: 1.06, piel: 0xd8a888, rasgos: { cejas: 'serias', boca: 'seria', ojeras: true, barbaSombra: true, ojoT: 0.92 },
     pelo: { c: 0x3a2418, largo: 0.02, despeinado: true, volumen: 1.04 }, barba: 0x3a2418, torso: { c: 0xd8ccb0, c2: 0x8a7a58, banda: 0x4a3a66 }, cinturon: 0x6a4428, joya: 0xe04a6a, joyas: [0xe04a6a],
     mangas: { c: 0xd8ccb0, brazal: 0x6a4428 }, brazoMecanico: 'D', tunica: { c: 0xd8ccb0, c2: 0x8a7a58, largo: 0.82, vuelo: 0.31, abierta: 0.5, jirones: 0.07 }, piernas: { c: 0x3a2e28, botas: 0x6a4428 },
@@ -345,12 +344,12 @@ const HUMANOS = {
     pelo: { c: 0xf0d060, largo: 0.02, tupe: true }, torso: { c: 0xf4e6b8, c2: 0xd8a83a }, cinturon: 0xc89a3a, joya: 0xe04a4a, joyas: [0x3fd8b0, 0xe04a4a, 0x3fd8b0], bolsas: 0x9a6a38,
     mangas: { c: 0xf4e6b8, brazal: 0xd8a83a }, tunica: { c: 0xf4e6b8, c2: 0xd8a83a, largo: 0.56, vuelo: 0.29, abierta: 0.42, cMotivo: 0xd8a83a }, piernas: { c: 0x3a3a24, botas: 0xf0e0b0 },
     capa: { c: 0xb03a28, c2: 0xe0aa48, largo: 1.04, ancho: 0.7, abre: 0.6 }, motivoCapa: 'espirales', cuelloAlto: { c: 0xb03a28, c2: 0xe0aa48 } },
-  'Metamorfo': { tejido: 'seda', motivo: 'espirales', alto: 1.72, ancho: 0.88, piel: 0xfbe4dc, rasgos: { boca: 'labios', labios: 0xe890b0, sombra: 0xf0a0d0, marca: 0x5ad8e8 }, pelo: { c: 0xf0b8d8, largo: 1, raya: true }, ojos: 'cerrados', torso: { c: 0x8ac8ec, c2: 0xf8e4c0, banda: 0xf4b0c8 }, cinturon: 0xb07a50, joya: 0xe04a6a, joyas: [0x5ad8e8],
+  'Metamorfo': { tejido: 'seda', motivo: 'espirales', alto: 1.72, ancho: 0.88, piel: 0xfbe4dc, rasgos: { boca: 'labios', labios: 0xe890b0, sombra: 0xf0a0d0, marca: 0x5ad8e8 }, pelo: { c: 0xf0b8d8, largo: 1 }, ojos: 'cerrados', torso: { c: 0x8ac8ec, c2: 0xf8e4c0, banda: 0xf4b0c8 }, cinturon: 0xb07a50, joya: 0xe04a6a, joyas: [0x5ad8e8],
     mangas: { c: 0xf4b0c8, anchas: true }, tunica: { c: 0xf4b0c8, c2: 0xf8e4c0, largo: 1, vuelo: 0.46, panel: true, panelC: 0xf8e4c0, rayas: [0xf4b0c8, 0x8ac8ec, 0xf8e4c0, 0x8ac8ec], gemas: [0x5ad8e8, 0xe04a6a] },
     capelina: { c: 0xf4a8c4, c2: 0xf8e4c0, largo: 0.3, picos: 0.1, broche: 0x5ad8e8 } },
   'Ocultista': { tejido: 'terciopelo', motivo: 'lunas', sinPiernas: true, sinPunos: true, alto: 1.72, piel: 0x07070f, ojos: 'ninguno', capucha: 0x2a4ab0, torso: { c: 0x2f55c0, c2: 0x8ad0f0 }, cinturon: 0x1a2a6a, joya: 0x4a9cff, joyas: [0x4a9cff, 0xe04a6a], manos: 0x1a2a6a,
     mangas: { c: 0x2f55c0, anchas: true }, tunica: { c: 0x2848a8, c2: 0x8ad0f0, largo: 1, vuelo: 0.4, panel: true, jirones: 0.16, gemas: [0x4a9cff, 0xe04a6a] }, capa: { c: 0x2a4ab0, c2: 0x8ad0f0, largo: 0.55, ancho: 0.6 } },
-  'Pícaro': { tejido: 'sarga', cierre: 'cordones', descalzo: true, alto: 1.68, ancho: 0.94, piel: 0xf0c8a0, iris: 0x4a8ab8, rasgos: { cejas: 'una', boca: 'picara', barbaSombra: true }, pelo: { c: 0xe0c070, largo: 0.05, flequillo: true, despeinado: true }, torso: { c: 0x2a5a9a, c2: 0xc8a040 }, cinturon: 0x5a4028, cogulla: 0x2a5a9a,
+  'Pícaro': { tejido: 'sarga', cierre: 'cordones', descalzo: true, alto: 1.68, ancho: 0.94, piel: 0xf0c8a0, iris: 0x4a8ab8, rasgos: { cejas: 'una', boca: 'picara', barbaSombra: true }, pelo: { c: 0xe0c070, largo: 0.05, flequillo: true }, torso: { c: 0x2a5a9a, c2: 0xc8a040 }, cinturon: 0x5a4028, cogulla: 0x2a5a9a,
     mangas: { c: 0x2a5a9a, brazal: 0x5a4028 }, tunica: { c: 0x2a5a9a, c2: 0xc8a040, largo: 0.3, vuelo: 0.25 }, piernas: { c: 0x202028, botas: 0xf0c8a0 }, capa: { c: 0x3a4a44, c2: 0x2a3a34, largo: 0.5, ancho: 0.4, jirones: 0.12 }, tejidoCapa: 'lana', motivoCapa: null },
 };
 

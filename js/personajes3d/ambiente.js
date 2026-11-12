@@ -57,7 +57,7 @@ const CIELOS = {
 
 let cfg = leer();
 let raiz = null;          // grupo con todo el decorado del ambiente
-let cielo = null, estrellas = null, nubes = [], lluvia = null, rayo = null, mar = null, espuma = null, sombras = null;
+let cielo = null, estrellas = null, nubes = [], lluvia = null, rayo = null, mar = null, espuma = null, sombras = null, brillos = null, crestas = [];
 let p = null;             // parámetros de luz/color actuales (mezclados)
 let destello = 0, proximoRayo = 6, relojReal = 0, sonidoEncendido = false;
 let antes = performance.now();
@@ -95,9 +95,9 @@ function ponerCapas(l) { capasPuestas = l.join(); ambienteSonoro(l); }
 function vaciar() {
   for (const o of [...raiz.children]) {
     raiz.remove(o);
-    o.traverse(h => { h.geometry?.dispose(); const m = h.material; (Array.isArray(m) ? m : m ? [m] : []).forEach(x => { x.map?.dispose(); x.dispose(); }); });
+    o.traverse(h => { h.geometry?.dispose(); const m = h.material; (Array.isArray(m) ? m : m ? [m] : []).forEach(x => { if (!x.map?.userData?.fija) x.map?.dispose(); x.dispose(); }); });
   }
-  cielo = estrellas = lluvia = rayo = mar = espuma = sombras = null; nubes = [];
+  cielo = estrellas = lluvia = rayo = mar = espuma = sombras = brillos = null; nubes = []; crestas = [];
 }
 
 function montar() {
@@ -183,6 +183,7 @@ function aplicarLuz() {
   if (mar) {
     mar.material.color.copy(tiempo(new THREE.Color('#1d5f86').lerp(p.horiz, 0.18)).multiplyScalar(cfg.hora === 'noche' ? 0.5 : 1));
     mar.material.emissive.copy(p.luz).multiplyScalar(0.03);
+    pintarBrillos();
   }
 }
 
@@ -232,33 +233,39 @@ function montarCielo() {
   raiz.add(estrellas);
 }
 
-let texNube = null;
-function texturaNube() {
-  if (texNube) return texNube;
-  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
-  const x = c.getContext('2d');
-  // Varias bolas de algodón: más claras arriba, con la base algo más plana.
-  for (let i = 0; i < 26; i++) {
-    const px = 40 + Math.random() * 176, py = 54 + Math.random() * 34 - Math.abs(px - 128) * 0.12, r = 20 + Math.random() * 26;
-    const gr = x.createRadialGradient(px, py - r * 0.35, r * 0.1, px, py, r);
-    gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(235,238,245,.55)'); gr.addColorStop(1, 'rgba(220,225,235,0)');
-    x.fillStyle = gr; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill();
-  }
-  // Base en sombra.
-  x.globalCompositeOperation = 'source-atop';
-  const gs = x.createLinearGradient(0, 40, 0, 120); gs.addColorStop(0, 'rgba(0,0,0,0)'); gs.addColorStop(1, 'rgba(60,70,90,.45)');
-  x.fillStyle = gs; x.fillRect(0, 0, 256, 128);
-  texNube = new THREE.CanvasTexture(c); texNube.colorSpace = THREE.SRGBColorSpace;
-  return texNube;
+// Tres formas de nube pintadas a mano con muchas bolas de algodón: las grandes dan la silueta (base plana,
+// cima abullonada), las pequeñas deshilachan el borde, y cada bola lleva su luz arriba y su sombra abajo.
+let texNubes = null;
+function texturaNube(k = 0) {
+  texNubes ??= [0, 1, 2].map(v => {
+    const W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d'), base = 176, bolas = [];
+    const torres = v === 2 ? 2 : 3 + v;   // la tercera es alargada y baja (estrato)
+    for (let i = 0; i < torres; i++) { const cx = W * (0.22 + 0.56 * (torres === 1 ? 0.5 : i / (torres - 1))) + azar(-22, 22), alto = v === 2 ? azar(28, 44) : azar(52, 104) * (1 - Math.abs(cx - W / 2) / W * 0.9);
+      for (let j = 0; j < 9; j++) { const k2 = j / 8, r = (v === 2 ? 34 : 46) * (1 - k2 * 0.55) + azar(-6, 6); bolas.push([cx + azar(-1, 1) * (1 - k2) * (v === 2 ? 110 : 62), base - r * 0.62 - k2 * alto, r]); } }
+    for (let i = 0; i < 40; i++) { const px = azar(60, W - 60), r = azar(18, 36); bolas.push([px, base - r * 0.55 - azar(0, 10), r]); }   // cuerpo junto a la base
+    const n0 = bolas.length; for (let i = 0; i < 70; i++) { const b = bolas[(Math.random() * n0) | 0], an = azar(-Math.PI, 0.15), r = azar(6, 15); bolas.push([b[0] + Math.cos(an) * b[2] * 0.92, b[1] + Math.sin(an) * b[2] * 0.92, r]); }   // flecos
+    bolas.sort((a, b) => a[1] - b[1]);
+    for (const [px, py, r] of bolas) { const g = x.createRadialGradient(px, py, r * 0.15, px, py, r); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.72, 'rgba(255,255,255,.8)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
+    x.globalCompositeOperation = 'source-atop';   // volumen: sombra bajo cada bola y luz en su cima
+    for (const [px, py, r] of bolas) { if (r < 16) continue;
+      const g = x.createRadialGradient(px, py + r * 0.75, r * 0.1, px, py + r * 0.75, r * 0.95); g.addColorStop(0, 'rgba(90,104,140,.1)'); g.addColorStop(1, 'rgba(70,84,118,0)'); x.fillStyle = g; x.fillRect(px - r, py - r * 0.2, r * 2, r * 1.9);
+      const l = x.createRadialGradient(px - r * 0.15, py - r * 0.5, 0, px - r * 0.15, py - r * 0.5, r * 0.7); l.addColorStop(0, 'rgba(255,255,255,.34)'); l.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = l; x.fillRect(px - r, py - r * 1.2, r * 2, r * 1.5); }
+    const gs = x.createLinearGradient(0, 70, 0, base + 14); gs.addColorStop(0, 'rgba(0,0,0,0)'); gs.addColorStop(0.7, 'rgba(90,104,140,.16)'); gs.addColorStop(1, 'rgba(70,84,120,.38)'); x.fillStyle = gs; x.fillRect(0, 0, W, H);
+    x.globalCompositeOperation = 'destination-out';   // base plana y difuminada; extremos que se deshacen
+    const gb = x.createLinearGradient(0, base - 8, 0, base + 22); gb.addColorStop(0, 'rgba(0,0,0,0)'); gb.addColorStop(1, 'rgba(0,0,0,1)'); x.fillStyle = gb; x.fillRect(0, base - 8, W, H);
+    for (const [x0, x1] of [[0, 70], [W, W - 70]]) { const gl = x.createLinearGradient(x0, 0, x1, 0); gl.addColorStop(0, 'rgba(0,0,0,1)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gl; x.fillRect(Math.min(x0, x1), 0, 70, H); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.userData.fija = true; return t;
+  });
+  return texNubes[k % 3];
 }
 
 function montarNubes() {
   const t = CIELOS[cfg.cielo]; if (!t.nubes) return;
-  const tex = texturaNube();
   const n = alta() ? t.nubes : Math.ceil(t.nubes * 0.6);
   for (let i = 0; i < n; i++) {
     const baja = !!t.tapa && i % 2 === 1;
-    const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: t.tapa ? 0.95 : 0.9 });
+    const m = new THREE.SpriteMaterial({ map: texturaNube(t.tapa ? (i % 2 ? 2 : 0) : i), transparent: true, depthWrite: false, fog: false, opacity: t.tapa ? 0.95 : 0.92 });
     const s = new THREE.Sprite(m);
     // Más nubes al fondo (-z), que es hacia donde mira la cámara.
     const ang = -Math.PI / 2 + (Math.random() - 0.5) * (i % 3 ? 2.2 : 6.2), r = 110 + Math.random() * 150;
@@ -273,7 +280,7 @@ function montarNubes() {
   // Cubierto: un techo de nubes que tapa todo el cielo.
   if (t.tapa) {
     for (let i = 0; i < 10; i++) {
-      const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: 0.9 });
+      const m = new THREE.SpriteMaterial({ map: texturaNube(2), transparent: true, depthWrite: false, fog: false, opacity: 0.9 });
       const s = new THREE.Sprite(m); const ancho = 260 + Math.random() * 120;
       s.scale.set(ancho, ancho * 0.5, 1);
       s.userData = { ang: (i / 10) * Math.PI * 2, r: 60 + Math.random() * 90, alto: 95 + Math.random() * 40, vel: 0.003, sombra: 0.5, baja: true };
@@ -472,37 +479,84 @@ function montarSuelo(tipo) {
 }
 
 const ORILLA = -19;   // el mar empieza detrás de la mesa
+/** Rizos del agua: trazos claros y oscuros que casan por los bordes. Sirve de color y de relieve. */
+function texturaOndas() {
+  const T = 256, c = document.createElement('canvas'); c.width = c.height = T; const x = c.getContext('2d');
+  x.fillStyle = '#b4b4b4'; x.fillRect(0, 0, T, T); x.lineCap = 'round';
+  for (let i = 0; i < 150; i++) { const px = azar(0, T), py = azar(0, T), l = azar(10, 34), cu = azar(-5, 5), claro = i % 2;
+    enMosaico(x, T, () => { x.strokeStyle = claro ? `rgba(255,255,255,${azar(0.25, 0.7)})` : `rgba(20,40,70,${azar(0.15, 0.4)})`; x.lineWidth = azar(1, claro ? 3.2 : 4.5); x.beginPath(); x.moveTo(px - l, py); x.quadraticCurveTo(px, py + cu, px + l, py + azar(-2, 2)); x.stroke(); }); }
+  const t = textura(c, 1); t.repeat.set(46, 22); return t;
+}
+/** Destellos del astro sobre el agua: rayitas sueltas sobre negro, para sumar luz. */
+function texturaDestellos() {
+  const T = 256, c = document.createElement('canvas'); c.width = c.height = T; const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, T, T);
+  for (let i = 0; i < 90; i++) { const px = azar(0, T), py = azar(0, T), l = azar(3, 13), a = azar(0.35, 1);
+    enMosaico(x, T, () => { x.fillStyle = `rgba(255,255,255,${a})`; x.beginPath(); x.ellipse(px, py, l, azar(0.8, 1.8), 0, 0, 7); x.fill(); }); }
+  const t = textura(c, 1); t.repeat.set(30, 15); return t;
+}
+/** Encaje de espuma: una franja irregular, con burbujas y calvas. */
+function texturaEspuma() {
+  const W = 512, H = 64, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const f1 = azar(0, 6), f2 = azar(0, 6), linea = px => 36 + Math.sin(px / W * Math.PI * 4 + f1) * 6 + Math.sin(px / W * Math.PI * 14 + f2) * 3;
+  for (let i = 0; i < 520; i++) { const px = azar(0, W), d = Math.pow(Math.random(), 1.7), py = linea(px) - d * 30 + azar(-2, 4), r = azar(1.5, 6) * (1 - d * 0.5);
+    for (const dx of [-W, 0, W]) { x.fillStyle = `rgba(255,255,255,${(1 - d) * 0.85})`; x.beginPath(); x.arc(px + dx, py, r, 0, 7); x.fill(); } }
+  x.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 150; i++) { const px = azar(0, W), py = azar(4, 34), r = azar(1.5, 5); for (const dx of [-W, 0, W]) { x.beginPath(); x.arc(px + dx, py, r, 0, 7); x.fill(); } }
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 function montarMar() {
   const g = new THREE.PlaneGeometry(700, 340, alta() ? 120 : 70, alta() ? 50 : 30);
   g.rotateX(-Math.PI / 2); g.translate(0, 0.05, ORILLA - 170);
   g.userData.base = Float32Array.from(g.attributes.position.array);
-  mar = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x1d5f86, roughness: 0.22, metalness: 0.15, transparent: true, opacity: 0.94 }));
+  // Color por profundidad: turquesa claro en la orilla, azul hondo mar adentro.
+  const pos = g.attributes.position, col = new Float32Array(pos.count * 3), orilla = new THREE.Color(0.95, 1.75, 1.55), hondo = new THREE.Color(0.72, 0.8, 1.0), q = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) { const k = Math.min(1, Math.max(0, (ORILLA - pos.getZ(i)) / 46)); q.copy(orilla).lerp(hondo, Math.pow(k, 0.6)); col.set([q.r, q.g, q.b], i * 3); }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const ondas = texturaOndas();
+  mar = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x1d5f86, vertexColors: true, map: ondas, bumpMap: ondas, bumpScale: 0.9, roughness: 0.16, metalness: 0.3, transparent: true, opacity: 0.95 }));
   raiz.add(mar);
-  // Arena mojada y espuma en la orilla, que va y viene.
-  const c = document.createElement('canvas'); c.width = 256; c.height = 32;
-  const x = c.getContext('2d');
-  const gr = x.createLinearGradient(0, 0, 0, 32); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.55, 'rgba(255,255,255,.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-  x.fillStyle = gr; x.fillRect(0, 0, 256, 32);
-  for (let i = 0; i < 300; i++) { x.fillStyle = 'rgba(255,255,255,.6)'; x.beginPath(); x.arc(Math.random() * 256, 8 + Math.random() * 18, Math.random() * 2, 0, 7); x.fill(); }
-  const tx = new THREE.CanvasTexture(c); tx.wrapS = THREE.RepeatWrapping; tx.repeat.set(30, 1); tx.colorSpace = THREE.SRGBColorSpace;
-  espuma = new THREE.Mesh(new THREE.PlaneGeometry(700, 3.2), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, opacity: 0.8 }));
-  espuma.rotation.x = -Math.PI / 2; espuma.position.set(0, 0.09, ORILLA);
+  // Destellos del sol o de la luna: un camino de luz desde el horizonte hasta la orilla.
+  const gb = new THREE.PlaneGeometry(700, 330, 70, 24); gb.rotateX(-Math.PI / 2); gb.translate(0, 1.45, ORILLA - 171);
+  gb.setAttribute('color', new THREE.BufferAttribute(new Float32Array(gb.attributes.position.count * 3), 3));
+  brillos = new THREE.Mesh(gb, new THREE.MeshBasicMaterial({ map: texturaDestellos(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  brillos.renderOrder = 2; raiz.add(brillos); pintarBrillos();
+  // Espuma en la orilla, que va y viene, y dos crestas que llegan desde dentro.
+  const tx = texturaEspuma(); tx.repeat.set(16, 1);
+  espuma = new THREE.Mesh(new THREE.PlaneGeometry(700, 4.2), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, opacity: 0.85 }));
+  espuma.rotation.x = -Math.PI / 2; espuma.position.set(0, 0.1, ORILLA);
   raiz.add(espuma);
-  const mo = new THREE.Mesh(new THREE.PlaneGeometry(700, 5), new THREE.MeshStandardMaterial({ color: 0x8a7350, transparent: true, opacity: 0.55, roughness: 0.4, depthWrite: false }));
+  for (let i = 0; i < 3; i++) { const tc = texturaEspuma(); tc.repeat.set(9 + i * 2, 1); tc.offset.x = i * 0.37;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(700, 3 + i * 0.6), new THREE.MeshBasicMaterial({ map: tc, transparent: true, depthWrite: false, opacity: 0 }));
+    m.rotation.x = -Math.PI / 2; m.userData.fase = i / 3; m.renderOrder = 2; crestas.push(m); raiz.add(m); }
+  const mo = new THREE.Mesh(new THREE.PlaneGeometry(700, 5), new THREE.MeshStandardMaterial({ color: 0x8a7350, transparent: true, opacity: 0.55, roughness: 0.25, metalness: 0.1, depthWrite: false }));
   mo.rotation.x = -Math.PI / 2; mo.position.set(0, 0.02, ORILLA + 1.5);
   raiz.add(mo);
+}
+/** Reparte los destellos: fuertes bajo el astro, apenas un brillo suelto en el resto. */
+function pintarBrillos() {
+  if (!brillos) return;
+  const t = CIELOS[cfg.cielo], pos = brillos.geometry.attributes.position, col = brillos.geometry.attributes.color, c = p.astro.clone().lerp(p.luz, 0.4);
+  const fuerza = (cfg.hora === 'noche' ? 0.6 : 1) * (1 - t.gris) * (t.tapa ? 0.25 : 1), bajo = 1.6 - Math.min(1, p.elev) * 0.9;   // con el astro bajo, el camino es más largo e intenso
+  for (let i = 0; i < pos.count; i++) { const z = pos.getZ(i), d = ORILLA - z, eje = Math.tan(p.az) * -z, an = 7 + d * 0.16, k = Math.exp(-(((pos.getX(i) - eje) / an) ** 2)) * bajo * Math.min(1, d / 6) + 0.07;
+    col.setXYZ(i, c.r * k * fuerza, c.g * k * fuerza, c.b * k * fuerza); }
+  col.needsUpdate = true;
 }
 
 function moverMar(t) {
   const g = mar.geometry, a = g.attributes.position.array, b = g.userData.base;
   for (let i = 0; i < a.length; i += 3) {
     const x = b[i], z = b[i + 2], lejos = Math.min(1, (ORILLA - z) / 12);
-    a[i + 1] = b[i + 1] + lejos * (Math.sin(x * 0.11 + t * 1.1) * 0.22 + Math.sin(z * 0.17 - t * 1.6) * 0.28 + Math.sin((x + z) * 0.33 + t * 2.3) * 0.08);
+    a[i + 1] = b[i + 1] + lejos * (0.68 + Math.sin(x * 0.11 + t * 1.1) * 0.2 + Math.sin(z * 0.17 - t * 1.6) * 0.26 + Math.sin((x + z) * 0.33 + t * 2.3) * 0.07 + Math.sin(x * 0.05 - z * 0.09 + t * 0.7) * 0.12);
   }
   g.attributes.position.needsUpdate = true; g.computeVertexNormals();
+  mar.material.map.offset.set(t * 0.012, -t * 0.02);
+  if (brillos) brillos.material.map.offset.set(Math.sin(t * 0.6) * 0.03, -t * 0.035);
   const ola = Math.sin(t * 0.85);
-  espuma.position.z = ORILLA + 1 + ola * 1.2; espuma.material.opacity = 0.45 + 0.35 * (0.5 + 0.5 * ola);
+  espuma.position.z = ORILLA + 1 + ola * 1.2; espuma.material.opacity = 0.5 + 0.35 * (0.5 + 0.5 * ola);
   espuma.material.map.offset.x = t * 0.004;
+  for (const c of crestas) { const k = (t * 0.07 + c.userData.fase) % 1;   // nace mar adentro, crece y rompe en la orilla
+    c.position.set(Math.sin(c.userData.fase * 9) * 6, 1.05 - k * k * 0.93, ORILLA - 30 + k * 29); c.material.opacity = Math.sin(k * Math.PI) ** 0.8 * 0.6; c.material.map.offset.x = c.userData.fase + t * 0.003; }
 }
 
 // ------------------------------------------------------------ sin decorado

@@ -535,6 +535,9 @@ la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
 - `escenas.js`: `ESCENAS` (escenas de la maqueta), `reproducir(id)`,
   `ponerNombres(nombres)`, `montarEscenario()`, `configurar()`,
   `modoColocar()`, `restablecerPortales()`.
+- (1.37.3) `modelos.js`: cada entrada de `HUMANOS` lleva `rasgos` (cara propia, los pinta `texturaCara()`) y
+  opciones de cuerpo y ropa (`barriga`, `cuelloAlto`, `capelina`, `tunica.abierta/rayas/gemas`, `mangas.brazal`).
+  `ambiente.js`: mar con color por profundidad, destellos (`pintarBrillos()`), espuma y crestas; nubes de tres formas.
 - `modelos.js`: `construirModelo(nombre)` (personajes, animales y criaturas
   hechos por código, con telas pintadas y articulaciones).
 - `personajes.js`: actores (`crearActor(nombre, pos, { capa, rumbo, fijo })`,
