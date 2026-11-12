@@ -58,8 +58,12 @@ export function crearMundo(lienzo, calidad, { controles = true } = {}) {
   const camara = new THREE.PerspectiveCamera(42, 1, 0.1, 120);
   Object.assign(mundo, { renderer, escena, camara });
 
-  escena.add(new THREE.HemisphereLight(0xc4d6ff, 0x1c1736, 1.5));
+  const hemi = new THREE.HemisphereLight(0xc4d6ff, 0x1c1736, 1.5); escena.add(hemi);
   const sol = new THREE.DirectionalLight(0xfff1dc, 1.5); sol.position.set(3, 6, 5); escena.add(sol);
+  mundo.luces = { hemi, sol };
+  // Decorado por defecto (suelo oscuro y estrellas). El Escenario lo cambia
+  // por el ambiente elegido (ambiente.js); la maqueta lo deja tal cual.
+  const decorado = new THREE.Group(); escena.add(decorado); mundo.decorado = decorado;
 
   // Suelo: disco oscuro con un degradado y anillos tenues.
   const c = document.createElement('canvas'); c.width = c.height = 256;
@@ -71,7 +75,7 @@ export function crearMundo(lienzo, calidad, { controles = true } = {}) {
   for (const r of [36, 62, 90, 118]) { x.beginPath(); x.arc(128, 128, r, 0, 7); x.stroke(); }
   const tSuelo = new THREE.CanvasTexture(c); tSuelo.colorSpace = THREE.SRGBColorSpace;
   const suelo = new THREE.Mesh(new THREE.CircleGeometry(16, 40), new THREE.MeshBasicMaterial({ map: tSuelo }));
-  suelo.rotation.x = -Math.PI / 2; escena.add(suelo);
+  suelo.rotation.x = -Math.PI / 2; decorado.add(suelo);
 
   // Estrellas.
   const n = alta ? 320 : 160; const p = new Float32Array(n * 3);
@@ -80,7 +84,7 @@ export function crearMundo(lienzo, calidad, { controles = true } = {}) {
     p[i * 3] = Math.cos(a) * Math.cos(e) * r; p[i * 3 + 1] = Math.sin(e) * r; p[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r;
   }
   const ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  escena.add(new THREE.Points(ge, new THREE.PointsMaterial({ color: 0xcfe0ff, size: 0.35, fog: false, transparent: true, opacity: 0.85 })));
+  decorado.add(new THREE.Points(ge, new THREE.PointsMaterial({ color: 0xcfe0ff, size: 0.35, fog: false, transparent: true, opacity: 0.85 })));
 
   ajustarTamano();
   window.addEventListener('resize', ajustarTamano);

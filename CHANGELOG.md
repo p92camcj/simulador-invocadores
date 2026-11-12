@@ -4,6 +4,36 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.37.0.171] - 2026-11-12
+
+### Añadido
+- **Ambiente del Escenario** (☰ → "Ambiente: hora, cielo y suelo",
+  `js/personajes3d/ambiente.js`): hora del día (amanecer con luz amarilla,
+  pleno día, atardecer naranja rojizo, noche estrellada con luna, u "hora
+  real" que sigue el reloj del dispositivo y mezcla poco a poco una hora con
+  la siguiente), cielo (despejado, algunas nubes teñidas según la hora y con
+  sus sombras sobre la mesa, cubierto, lluvia leve, tormenta con relámpagos
+  suaves y truenos) y suelo (empedrado antiguo, hierba baja, tablero de
+  madera, arena con el mar y la espuma de fondo) o "sin decorado" con siete
+  paletas de color. La luz de personajes y Portales cambia con la hora y el
+  tiempo. El panel es compacto y la cámara se levanta mientras está abierto
+  para ver el cielo; se guarda en `localStorage['inv3d.ambiente']`. Texturas
+  dibujadas con canvas, sin imágenes de terceros.
+- **Sonido ambiente** suave con el sonido del Escenario: lluvia, tormenta,
+  olas, viento, grillos de noche y pájaros de día (`ambienteSonoro()` y
+  `trueno()` en `sonido.js`, todo sintetizado).
+- **Velocidad de las animaciones** (`js/velocidad.js`): deslizador 🐢–🐇 en la
+  barra de arriba de la Mesa y del Escenario (en el móvil, un conejo que
+  despliega el deslizador), en la pantalla de inicio y en el panel Ambiente.
+  Escala las escenas de la Mesa, las pausas de las autómatas y las
+  animaciones del Escenario (`localStorage['invocadores.velocidad']`).
+
+### Corregido
+- El sonido del Escenario no arrancaba si ya estaba activado al empezar:
+  ahora se inicia con el primer toque en el Escenario.
+
+---
+
 ## [1.36.0.170] - 2026-11-12
 
 ### Añadido

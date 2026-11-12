@@ -22,6 +22,7 @@
 // - cuandoTermineEspectaculo() / hayEspectaculoEnCurso() → espera a que acabe la cola
 // - espectaculoActivo() / fijarEspectaculo(bool)      → interruptor (setup.js / index.html)
 
+import { velocidadAnimaciones } from './velocidad.js';
 import { escenarioEnUso, anunciarEscenario, escenarioOcupado, cuandoLibreEscenario } from './escenas3d.js';
 
 const CLAVE_PREFERENCIA = 'invocadores.espectaculo';
@@ -233,7 +234,8 @@ function siguiente() {
   const reducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Si se acumulan escenas (p. ej. turnos seguidos de autómatas), se
   // aceleran para no ir por detrás de la partida.
-  const ritmo = reducido ? 0.5 : (cola.length >= 2 ? 0.55 : cola.length === 1 ? 0.8 : 1);
+  // El deslizador tortuga-conejo (velocidad.js) escala todo.
+  const ritmo = (reducido ? 0.5 : (cola.length >= 2 ? 0.55 : cola.length === 1 ? 0.8 : 1)) / velocidadAnimaciones();
   el.innerHTML = '';
   el.style.setProperty('--t', String(ritmo));
   el.classList.remove('hidden');

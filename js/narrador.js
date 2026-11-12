@@ -15,6 +15,7 @@
 // Nunca enseña una carta que no sea pública: los textos vienen del
 // historial, que solo nombra cartas bocarriba.
 
+import { velocidadAnimaciones } from './velocidad.js';
 import { escucharHistorial } from './historial.js';
 import { cuandoTermineEspectaculo } from './espectaculo.js';
 import { estado } from './motor/estado.js';
@@ -57,12 +58,12 @@ export function fijarRitmoAutomatas(ritmo) {
 /** Pausa (ms) tras cada paso de una autómata, para poder seguirlo. */
 export function pausaTrasPaso(fase) {
   const base = fase === 'faseB' ? 3400 : 2600;
-  return Math.round(base * RITMOS[ritmoAutomatas()]);
+  return Math.round(base * RITMOS[ritmoAutomatas()] / velocidadAnimaciones());
 }
 
 /** Pausa (ms) antes de que la autómata empiece su turno ("pensando…"). */
 export function pausaAntesDeJugar(base) {
-  return Math.round(Math.max(base, 1100) * RITMOS[ritmoAutomatas()]);
+  return Math.round(Math.max(base, 1100) * RITMOS[ritmoAutomatas()] / velocidadAnimaciones());
 }
 
 // ---------- Resaltado de Portales ----------
