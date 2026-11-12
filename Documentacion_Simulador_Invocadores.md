@@ -517,7 +517,9 @@ la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
   asiento delante de sus Portales (cantidad y nivel públicos, total solo
   para su dueña), acerca la cámara a las habilidades en Portales lejanos y
   una figura subida a un Portal cuenta como un toque en ese Portal.
-- `magia.js` (1.37.1): piezas de magia compartidas por la maqueta y el
+  Desde 1.37.2, `rebotar(clave, origen)` escenifica un hechizo que choca con
+  los escudos de la Centinela (devuelve false si ese Portal no los tiene).
+- `magia.js` (1.37.1; `crearEscudos()` desde 1.37.2): piezas de magia compartidas por la maqueta y el
   Escenario: `runa()`, `ojoDeLuz()`, `hazDeLuz()`, `relojArena()`, `orbe()`
   / `quitarOrbe()`, `COLORES_ORBES` y `limpiarMagia()`.
 - `mundo.js`: además de `siempre(fn)` (con el tiempo escalado por el

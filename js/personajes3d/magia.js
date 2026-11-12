@@ -68,3 +68,14 @@ export function relojArena(p, color, color2, tam = 0.9) {
 export const COLORES_ORBES = [0x5fd0a0, 0xe8a040, 0xe04a6a, 0x5ab8e8, 0xf0e070, 0xb07ae8];
 export function orbe(color) { return temp(luz(color, 0.5)); }
 export function quitarOrbe(o) { fuera(o); }
+
+/** Cuatro escudos en corro (Centinela). Grupo suelto: quien lo usa lo coloca, lo gira y lo retira. */
+export function crearEscudos() {
+  const grupo = new THREE.Group();
+  const rojo = new THREE.MeshLambertMaterial({ color: 0xc23a2e, flatShading: true }), oro = new THREE.MeshLambertMaterial({ color: 0xe0aa48, emissive: 0x4a3008, flatShading: true });
+  for (let n = 0; n < 4; n++) { const e = new THREE.Group(), an = n / 4 * Math.PI * 2; e.position.set(Math.sin(an) * 1.35, 1.0, Math.cos(an) * 1.35); e.rotation.y = an; e.scale.setScalar(0.8);
+    const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 6), rojo); cuerpo.rotation.x = Math.PI / 2; cuerpo.scale.set(1, 1, 1.3);
+    const borde = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.035, 5, 6), oro); borde.scale.y = 1.3; borde.rotation.z = Math.PI / 6;
+    const tachon = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), oro); tachon.position.z = 0.05; e.add(cuerpo, borde, tachon); grupo.add(e); }
+  return grupo;
+}

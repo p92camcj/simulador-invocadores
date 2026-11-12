@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.37.2.175 - 2026-11-12
+
+- **Vuelven los escudos de la Centinela**: flotan alrededor de los Portales
+  que protege y, si intentas un hechizo contra ellos, la magia rebota.
+- **La invocación vuelve a ser un espectáculo**: dura más y tiene mucha más
+  magia, con luces que salen de cada Portal y un gran fogonazo.
+- **El Pícaro roba su Gema** a la criatura con sigilo y la Entusiasta le
+  lanza una de las tuyas.
+- Recuperadas las escenas de la Cronista, el Maestro, el Aprendiz, el
+  Ocultista y el Metamorfo, y las gracias de Reena, Sora y Lumo al llegar.
+
 ## 1.37.1.174 - 2026-11-12
 
 - **Vuelve la magia de la maqueta al Escenario**: la Estratega levanta los
