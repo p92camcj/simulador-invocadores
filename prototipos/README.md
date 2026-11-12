@@ -7,7 +7,7 @@ Páginas de prueba que **no forman parte del juego** (no las carga
   personajes»: escenas cortas y predefinidas (manos, jugar carta, tapar,
   Portales, una habilidad por personaje, invocación) con Three.js
   (`vendor/three`, MIT) y sonido sintetizado con Web Audio (sin archivos de
-  audio). Código en `personajes3d/`. Los modelos de `modelos.js` son
+  audio). Código en `../js/personajes3d/` (el mismo que usa el juego con la opción «Personajes 3D»). Los modelos de `modelos.js` son
   provisionales (geometría por código); la idea es sustituirlos por modelos
   GLB generados a partir del arte original.
   Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/personajes-3d.html

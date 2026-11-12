@@ -6,6 +6,20 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.35.0.168 - 2026-11-12
+
+- Nuevo y en pruebas: **Personajes 3D**. Actívalo en el menú ☰ de la mesa
+  (o en la pantalla de inicio) y, cada vez que se juegue una carta, se use
+  una habilidad o se complete una invocación, lo verás con personajes
+  animados en 3D. Toca la pantalla para saltar la escena.
+- Viene desactivado. La primera vez que lo actives descarga algo más de
+  datos; después funciona también sin conexión.
+- Puedes ponerle sonido desde el mismo menú.
+- De momento las escenas 3D muestran al personaje y su habilidad en un
+  escenario de ejemplo, no la mesa exacta de tu partida.
+
+---
+
 ## 1.34.5.157 - 2026-11-08
 
 - Simulaciones para el autor sobre qué pasa si, cuando no se completa

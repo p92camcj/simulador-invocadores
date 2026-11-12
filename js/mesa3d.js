@@ -22,6 +22,7 @@
 
 import { cardImages, CARTA_OCULTA_IMG, escapeHtml, iconos, MODOS_JUEGO, modoDe, datosInvocacion } from './utils.js';
 import { rutaFigura, rutaCriatura, espectaculoActivo, fijarEspectaculo } from './espectaculo.js';
+import { escenas3dActivas, fijarEscenas3D, sonido3dActivo, fijarSonido3D } from './escenas3d.js';
 import { estado } from './motor/estado.js';
 import { opcionesFaseB } from './motor/acciones.js';
 import { atributosDestacado, abrirHistorial } from './narrador.js';
@@ -885,6 +886,8 @@ function abrirMenu() {
     titulo: 'Menú',
     cuerpo: `<div class="m-menu">
       <button type="button" class="m-opcion" data-menu="escenas">✨ Escenas animadas: ${esc ? 'sí' : 'no'}</button>
+      <button type="button" class="m-opcion" data-menu="tres">🧙 Personajes 3D (en pruebas): ${escenas3dActivas() ? 'sí' : 'no'}</button>
+      ${escenas3dActivas() ? `<button type="button" class="m-opcion" data-menu="sonido3d">${sonido3dActivo() ? '🔊' : '🔇'} Sonido de las escenas 3D: ${sonido3dActivo() ? 'sí' : 'no'}</button>` : ''}
       <button type="button" class="m-opcion" data-menu="pantalla">⛶ Pantalla completa</button>
       <button type="button" class="m-opcion" data-menu="ayuda">❓ Carta de ayuda</button>
       <button type="button" class="m-opcion" data-menu="historial">📜 Historial de jugadas</button>
@@ -896,6 +899,14 @@ function abrirMenu() {
 
 function accionMenu(opcion) {
   if (opcion === 'escenas') { fijarEspectaculo(!espectaculoActivo()); abrirMenu(); return; }
+  if (opcion === 'tres') {
+    const si = !escenas3dActivas();
+    fijarEscenas3D(si);
+    if (si && !espectaculoActivo()) fijarEspectaculo(true);   // las escenas 3D sustituyen a las animadas: necesitan que estén puestas
+    abrirMenu();
+    return;
+  }
+  if (opcion === 'sonido3d') { fijarSonido3D(!sonido3dActivo()); abrirMenu(); return; }
   if (opcion === 'pantalla') {
     cerrarHoja();
     const el = document.documentElement;

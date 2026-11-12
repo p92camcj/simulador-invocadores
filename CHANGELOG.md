@@ -4,6 +4,50 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.35.0.168] - 2026-11-12
+
+### Añadido
+- **Personajes 3D (en pruebas, desactivado por defecto)**: nueva opción en
+  el menú ☰ de la mesa («🧙 Personajes 3D») y en la pantalla de inicio
+  (`#chk3D`). Con ella activada, las escenas del modo espectáculo (carta
+  jugada, habilidad, invocación) se ven a pantalla completa con personajes
+  animados en 3D en lugar de la escena 2D. Toca para saltar. Sonido
+  sintetizado opcional («Sonido de las escenas 3D», apagado por defecto).
+- `js/escenas3d.js`: interruptor (`localStorage['invocadores.personajes3d']`)
+  y cargador perezoso. Three.js (`vendor/three`) y `js/personajes3d/` solo
+  se descargan al activar la opción; después quedan en la caché del Service
+  Worker como cualquier otro JS. Sin WebGL o sin red la primera vez, cae a
+  la escena 2D de siempre.
+- `js/personajes3d/juego.js` (puente: lienzo a pantalla completa, rótulo,
+  pausa del bucle cuando no se ve) y `escenaDeJuego()` en
+  `js/personajes3d/escenas.js`, que elige la animación predefinida a partir
+  de un descriptor con datos públicos (`tres` en las escenas que encola
+  `espectaculo.js`).
+- La maqueta (`prototipos/personajes-3d.html`) usa ahora el mismo código,
+  movido de `prototipos/personajes3d/` a `js/personajes3d/`.
+
+### Cambiado (modelos y efectos 3D)
+- Todos los personajes: telas pintadas con trama, pliegues, bordados y
+  relieve; cuerpo con hombro, codo, muñeca y dedos, cadera, rodilla y
+  tobillo; rasgos repasados contra las ilustraciones originales. El
+  Ocultista flota y no tiene piernas. Animales con pelaje o plumas y patas
+  articuladas.
+- Manto de las cartas ocultas: sudario oscuro raído que ondea y se evapora
+  en humo de abajo arriba al revelarse.
+- Partículas más finas, numerosas y con turbulencia; Portales con textura
+  de piedra y pergamino flotante con el nombre de la jugadora (los
+  centrales no llevan); se sube y se baja de la tarima por la escalinata;
+  el Metamorfo se transforma girando; el Entusiasta lanza una Gema azul a
+  la criatura.
+
+### Limitación conocida
+- Las escenas 3D son animaciones predefinidas: muestran al personaje y su
+  habilidad en un escenario genérico, no la colocación exacta de la mesa.
+  Para las invocaciones de los sets sin criatura 3D propia se usa la del
+  mismo nivel.
+
+---
+
 ## [1.34.5.157] - 2026-11-08
 
 ### Añadido

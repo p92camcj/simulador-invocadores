@@ -73,9 +73,48 @@ export const VARIANTES = [
   { puntas: 10, tono: 0xd8ffd0, arco: 'entero', aguja: true, roto: { bajoIzq: true }, cascotes: 1 },
 ];
 
-const mPiedra = new THREE.MeshLambertMaterial({ color: 0xb7ab9f, flatShading: true });
-const mTarima = new THREE.MeshLambertMaterial({ color: 0x7e879c, flatShading: true });
-const mBase = new THREE.MeshLambertMaterial({ color: 0x343b60, flatShading: true });
+/** Piedra tallada: sillares con juntas, vetas, grietas, picaduras y algo de musgo. Sirve de color y de relieve. */
+function texturaPiedra(sillares, sem) {
+  const W = 256, c = document.createElement('canvas'); c.width = c.height = W; const x = c.getContext('2d');
+  let s = sem; const rnd = () => (s = (s * 16807 + 5) % 2147483647) / 2147483647;
+  x.fillStyle = '#d6d2cc'; x.fillRect(0, 0, W, W);
+  for (let i = 0; i < 60; i++) { const px = rnd() * W, py = rnd() * W, r = 10 + rnd() * 34; for (const [dx, dy] of [[0, 0], [-W, 0], [W, 0], [0, -W], [0, W]]) { const g = x.createRadialGradient(px + dx, py + dy, 0, px + dx, py + dy, r); g.addColorStop(0, i % 2 ? 'rgba(40,36,48,.2)' : 'rgba(255,255,255,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(px + dx - r, py + dy - r, r * 2, r * 2); } }
+  for (let i = 0; i < 9; i++) { const px = rnd() * W, py = rnd() * W, r = 12 + rnd() * 26, g = x.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, 'rgba(110,150,90,.3)'); g.addColorStop(1, 'rgba(110,150,90,0)'); x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2); }   // musgo
+  if (sillares) { const alto = W / sillares; for (let j = 0; j < sillares; j++) { const y = j * alto; x.fillStyle = 'rgba(20,18,30,.55)'; x.fillRect(0, y, W, 3); x.fillStyle = 'rgba(255,255,255,.3)'; x.fillRect(0, y + 3, W, 2);
+      for (let i = 0; i < 2; i++) { const px = ((i + (j % 2) * 0.5) * W / 2 + (rnd() - 0.5) * 20 + W) % W; x.fillStyle = 'rgba(20,18,30,.5)'; x.fillRect(px, y, 3, alto); x.fillStyle = 'rgba(255,255,255,.22)'; x.fillRect(px + 3, y + 3, 2, alto - 3); } } }
+  x.strokeStyle = 'rgba(20,18,30,.5)'; x.lineWidth = 1.2; for (let i = 0; i < 9; i++) { let px = rnd() * W, py = rnd() * W; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (rnd() - 0.5) * 26; py += rnd() * 16; x.lineTo(px, py); } x.stroke(); }
+  for (let i = 0; i < 260; i++) { x.fillStyle = rnd() < 0.6 ? `rgba(20,18,30,${0.15 + rnd() * 0.3})` : `rgba(255,255,255,${0.1 + rnd() * 0.25})`; const r = 0.6 + rnd() * 1.6; x.beginPath(); x.arc(rnd() * W, rnd() * W, r, 0, 7); x.fill(); }
+  const im = x.getImageData(0, 0, W, W), d = im.data; for (let i = 0; i < d.length; i += 4) { const r = (rnd() - 0.5) * 22; d[i] += r; d[i + 1] += r; d[i + 2] += r; } x.putImageData(im, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+}
+const piedra = (color, sillares, sem) => { const t = texturaPiedra(sillares, sem); return new THREE.MeshLambertMaterial({ color, map: t, bumpMap: t, bumpScale: 2.2, flatShading: true }); };
+const mPiedra = piedra(0xd0c2b2, 4, 3);
+const mTarima = piedra(0x9aa3ba, 3, 17);
+const mBase = piedra(0x4a5282, 0, 29);
+
+/** Trozo de pergamino con el nombre de la jugadora; flota sobre su Portal mirando siempre a la cámara. */
+export function pergamino(nombre) {
+  const c = document.createElement('canvas'); c.width = 384; c.height = 128; const x = c.getContext('2d');
+  let s = 7 + nombre.length * 13; const rnd = () => (s = (s * 16807 + 5) % 2147483647) / 2147483647;
+  x.beginPath(); x.moveTo(14, 22); for (let px = 14; px <= 370; px += 12) x.lineTo(px, 18 + rnd() * 7); for (let py = 22; py <= 106; py += 10) x.lineTo(366 + rnd() * 8, py); for (let px = 370; px >= 14; px -= 12) x.lineTo(px, 104 + rnd() * 8); for (let py = 106; py >= 22; py -= 10) x.lineTo(10 + rnd() * 8, py); x.closePath();
+  const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#f6e7c0'); g.addColorStop(0.55, '#ecd6a2'); g.addColorStop(1, '#c9a968'); x.fillStyle = g; x.shadowColor = 'rgba(0,0,0,.55)'; x.shadowBlur = 8; x.shadowOffsetY = 3; x.fill(); x.shadowColor = 'transparent';
+  x.save(); x.clip();
+  for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(120,80,30,${rnd() * 0.14})`; x.beginPath(); x.ellipse(rnd() * 384, rnd() * 128, 6 + rnd() * 26, 3 + rnd() * 10, rnd() * 3, 0, 7); x.fill(); }
+  for (const px of [18, 366]) { const e = x.createLinearGradient(px - 16, 0, px + 16, 0); e.addColorStop(0, 'rgba(90,55,20,.5)'); e.addColorStop(0.5, 'rgba(255,240,200,.35)'); e.addColorStop(1, 'rgba(90,55,20,0)'); x.fillStyle = e; x.fillRect(px - 16, 0, 32, 128); }
+  x.restore(); x.strokeStyle = 'rgba(110,70,30,.8)'; x.lineWidth = 2; x.stroke();
+  let t = 50; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#3a2410';
+  do { x.font = `italic 600 ${t}px Georgia, 'Times New Roman', serif`; t -= 2; } while (x.measureText(nombre).width > 320 && t > 16);
+  x.fillText(nombre, 192, 64);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false })); sp.scale.set(1.5, 0.5, 1); sp.renderOrder = 18;
+  const f = Math.random() * 6; siempre((dt, tt) => { sp.position.y = sp.userData.y + Math.sin(tt * 1.3 + f) * 0.06; sp.material.rotation = Math.sin(tt * 0.9 + f) * 0.05; });
+  sp.userData.y = 3.25; sp.position.set(0, 3.25, -0.6); return sp;
+}
+/** Pone (o quita, con null) el pergamino con el nombre sobre un Portal. */
+export function nombrarPortal(portal, nombre) {
+  const d = portal.userData; if (d.letrero) { portal.remove(d.letrero); d.letrero.material.map.dispose(); d.letrero.visible = false; d.letrero = null; }
+  if (nombre) { d.letrero = pergamino(String(nombre).slice(0, 18)); portal.add(d.letrero); }
+}
 
 export function crearPortal(v, semilla = 1) {
   texturasComunes();
@@ -89,7 +128,7 @@ export function crearPortal(v, semilla = 1) {
   // Escalinata hacia delante.
   for (let i = 0; i < 3; i++) add(new THREE.BoxGeometry(0.7, 0.09, 0.2), mTarima, 0, 0.05 + i * 0.08, 1.5 - i * 0.17);
   // Piedras bajas con ojos rúnicos alrededor.
-  const piedras = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.17, 0.16, 7), mBase, 9);
+  const piedras = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.17, 0.16, 7), mTarima, 9);
   const mm = new THREE.Matrix4();
   for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283 + 0.35; piedras.setMatrixAt(i, mm.makeTranslation(Math.cos(a) * 1.5, 0.08, Math.sin(a) * 1.5)); }
   g.add(piedras);
@@ -146,9 +185,12 @@ function fundirPiedra(g) {
   g.updateMatrixWorld(true);
   for (const mat of [mPiedra, mTarima, mBase]) {
     const piezas = []; g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material === mat) piezas.push(o); });
-    const pos = [], nor = [];
-    for (const m of piezas) { const ge = m.geometry.clone().applyMatrix4(m.matrixWorld).toNonIndexed(); pos.push(...ge.attributes.position.array); nor.push(...ge.attributes.normal.array); m.parent.remove(m); m.geometry.dispose(); ge.dispose(); }
-    const u = new THREE.BufferGeometry(); u.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); u.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    const pos = [], nor = [], uv = [];
+    for (const m of piezas) { const ge = m.geometry.clone().applyMatrix4(m.matrixWorld).toNonIndexed(); ge.computeVertexNormals(); pos.push(...ge.attributes.position.array); nor.push(...ge.attributes.normal.array); m.parent.remove(m); m.geometry.dispose(); ge.dispose(); }
+    // Sin coordenadas de textura propias: se proyecta la piedra por la cara que más mira a cada eje.
+    for (let i = 0; i < pos.length; i += 3) { const ax = Math.abs(nor[i]), ay = Math.abs(nor[i + 1]), az = Math.abs(nor[i + 2]), e = 0.62;
+      if (ay >= ax && ay >= az) uv.push(pos[i] * e, pos[i + 2] * e); else if (ax >= az) uv.push(pos[i + 2] * e, pos[i + 1] * e); else uv.push(pos[i] * e, pos[i + 1] * e); }
+    const u = new THREE.BufferGeometry(); u.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); u.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); u.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.add(new THREE.Mesh(u, mat));
   }
 }

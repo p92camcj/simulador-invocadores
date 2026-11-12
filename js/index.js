@@ -2,6 +2,7 @@
 import { initSetup } from './setup.js';
 import { LEVELS, INVOCATION_SETS } from './utils.js';
 import { initEspectaculo } from './espectaculo.js';
+import { initEscenas3D } from './escenas3d.js';
 import { instalarAliasGlobales } from './motor/estado.js';
 import { initMesa3D } from './mesa3d.js';
 import { initAprendizaje } from './aprendizaje-navegador.js';
@@ -21,6 +22,7 @@ window.INVOCATION_SETS = INVOCATION_SETS;
 document.addEventListener('DOMContentLoaded', () => {
   initSetup();
   initEspectaculo();
+  initEscenas3D();
   initMesa3D();
   initAprendizaje();
   initNarrador();
