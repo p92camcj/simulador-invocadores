@@ -939,9 +939,12 @@ function abrirHoja({ tipo, titulo, cuerpo = '', botones = [], alElegir, alCancel
     + (lista ? `<div class="m-opciones">${lista}</div>` : '')
     + (cancelable ? `<button type="button" class="m-opcion m-opcion--cancelar" data-cancelar>${alElegir ? 'Cancelar' : 'Cerrar'}</button>` : '')
     + `</div>`;
-  const hoja = { tipo, alElegir, alCancelar, opciones: botones };
+  const hoja = { tipo, alElegir, alCancelar, opciones: botones }, abierta = performance.now();
   hojaActual = hoja;
   capa.addEventListener('click', e => {
+    // En móvil, el "click" del toque que abrió la hoja (doble toque en el
+    // Escenario) llega después y caería sobre el velo: no debe cerrarla.
+    if (e.target === capa && performance.now() - abierta < 500) return;
     const op = e.target.closest('.m-opcion[data-val]');
     if (op && !op.disabled) {
       cerrarHoja();

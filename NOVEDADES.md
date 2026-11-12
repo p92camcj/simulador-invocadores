@@ -6,6 +6,21 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.1.184 - 2026-11-13
+
+- **Regla aclarada: la Centinela protege a la jugadora, no al Portal.** Si
+  está en un Portal central no protege a nadie, así que puedes usar
+  habilidades sobre ese Portal (salvo girarla con el Ocultista).
+- **El doble toque sobre el Metamorfo ya abre su habilidad** en el móvil.
+- **Estratega**: el personaje que está junto a su Portal espera quieto
+  mientras los Portales giran por el aire.
+- **Invocación más clara**: se abre en el centro de los Portales de las
+  jugadoras, sin pisar los centrales; al terminar, su runa se apaga, frena y
+  se encoge hasta un punto, y de ahí surge el Portal nuevo.
+- **Vuelve la Gema que duda** cuando hay personajes requeridos repetidos.
+- **Los Portales son sólidos**: los personajes los rodean, suben por la
+  escalera y salen por el arco. El que queda tapado ya no se hunde: sale por
+  detrás.
 ## 1.38.0.181 - 2026-11-12
 
 - **¡Ya se puede jugar online!** Cada persona en su casa, con su móvil o su

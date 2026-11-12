@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-11-07 20:32 (Europe/Madrid)
+> **Última actualización:** 2026-11-13 00:13 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -721,6 +721,16 @@ ver). Siempre debe tener una carta visible y una carta oculta.
 que está o ambos Portales del mismo jugador?**
 Protege ambos Portales del jugador. En el modo de 2 jugadores, la Centinela
 extiende su protección a todos los Portales de su propietario.
+
+**¿Una Centinela en un Portal central protege ese Portal?**
+No. La Centinela protege al jugador en cuyo Portal está (todos sus
+Portales). En un Portal central no protege a nadie, así que cualquier
+habilidad puede aplicarse sobre ese Portal central. Lo único que sigue
+vigente es la restricción propia del Ocultista: no puede girar una Centinela
+visible, esté donde esté.
+
+> **Aclaración del dueño del proyecto (2026-11-12):** el simulador
+> protegía antes el Portal central que tuviera una Centinela visible.
 
 **¿Qué ocurre exactamente cuando la Aprendiz intercambia las manos de dos
 jugadores?**

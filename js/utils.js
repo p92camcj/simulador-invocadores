@@ -391,8 +391,9 @@ export function jugadoraProtegidaPorCentinela(player) {
  * central `k`) un objetivo INVÁLIDO para que `actingPlayerIdx` dirija una
  * habilidad contra él?
  *
- * - Portal central: protegido solo si su propia carta superior es una
- *   Centinela visible (no tiene dueña de quien eximirse).
+ * - Portal central: nunca. La Centinela protege a una jugadora (sus
+ *   Portales), no un Portal: en un Portal central no protege a nadie
+ *   (Julio, 2026-11-12; reglamento: "en un Portal de un jugador").
  * - Portal de una jugadora: protegido si ESA jugadora está protegida por
  *   su propia Centinela (`jugadoraProtegidaPorCentinela`) — EXCEPTO si
  *   quien activa la habilidad es ella misma. Interpretación del texto de
@@ -403,9 +404,7 @@ export function jugadoraProtegidaPorCentinela(player) {
  */
 export function estaProtegidoParaActivar(stackKey, stack, players, actingPlayerIdx) {
   const [p] = stackKey.split(':');
-  if (p === 'n') {
-    return stack.length && stack.at(-1).name === 'Centinela' && stack.at(-1).vis?.public;
-  }
+  if (p === 'n') return false;
   const portalOwnerIdx = parseInt(p, 10);
   if (portalOwnerIdx === actingPlayerIdx) return false;
   return jugadoraProtegidaPorCentinela(players[portalOwnerIdx]);

@@ -4,6 +4,38 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.1.184] - 2026-11-13
+
+### Regla
+- **Centinela en un Portal central no protege a nadie** (aclaración de Julio):
+  `estaProtegidoParaActivar()` (`js/utils.js`) ya no protege los Portales
+  centrales; sigue vigente la restricción propia del Ocultista. FAQ nueva en
+  `docs/reglamento/REGLAMENTO.md`. El Escenario ya no pone escudos en un
+  Portal central.
+
+### Corregido
+- Doble toque en el Escenario sobre un Portal cuya habilidad abre una hoja
+  (Metamorfo, Maestro, Aprendiz…): en móvil, el `click` tardío del toque caía
+  sobre el velo de la hoja recién abierta y la cerraba. `abrirHoja()`
+  (`js/mesa3d.js`) ignora los toques en el velo durante 0,5 s.
+- Estratega: la figura de la mano ya no sigue a su Portal mientras levita;
+  espera en su sitio (`posMano()` con `p.levita`).
+
+### Escenario (`js/personajes3d/tablero.js`)
+- La invocación se abre en el circuncentro de los Portales de las jugadoras
+  (`sitioInvocacion()`, ajuste de círculo por mínimos cuadrados), apartándose
+  si cae sobre un Portal central o el mazo.
+- Al final, la gran runa pierde brillo, frena (`runa().userData.giro`,
+  `magia.js`) y se encoge hasta un punto; de ahí emerge el Portal nuevo, que
+  luego se desliza a su sitio (`alzarPortal(p, null, desde)`).
+- Vuelve la Gema que duda entre personajes requeridos repetidos y regresa a
+  la criatura.
+- Bases de Portal sólidas: `ruta()`/`andar()` rodean las bases, se sube solo
+  por la escalinata y se sale solo por el arco (`salirPorArco()`); el
+  personaje tapado ya no se hunde, sale por el arco y se desvanece; las
+  figuras de la mano resbalan por el borde de las bases.
+
+---
 ## [1.38.0.181] - 2026-11-12
 
 ### Nuevo: jugar online, cada persona en su casa
