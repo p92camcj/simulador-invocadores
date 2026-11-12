@@ -55,6 +55,7 @@ export const POSES = {
   apuro:    pose([-1.2, 0.9, -1.6], undefined, { cabx: 0.2, firme: 1 }),
   dudaI:    pose([-0.35, 0.55, -1.25], undefined, { caby: 0.7, tory: 0.25, firme: 1 }),
   dudaD:    pose([-0.35, 0.55, -1.25], undefined, { caby: -0.7, tory: -0.25, firme: 1 }),
+  sigilo:   pose([-1.0, 0.1, -1.8], undefined, { torx: 0.42, cabx: -0.25, firme: 1 }),
   reverencia: pose([0.1, 0.5, -0.3], [-0.6, -0.2, -1.6], { torx: 0.55, cabx: 0.25, firme: 1 }),
 };
 

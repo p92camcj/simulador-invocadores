@@ -2,22 +2,28 @@
 // fijos) que en la fase 2 lanzará el juego con sus datos: quién, desde
 // dónde y hacia qué Portal. Aquí no hay reglas: cada escena solo escenifica
 // un resultado que el motor ya habría calculado.
-import { THREE, mundo, tw, espera, cadaFrame, cancelarTodo, plano, temblar, reiniciarVistaUsuario, arco, V, suave, sale, entra, lineal, mezcla, rebote, CANCELADO } from './mundo.js';
+import { THREE, mundo, tw, espera, cadaFrame, cancelarTodo, plano, temblar, reiniciarVistaUsuario, arco, V, suave, sale, entra, lineal, mezcla, rebote, CANCELADO, siempre } from './mundo.js';
 import { crearPortal, encender, VARIANTES, ALTURA_TARIMA, texturaDisco } from './portales.js';
 import { crearActor, quitarActor, INFO, posar, mirar, mano, cabeza, pecho, altura, aparecer, desvanecer, opacidad, materialesDe, caminar, quitarCapa, aclararCapa, opacarCapa, conjurar, saltar, transformar } from './personajes.js';
 import { chispas, humo, onda, destello, rayo, anilloRunico, gema, quitar, luz } from './efectos.js';
 import { S } from './sonido.js';
 
-// Portales bien separados: cada uno se ve entero y se puede llegar a su tarima desde cualquier lado.
-const POS = [V(0, 0, 5.4), V(-5.0, 0, -3.2), V(5.0, 0, -3.2), V(-2.6, 0, 0.9), V(2.6, 0, 0.9), V(0, 0, -6.0)];
+// Portales de los jugadores al triple de distancia entre sí que los centrales (equidistantes y juntos).
+// Se pueden recolocar arrastrando (modo «Colocar Portales»); la colocación se guarda en el dispositivo.
+const POS_INICIAL = [[0, 6.6], [-5.2, -2.6], [5.2, -2.6], [-1.7, 1.2], [1.7, 1.2], [0, -1.75]];
+const POS = POS_INICIAL.map(([x, z]) => V(x, 0, z));
+try { const g = JSON.parse(localStorage.getItem('inv3d.portales') ?? 'null'); if (Array.isArray(g) && g.length === 6) g.forEach(([x, z], i) => POS[i].set(x, 0, z)); } catch { /* sin almacenamiento */ }
+const centro = () => POS[3].clone().lerp(POS[4], 0.5);
 const portales = [];
 let temporales = [], ui = { di() {}, flash() {} };
 export function configurar(o) { ui = o; }
 
 export function montarEscenario() {
-  VARIANTES.forEach((v, i) => { const p = crearPortal(v, i + 1); p.position.copy(POS[i]); if (i === 1) p.rotation.y = 0.5; if (i === 2) p.rotation.y = -0.5; mundo.escena.add(p); portales.push(p); });
-  portales[5].visible = false;
+  VARIANTES.forEach((v, i) => { const p = crearPortal(v, i + 1); p.position.copy(POS[i]); mundo.escena.add(p); portales.push(p); });
+  portales[5].visible = false; orientar(); prepararColocacion();
 }
+/** Los Portales de los rivales se giran un poco hacia el centro de la mesa. */
+function orientar() { const c = centro(); for (const i of [1, 2]) portales[i].rotation.y = Math.atan2(c.x - POS[i].x, c.z - POS[i].z) * 0.55; }
 function limpiar() {
   cancelarTodo();
   for (const o of temporales) o.parent?.remove(o);
@@ -28,7 +34,11 @@ function limpiar() {
 
 // ---- utilidades de puesta en escena ----
 const sobre = i => portales[i].position.clone().add(V(0, ALTURA_TARIMA, 0));
-const hueco = (jug, lado) => POS[jug].clone().add(jug === 0 ? V(lado * 2.3, 0, 0.3) : V(lado * 1.5 + (jug === 1 ? 0.9 : -0.9), 0, 2.3));
+// Las cartas de la mano esperan pegadas a su Portal, una a cada lado de la escalinata.
+const local = (i, x, z) => { const r = portales[i].rotation.y; return V(POS[i].x + x * Math.cos(r) + z * Math.sin(r), 0, POS[i].z - x * Math.sin(r) + z * Math.cos(r)); };
+const hueco = (jug, lado) => local(jug, lado * 1.9, 0.55);
+const pie = i => local(i, 0, 2.05);   // pie de la escalinata
+const m0 = (y, dz = 0.1) => V(POS[0].x, y, POS[0].z + dz);
 const umbral = i => sobre(i).add(V(0, 0, -0.85));
 function actor(nombre, pos, o) { const a = crearActor(nombre, pos, o); temporales.push(a); return a; }
 function temp(o) { temporales.push(o); return o; }
@@ -36,10 +46,10 @@ const di = t => ui.di(t);
 const col = n => INFO[n].color, col2 = n => INFO[n].color2;
 const sin = p => p.catch(e => { if (e !== CANCELADO) console.error(e); });
 const T = {
-  general: { objetivo: V(0, 0.8, 1.0), ancho: 14.5, alto: 12.5, polar: 0.98 },
-  mio: { objetivo: V(0, 0.95, 5.5), ancho: 6.4, alto: 3.6, polar: 1.25 },
-  rivalA: { objetivo: V(-4.4, 0.9, -2.0), ancho: 5.6, alto: 3.8, polar: 1.2, azimut: -0.25 },
-  rivalB: { objetivo: V(4.4, 0.9, -2.0), ancho: 5.6, alto: 3.8, polar: 1.2, azimut: 0.25 },
+  general: () => { const xs = POS.slice(0, 5).map(p => p.x), zs = POS.slice(0, 5).map(p => p.z), x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+    return { objetivo: V((x0 + x1) / 2, 0.8, (z0 + z1) / 2 + 0.4), ancho: x1 - x0 + 5, alto: (z1 - z0) * 0.6 + 6.5, polar: 0.98 }; },
+  mio: () => ({ objetivo: m0(0.95), ancho: 5.8, alto: 3.6, polar: 1.25 }),
+  rival: i => ({ objetivo: V(POS[i].x, 0.9, POS[i].z + 0.6), ancho: 5.8, alto: 3.8, polar: 1.2, azimut: Math.max(-0.35, Math.min(0.35, POS[i].x * 0.06)) }),
 };
 /** Plano que encuadra dos puntos (lanzador y objetivo). */
 function dos(a, b, margen = 3.2, o = {}) {
@@ -67,21 +77,22 @@ async function hechizo(a, destino, o = {}) {
 }
 function llegada(i, color = portales[i].userData.tono) { encender(portales[i], 1.6); S.llegada(); onda(sobre(i), color, 1, 30, 1.9); chispas(sobre(i), { n: 26, color, vel: 0.7, dir: V(0, 1.6, 0), vida: 1.3, radio: 0.7 }); sin(espera(1.4).then(() => encender(portales[i], 0.8))); }
 /**
- * Subir a la tarima de un Portal desde donde esté el personaje: entra por
- * el lado desde el que llega, salvo por detrás, donde están las columnas
- * (entonces rodea el Portal). Nunca cruza un pilar.
+ * Subir a la tarima de un Portal: siempre de frente, por la escalinata. Si
+ * el personaje llega por un lado o por detrás, rodea el Portal por fuera
+ * (sin cruzar pilares) hasta el pie de la escalera.
  */
 async function subir(a, i, o = {}) {
-  const p = portales[i], c = sobre(i), rot = p.rotation.y;
+  const c = sobre(i), rot = portales[i].rotation.y;
   const punto = (an, r) => V(c.x + Math.sin(an + rot) * r, 0, c.z + Math.cos(an + rot) * r);
   let an = Math.atan2(a.position.x - c.x, a.position.z - c.z) - rot; an = Math.atan2(Math.sin(an), Math.cos(an));
-  const LIBRE = 1.1;   // ±63° desde el frente: el hueco entre los dos pilares bajos
-  const tramos = [];
-  if (Math.abs(an) > LIBRE) { if (Math.abs(an) > 2.0) tramos.push(punto(Math.sign(an) * 2.0, 2.7)); tramos.push(punto(Math.sign(an) * 1.45, 2.6)); an = Math.sign(an) * LIBRE; }
-  tramos.push(punto(an, 1.8));
+  const lado = Math.sign(an) || 1, tramos = [];
+  if (Math.abs(an) > 2.0) tramos.push(punto(lado * 2.0, 2.9));
+  if (Math.abs(an) > 1.45) tramos.push(punto(lado * 1.3, 2.8));
+  if (Math.abs(an) > 0.5) tramos.push(punto(lado * 0.5, 2.45));
+  tramos.push(pie(i));
   const total = tramos.length; let hecho = 0;
   for (const t of tramos) { if (a.position.distanceTo(t) > 0.25) await caminar(a, t, { vel: o.vel ?? 0.95, alFinal: Math.atan2(c.x - t.x, c.z - t.z), enMarcha: k => o.enMarcha?.((hecho + k) / total) }); hecho++; }
-  await caminar(a, c, { vel: 0.85 });
+  await caminar(a, c, { vel: 0.8 });
 }
 /** El personaje que estaba en el Portal se marcha por el umbral y se desvanece en su luz. */
 async function marcharse(a, i) {
@@ -97,7 +108,7 @@ async function regresar(nombre, i, o) {
   return a;
 }
 function misGemas(n = 3) {
-  return Array.from({ length: n }, (_, i) => { const g = temp(gema('azul', 0.9)); g.position.set(-0.6 + i * 0.32, 0.22, POS[0].z + 1.75); cadaFrame((dt, t) => { g.rotation.y += dt * 1.5; }); return g; });
+  return Array.from({ length: n }, (_, i) => { const g = temp(gema('azul', 0.9)); g.position.copy(local(0, -0.95 - i * 0.32, 1.9)).y = 0.22; cadaFrame((dt, t) => { g.rotation.y += dt * 1.5; }); return g; });
 }
 async function volar(o, hasta, dur = 0.9, alto = 1.2, lado = 0, ease = suave) { const de = o.position.clone(); await tw(dur, k => o.position.copy(arco(de, hasta, k, alto, lado)), ease); }
 function romperGema(g) { S.cristalRoto(); chispas(g.position, { n: 30, color: g.userData.color, color2: 0xffffff, vel: 1.6, grav: 4, vida: 0.9 }); quitar(g); }
@@ -106,19 +117,6 @@ async function destelloInvocacion(color = 0xffe9a0) { S.invBoom(); ui.flash(0.5)
 function lienzoTex(t, pintar) { const c = document.createElement('canvas'); c.width = c.height = t; const x = c.getContext('2d'); x.strokeStyle = x.fillStyle = '#fff'; x.lineCap = 'round'; x.shadowColor = '#fff'; x.shadowBlur = t / 50; pintar(x, t); return new THREE.CanvasTexture(c); }
 const planoLuz = (tex, color, w, h) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
 let texEsfera, texAguja, texOjo, texHaz;
-/** Gran reloj de luz cuyas agujas corren hacia atrás (Cronomante). */
-function reloj3d(p, color, color2) {
-  texEsfera ??= lienzoTex(256, (x, t) => { const c = t / 2; x.lineWidth = 4; x.beginPath(); x.arc(c, c, 120, 0, 7); x.stroke(); x.lineWidth = 2; x.beginPath(); x.arc(c, c, 98, 0, 7); x.stroke();
-    for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283, l = i % 5 ? 6 : 18; x.lineWidth = i % 5 ? 1.5 : 4; x.beginPath(); x.moveTo(c + Math.cos(a) * 118, c + Math.sin(a) * 118); x.lineTo(c + Math.cos(a) * (118 - l), c + Math.sin(a) * (118 - l)); x.stroke(); }
-    x.beginPath(); x.arc(c, c, 8, 0, 7); x.fill(); });
-  texAguja ??= lienzoTex(64, (x, t) => { x.beginPath(); x.moveTo(32, 60); x.lineTo(27, 30); x.lineTo(32, 3); x.lineTo(37, 30); x.closePath(); x.fill(); });
-  const g = temp(new THREE.Group()); g.position.copy(p); mundo.escena.add(g);
-  const esfera = planoLuz(texEsfera, color, 2.9, 2.9), larga = planoLuz(texAguja, color2, 0.34, 1.25), corta = planoLuz(texAguja, 0xffffff, 0.4, 0.85);
-  larga.geometry.translate(0, 0.55, 0); corta.geometry.translate(0, 0.36, 0); larga.position.z = 0.02; corta.position.z = 0.04; g.add(esfera, larga, corta); g.renderOrder = 13;
-  let vel = 9, vivo = true; sin(tw(0.7, k => { for (const m of [esfera, larga, corta]) m.material.opacity = 0.95 * k; g.scale.setScalar(0.4 + 0.6 * k); }, sale));
-  cadaFrame(dt => { if (!vivo) return; larga.rotation.z += vel * dt; corta.rotation.z += vel * dt / 12 + dt * 0.5; esfera.rotation.z -= dt * 0.15; });
-  return { g, parar() { vivo = false; }, apagar() { sin(tw(0.8, k => { for (const m of [esfera, larga, corta]) m.material.opacity = 0.95 * (1 - k); }).then(() => quitar(g))); } };
-}
 /** Ojo de luz que se abre sobre la Clarividente. */
 function ojoDeLuz(p, color) {
   texOjo ??= lienzoTex(256, (x, t) => { const c = t / 2; x.lineWidth = 5; x.beginPath(); x.moveTo(8, c); x.quadraticCurveTo(c, c - 110, t - 8, c); x.quadraticCurveTo(c, c + 110, 8, c); x.stroke();
@@ -136,6 +134,38 @@ function hazDeLuz(a, b, color) {
   m.position.copy(a).lerp(b, 0.5); m.quaternion.setFromUnitVectors(V(0, 1, 0), d.clone().normalize().negate()); m.renderOrder = 14; mundo.escena.add(m);
   let k0 = 0; sin(tw(0.5, k => { k0 = k; })); const fin = cadaFrame((dt, t) => { m.material.opacity = k0 * (0.3 + Math.sin(t * 9) * 0.07); m.rotateY(dt); });
   return { apagar: () => sin(tw(0.6, k => { k0 = 1 - k; }).then(() => { fin(); quitar(m); })) };
+}
+
+/** Reloj de arena de luz: la arena sube, contra la gravedad (Cronomante). */
+function relojArena(p, color, color2) {
+  const g = temp(new THREE.Group()); g.position.copy(p); mundo.escena.add(g);
+  const vidrio = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const oro = new THREE.MeshBasicMaterial({ color: 0xe8c880, transparent: true }), arena = new THREE.MeshBasicMaterial({ color: 0xffe2a0, transparent: true });
+  const pz = (geo, mat, y, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.y = y; m.rotation.x = rx; g.add(m); return m; };
+  pz(new THREE.ConeGeometry(0.5, 0.78, 16, 1, true), vidrio, 0.39, Math.PI); pz(new THREE.ConeGeometry(0.5, 0.78, 16, 1, true), vidrio, -0.39);
+  for (const y of [0.82, -0.82]) pz(new THREE.CylinderGeometry(0.58, 0.58, 0.07, 16), oro, y);
+  for (let i = 0; i < 3; i++) { const m = pz(new THREE.CylinderGeometry(0.028, 0.028, 1.6, 6), oro, 0); m.position.x = Math.cos(i * 2.094) * 0.53; m.position.z = Math.sin(i * 2.094) * 0.53; }
+  const abajo = pz(new THREE.ConeGeometry(0.44, 0.62, 14), arena, -0.46), arriba = pz(new THREE.ConeGeometry(0.44, 0.62, 14), arena, 0.46, Math.PI);
+  g.scale.setScalar(0.01); let k = 0, vivo = true;
+  sin(tw(0.8, q => { g.scale.setScalar(0.9 * q); g.rotation.z = (1 - q) * Math.PI; }, rebote));
+  cadaFrame(dt => { g.rotation.y += dt * 0.5; if (!vivo) return; k = Math.min(1, k + dt / 5.5);
+    abajo.scale.set(1 - 0.75 * k, 1 - 0.85 * k, 1 - 0.75 * k); abajo.position.y = -0.77 + 0.31 * (1 - 0.85 * k);
+    arriba.scale.set(0.2 + 0.8 * k, 0.15 + 0.85 * k, 0.2 + 0.8 * k); arriba.position.y = 0.08 + 0.31 * (0.15 + 0.85 * k) + (1 - k) * 0.45;
+    const o = g.position; chispas(V(o.x, o.y - 0.55 + Math.random() * 1.1, o.z), { n: 2, color: 0xffe2a0, color2, vel: 0.04, dir: V(0, 1.5, 0), vida: 0.45, tam: 0.07, radio: 0.03 });
+    if (Math.random() < 0.5) chispas(V(o.x, o.y - 1.2, o.z), { n: 1, color, color2, vel: 0.5, dir: V(0, 1.2, 0), vida: 0.9, tam: 0.1, radio: 0.5, giro: -4 }); });
+  return { g, parar() { vivo = false; }, apagar() { sin(tw(0.8, q => { g.scale.setScalar(1.25 * (1 - q) + 0.01); }, entra).then(() => quitar(g))); } };
+}
+/** Escudos que giran alrededor del Portal de la Centinela: señal de que está protegido. */
+function escudos(i) {
+  const grupo = temp(new THREE.Group()); grupo.position.copy(sobre(i)); mundo.escena.add(grupo);
+  const rojo = new THREE.MeshLambertMaterial({ color: 0xc23a2e, flatShading: true }), oro = new THREE.MeshLambertMaterial({ color: 0xe0aa48, emissive: 0x4a3008, flatShading: true });
+  for (let n = 0; n < 4; n++) { const e = new THREE.Group(), an = n / 4 * Math.PI * 2; e.position.set(Math.sin(an) * 1.2, 1.0, Math.cos(an) * 1.2); e.rotation.y = an; e.scale.setScalar(0.8);
+    const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 6), rojo); cuerpo.rotation.x = Math.PI / 2; cuerpo.scale.set(1, 1, 1.3);
+    const borde = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.035, 5, 6), oro); borde.scale.y = 1.3; borde.rotation.z = Math.PI / 6;
+    const tachon = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), oro); tachon.position.z = 0.05; e.add(cuerpo, borde, tachon); grupo.add(e); }
+  grupo.scale.setScalar(0.01); S.clang(); sin(tw(0.6, k => grupo.scale.setScalar(k), rebote));
+  cadaFrame((dt, t) => { grupo.rotation.y += dt * 0.7; grupo.position.y = sobre(i).y + Math.sin(t * 1.6) * 0.06; });
+  return grupo;
 }
 
 // ============================================================== escenas
@@ -161,11 +191,11 @@ escena('0', 'Comparativa', 'Modelo 3D frente a ilustración recortada', async ()
 });
 
 escena('1', 'Manos', 'Mi mano', async () => {
-  sin(plano(T.mio, 0));
+  sin(plano(T.mio(), 0));
   const v = actor('Estratega', hueco(0, -1)), o = actor(null, hueco(0, 1), { capa: 'opaca' });
   di('Junto a mi Portal: a la izquierda, la carta que yo veo; a la derecha, mi carta oculta, una figura encapuchada idéntica sea quien sea.');
   S.aparece(); await Promise.all([aparecer(v, 0.8), aparecer(o, 0.8)]);
-  sin(plano({ ...T.mio, azimut: 0.45 }, 5));
+  sin(plano({ ...T.mio(), azimut: 0.45 }, 5));
   await espera(1); posar(v, 'alzar', 4); chispas(cabeza(v), { n: 20, color: col('Estratega'), vel: 0.6, vida: 1.2 }); S.runa(3);
   await espera(1.2); posar(v, null, 4);
   await espera(0.8); chispas(o.position.clone().add(V(0, 1.75, 0.3)), { n: 6, color: 0x8a80d8, vel: 0.2, vida: 1.2 });
@@ -173,13 +203,13 @@ escena('1', 'Manos', 'Mi mano', async () => {
 });
 
 escena('2', 'Manos', 'Manos rivales', async () => {
-  sin(plano(T.rivalA, 0));
+  sin(plano(T.rival(1), 0));
   actor('Cronista', sobre(1));
   actor('Maestro', hueco(1, -1), { capa: 'translucida' }); actor(null, hueco(1, 1), { capa: 'opaca' });
   const lumo = actor('Lumo', hueco(2, -1), { capa: 'translucida' }); actor(null, hueco(2, 1), { capa: 'opaca' });
   di('Mano de un rival: la carta que yo puedo ver es un encapuchado translúcido (se ve al Maestro dentro); la que no veo, totalmente opaca.');
   await espera(3.6);
-  await plano(T.rivalB, 1.6);
+  await plano(T.rival(2), 1.6);
   di('Otro rival: veo que guarda a Lumo; su otra carta sigue siendo un misterio.');
   await espera(2.6);
   di('Si ese rival pone a la Clarividente en su Portal, su mano entera se vuelve opaca para mí.');
@@ -191,22 +221,22 @@ escena('2', 'Manos', 'Manos rivales', async () => {
 });
 
 escena('3a', 'Jugar una carta', 'Jugar mi carta visible', async () => {
-  sin(plano({ ...T.mio, ancho: 6.6 }, 0));
+  sin(plano({ ...T.mio(), ancho: 5.8 }, 0));
   const c = actor('Maestro', hueco(0, -1)); actor(null, hueco(0, 1), { capa: 'opaca' });
   di('Juego la carta que veo: el Maestro camina con porte majestuoso hasta mi Portal.');
   await espera(0.8); posar(c, 'reposo', 4);
-  sin(plano({ ...T.mio, azimut: -0.35, ancho: 5.8 }, 3));
+  sin(plano({ ...T.mio(), azimut: -0.35, ancho: 5.8 }, 3));
   await subir(c, 0);
   llegada(0, col('Maestro')); posar(c, 'celebrar', 6); await espera(0.9); posar(c, null, 4);
   await espera(1.8);
 });
 
 escena('3b', 'Jugar una carta', 'Jugar mi carta oculta', async () => {
-  sin(plano({ ...T.mio, ancho: 6.6 }, 0));
+  sin(plano({ ...T.mio(), ancho: 5.8 }, 0));
   actor('Maestro', hueco(0, -1)); const o = actor(null, hueco(0, 1), { capa: 'opaca' });
   di('Juego mi carta oculta sin saber quién es. El encapuchado echa a andar y, por el camino, se quita capucha y manto…');
   await espera(1.2);
-  sin(plano({ ...T.mio, azimut: 0.4, ancho: 5.8 }, 3.5));
+  sin(plano({ ...T.mio(), azimut: 0.4, ancho: 5.8 }, 3.5));
   let hecho = false;
   await subir(o, 0, { vel: 0.7, enMarcha: k => { if (!hecho && k > 0.25) { hecho = true; di('…el manto cae al suelo y se deshace en volutas de humo. ¡Era el Pícaro!'); sin(quitarCapa(o, 'Pícaro')); } } });
   llegada(0, col('Pícaro')); posar(o, 'orbeAlto', 6); await espera(0.9); posar(o, null, 4);
@@ -224,20 +254,20 @@ escena('3c', 'Jugar una carta', 'Un rival juega la carta que yo veía', async ()
 });
 
 escena('4', 'Tapar una carta', 'Tapar una carta', async () => {
-  sin(plano({ ...T.mio, ancho: 6.6, objetivo: V(0, 1.1, 5.1) }, 0));
+  sin(plano({ ...T.mio(), ancho: 5.8, objetivo: m0(1.1, -0.3) }, 0));
   const viejo = actor('Cronista', sobre(0)), nuevo = actor('Centinela', hueco(0, -1)); actor(null, hueco(0, 1), { capa: 'opaca' });
   di('La Centinela va a ocupar mi Portal, donde estaba el Cronista…');
   await espera(1);
-  await caminar(nuevo, sobre(0).add(V(-1.7, -ALTURA_TARIMA, 0.75)), { vel: 0.95, alFinal: 1.2 });
+  await caminar(nuevo, local(0, -0.9, 2.3), { vel: 0.95, alFinal: Math.PI });
   di('…que le cede el sitio con una reverencia y se marcha por el umbral, de vuelta al pasado del Portal.');
-  sin(plano({ ...T.mio, azimut: -0.5, ancho: 5.6, objetivo: V(0, 1.2, 5.0) }, 2.5));
+  sin(plano({ ...T.mio(), azimut: -0.5, ancho: 5.6, objetivo: m0(1.2, -0.4) }, 2.5));
   await marcharse(viejo, 0);
   await subir(nuevo, 0);
-  llegada(0, col('Centinela')); await espera(2);
+  llegada(0, col('Centinela')); await espera(0.6); escudos(0); di('Ya en su sitio, sus escudos rodean el Portal: señal de que ninguna habilidad puede afectarlo.'); await espera(3);
 });
 
 escena('5', 'Portales', 'Los Portales', async () => {
-  sin(plano(T.general, 0)); portales[5].visible = true;
+  sin(plano(T.general(), 0)); portales[5].visible = true;
   di('Umbrales de piedra a medio derruir, con runas vivas. Todos de la misma familia y cada uno distinto.');
   portales.forEach(p => encender(p, 0.25));
   await espera(1.2);
@@ -247,18 +277,17 @@ escena('5', 'Portales', 'Los Portales', async () => {
     encender(portales[i], 1.6); S.runa(i); onda(sobre(i), portales[i].userData.tono, 1, 30, 1.6); chispas(sobre(i), { n: 18, color: portales[i].userData.tono, vel: 0.5, dir: V(0, 1.4, 0), vida: 1.4, radio: 0.7 });
     await espera(1.3);
   }
-  await plano({ ...T.general, azimut: 0.5 }, 2); await espera(1.5);
+  await plano({ ...T.general(), azimut: 0.5 }, 2); await espera(1.5);
 });
 
 // ---------------------------------------------------------- habilidades
 escena('6.1', 'Habilidades', 'Cronomante', async () => {
   sin(plano(dos(POS[0], POS[3], 3.4), 0));
   const c = actor('Cronomante', sobre(0)), top = actor('Lumo', sobre(3));
-  di('Cronomante: abre el pasado de un Portal. Todos los que pasaron por él se alzan como ecos (los ocultos, sin revelarse)…');
+  di('Cronomante: sobre el Portal aparece un reloj cuya arena sube, contra la gravedad. El tiempo retrocede y quienes pasaron por él se alzan como ecos (los ocultos, sin revelarse)…');
   await espera(1.2); mirar(c, POS[3]);
   const reloj = runa(sobre(3), col('Cronomante'), 1.25, -2.2, 6); const r2 = runa(c.position, col('Cronomante'), 0.95, -1.2);
-  const rj = reloj3d(sobre(3).add(V(0, 2.75, -0.95)), col('Cronomante'), col2('Cronomante'));
-  cadaFrame(() => { if (Math.random() < 0.7) { const an = Math.random() * 6.28, rr = 1.5; const p = rj.g.position.clone().add(V(Math.cos(an) * rr, Math.sin(an) * rr, 0.05)); chispas(p, { n: 1, color: col('Cronomante'), color2: col2('Cronomante'), vel: 0.05, dir: V(-Math.cos(an + 0.9) * 1.6, -Math.sin(an + 0.9) * 1.6, 0), vida: 0.8, tam: 0.11 }); } });
+  const rj = relojArena(sobre(3).add(V(0, 2.2, -0.3)), col('Cronomante'), col2('Cronomante'));
   S.cronomante(); const desde = await conjurar(c, { dur: 1.5, lanza: 'abierto' });
   await rayo(desde, sobre(3).add(V(0, 1, 0)), col('Cronomante'), { color2: col2('Cronomante') }); S.ecos();
   sin(plano({ objetivo: V(POS[3].x, 1.9, POS[3].z), ancho: 5.0, alto: 4.8, polar: 1.3, azimut: -0.2 }, 1.5));
@@ -273,7 +302,7 @@ escena('6.1', 'Habilidades', 'Cronomante', async () => {
   const el = ecos[2], msTop = materialesDe(top); S.lanzar(500);
   await tw(1.3, k => { el.e.position.lerpVectors(el.hasta, sobre(3), k); el.e.scale.setScalar(mezcla(0.8, 1, k)); opacidad(el.e, mezcla(0.45, 1, k), el.ms);
     top.position.lerpVectors(sobre(3), el.hasta, k); top.scale.setScalar(mezcla(1, 0.8, k)); opacidad(top, mezcla(1, 0.45, k), msTop); });
-  rj.parar(); S.clang(); sin(destello(rj.g.position, col2('Cronomante'), 3.5, 0.6));
+  rj.parar(); S.impacto(660); sin(destello(rj.g.position, col2('Cronomante'), 3.5, 0.6));
   llegada(3, col('Cronomante'));
   await espera(0.9); S.seVa(); rj.apagar();
   await Promise.all([[ecos[0].e, ecos[0].ms], [ecos[1].e, ecos[1].ms], [top, msTop]].map(([e, ms]) => { const de = e.position.clone(); return tw(1.1, k => { e.position.lerpVectors(de, sobre(3), k); opacidad(e, 0.45 * (1 - k), ms); }, entra).then(() => quitarActor(e)); }));
@@ -282,22 +311,32 @@ escena('6.1', 'Habilidades', 'Cronomante', async () => {
 });
 
 escena('6.2', 'Habilidades', 'Estratega', async () => {
-  sin(plano(T.general, 0));
+  sin(plano(T.general(), 0));
   const c = actor('Estratega', sobre(0)), a = actor('Maestro', sobre(4)), b = actor('Reena', sobre(1));
-  di('Estratega: intercambia de sitio dos Portales enteros, con todo lo que tienen encima.');
-  await espera(1.2); mirar(c, V(0, 0, 0));
-  const r = runa(c.position, col('Estratega'), 0.95), r1 = runa(sobre(4), col('Estratega'), 1.2, 2), r2 = runa(sobre(1), col('Estratega'), 1.2, -2);
-  S.cargar(196, 1.1); const desde = await conjurar(c, { dur: 1.1, lanza: 'abierto' });
-  S.lanzar(); await Promise.all([rayo(desde, sobre(4), col('Estratega'), { lado: 0.2 }), rayo(mano(c, 1), sobre(1), col('Estratega'), { lado: -0.2 })]);
-  r1.userData.apagar(0.3); r2.userData.apagar(0.3);
-  S.piedra(); temblar(0.15); humo(POS[4], { n: 14, color: 0x9a94a8, radio: 1.2 }); humo(POS[1], { n: 14, color: 0x9a94a8, radio: 1.2 });
+  di('Estratega: sus orbes mágicos vuelan hasta dos Portales, los alzan por el aire…');
+  await espera(1.2); mirar(c, centro());
+  const r = runa(c.position, col('Estratega'), 0.95);
+  S.cargar(196, 1.1); await conjurar(c, { dur: 1.1, lanza: 'abierto' });
+  // Seis orbes de colores por Portal: salen de sus manos y se colocan bajo el borde de la tarima.
+  const cs = [0x5fd0a0, 0xe8a040, 0xe04a6a, 0x5ab8e8, 0xf0e070, 0xb07ae8]; let agarre = 0;
+  const orbes = [4, 1].flatMap((pi, q) => cs.map((cc, n) => { const o = temp(luz(cc, 0.5)); o.position.copy(mano(c, q)); return { o, pi, n, cc, de: mano(c, q) }; }));
+  const sitio = (x, t) => { const an = x.n / 6 * Math.PI * 2 + t * 2.2; return portales[x.pi].position.clone().add(V(Math.cos(an) * 1.42, 0.12, Math.sin(an) * 1.42)); };
+  cadaFrame((dt, t) => orbes.forEach(x => { if (agarre >= 1) x.o.position.copy(sitio(x, t)); else x.o.position.copy(arco(x.de, sitio(x, t), agarre, 2.0, (x.n - 2.5) * 0.08)); if (Math.random() < 0.35) chispas(x.o.position, { n: 1, color: x.cc, vel: 0.15, vida: 0.5, tam: 0.1 }); }));
+  S.lanzar(); await tw(1.1, k => { agarre = k; });
+  posar(c, 'alzar', 4); S.piedra(); temblar(0.15); humo(POS[4], { n: 14, color: 0x9a94a8, radio: 1.2 }); humo(POS[1], { n: 14, color: 0x9a94a8, radio: 1.2 });
   cadaFrame(() => { a.position.copy(portales[4].position).y += ALTURA_TARIMA; b.position.copy(portales[1].position).y += ALTURA_TARIMA; });
-  S.estratega();
-  await tw(2.2, k => { portales[4].position.copy(arco(POS[4], POS[1], k, 2.2, 0.35)); portales[1].position.copy(arco(POS[1], POS[4], k, 2.2, 0.35));
-    if (Math.random() < 0.6) { chispas(portales[4].position, { n: 2, color: col('Estratega'), vel: 0.5, vida: 0.8, radio: 0.8 }); chispas(portales[1].position, { n: 2, color: col2('Estratega'), vel: 0.5, vida: 0.8, radio: 0.8 }); } });
+  const ALTO = 2.3; await tw(1.4, k => { portales[4].position.y = ALTO * k; portales[1].position.y = ALTO * k; });
+  di('…y los intercambian en un giro circular, con todo lo que tienen encima.');
+  // Giro: los dos Portales recorren media circunferencia alrededor del punto medio.
+  const medio = POS[4].clone().lerp(POS[1], 0.5), radio = POS[4].distanceTo(POS[1]) / 2, a0 = Math.atan2(POS[4].z - medio.z, POS[4].x - medio.x);
+  S.estratega(); sin(plano({ ...T.general(), azimut: 0.35 }, 3.2));
+  await tw(3.2, (k, kl) => { [[4, 0], [1, Math.PI]].forEach(([pi, d]) => { const an = a0 + d + k * Math.PI; portales[pi].position.set(medio.x + Math.cos(an) * radio, ALTO + Math.sin(kl * Math.PI * 3) * 0.12, medio.z + Math.sin(an) * radio); });
+    if (Math.abs(kl - 0.5) < 0.008) S.estratega(); });
+  await tw(1.2, k => { portales[4].position.y = ALTO * (1 - k); portales[1].position.y = ALTO * (1 - k); }, entra);
   S.golpeSuelo(); temblar(0.3); humo(POS[4], { n: 16, color: 0x9a94a8, radio: 1.3 }); humo(POS[1], { n: 16, color: 0x9a94a8, radio: 1.3 });
-  encender(portales[4], 1.5); encender(portales[1], 1.5); r.userData.apagar(); c.userData.rumbo = 0;
-  await espera(2.2);
+  orbes.forEach(x => { chispas(x.o.position, { n: 8, color: x.cc, vel: 0.9, vida: 0.9 }); quitar(x.o); });
+  encender(portales[4], 1.5); encender(portales[1], 1.5); posar(c, null, 4); r.userData.apagar(); c.userData.rumbo = 0;
+  sin(plano(T.general(), 1.5)); await espera(2.4);
 });
 
 escena('6.3', 'Habilidades', 'Cronista', async () => {
@@ -322,7 +361,7 @@ escena('6.3', 'Habilidades', 'Cronista', async () => {
 });
 
 escena('6.4', 'Habilidades', 'Aprendiz', async () => {
-  sin(plano(T.general, 0));
+  sin(plano(T.general(), 0));
   const c = actor('Aprendiz', sobre(0));
   const A = [actor('Cronomante', hueco(1, -1), { capa: 'translucida' }), actor(null, hueco(1, 1), { capa: 'opaca' })];
   const B = [actor('Reena', hueco(2, -1), { capa: 'translucida' }), actor(null, hueco(2, 1), { capa: 'opaca' })];
@@ -345,24 +384,39 @@ escena('6.4', 'Habilidades', 'Aprendiz', async () => {
 });
 
 escena('6.5', 'Habilidades', 'Pícaro', async () => {
-  sin(plano({ ...T.mio, ancho: 5.2, alto: 4.4, objetivo: V(0, 1.3, 5.6) }, 0));
-  const c = actor('Pícaro', sobre(0)); const gs = misGemas(2);
-  di('Pícaro (pasiva): cuando cualquier invocación tiene éxito, atrapa al vuelo una Gema azul…');
-  await espera(1.4); await destelloInvocacion();
-  const g = temp(gema('azul', 0.9)); g.position.set(0, 3.2, 1.5); cadaFrame(dt => { g.rotation.y += dt * 3; });
-  posar(c, 'orbeAlto', 8); S.gemaVuela();
-  await volar(g, mano(c).add(V(0, 0.75, 0)), 1.0, 1.2);
-  S.picaro(); chispas(g.position, { n: 16, color: col('Pícaro'), vel: 0.6 }); sin(saltar(c, 0.25, 0.4));
-  await espera(0.7); sin(volar(g, V(0.36, 0.22, POS[0].z + 1.75), 0.8, 0.8)); posar(c, null, 5);
-  di('…y desaparece sin dejar rastro: su carta queda oculta, como si el Portal estuviera vacío.');
-  await espera(1.1); posar(c, 'lanzarD', 14); await espera(0.2);
+  const O = centro(), sitioCr = O.clone().add(V(0, 0, -0.9));
+  sin(plano(dos(POS[0], O, 5.5, { alto: 8.5 }), 0));
+  const c = actor('Pícaro', sobre(0));
+  di('Pícaro (pasiva): una invocación acaba de tener éxito y la criatura reparte sus Gemas…');
+  await espera(1.2); S.invBoom(); ui.flash(0.5); temblar(0.3); sin(destello(O.clone().add(V(0, 3, -0.9)), col('Cirelia'), 8, 1.2));
+  const cr = actor('Cirelia', sitioCr); cr.userData.sombra.visible = false; posar(cr, 'ofrenda', 4); S.invCoro(9); await aparecer(cr, 1.2);
+  const C = sitioCr.clone().add(V(0, 3.3, 0.3));
+  const gs = ['C', 'C', 'azul', 'C'].map((t, n) => { const g = temp(gema(t, t === 'azul' ? 1 : 1.2)); g.userData.orbita = true; g.userData.an = n / 4 * 6.283; return g; });
+  cadaFrame(dt => gs.forEach(g => { g.rotation.y += dt * 2.5; if (g.userData.orbita) { g.userData.an += dt * 1.1; const baja = g.userData.color === 0x4aa8ff; g.position.set(C.x + Math.cos(g.userData.an) * 1.4, baja ? 1.5 : C.y, C.z + Math.sin(g.userData.an) * 0.8); } }));
+  await espera(1.6);
+  di('…el Pícaro se acerca con sigilo y le roba una Gema azul…');
+  posar(c, 'sigilo', 6); await caminar(c, pie(0), { vel: 0.7, mudo: true, cadencia: 9 });
+  sin(plano(dos(POS[0], O, 5.5, { alto: 7, objetivo: O.clone().lerp(POS[0], 0.3).setY(1.2) }), 2.5));
+  await caminar(c, sitioCr.clone().add(V(0.9, 0, 1.5)), { vel: 1.25, mudo: true, cadencia: 10, alFinal: Math.PI });
+  const azul = gs[2]; azul.userData.orbita = false; S.gemaVuela(); posar(c, 'orbeAlto', 12);
+  await volar(azul, mano(c).add(V(0, 0.25, 0)), 0.45, 0.3); S.picaro(); chispas(azul.position, { n: 14, color: col('Pícaro'), vel: 0.6 });
+  const lleva = cadaFrame(() => azul.position.copy(mano(c)).add(V(0, 0.22, 0)));
+  posar(cr, 'dudaI', 5); S.duda(); await espera(0.5); posar(c, 'sigilo', 8);
+  di('…vuelve a su Portal, la deja allí para su dueño…');
+  await caminar(c, pie(0), { vel: 1.9, mudo: true, cadencia: 12 }); posar(cr, 'ofrenda', 3);
+  sin(plano({ ...T.mio(), ancho: 5.4, alto: 4.2, objetivo: m0(1.2, 0.4) }, 1.4));
+  await caminar(c, sobre(0), { vel: 1.2, mudo: true }); posar(c, 'reverencia', 8); await espera(0.4);
+  lleva(); await volar(azul, sobre(0).add(V(0.45, 0.3, 0.45)), 0.5, 0.4); S.gema(2); chispas(azul.position, { n: 12, color: 0x4aa8ff, vel: 0.5 });
+  di('…y se marcha del Portal para desvanecerse sin dejar rastro.');
+  posar(c, 'sigilo', 8); await caminar(c, pie(0).add(V(0.5, 0, 0.5)), { vel: 1.3, mudo: true, cadencia: 11, alFinal: 0 });
+  posar(c, 'lanzarD', 14); await espera(0.2);
   S.puf(); humo(c.position, { n: 30, color: 0x6a7a9a, radio: 0.5, sube: 1.2, alfa: 0.8 }); chispas(pecho(c), { n: 14, color: col('Pícaro'), vel: 1 });
-  await desvanecer(c, 0.15); encender(portales[0], 0.2);
-  await espera(2.2);
+  await desvanecer(c, 0.15); encender(portales[0], 0.25);
+  await espera(2.4);
 });
 
 async function animalito(nombre, texto, hacer) {
-  sin(plano({ ...T.mio, ancho: 4.6, alto: 3.4, objetivo: V(0, 0.9, 5.5), polar: 1.3 }, 0));
+  sin(plano({ ...T.mio(), ancho: 4.6, alto: 3.4, objetivo: m0(0.9, 0.1), polar: 1.3 }, 0));
   const c = actor(nombre, sobre(0)); c.userData.alegre = true;
   di(texto); await espera(1);
   await hacer(c);
@@ -407,7 +461,7 @@ escena('6.9', 'Habilidades', 'Maestro', async () => {
 });
 
 escena('6.10', 'Habilidades', 'Clarividente', async () => {
-  sin(plano({ ...T.mio, ancho: 6.6, alto: 3.8 }, 0));
+  sin(plano({ ...T.mio(), ancho: 5.8, alto: 3.8 }, 0));
   const c = actor('Clarividente', sobre(0)), v = actor('Aprendiz', hueco(0, -1)), o = actor(null, hueco(0, 1), { capa: 'opaca' });
   di('Clarividente (pasiva): mientras esté visible en mi Portal, su orbe me deja ver también mi carta oculta…');
   await espera(1.2); mirar(c, o.position);
@@ -444,26 +498,27 @@ escena('6.11', 'Habilidades', 'Ocultista', async () => {
 escena('6.12', 'Habilidades', 'Centinela', async () => {
   sin(plano(dos(POS[0], POS[4], 4.2), 0));
   const c = actor('Centinela', sobre(0)), malo = actor('Ocultista', sobre(4));
-  di('Centinela: la única que no es maga. Lo suyo es físico: planta la lanza, alza el escudo…');
+  di('Centinela: la única que no es maga. Lo suyo es físico: planta la lanza y sus escudos rodean el Portal…');
   await espera(1.2); mirar(malo, POS[0]); mirar(c, POS[4]);
   const r = runa(malo.position, col('Ocultista'), 0.95); S.cargar(110, 1.2);
   sin(conjurar(malo, { pose: 'juntas', dur: 1.2 }).then(async desde => {
-    S.lanzar(300); await rayo(desde, mano(c).lerp(pecho(c), 0.3).add(V(0.25, 0.1, -0.35)), col('Ocultista'), { alto: 1.6, dur: 1.0, tam: 0.8 });
-    S.clang(); temblar(0.3); const p = pecho(c).add(V(0.2, 0.1, -0.4));
+    const dir = POS[4].clone().sub(POS[0]).setY(0).normalize(), p = sobre(0).add(dir.multiplyScalar(1.8)).add(V(0, 1.0, 0));
+    S.lanzar(300); await rayo(desde, p, col('Ocultista'), { alto: 1.6, dur: 1.0, tam: 0.8 });
+    S.clang(); temblar(0.3);
     chispas(p, { n: 40, color: 0xffb060, color2: 0xfff0c0, vel: 2.4, grav: 5, vida: 0.8, tam: 0.1 });
     S.zas(); sin(rayo(p, p.clone().add(V(3, 5, -2)), col('Ocultista'), { alto: 0.3, dur: 0.6 })); r.userData.apagar();
   }));
   posar(c, 'lanzaAlta', 7); await espera(0.55); posar(c, 'lanzaGolpe', 20); await espera(0.14);
   S.golpeSuelo(); temblar(0.22); humo(c.position.clone().add(V(-0.3, 0, 0.3)), { n: 10, color: 0xa89a88, radio: 0.4, sube: 0.3 });
-  await espera(0.3); posar(c, 'bloqueo', 14);
+  await espera(0.3); posar(c, 'bloqueo', 14); escudos(0);
   await espera(1.6);
-  di('…y ningún hechizo puede tocar sus Portales mientras siga a la vista.');
+  di('…señal para toda la mesa de que ningún hechizo puede tocar sus Portales mientras ella siga a la vista.');
   posar(c, 'guardia', 5); await espera(0.5); c.userData.rumbo = 0; malo.userData.rumbo = 0; posar(malo, 'apuro', 6);
   await espera(2.2);
 });
 
 escena('6.13', 'Habilidades', 'Metamorfo', async () => {
-  sin(plano({ ...T.mio, ancho: 4.8, alto: 3.8, objetivo: V(0, 1.1, 5.7) }, 0));
+  sin(plano({ ...T.mio(), ancho: 4.8, alto: 3.8, objetivo: m0(1.1, 0.3) }, 0));
   const c = actor('Metamorfo', sobre(0)); const gs = misGemas(3);
   di('Metamorfo: pago una Gema azul…');
   await espera(1.2); posar(c, 'abierto', 5); S.gemaVuela();
@@ -479,7 +534,7 @@ escena('6.13', 'Habilidades', 'Metamorfo', async () => {
 });
 
 escena('6.14', 'Habilidades', 'Entusiasta', async () => {
-  sin(plano({ ...T.mio, ancho: 5.2, alto: 4.4, objetivo: V(0, 1.3, 5.8) }, 0));
+  sin(plano({ ...T.mio(), ancho: 5.2, alto: 4.4, objetivo: m0(1.3, 0.4) }, 0));
   const c = actor('Entusiasta', sobre(0)); const gs = misGemas(3);
   di('Entusiasta (pasiva): cuando una invocación tiene éxito, lo celebra con tanto ímpetu…');
   await espera(1.4); await destelloInvocacion();
@@ -496,44 +551,48 @@ escena('6.14', 'Habilidades', 'Entusiasta', async () => {
 
 // ------------------------------------------------------------ invocación
 async function invocacion({ criatura, mesa, need, duplicado }) {
-  sin(plano(T.general, 0));
+  sin(plano(T.general(), 0));
+  const O = centro(), R = O.clone().add(V(0, 0, -0.6)), sitioCr = O.clone().add(V(0, 0, -1.3));
   const ac = mesa.map((n, i) => actor(n, sobre(i)));
   const req = ac.filter(a => need.includes(a.userData.nombre));
-  const tono = col(criatura), tono2 = col2(criatura), F = V(0, 3.8, -1.2);
+  const tono = col(criatura), tono2 = col2(criatura), F = R.clone().add(V(0, 3.9, 0));
+  const vista = (o = {}) => { const g = T.general(); return { ...g, ...o }; };
   di('Los tres personajes requeridos están visibles en Portales distintos y todos los Portales están ocupados. Las runas despiertan…');
   await espera(1.6);
   for (let i = 0; i < 5; i++) { encender(portales[i], 1.6); S.runa(i * 2); onda(sobre(i), portales[i].userData.tono, 1, 26, 1.8); await espera(0.32); }
   di('…los invocadores alzan su magia y la funden en el cielo.');
-  const gran = runa(V(0, 0, -1.2), tono, 5.2, 0.5, 9), gran2 = runa(V(0, 0.01, -1.2), tono2, 3.2, -0.9, 6);
+  // El gran círculo lleva la misma estrella que tendrá el Portal que nazca de él.
+  const gran = runa(R, tono, 5.4, 0.5, portales[5].userData.variante.puntas), gran2 = runa(R.clone().add(V(0, 0.01, 0)), tono2, 3.3, -0.9, 6);
   S.invInicio(4.2);
   req.forEach(a => { mirar(a, F); posar(a, 'alzar', 4); a.userData.elevaObj = 0.3; });
-  sin(plano({ objetivo: V(0, 2.1, -0.2), ancho: 13.0, alto: 8.6, polar: 1.3, azimut: 0.25 }, 4.2));
+  sin(plano(vista({ objetivo: R.clone().setY(2.1), polar: 1.28, azimut: 0.25 }), 4.2));
   await tw(4.2, (k, kl) => {
     for (const a of req) { const c = col(a.userData.nombre), p = arco(mano(a), F, (kl * 4 + a.position.x) % 1, 1.2); chispas(p, { n: 2, color: c, color2: 0xffffff, vel: 0.12, vida: 0.5, tam: 0.14 + kl * 0.1 }); }
     const an = kl * 30, rr = 2.6 * (1 - kl) + 0.2; chispas(F.clone().add(V(Math.cos(an) * rr, Math.sin(an * 0.7) * 0.4, Math.sin(an) * rr)), { n: 2, color: tono, color2: tono2, vel: 0.1, vida: 0.7, tam: 0.2 });
-    if (Math.random() < kl) chispas(V((Math.random() - 0.5) * 8, 0.1, -1.2 + (Math.random() - 0.5) * 8), { n: 1, color: tono, vel: 0.1, dir: V(0, 2.5, 0), vida: 1.2 });
+    if (Math.random() < kl) chispas(R.clone().add(V((Math.random() - 0.5) * 8, 0.1, (Math.random() - 0.5) * 8)), { n: 1, color: tono, vel: 0.1, dir: V(0, 2.5, 0), vida: 1.2 });
     mundo.cam.temblor = Math.max(mundo.cam.temblor, kl * kl * 0.06);
   }, lineal);
   // ¡Estallido! La criatura cruza el umbral.
-  S.invBoom(); ui.flash(0.9); temblar(0.6); sin(destello(F, 0xffffff, 12, 1.4)); onda(V(0, 0, -1.2), tono, 3, 60, 4); onda(V(0, 0, -1.2), tono2, 2, 40, 2.5);
+  S.invBoom(); ui.flash(0.9); temblar(0.6); sin(destello(F, 0xffffff, 12, 1.4)); onda(R, tono, 3, 60, 4); onda(R, tono2, 2, 40, 2.5);
   chispas(F, { n: 120, color: tono, color2: tono2, vel: 3.2, vida: 1.8, grav: 0.8, tam: 0.22 });
   req.forEach(a => { posar(a, null, 3); a.userData.elevaObj = 0; a.userData.rumbo = 0; });
   di(`¡${criatura} cruza el umbral!`);
-  const cr = actor(criatura, V(0, -5, -2.0)); const msC = materialesDe(cr); opacidad(cr, 0, msC); cr.userData.sombra.visible = false;
-  S.invCoro(9); sin(plano({ objetivo: V(0, 2.9, -1.0), ancho: 11.0, alto: 9.4, polar: 1.38, azimut: -0.2 }, 3));
+  const cr = actor(criatura, sitioCr.clone().setY(-5)); const msC = materialesDe(cr); opacidad(cr, 0, msC); cr.userData.sombra.visible = false;
+  const alred = (ancho, y0, y1) => sitioCr.clone().add(V((Math.random() - 0.5) * ancho, y0 + Math.random() * (y1 - y0), (Math.random() - 0.5) * 1.2));
+  S.invCoro(9); sin(plano({ objetivo: sitioCr.clone().setY(2.9), ancho: 9.5, alto: 9.4, polar: 1.38, azimut: -0.2 }, 3));
   await tw(3.0, (k, kl) => { cr.position.y = mezcla(-5, 0.5, k); opacidad(cr, Math.min(1, kl * 2), msC);
-    for (let i = 0; i < 3; i++) chispas(V((Math.random() - 0.5) * 2.4, Math.random() * 4.5, -2.0 + (Math.random() - 0.5) * 1.5), { n: 1, color: tono, color2: tono2, vel: 0.3, dir: V(0, 1.2, 0), vida: 1.1, tam: 0.2 }); }, sale);
-  cadaFrame((dt, t) => { cr.position.y = 0.5 + Math.sin(t * 1.1) * 0.12; if (Math.random() < 0.5) chispas(V((Math.random() - 0.5) * 2, 0.5 + Math.random() * 4, -2.0 + (Math.random() - 0.5)), { n: 1, color: tono, color2: tono2, vel: 0.2, dir: V(0, 0.5, 0), vida: 1 }); });
+    for (let i = 0; i < 3; i++) chispas(alred(2.4, 0, 4.5), { n: 1, color: tono, color2: tono2, vel: 0.3, dir: V(0, 1.2, 0), vida: 1.1, tam: 0.2 }); }, sale);
+  let flota = true; cadaFrame((dt, t) => { if (!flota) return; cr.position.y = 0.5 + Math.sin(t * 1.1) * 0.12; if (Math.random() < 0.5) chispas(alred(2, 0.5, 4.5), { n: 1, color: tono, color2: tono2, vel: 0.2, dir: V(0, 0.5, 0), vida: 1 }); });
   posar(cr, 'alzar', 3); await espera(1.0);
   // Las Gemas de la invocación orbitan a su alrededor.
   di('En agradecimiento, ofrece sus Gemas y las hace levitar hasta quienes la invocaron.');
-  const C = V(0, 3.9, -1.8), tipo = INFO[criatura].gema;
+  const C = sitioCr.clone().add(V(0, 3.9, 0.2)), tipo = INFO[criatura].gema;
   const gs = Array.from({ length: 5 }, (_, i) => { const g = temp(gema(tipo, 1.25)); g.position.copy(C); g.userData.orbita = true; g.userData.an = i / 5 * Math.PI * 2; return g; });
   let radio = 0; sin(tw(1.0, k => { radio = 1.5 * k; }, sale));
   cadaFrame((dt, t) => gs.forEach(g => { g.rotation.y += dt * 2.5; if (g.userData.orbita) { g.userData.an += dt * 1.3; g.position.set(C.x + Math.cos(g.userData.an) * radio, C.y + Math.sin(g.userData.an * 2 + t) * 0.15, C.z + 0.3 + Math.sin(g.userData.an) * radio * 0.55); } }));
   gs.forEach((g, i) => sin(espera(i * 0.12).then(() => S.gema(i))));
   posar(cr, 'ofrenda', 3); await espera(1.6);
-  sin(plano({ ...T.general, alto: 10, objetivo: V(0, 1.6, 0.2), polar: 1.1 }, 1.6));
+  sin(plano(vista({ polar: 1.08 }), 1.6));
   // Reparto: solo a requeridos únicos que estén en el Portal de un jugador (0, 1 y 2).
   const dup = duplicado ? ac.filter(a => a.userData.nombre === duplicado) : [];
   let n = 0;
@@ -541,45 +600,81 @@ async function invocacion({ criatura, mesa, need, duplicado }) {
     const quienes = ac.filter(a => a.userData.nombre === nombre);
     if (quienes.length === 1 && ac.indexOf(quienes[0]) < 3) {
       const a = quienes[0], g = gs[n++]; g.userData.orbita = false; S.gemaVuela();
-      await volar(g, cabeza(a).add(V(0, 0.15, 0)), 1.25, 1.6, n % 2 ? 0.15 : -0.15);
+      await volar(g, cabeza(a).add(V(0, 0.15, 0)), 1.4, 2.0, n % 2 ? 0.12 : -0.12);
       S.gema(n * 2); chispas(g.position, { n: 22, color: tono, color2: 0xffffff, vel: 0.7 }); posar(a, 'celebrar', 8); sin(saltar(a, 0.2, 0.4)); sin(espera(1.1).then(() => posar(a, null, 4)));
       await espera(0.45);
     }
   }
   if (dup.length > 1) {
     di(`Pero hay dos ${duplicado}s a la vista: la invocación duda, no sabe a cuál enviar la Gema…`);
-    const g = gs[n++]; g.userData.orbita = false; const pa = cabeza(dup[0]).add(V(0, 0.5, 0)), pb = cabeza(dup[1]).add(V(0, 0.5, 0)), medio = pa.clone().lerp(pb, 0.5).add(V(0, 1.4, 0));
-    sin(plano(dos(dup[0].position, dup[1].position, 4.6, { alto: 6 }), 1.4));
+    const g = gs[n]; g.userData.orbita = false; const pa = cabeza(dup[0]).add(V(0, 0.5, 0)), pb = cabeza(dup[1]).add(V(0, 0.5, 0)), medio = pa.clone().lerp(pb, 0.5).add(V(0, 1.6, 0));
     await volar(g, medio, 1.0, 0.8);
-    for (let i = 0; i < 4; i++) { const hacia = i % 2 ? pb : pa; posar(cr, hacia.x < 0 ? 'dudaD' : 'dudaI', 6); S.duda(); posar(dup[i % 2], 'celebrar', 6); posar(dup[1 - i % 2], null, 6);
-      await volar(g, medio.clone().lerp(hacia, 0.62), 0.55 - i * 0.05, 0.25); await volar(g, medio, 0.45 - i * 0.04, 0.2); }
+    for (let i = 0; i < 4; i++) { const hacia = i % 2 ? pb : pa; posar(cr, hacia.x < sitioCr.x ? 'dudaD' : 'dudaI', 6); S.duda(); posar(dup[i % 2], 'celebrar', 6); posar(dup[1 - i % 2], null, 6);
+      await volar(g, medio.clone().lerp(hacia, 0.6), 0.6 - i * 0.05, 0.25); await volar(g, medio, 0.5 - i * 0.04, 0.2); }
     dup.forEach(a => posar(a, 'apuro', 6)); posar(cr, 'ofrenda', 4);
-    di('…y esa Gema se pierde.');
-    S.perdida(); const c0 = g.userData.malla.material.color.clone(), gris = new THREE.Color(0x555566);
-    await tw(1.0, k => { g.userData.malla.material.color.lerpColors(c0, gris, k); g.userData.malla.material.emissive.lerpColors(c0, new THREE.Color(0), k); g.userData.brillo.material.opacity = 0.6 * (1 - k); g.position.y -= 0.004; });
-    romperGema(g); await espera(0.8); dup.forEach(a => posar(a, null, 4));
-    sin(plano({ ...T.general, alto: 10, objetivo: V(0, 1.6, 0.2), polar: 1.1 }, 1.4));
+    di('…así que no se la da a nadie: esa Gema vuelve con la criatura.');
+    S.perdida(); g.userData.brillo.material.opacity = 0.3;
+    await volar(g, C.clone().add(V(0, 0, 0.3)), 1.3, 0.8); g.userData.brillo.material.opacity = 0.6; g.userData.an = 0; g.userData.orbita = true;
+    await espera(0.8); dup.forEach(a => posar(a, null, 4));
   }
-  di('Siempre sobran Gemas: las que nadie recibe vuelven con la criatura.');
-  await espera(0.8);
+  di('Siempre sobran Gemas: las que nadie recibe se van con la criatura.');
+  await espera(0.9);
   const resto = gs.slice(n); resto.forEach(g => { g.userData.orbita = false; });
   await Promise.all(resto.map((g, i) => espera(i * 0.15).then(() => volar(g, C.clone().add(V(0, -0.8, 0)), 0.8, 0.3)).then(() => { chispas(g.position, { n: 8, color: tono, vel: 0.4 }); quitar(g); })));
-  // La criatura parte y se abre un nuevo Portal.
-  di('Con cada criatura que parte, un nuevo Portal se abre.');
-  posar(cr, 'alzar', 3); S.seMarcha();
-  sin(plano({ objetivo: V(0, 1.6, -3.4), ancho: 12, alto: 8, polar: 1.15, azimut: 0.3 }, 2.5));
+  // La criatura parte; el círculo de la invocación se encoge y queda como la runa del nuevo Portal.
+  di('La criatura parte. El círculo de la invocación deja su marca en el suelo, se encoge…');
+  posar(cr, 'alzar', 3); S.seMarcha(); flota = false; gran2.userData.apagar(1.5);
+  sin(plano({ objetivo: POS[5].clone().lerp(R, 0.4).setY(1.4), ancho: 9.5, alto: 7.5, polar: 1.1, azimut: 0.3 }, 2.5));
   const y0 = cr.position.y;
-  await tw(2.2, (k, kl) => { opacidad(cr, 1 - k, msC); cr.position.y = y0 + k * 3; chispas(V((Math.random() - 0.5) * 1.6, 1 + Math.random() * 5, -2.0), { n: 2, color: tono, color2: tono2, vel: 0.4, dir: V(0, 2, 0), vida: 1.2 }); }, entra);
+  await tw(2.2, (k, kl) => { opacidad(cr, 1 - k, msC); cr.position.y = y0 + k * 3; chispas(alred(1.6, 1, 6), { n: 2, color: tono, color2: tono2, vel: 0.4, dir: V(0, 2, 0), vida: 1.2 }); }, entra);
   quitarActor(cr);
-  const nuevo = portales[5]; nuevo.visible = true; nuevo.position.set(POS[5].x, -3.2, POS[5].z);
+  const de = gran.position.clone(), a5 = POS[5].clone().setY(0.04); S.cargar(160, 2.0);
+  await tw(2.2, k => { gran.position.lerpVectors(de, a5, k); gran.scale.setScalar(mezcla(5.4, 1.03, k)); if (Math.random() < 0.6) { const an = Math.random() * 6.28, rr = gran.scale.x; chispas(gran.position.clone().add(V(Math.cos(an) * rr, 0.05, Math.sin(an) * rr)), { n: 1, color: tono, vel: 0.1, dir: V(0, 0.8, 0), vida: 0.8 }); } });
+  di('…y se convierte en la runa de un nuevo Portal, que se alza a su alrededor.');
+  S.impacto(523); onda(a5, tono, 1, 30, 1.6); await espera(0.7);
+  const nuevo = portales[5]; nuevo.visible = true; nuevo.position.set(POS[5].x, -3.2, POS[5].z); encender(nuevo, 0.05);
   S.piedra(); const b = cadaFrame(() => { mundo.cam.temblor = Math.max(mundo.cam.temblor, 0.05); if (Math.random() < 0.5) humo(POS[5], { n: 1, color: 0x9a94a8, radio: 1.3 }); });
-  await tw(2.4, k => { nuevo.position.y = mezcla(-3.2, 0, k); }, sale); b();
-  S.golpeSuelo(); temblar(0.3); encender(nuevo, 1.6); S.runa(9); onda(POS[5], nuevo.userData.tono, 1.2, 40, 2.4);
+  await tw(2.6, k => { nuevo.position.y = mezcla(-3.2, 0, k); gran.position.y = Math.max(0.04, nuevo.position.y + ALTURA_TARIMA + 0.02); }, sale); b();
+  S.golpeSuelo(); temblar(0.3); encender(nuevo, 1.6); S.runa(9); onda(POS[5], nuevo.userData.tono, 1.2, 40, 2.4); gran.userData.apagar(1.2);
   portales.slice(0, 5).forEach(p => encender(p, 0.7));
-  await espera(3);
+  sin(plano(vista({ azimut: 0.2 }), 2.5)); await espera(3.4);
 }
 escena('7a', 'Invocación', 'Invocación de Cirelia', () => invocacion({ criatura: 'Cirelia', need: ['Aprendiz', 'Centinela', 'Pícaro'], mesa: ['Aprendiz', 'Centinela', 'Pícaro', 'Lumo', 'Cronista'] }));
 escena('7b', 'Invocación', 'Invocación con un personaje repetido', () => invocacion({ criatura: 'Baelorith', need: ['Estratega', 'Cronomante', 'Cronista'], mesa: ['Cronista', 'Estratega', 'Cronista', 'Reena', 'Cronomante'], duplicado: 'Cronista' }));
+
+// ------------------------------------------------ colocar Portales a mano
+let colocando = false, agarrado = -1, gancho = null;
+const _ray = new THREE.Raycaster(), _suelo = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), _pt = new THREE.Vector3();
+function puntoSuelo(e) { const r = mundo.lienzo.getBoundingClientRect(); _ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), mundo.camara); return _ray.ray.intersectPlane(_suelo, _pt) ? _pt.clone() : null; }
+function prepararColocacion() {
+  // Gancho de grúa: cable que baja del cielo y garfio que sujeta el Portal por arriba.
+  gancho = new THREE.Group(); const metal = new THREE.MeshLambertMaterial({ color: 0xd8dce8, emissive: 0x30344a });
+  const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 30, 5), metal); cable.position.y = 15.6;
+  const garfio = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 6, 14, Math.PI * 1.5), metal); garfio.position.y = 0.3; garfio.rotation.z = Math.PI * 0.75;
+  const barra = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 0.07), metal);
+  gancho.add(cable, garfio, barra); gancho.visible = false; mundo.escena.add(gancho);
+  const el = mundo.lienzo; let alto = 0, altoObj = 0, bajaGancho = 20;
+  el.addEventListener('pointerdown', e => { if (!colocando || agarrado >= 0) return; const p = puntoSuelo(e); if (!p) return;
+    let mejor = -1, d = 2.2; portales.forEach((po, i) => { const q = po.position.distanceTo(p); if (q < d) { d = q; mejor = i; } });
+    if (mejor < 0) return; agarrado = mejor; altoObj = 0.9; bajaGancho = 12; gancho.visible = true; S.zas(); });
+  el.addEventListener('pointermove', e => { if (!colocando || agarrado < 0) return; const p = puntoSuelo(e); if (!p) return;
+    p.x = Math.max(-12, Math.min(12, p.x)); p.z = Math.max(-12, Math.min(12, p.z)); portales[agarrado].position.x = p.x; portales[agarrado].position.z = p.z; });
+  const soltar = () => { if (agarrado < 0) return; const i = agarrado; agarrado = -1; altoObj = 0; POS[i].set(portales[i].position.x, 0, portales[i].position.z); orientar();
+    S.golpeSuelo(); humo(POS[i], { n: 12, color: 0x9a94a8, radio: 1.2 }); try { localStorage.setItem('inv3d.portales', JSON.stringify(POS.map(p => [+p.x.toFixed(2), +p.z.toFixed(2)]))); } catch { /* sin almacenamiento */ } };
+  el.addEventListener('pointerup', soltar); el.addEventListener('pointercancel', soltar);
+  let ultimo = 0;
+  siempre(dt => { if (!colocando) return;
+    alto += (altoObj - alto) * Math.min(1, dt * 9); bajaGancho += ((agarrado >= 0 ? 0 : 20) - bajaGancho) * Math.min(1, dt * (agarrado >= 0 ? 12 : 3));
+    const i = agarrado >= 0 ? (ultimo = agarrado) : ultimo; portales.forEach((p, n) => { p.position.y = n === i ? alto : 0; });
+    gancho.position.set(portales[i].position.x, 3.05 + alto + bajaGancho, portales[i].position.z - 0.78); gancho.visible = bajaGancho < 19; });
+}
+/** Entra o sale del modo de colocar los Portales arrastrándolos. */
+export function modoColocar(si) {
+  limpiar(); colocando = si; mundo.bloqueoCamara = si; portales[5].visible = si; agarrado = -1; if (gancho) gancho.visible = false;
+  portales.forEach(p => { p.position.y = 0; });
+  if (si) { ui.di('Arrastra cada Portal a donde mejor te quede en tu pantalla. Un gancho lo levanta por arriba y lo suelta donde lo dejes.'); sin(plano({ objetivo: V(0, 0, 1.5), ancho: 15, alto: 15, polar: 0.42, azimut: 0 }, 0.8)); }
+}
+export function restablecerPortales() { POS_INICIAL.forEach(([x, z], i) => { POS[i].set(x, 0, z); portales[i].position.copy(POS[i]); }); orientar(); try { localStorage.removeItem('inv3d.portales'); } catch { /* sin almacenamiento */ } }
 
 export { ESCENAS };
 /** Lanza una escena (cancela la que hubiera). Devuelve true si llegó al final. */

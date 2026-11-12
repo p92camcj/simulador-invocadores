@@ -143,6 +143,7 @@ function controlesTactiles(el) {
   el.addEventListener('pointerup', fuera); el.addEventListener('pointercancel', fuera);
   el.addEventListener('pointermove', e => {
     const antes = dedos.get(e.pointerId); if (!antes) return;
+    if (mundo.bloqueoCamara) { dedos.set(e.pointerId, [e.clientX, e.clientY]); return; }
     dedos.set(e.pointerId, [e.clientX, e.clientY]);
     const u = mundo.usuario;
     if (dedos.size === 1) {

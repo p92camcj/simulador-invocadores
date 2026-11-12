@@ -42,6 +42,18 @@ function texturaTela(c, c2, bajo = 'arriba', motivo = 'estrellas') {
   x.fillStyle = tono(c, 0.8); for (let i = 0; i < 16; i++) { const px = i * 16 + 8, py = y0 + 15; x.beginPath(); x.moveTo(px, py - 9); x.lineTo(px + 6, py); x.lineTo(px, py + 9); x.lineTo(px - 6, py); x.fill(); }
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
 }
+/** Torso pintado: banda central bordada (el frente del cilindro cae en u = 0), cuello, joyas y ribetes. */
+function texturaTorso(c, c2, joyas = []) {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const x = cv.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, tono(c, 1.1)); g.addColorStop(1, tono(c, 0.78)); x.fillStyle = g; x.fillRect(0, 0, 256, 128);
+  for (let i = 0; i < 12; i++) { x.fillStyle = 'rgba(0,0,20,.06)'; x.fillRect(i * 22 + 9, 0, 4, 128); }
+  x.fillStyle = hex(c2); for (const px of [0, 236]) x.fillRect(px, 0, 20, 128);
+  x.fillStyle = tono(c2, 0.62); for (const px of [20, 233]) x.fillRect(px, 0, 3, 128);
+  x.fillRect(0, 108, 256, 5); x.fillStyle = hex(c2); x.fillRect(0, 113, 256, 15); x.fillRect(0, 0, 256, 9);
+  x.strokeStyle = tono(c2, 0.62); x.lineWidth = 2; for (let i = 0; i < 9; i++) { for (const px of [10, 246]) { x.beginPath(); x.moveTo(px - 6, 14 + i * 12); x.lineTo(px, 20 + i * 12); x.lineTo(px + 6, 14 + i * 12); x.stroke(); } }
+  joyas.forEach((j, i) => { for (const px of [0, 256]) { x.fillStyle = hex(j); x.beginPath(); x.moveTo(px, 22 + i * 30); x.lineTo(px + 8, 32 + i * 30); x.lineTo(px, 42 + i * 30); x.lineTo(px - 8, 32 + i * 30); x.fill(); } });
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
+}
 /** Cara pintada sobre la esfera de la cabeza (el frente cae en u = 0,25). */
 function texturaCara(piel, pelo, ojos, iris = 0x3a6a9a) {
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const x = cv.getContext('2d');
@@ -88,9 +100,9 @@ function humano(p) {
   const torso = art.torso = pivote(cadera, 0, 0.02, 0);
   const cTorso = M(p.torso.c);
   pieza(cadera, ESF, M(p.piernas?.c ?? p.tunica?.c ?? p.torso.c), 0, 0, 0, 0.17 * a, 0.12, 0.125 * a);
-  const tm = pieza(torso, CIL(0.2, 0.155, 0.48, 10), cTorso, 0, 0.26, 0); tm.scale.set(a, 1, 0.68 * (0.6 + 0.4 * a));
+  const tm = pieza(torso, CIL(0.2, 0.155, 0.48, p.rico ? 16 : 10), p.rico ? M(p.torso.c, { mapa: texturaTorso(p.torso.c, p.torso.c2 ?? p.torso.c, p.joyas) }) : cTorso, 0, 0.26, 0); tm.scale.set(a, 1, 0.68 * (0.6 + 0.4 * a));
   pieza(torso, ESF, cTorso, 0, 0.47, 0, 0.225 * a, 0.085, 0.13);
-  if (p.torso.c2) pieza(torso, new THREE.BoxGeometry(0.1, 0.44, 0.02), M(p.torso.c2), 0, 0.26, 0.128 * (0.6 + 0.4 * a) + 0.004 * a);
+  if (p.torso.c2 && !p.rico) pieza(torso, new THREE.BoxGeometry(0.1, 0.44, 0.02), M(p.torso.c2), 0, 0.26, 0.128 * (0.6 + 0.4 * a) + 0.004 * a);
   if (p.cinturon) { const c = pieza(torso, new THREE.TorusGeometry(0.16 * a, 0.022, 5, 12), M(p.cinturon), 0, 0.03, 0); c.rotation.x = Math.PI / 2; c.scale.set(1, 0.72, 1); pieza(torso, ESF_BAJA, M(p.joya ?? 0xf0c84a, { emisivo: p.joya ?? 0xf0c84a }), 0, 0.03, 0.125, 0.03); }
   for (const [i, c] of (p.joyas ?? []).entries()) pieza(torso, ESF_BAJA, M(c, { emisivo: c }), 0, 0.42 - i * 0.1, 0.135 * (0.6 + 0.4 * a), 0.022);
   pieza(torso, CIL(0.05, 0.055, 0.1, 8), piel, 0, 0.56, 0);
@@ -206,7 +218,14 @@ const EXTRAS = {
     const e = m.art.escudo = new THREE.Group(); const disco = pieza(e, CIL(0.2, 0.2, 0.035, 6), m.M(0xb8322a)); disco.rotation.x = Math.PI / 2; const b = pieza(e, CIL(0.09, 0.11, 0.05, 6), m.M(0xd8a040)); b.rotation.x = Math.PI / 2; b.position.z = 0.012;
     e.position.set(0.06, -0.16, 0.02); e.rotation.y = Math.PI / 2; m.art.codoI.add(e);
   },
-  'Clarividente'(m) { flotante(m, orbe(m, 0x5fe8ff, 0.085), 'manoD', { y: 0.15 }); },
+  'Clarividente'(m) { flotante(m, orbe(m, 0x5fe8ff, 0.085), 'manoD', { y: 0.15 });
+    // las grandes volutas turquesa que la envuelven en su ilustración
+    for (let i = 0; i < 6; i++) { const an = i / 6 * Math.PI * 2 + 0.5, t = tela(m.art.torso, m.M(i % 2 ? 0x3fe0d8 : 0x1fa8c0, { luz: true, alfa: 0.42, doble: true }), 0.22, 1.25 + (i % 3) * 0.2, { sx: 1, sy: 8, amp: 0.16, vel: 1.5, abre: -0.6, empuje: 0.5 });
+      t.position.set(Math.cos(an) * 0.3, 0.75, Math.sin(an) * 0.22 - 0.05); t.rotation.set(0, -an + Math.PI / 2, 0); t.rotation.z = 0; t.rotateX(-0.55 - (i % 2) * 0.25); t.renderOrder = 6; m.art.telas.push(t); }
+    const r = pieza(m.art.cabeza, new THREE.TorusGeometry(0.165, 0.012, 5, 16, Math.PI * 1.3), m.M(0xc8a040), 0, 0.15, 0.085); r.rotation.z = -Math.PI * 0.15; },
+  'Cronomante'(m) { // volutas azules del tiempo en las manos y colgante
+    for (const l of ['I', 'D']) { const t = tela(m.art['codo' + l], m.M(l === 'I' ? 0x58d8ff : 0xb9a0ff, { luz: true, alfa: 0.5, doble: true }), 0.12, 0.75, { sx: 1, sy: 6, amp: 0.1, vel: 2.4, abre: -0.7, empuje: 0 }); t.position.set(0, -0.32, 0); t.rotation.z = Math.PI; m.art.telas.push(t); }
+    pieza(m.art.torso, new THREE.OctahedronGeometry(0.04, 0), m.M(0x58d8ff, { emisivo: 0x58d8ff }), 0, 0.33, 0.15); },
   'Cronista'(m) { // libro abierto en la mano izquierda; llama en la derecha
     const l = new THREE.Group(); for (const s of [1, -1]) { const t = pieza(l, new THREE.BoxGeometry(0.15, 0.02, 0.2), m.M(0x7a4a2a), s * 0.075, 0, 0); t.rotation.z = s * 0.25; const h = pieza(l, new THREE.BoxGeometry(0.135, 0.02, 0.18), m.M(0xfff3d6), s * 0.072, 0.014, 0); h.rotation.z = s * 0.25; }
     l.position.set(0, -0.33, 0.06); l.rotation.x = Math.PI / 2 - 0.3; m.art.codoI.add(l); m.art.libro = l;

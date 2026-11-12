@@ -33,6 +33,10 @@
   .fila button { flex: 1; }
   #cerrarHoja { flex: 0 0 44px; }
   .nota { font-size: 12px; opacity: .75; margin: 10px 4px 0; }
+  #barraColocar { display: none; position: fixed; left: 0; right: 0; bottom: 0; gap: 8px; justify-content: center; padding: 10px 8px calc(10px + env(safe-area-inset-bottom)); }
+  #barraColocar button { flex: 1; max-width: 12em; font-weight: 600; }
+  #btnListo { border-color: var(--oro); }
+  body.colocando nav { display: none; } body.colocando #barraColocar { display: flex; }
   #portada { position: fixed; inset: 0; display: grid; place-content: center; gap: 14px; text-align: center; padding: 24px; background: #0a0f24f2; }
   #portada h1 { margin: 0; font-size: 22px; color: var(--oro); }
   #portada p { margin: 0 auto; max-width: 30em; font-size: 14px; opacity: .85; }
@@ -51,8 +55,9 @@
   <button id="btnSig" aria-label="Escena siguiente">▶</button>
   <button id="btnSonido" aria-label="Sonido">🔊</button>
 </nav>
+<div id="barraColocar"><button id="btnRestablecer">Restablecer</button><button id="btnListo">✓ Listo</button></div>
 <div id="hoja">
-  <div class="fila"><button id="btnTodas">▶ Ver todas seguidas</button><button id="btnCalidad"></button><button id="cerrarHoja" aria-label="Cerrar">✕</button></div>
+  <div class="fila"><button id="btnTodas">▶ Ver todas seguidas</button><button id="btnCalidad"></button><button id="btnColocar">✥ Colocar Portales</button><button id="cerrarHoja" aria-label="Cerrar">✕</button></div>
   <div id="lista"></div>
   <p class="nota">Arrastra para girar la cámara y pellizca para acercar. Maqueta para aprobar: no forma parte del juego todavía. Sonido generado con Web Audio; gráficos con three.js (MIT).</p>
 </div>
