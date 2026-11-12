@@ -1,7 +1,7 @@
 // Arranque e interfaz de la maqueta (selector de escenas, sonido, calidad).
 import { crearMundo, mundo, CANCELADO } from './mundo.js';
 import { crearEfectos } from './efectos.js';
-import { montarEscenario, ESCENAS, reproducir, configurar } from './escenas.js';
+import { montarEscenario, ESCENAS, reproducir, configurar, modoColocar, restablecerPortales } from './escenas.js';
 import { iniciarAudio, ponerSonido, sonidoActivo } from './sonido.js';
 
 const $ = s => document.querySelector(s);
@@ -42,6 +42,10 @@ ponerSonido(guardado('inv3d.sonido', '1') === '1'); pintarSonido();
 $('#btnSonido').onclick = () => { ponerSonido(!sonidoActivo()); guardar('inv3d.sonido', sonidoActivo() ? '1' : '0'); iniciarAudio(); pintarSonido(); };
 $('#btnCalidad').textContent = calidad === 'alta' ? 'Calidad: alta' : 'Calidad: baja';
 $('#btnCalidad').onclick = () => { guardar('inv3d.calidad', calidad === 'alta' ? 'baja' : 'alta'); location.href = location.pathname; };
+const colocar = si => { document.body.classList.toggle('colocando', si); if (si) { cerrar(); seguidas = false; turno++; $('#titulo').textContent = 'Colocar Portales'; } modoColocar(si); if (!si) ver(actual); };
+$('#btnColocar').onclick = () => colocar(true);
+$('#btnListo').onclick = () => colocar(false);
+$('#btnRestablecer').onclick = () => restablecerPortales();
 setInterval(() => { $('#fps').textContent = mundo.fps + ' fps'; }, 500);
 $('#empezar').onclick = () => { iniciarAudio(); $('#portada').remove(); ver(0); };
 window.maqueta = { ver, ESCENAS, mundo, reproducir };
