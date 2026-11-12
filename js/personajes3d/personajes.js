@@ -5,7 +5,7 @@
 // ni siquiera llega aquí); el modelo solo se crea cuando la carta se revela.
 import { THREE, mundo, tw, cadaFrame, V, suave, sale, entra, lineal, mezcla } from './mundo.js';
 import { construirModelo } from './modelos.js';
-import { humo, chispas } from './efectos.js';
+import { humo, chispas, absorber } from './efectos.js';
 import { S } from './sonido.js';
 
 // Color de la magia de cada personaje, manos de las que sale y pose de reposo
@@ -59,28 +59,76 @@ export const POSES = {
   reverencia: pose([0.1, 0.5, -0.3], [-0.6, -0.2, -1.6], { torx: 0.55, cabx: 0.25, firme: 1 }),
 };
 
-// ---- Túnica con capucha (volumen 3D de revolución, pocos polígonos) ----
-const PERFIL_MANTO = [[0.62, 0], [0.58, 0.25], [0.49, 0.8], [0.42, 1.2], [0.35, 1.4], [0.24, 1.5]];
-const PERFIL_CAPUCHA = [[0.25, 0], [0.33, 0.12], [0.34, 0.3], [0.27, 0.46], [0.12, 0.56], [0, 0.58]];
-let geoManto, geoCapucha, geoHueco, texSombra;
+// ---- Manto con capucha de las cartas de la mano ----
+// Un sudario oscuro y raído, de los que flotan más que cuelgan: paño con
+// pliegues, bajo hecho jirones, mangas caídas y tiras que ondean detrás.
+// La textura lleva en su canal alfa el borde roto y un "mapa de evaporación":
+// al subir el umbral de corte, el paño se deshace de abajo arriba.
+const PERFIL_MANTO = [[0.66, 0], [0.63, 0.12], [0.57, 0.38], [0.5, 0.72], [0.44, 1.02], [0.39, 1.26], [0.33, 1.42], [0.22, 1.52]];
+const PERFIL_CAPUCHA = [[0.24, 0], [0.33, 0.1], [0.36, 0.26], [0.31, 0.42], [0.2, 0.55], [0.08, 0.64], [0, 0.68]];
+let geoHueco, texSombra, texManto;
+function texturaManto() {
+  if (texManto) return texManto;
+  const W = 256, c = document.createElement('canvas'); c.width = c.height = W; const x = c.getContext('2d');
+  // Ruido suave (manchas difuminadas) para que la evaporación avance con un frente irregular.
+  x.fillStyle = '#000'; x.fillRect(0, 0, W, W);
+  for (let i = 0; i < 90; i++) { const px = Math.random() * W, py = Math.random() * W, r = 14 + Math.random() * 34; for (const dx of [0, -W, W]) { const g = x.createRadialGradient(px + dx, py, 0, px + dx, py, r); g.addColorStop(0, 'rgba(255,255,255,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(px + dx - r, py - r, r * 2, r * 2); } }
+  const ruido = x.getImageData(0, 0, W, W).data;
+  // Paño: gris oscuro con pliegues verticales, hilos y desgaste.
+  x.fillStyle = '#b9b6c6'; x.fillRect(0, 0, W, W);
+  for (let i = 0; i < 26; i++) { const px = Math.random() * W, an = 4 + Math.random() * 12; for (const dx of [0, -W, W]) { const g = x.createLinearGradient(px + dx - an, 0, px + dx + an, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, i % 3 ? 'rgba(0,0,10,.5)' : 'rgba(255,255,255,.3)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(px + dx - an, 0, an * 2, W); } }
+  for (let y = 0; y < W; y += 2) { x.fillStyle = 'rgba(0,0,10,.16)'; x.fillRect(0, y, W, 1); }
+  for (let i = 0; i < 500; i++) { x.fillStyle = `rgba(0,0,0,${Math.random() * 0.3})`; x.fillRect(Math.random() * W, Math.random() * W, 1, 3 + Math.random() * 14); }
+  const sombra = x.createLinearGradient(0, 0, 0, W); sombra.addColorStop(0, 'rgba(0,0,0,0)'); sombra.addColorStop(1, 'rgba(0,0,0,.45)'); x.fillStyle = sombra; x.fillRect(0, 0, W, W);
+  // Bajo hecho jirones: altura del roto por columna (dientes largos, rasgones estrechos y algún agujero).
+  const roto = new Float32Array(W); let h = 0.1;
+  for (let i = 0; i < W; i++) { if (i % 9 === 0) h = 0.03 + Math.random() * 0.2; roto[i] = h * (0.35 + 0.65 * Math.abs(Math.sin(i * 0.35))) + (Math.random() < 0.04 ? 0.16 : 0); }
+  for (let k = 0; k < 9; k++) { const i0 = Math.floor(Math.random() * W), alto = 0.22 + Math.random() * 0.22; for (let d = -2; d <= 2; d++) roto[(i0 + d + W) % W] = Math.max(roto[(i0 + d + W) % W], alto * (1 - Math.abs(d) / 3)); }
+  const im = x.getImageData(0, 0, W, W), d = im.data;
+  for (let y = 0; y < W; y++) for (let i = 0; i < W; i++) { const v = 1 - y / W, j = (y * W + i) * 4;
+    d[j + 3] = v < roto[i] ? 0 : Math.round(255 * Math.min(1, 0.16 + 0.84 * Math.min(1, v * 0.72 + ruido[j] / 255 * 0.5))); }
+  x.putImageData(im, 0, 0);
+  texManto = new THREE.CanvasTexture(c); texManto.colorSpace = THREE.SRGBColorSpace; texManto.wrapS = THREE.RepeatWrapping; return texManto;
+}
 function crearCapa(translucida) {
-  geoManto ??= new THREE.LatheGeometry(PERFIL_MANTO.map(p => new THREE.Vector2(p[0], p[1])), 11);
-  geoCapucha ??= new THREE.LatheGeometry(PERFIL_CAPUCHA.map(p => new THREE.Vector2(p[0], p[1])), 11);
-  geoHueco ??= new THREE.CircleGeometry(0.2, 12);
-  const mat = new THREE.MeshLambertMaterial(translucida
-    ? { color: 0x9a90f0, emissive: 0x2a2470, transparent: true, opacity: 0.3, depthWrite: false, flatShading: true, side: THREE.DoubleSide }
-    : { color: 0x2c2556, emissive: 0x0d0a22, transparent: true, opacity: 1, flatShading: true });
+  geoHueco ??= new THREE.CircleGeometry(0.2, 14);
+  const mat = new THREE.MeshLambertMaterial({ map: texturaManto(), side: THREE.DoubleSide, ...(translucida
+    ? { color: 0x9a90f0, emissive: 0x2a2470, transparent: true, opacity: 0.3, depthWrite: false }
+    : { color: 0x2b2740, emissive: 0x08070f, transparent: false, opacity: 1, alphaTest: 0.1 }) });
   const capa = new THREE.Group();
-  const manto = new THREE.Mesh(geoManto, mat); manto.renderOrder = 7;
+  // Manto: superficie de revolución con pliegues; se guarda su forma para hacerla ondear.
+  const filas = 12, pts = []; for (let i = 0; i <= filas; i++) { const q = i / filas * (PERFIL_MANTO.length - 1), n = Math.min(PERFIL_MANTO.length - 2, Math.floor(q)), f = q - n, A = PERFIL_MANTO[n], B = PERFIL_MANTO[n + 1]; pts.push(new THREE.Vector2(A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f)); }
+  const geo = new THREE.LatheGeometry(pts, 30), p = geo.attributes.position, fase = Math.random() * 6;
+  for (let i = 0; i < p.count; i++) { const y = p.getY(i), an = Math.atan2(p.getX(i), p.getZ(i)), k = 1 - y / 1.52, o = 1 + (Math.sin(an * 7 + fase) * 0.07 + Math.sin(an * 13 + y * 3) * 0.035) * k; p.setX(i, p.getX(i) * o); p.setZ(i, p.getZ(i) * o * 0.92); }
+  geo.computeVertexNormals(); const base = p.array.slice();
+  const manto = new THREE.Mesh(geo, mat); manto.renderOrder = 7;
   const pivote = new THREE.Group(); pivote.position.set(0, 1.44, -0.12);   // la capucha cae hacia atrás desde la nuca
-  const capucha = new THREE.Mesh(geoCapucha, mat); capucha.position.set(0, 0, 0.12); capucha.renderOrder = 7; pivote.add(capucha);
+  const gc = new THREE.LatheGeometry(PERFIL_CAPUCHA.map(q => new THREE.Vector2(q[0], q[1])), 18), pc = gc.attributes.position;
+  for (let i = 0; i < pc.count; i++) { const y = pc.getY(i); if (y > 0.3) { pc.setZ(i, pc.getZ(i) - (y - 0.3) * (y - 0.3) * 1.5); pc.setY(i, y - (y - 0.3) * 0.18); } if (pc.getZ(i) > 0.12 && y < 0.4) pc.setZ(i, pc.getZ(i) + 0.05); }   // pico caído hacia atrás y visera sobre el rostro
+  gc.computeVertexNormals(); const capucha = new THREE.Mesh(gc, mat); capucha.position.set(0, 0, 0.12); capucha.renderOrder = 7; pivote.add(capucha);
   capa.add(manto, pivote);
+  // Mangas caídas y tiras sueltas que ondean.
+  const cuelgan = [];
+  for (const s of [1, -1]) { const g = new THREE.Group(); g.position.set(s * 0.33, 1.3, 0.05); const m = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.24, 0.95, 12, 3, true), mat); m.position.y = -0.44; m.renderOrder = 7; g.add(m); g.userData = { rz: s * 0.2, rx: -0.3, f: Math.random() * 6, amp: 0.05 }; capa.add(g); cuelgan.push(g); }
+  for (let i = 0; i < 7; i++) { const an = Math.PI + (i / 6 - 0.5) * 2.6, g = new THREE.Group(), r = 0.5, largo = 0.7 + Math.random() * 0.5;
+    g.position.set(Math.sin(an) * r, 0.62 + Math.random() * 0.3, Math.cos(an) * r * 0.92); g.rotation.y = an;
+    const geoT = new THREE.PlaneGeometry(0.2, largo, 1, 4); geoT.translate(0, -largo / 2, 0); const m = new THREE.Mesh(geoT, mat); m.renderOrder = 7; g.add(m);
+    g.userData = { tira: m, rx: 0.2, f: Math.random() * 6, amp: 0.16 }; capa.add(g); cuelgan.push(g); }
   if (!translucida) {
-    const hueco = new THREE.Mesh(geoHueco, new THREE.MeshBasicMaterial({ color: 0x05040c, transparent: true }));
-    hueco.scale.set(0.95, 1.25, 1); hueco.position.set(0, 0.3, 0.385); hueco.rotation.x = -0.12; hueco.renderOrder = 8; pivote.add(hueco);
+    const hueco = new THREE.Mesh(geoHueco, new THREE.MeshBasicMaterial({ color: 0x030208, transparent: true }));
+    hueco.scale.set(0.95, 1.3, 1); hueco.position.set(0, 0.26, 0.37); hueco.rotation.x = -0.12; hueco.renderOrder = 8; pivote.add(hueco);
     capa.userData.hueco = hueco;
   }
-  Object.assign(capa.userData, { manto, pivote, mat, translucida });
+  /** El paño respira: el bajo ondea, y al andar se queda atrás como si flotara. */
+  const ondear = (t, w = 0) => {
+    for (let i = 0; i < p.count; i++) { const j = i * 3, y = base[j + 1], k = Math.max(0, 1 - y / 1.1), an = Math.atan2(base[j], base[j + 2]);
+      const o = Math.sin(t * 1.5 + an * 3 + y * 4 + fase) * 0.05 * k * k + Math.sin(t * 2.3 + an * 5) * 0.02 * k;
+      p.setXYZ(i, base[j] * (1 + o), y, base[j + 2] * (1 + o) - w * 0.2 * k * k); }
+    p.needsUpdate = true; geo.computeVertexNormals();
+    for (const g of cuelgan) { const d = g.userData; if (d.tira) d.tira.rotation.x = d.rx + Math.sin(t * 1.7 + d.f) * d.amp + w * 0.5; else g.rotation.set(d.rx + Math.sin(t * 1.3 + d.f) * d.amp - w * 0.15, 0, d.rz + Math.sin(t * 1.1 + d.f) * 0.03); }
+  };
+  ondear(0);
+  Object.assign(capa.userData, { manto, pivote, mat, translucida, ondear });
   return capa;
 }
 function sombra(radio) {
@@ -136,7 +184,7 @@ function animar(a, dt, t) {
   const sw = Math.sin(u.fase), cw = Math.cos(u.fase), resp = Math.sin(t * 1.7 + u.f0);
   if (w > 0.5 && !u.mudo && !u.vuelo && antes * sw < 0) S.paso();
   if (!u.libre) u.cuerpo.position.y = u.vuelo + u.eleva + (u.vuelo ? Math.sin(t * 2.4 + u.f0) * 0.06 : 0);
-  if (u.capa) { u.capa.rotation.z = sw * 0.035 * w; u.capa.scale.y = 1 + resp * 0.006 + Math.abs(sw) * 0.012 * w; }
+  if (u.capa) { u.capa.rotation.z = sw * 0.02 * w; u.capa.scale.y = 1 + resp * 0.008; u.capa.userData.ondear(t + u.f0, w); if (!u.modelo && !u.libre) u.cuerpo.position.y += 0.03 + Math.sin(t * 1.2 + u.f0) * 0.03; }
   if (!m) return;
   const A = m.art, P = u.P, T = POSES[u.pose] ?? POSES.reposo, k = Math.min(1, dt * u.rapidez);
   for (const c in T) P[c] += (T[c] - P[c]) * k;
@@ -203,7 +251,7 @@ function animar(a, dt, t) {
   }
   // Aura mágica propia (humo del Metamorfo, llama del Cronista…).
   const inf = INFO[u.nombre];
-  if (inf?.aura && !u.capa && Math.random() < inf.aura * dt * 14) chispas(mano(a, Math.random() < 0.5 ? 0 : 1), { n: 1, color: inf.color, color2: inf.color2, vel: 0.12, dir: V(0, 0.45, 0), vida: 0.9, tam: 0.13, giro: 3 });
+  if (inf?.aura && !u.capa && Math.random() < inf.aura * dt * 14) chispas(mano(a, Math.random() < 0.5 ? 0 : 1), { n: 1, color: inf.color, color2: inf.color2, vel: 0.08, dir: V(0, 0.35, 0), vida: 1.3, tam: 0.1, giro: 3, turb: 1.4 });
 }
 
 /** Posición en el mundo de la mano i del personaje (de donde sale su magia). */
@@ -255,16 +303,20 @@ export async function quitarCapa(a, nombre) {
   if (!u.modelo) { ponerModelo(a, nombre, true); ms = materialesDe(a).filter(x => x[0] !== mat && x[0] !== capa.userData.hueco?.material); for (const x of ms) { x[0].opacity = 0; x[0].transparent = true; } }
   const raiz = u.modelo.raiz, e0 = raiz.scale.x;
   u.capa = null; S.manto();
+  const t0 = mundo.tiempo, vivo = cadaFrame((dt, t) => capa.userData.ondear(t + u.f0, u.andando));
   await tw(0.55, k => { pivote.rotation.x = -2.1 * k; pivote.scale.setScalar(1 - 0.3 * k); if (ms) for (const [m, op] of ms) m.opacity = op * k; if (capa.userData.hueco) capa.userData.hueco.material.opacity = 1 - k; });
   if (ms) for (const [m, op, tr] of ms) { m.opacity = op; m.transparent = tr; }
-  // El manto se queda atrás: pasa a la escena en el punto donde cae.
-  const p = new THREE.Vector3(); capa.getWorldPosition(p);
-  mundo.escena.add(capa); capa.position.copy(p); capa.position.y = a.position.y; capa.rotation.set(0, a.rotation.y, 0);
   u.pose = poseBase(a); u.rapidez = 4; u.vuelo = INFO[u.nombre]?.vuela ?? 0;
-  return tw(0.6, k => { capa.scale.set(1 + 0.35 * k, 1 - 0.93 * k, 1 + 0.35 * k); raiz.scale.setScalar(mezcla(e0, e0 / 0.9, k)); }, entra)
-    .then(() => { S.humo(); humo(capa.position, { n: 22, color: 0x8a80d8, radio: 0.45 }); chispas(capa.position, { n: 10, color: 0xb0a8ff, vel: 0.5, dir: V(0, 0.8, 0), vida: 1.2 }); mat.transparent = true; mat.depthWrite = false;
-      return tw(1.1, k => { mat.opacity = (capa.userData.translucida ? 0.3 : 1) * (1 - k); capa.scale.x = capa.scale.z = 1.35 + 0.25 * k; }); })
-    .then(() => capa.parent?.remove(capa));
+  // El manto se evapora de abajo arriba: el paño se deshace en humo fino que sube arremolinándose.
+  S.humo(); const tras = capa.userData.translucida, p = new THREE.Vector3(), color = tras ? 0x8a80d8 : 0x4a4468;
+  const radio = y => { const q = Math.min(0.999, y / 1.52) * (PERFIL_MANTO.length - 1), n = Math.floor(q); return PERFIL_MANTO[n][0] + (PERFIL_MANTO[n + 1][0] - PERFIL_MANTO[n][0]) * (q - n); };
+  return tw(1.7, (k, kl) => {
+    if (tras) mat.opacity = 0.3 * (1 - kl); else mat.alphaTest = 0.1 + 0.92 * kl;
+    raiz.scale.setScalar(mezcla(e0, e0 / 0.9, Math.min(1, kl * 2)));
+    capa.getWorldPosition(p); const y = Math.min(1.5, kl * 1.75), r = radio(y);
+    for (let i = 0; i < 5; i++) { const an = Math.random() * 6.283; humo(V(p.x + Math.sin(an) * r, p.y + y + Math.random() * 0.12, p.z + Math.cos(an) * r), { n: 0.4, color, radio: 0.04, tam: 0.3, vida: 1.5, sube: 0.5, vel: 0.12, alfa: 0.55, turb: 1.5 }); }
+    if (Math.random() < 0.7) { const an = Math.random() * 6.283; chispas(V(p.x + Math.sin(an) * r, p.y + y, p.z + Math.cos(an) * r), { n: 0.34, color: 0xb0a8ff, color2: 0x6a60c0, vel: 0.1, dir: V(0, 0.5, 0), vida: 1.4, tam: 0.07, turb: 1.6 }); }
+  }, lineal).finally(() => { vivo(); capa.parent?.remove(capa); });
 }
 
 /** La túnica opaca se vuelve translúcida: ahora el espectador ve quién hay dentro. */
@@ -273,7 +325,7 @@ export async function aclararCapa(a, nombre) {
   const mat = capa.userData.mat;
   ponerModelo(a, nombre, true);
   const ms = materialesDe(a).filter(x => x[0] !== mat && x[0] !== capa.userData.hueco.material);
-  mat.depthWrite = false; mat.side = THREE.DoubleSide;
+  mat.depthWrite = false; mat.transparent = true; mat.alphaTest = 0; mat.needsUpdate = true;
   const c0 = mat.color.clone(), c1 = new THREE.Color(0x9a90f0);
   await tw(1.0, k => { mat.opacity = mezcla(1, 0.3, k); mat.color.lerpColors(c0, c1, k); mat.emissive.setHex(0x2a2470); for (const [m, op, tr] of ms) { m.opacity = op * k; m.transparent = k < 1 ? true : tr; } capa.userData.hueco.material.opacity = 1 - k; });
   capa.userData.translucida = true;
@@ -281,10 +333,10 @@ export async function aclararCapa(a, nombre) {
 /** Al revés: la túnica se cierra y deja de verse quién hay dentro (se retira el modelo). */
 export async function opacarCapa(a) {
   const u = a.userData, capa = u.capa; if (!capa || !capa.userData.translucida) return;
-  const mat = capa.userData.mat, c0 = mat.color.clone(), c1 = new THREE.Color(0x2c2556);
+  const mat = capa.userData.mat, c0 = mat.color.clone(), c1 = new THREE.Color(0x2b2740);
   const ms = materialesDe(a).filter(x => x[0] !== mat);
   await tw(0.9, k => { mat.opacity = mezcla(0.3, 1, k); mat.color.lerpColors(c0, c1, k); for (const [m, op] of ms) { m.opacity = op * (1 - k); m.transparent = true; } });
-  mat.emissive.setHex(0x0d0a22); mat.depthWrite = true; mat.side = THREE.FrontSide;
+  mat.emissive.setHex(0x08070f); mat.depthWrite = true; mat.transparent = false; mat.alphaTest = 0.1; mat.needsUpdate = true;
   u.cuerpo.remove(u.modelo.raiz); u.modelo = null; u.nombre = null; capa.userData.translucida = false;
 }
 
@@ -296,7 +348,7 @@ export async function conjurar(a, o = {}) {
   const u = a.userData, inf = INFO[u.nombre] ?? {};
   posar(a, o.pose ?? 'alzar', 5); u.elevaObj = o.eleva ?? 0.14;
   await tw(o.dur ?? 1.0, () => {
-    for (let i = 0; i < Math.max(1, inf.manos?.length ?? 1); i++) if (Math.random() < 0.8) chispas(mano(a, i), { n: 2, color: o.color ?? inf.color, color2: inf.color2, vel: 0.3, dir: V(0, 0.5, 0), vida: 0.7, tam: 0.13, giro: 4 });
+    for (let i = 0; i < Math.max(1, inf.manos?.length ?? 1); i++) { const pm = mano(a, i); absorber(pm, { n: 3, color: o.color ?? inf.color, color2: inf.color2 }); if (Math.random() < 0.5) chispas(pm, { n: 1, color: o.color ?? inf.color, color2: inf.color2, vel: 0.15, dir: V(0, 0.3, 0), vida: 0.7, tam: 0.1, giro: 4 }); }
   });
   posar(a, o.lanza ?? 'lanzar', 16); u.elevaObj = 0;
   await tw(0.18, null);
