@@ -22,7 +22,7 @@
 
 import { cardImages, CARTA_OCULTA_IMG, escapeHtml, iconos, MODOS_JUEGO, modoDe, datosInvocacion } from './utils.js';
 import { rutaFigura, rutaCriatura, espectaculoActivo, fijarEspectaculo } from './espectaculo.js';
-import { escenas3dActivas, fijarEscenas3D, sonido3dActivo, fijarSonido3D } from './escenas3d.js';
+import { escenarioActivo, fijarEscenario, sonido3dActivo, fijarSonido3D, tablero, cargarTablero, reiniciarEscenario } from './escenas3d.js';
 import { estado } from './motor/estado.js';
 import { opcionesFaseB } from './motor/acciones.js';
 import { atributosDestacado, abrirHistorial } from './narrador.js';
@@ -46,7 +46,8 @@ export function retardoAutomata() {
 
 /** Al volver al menú: la mesa desaparece. */
 export function salirDeMesa() {
-  document.body.classList.remove('mesa-en-partida');
+  document.body.classList.remove('mesa-en-partida', 'modo-escenario');
+  reiniciarEscenario();
   cerrarHoja();
   document.querySelector('.m-telon')?.remove();
   document.querySelector('.m-fin')?.remove();
@@ -407,15 +408,31 @@ export function renderMesa3D() {
         + `<button type="button" class="m-btn m-btn--fin ${v.jugada ? 'listo' : ''}" data-accion="terminar">Terminar turno ➜</button>`
         + `</div>`;
 
-  const html = `
-    <div class="m-fondo" aria-hidden="true"><span class="m-estrellas"></span><span class="m-niebla"></span></div>
+  const barra = `
     <header class="m-barra">
       <button type="button" class="m-btn-icono" data-accion="menu" aria-label="Menú">☰</button>
       <button type="button" class="m-btn-icono" data-accion="historial" aria-label="Historial de jugadas" title="Historial de jugadas">📜</button>
       ${invocacionHtml(v.invocacion)}
       <span class="m-mazo" title="Cartas en el mazo"><span class="m-mazo-pila"></span><b>${v.mazo}</b></span>
     </header>
-    ${requeridosHtml(v.invocacion)}
+    ${requeridosHtml(v.invocacion)}`;
+
+  // Modo Escenario: la mesa es el escenario 3D (js/personajes3d/tablero.js);
+  // aquí solo quedan la barra, los marcadores y los botones del turno.
+  if (escenarioActivo()) {
+    renderEscenario(raiz, v, { barra, miTurno, puedeJugar, haySel, eligiendoObjetivo, colorPropio: COLORES_JUGADORA[v.propio.idx % COLORES_JUGADORA.length] });
+    return;
+  }
+  if (document.body.classList.contains('modo-escenario')) {
+    document.body.classList.remove('modo-escenario');
+    tablero()?.ocultar();
+    ultimoHtml = '';
+    firmas.clear();
+  }
+
+  const html = `
+    <div class="m-fondo" aria-hidden="true"><span class="m-estrellas"></span><span class="m-niebla"></span></div>
+    ${barra}
     <main class="m-mesa">
       <div class="m-rivales ${v.rivales.length === 1 ? 'uno' : ''}">${rivales}</div>
       <div class="m-escena">
@@ -437,7 +454,7 @@ export function renderMesa3D() {
 
   // Invocación completada (sin escenas): gran destello en la mesa.
   const nivelesHechos = (partida.invocacionesCompletadas || []).length;
-  if (invocacionesVistas !== null && nivelesHechos > invocacionesVistas && !espectaculoActivo()) {
+  if (invocacionesVistas !== null && nivelesHechos > invocacionesVistas && !espectaculoActivo() && !escenarioActivo()) {
     const ultima = partida.invocacionesCompletadas.at(-1);
     efectosPendientes.push({ invocacion: ultima });
   }
@@ -457,6 +474,136 @@ export function renderMesa3D() {
   if (vuelo && !vuelo.lanzado) lanzarVuelo();
   // Cuando acaba la animación más larga, se repinta sin sus clases.
   if (animHasta.size) programarLimpieza();
+}
+
+// ---------- Modo Escenario (3D) ----------
+
+let vistaEscenario = null;
+let cargandoEscenario = false;
+
+/** Texto de ayuda del Escenario: lo mismo que en la Mesa, pero con figuras en vez de cartas. */
+function pistaEscenario(v, { haySel, eligiendoObjetivo }) {
+  if (v.terminada || v.activa.automata || eligiendoObjetivo || v.cronomantePendiente) return pistaTurno(v, { haySeleccion: haySel, eligiendoObjetivo });
+  if (!v.propio.activa) return `Turno de ${v.activa.nombre}`;
+  if (!v.jugada) return haySel ? 'Toca el Portal al que quieres que suba' : 'Toca una de tus figuras encapuchadas';
+  if (!v.habilidadUsada && activables.size) return 'Toca dos veces un Portal que brille para usar su habilidad, o termina el turno';
+  return 'Termina tu turno';
+}
+
+function renderEscenario(raiz, v, { barra, miTurno, puedeJugar, haySel, eligiendoObjetivo, colorPropio }) {
+  vistaEscenario = v;
+  const T = tablero();
+  if (!T) {
+    raiz.innerHTML = `<div class="m-fondo" aria-hidden="true"><span class="m-estrellas"></span></div>${barra}<div class="m-cargando3d"><span class="m-spinner"></span>Preparando el Escenario 3D…</div>`;
+    ultimoHtml = '';
+    if (!cargandoEscenario) {
+      cargandoEscenario = true;
+      cargarTablero()
+        .catch(e => {
+          console.warn('Escenario 3D no disponible:', e);
+          fijarEscenario(false);
+          mostrarAviso('El Escenario 3D no funciona en este dispositivo: vuelves a la Mesa');
+        })
+        .finally(() => { cargandoEscenario = false; ultimoHtml = ''; renderMesa3D(); });
+    }
+    return;
+  }
+  document.body.classList.add('modo-escenario');
+  T.fijarAlTocar(alTocarEscenario);
+
+  const pista = pistaEscenario(v, { haySel, eligiendoObjetivo });
+  const acciones = v.activa.automata
+    ? `<div class="m-pensando"><span class="m-spinner"></span>${escapeHtml(pista)}</div>`
+    : !miTurno
+      ? `<div class="m-pensando">${escapeHtml(pista)}</div>`
+      : `<p class="m-pista">${escapeHtml(pista)}${haySel && !v.jugada ? ' <button type="button" class="m-mini-btn" data-accion="cancelar">✕ Soltar</button>' : ''}</p>`
+        + `<div class="m-botones">`
+        + `<button type="button" class="m-btn m-btn--habilidad" data-accion="habilidad" ${(v.cronomantePendiente ? miTurno : activables.size > 0) ? '' : 'disabled'}>✦ Habilidad</button>`
+        + `<button type="button" class="m-btn m-btn--fin ${v.jugada ? 'listo' : ''}" data-accion="terminar">Terminar turno ➜</button>`
+        + `</div>`;
+  const chips = v.rivales.map(a => `<span class="m-chip ${a.activa ? 'activa' : ''}" style="--color:${COLORES_JUGADORA[a.idx % COLORES_JUGADORA.length]}">`
+    + `<span class="m-nombre">${nombreAsiento(a)}${a.activa ? ' <span class="m-turno-punto"></span>' : ''}</span>${gemasHtml(a.gemas, a.idx)}`
+    + (a.clarividente ? '<span title="Clarividente visible: su mano queda oculta">👁️</span>' : '') + `</span>`).join('');
+  const html = `${barra}
+    <div class="m-jugadores3d">${chips}${automataCentralHtml(v.automataCentral)}</div>
+    <div class="m-hueco3d"></div>
+    <footer class="m-pie m-pie3d ${v.propio.activa ? 'activa' : ''}" style="--color:${colorPropio}">
+      <div class="m-propio-cab">
+        <span class="m-nombre">${nombreAsiento(v.propio)}${v.propio.activa ? ' <span class="m-turno-punto"></span>' : ''}</span>
+        ${v.propio.clarividente ? '<span class="m-sello-txt">👁️ Clarividente: ves tus dos cartas</span>' : ''}
+        ${gemasHtml(v.propio.gemas, v.propio.idx)}
+      </div>
+      <div class="m-acciones">${acciones}</div>
+    </footer>`;
+  if (html !== ultimoHtml) { raiz.innerHTML = html; ultimoHtml = html; }
+  lanzarEfectos();
+
+  // Qué Portales brillan, y por qué. Las claves del Escenario ('jugadora:portal'
+  // o 'n:k') son las mismas que usan los objetivos de las habilidades.
+  const estados = new Map();
+  const objetivo = window.pickerObjetivoPortal;
+  const claves = [...[v.propio, ...v.rivales].flatMap(a => a.portales.map((_, j) => `${a.idx}:${j}`)), ...v.centrales.map((_, k) => `n:${k}`)];
+  for (const clave of claves) {
+    if (objetivo) { const op = objetivo.opciones.find(o => o.val === clave); estados.set(clave, !op || op.disabled ? 'bloqueado' : 'objetivo'); }
+    else if (haySel && puedeJugar) estados.set(clave, 'destino');
+    else if (activables.has(clave)) estados.set(clave, 'activable');
+  }
+  const arriba = raiz.querySelector('.m-jugadores3d')?.getBoundingClientRect().bottom ?? 0;
+  const pie = raiz.querySelector('.m-pie3d')?.getBoundingClientRect().top;
+  const margenes = { arriba, abajo: pie ? window.innerHeight - pie : 0 };
+  T.actualizar({ margenes, vista: v, interaccion: { estados, seleccion: puedeJugar ? window.selectedCardIdx ?? null : null, propio: v.propio.idx, jugable: puedeJugar } });
+}
+
+/** Destino de jugada ('p:j' | 'a:i:j' | 'n:k') de un Portal del Escenario. */
+function destinoDe(clave) {
+  const [a, b] = clave.split(':');
+  return a === 'n' ? clave : claveJugar(estado.partida.turn, +a, +b);
+}
+
+function describirPortal(clave) {
+  const v = vistaEscenario; if (!v) return 'Portal';
+  const [a, b] = clave.split(':');
+  const asiento = a === 'n' ? null : [v.propio, ...v.rivales].find(x => x.idx === +a);
+  const pv = a === 'n' ? v.centrales[+b] : asiento?.portales[+b];
+  const donde = a === 'n' ? `Portal central${v.centrales.length > 1 ? ` ${+b + 1}` : ''}` : `Portal de ${asiento?.nombre ?? ''}`;
+  if (!pv?.top) return `${donde}: vacío`;
+  const quien = pv.top.visible ? (pv.top.ficha ? `Metamorfo (como ${pv.top.ficha})` : pv.top.nombre) : 'carta boca abajo';
+  return `${donde}: ${quien} · ${pv.altura} carta${pv.altura === 1 ? '' : 's'}`;
+}
+
+/** Toques en el Escenario 3D (js/personajes3d/tablero.js). */
+function alTocarEscenario(t) {
+  if (document.querySelector('.m-telon, .m-fin:not(.minimizada)')) return;
+  const p = estado.partida;
+  if (t.tipo === 'mano') {
+    const v = vistaEscenario;
+    if (v && t.jugadora === v.propio.idx && t.jugadora === p.turn && puedeJugarAhora()) { seleccionarCartaMano(t.k); return; }
+    const quien = p.players[t.jugadora]?.name ?? '';
+    const propia = v && t.jugadora === v.propio.idx;
+    mostrarAviso(t.cv?.visible ? `${t.cv.nombre}, en ${propia ? 'tu mano' : `la mano de ${quien}`}`
+      : propia ? 'Una carta tuya que no puedes ver' : `Una carta de ${quien} que no puedes ver`);
+    return;
+  }
+  if (t.tipo !== 'portal') return;
+  const clave = t.clave;
+  const objetivo = window.pickerObjetivoPortal;
+  if (objetivo) {
+    const op = objetivo.opciones.find(o => o.val === clave);
+    if (!op || op.disabled) { mostrarAviso('Ese Portal no es un objetivo válido'); return; }
+    cerrarHoja();
+    elegirPortalObjetivo(clave);
+    return;
+  }
+  const haySel = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
+  if (haySel && puedeJugarAhora()) {
+    const antes = p.played;
+    jugarEnPortal(destinoDe(clave));
+    if (!antes && !estado.partida.played) mostrarAviso('No puedes jugar esa carta ahí');
+    return;
+  }
+  const op = activables.get(clave);
+  if (op && t.doble) { activarDesde(op.val); return; }
+  mostrarAviso(describirPortal(clave) + (op ? ' · toca dos veces para usar su habilidad' : ''));
 }
 
 let limpiezaProgramada = null;
@@ -812,12 +959,22 @@ export function pickerMesa(titulo, opciones, cb, onCancel) {
   const dePortal = !!window.pickerObjetivoPortal;
   abrirHoja({
     tipo: 'picker',
-    titulo: dePortal ? `${titulo} — toca un Portal o elige:` : titulo,
+    titulo: dePortal ? (escenarioActivo() ? `${titulo} Toca un Portal que brille.` : `${titulo} — toca un Portal o elige:`) : titulo,
     botones: opciones.map(o => ({ val: o.val, lbl: o.lbl, disabled: !!o.disabled })),
     alElegir: cb,
     alCancelar: () => onCancel?.(),
     compacta: dePortal,
   });
+  // En el Escenario 3D el objetivo se toca en la propia mesa: la hoja se queda
+  // en una franja pequeña, con la lista de Portales plegada por si se prefiere.
+  if (dePortal && escenarioActivo()) {
+    const hoja = document.querySelector('.m-hoja-capa .m-hoja');
+    hoja?.classList.add('mini');
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'm-mini-btn m-hoja-lista'; btn.textContent = 'Elegir de una lista';
+    btn.addEventListener('click', () => { hoja.classList.remove('mini'); btn.remove(); });
+    hoja?.querySelector('h3')?.after(btn);
+  }
 }
 
 /** Pregunta con botones grandes y sin "Cancelar" (sustituye a confirm()). */
@@ -885,9 +1042,11 @@ function abrirMenu() {
     tipo: 'info',
     titulo: 'Menú',
     cuerpo: `<div class="m-menu">
-      <button type="button" class="m-opcion" data-menu="escenas">✨ Escenas animadas: ${esc ? 'sí' : 'no'}</button>
-      <button type="button" class="m-opcion" data-menu="tres">🧙 Personajes 3D (en pruebas): ${escenas3dActivas() ? 'sí' : 'no'}</button>
-      ${escenas3dActivas() ? `<button type="button" class="m-opcion" data-menu="sonido3d">${sonido3dActivo() ? '🔊' : '🔇'} Sonido de las escenas 3D: ${sonido3dActivo() ? 'sí' : 'no'}</button>` : ''}
+      ${escenarioActivo() ? '' : `<button type="button" class="m-opcion" data-menu="escenas">✨ Escenas animadas: ${esc ? 'sí' : 'no'}</button>`}
+      <button type="button" class="m-opcion" data-menu="modo">${escenarioActivo() ? '🎴 Cambiar a la Mesa (cartas)' : '🧙 Cambiar al Escenario 3D (en pruebas)'}</button>
+      ${escenarioActivo() ? `<button type="button" class="m-opcion" data-menu="sonido3d">${sonido3dActivo() ? '🔊' : '🔇'} Sonido del Escenario: ${sonido3dActivo() ? 'sí' : 'no'}</button>
+      <button type="button" class="m-opcion" data-menu="encuadre">🎯 Ver toda la mesa</button>
+      <button type="button" class="m-opcion" data-menu="recolocar">↺ Devolver los Portales a su sitio</button>` : ''}
       <button type="button" class="m-opcion" data-menu="pantalla">⛶ Pantalla completa</button>
       <button type="button" class="m-opcion" data-menu="ayuda">❓ Carta de ayuda</button>
       <button type="button" class="m-opcion" data-menu="historial">📜 Historial de jugadas</button>
@@ -899,13 +1058,16 @@ function abrirMenu() {
 
 function accionMenu(opcion) {
   if (opcion === 'escenas') { fijarEspectaculo(!espectaculoActivo()); abrirMenu(); return; }
-  if (opcion === 'tres') {
-    const si = !escenas3dActivas();
-    fijarEscenas3D(si);
-    if (si && !espectaculoActivo()) fijarEspectaculo(true);   // las escenas 3D sustituyen a las animadas: necesitan que estén puestas
-    abrirMenu();
+  if (opcion === 'modo') {
+    cerrarHoja();
+    fijarEscenario(!escenarioActivo());
+    mostrarAviso(escenarioActivo() ? 'Escenario 3D: toca tus figuras y los Portales para jugar' : 'Vuelves a la Mesa');
+    ultimoHtml = '';
+    renderMesa3D();
     return;
   }
+  if (opcion === 'encuadre') { cerrarHoja(); tablero()?.reencuadrar(); return; }
+  if (opcion === 'recolocar') { cerrarHoja(); tablero()?.recolocarPortales(); return; }
   if (opcion === 'sonido3d') { fijarSonido3D(!sonido3dActivo()); abrirMenu(); return; }
   if (opcion === 'pantalla') {
     cerrarHoja();

@@ -437,18 +437,30 @@ in `nextTurn()`.
   until new ones arrive, so don't re-run `generar_cartas.py` with them**
   (the back and the two help cards still come from the old ones). Toggle: `#btnEspectaculo` (header) /
   `#chkEspectaculo` (setup), stored in `localStorage`.
-- **`js/escenas3d.js`** + **`js/personajes3d/`** — (1.35.0) optional
-  "Personajes 3D" mode, off by default: `espectaculo.js` attaches a `tres`
-  descriptor (public info only) to each scene it queues and, when the
-  player has switched the mode on (☰ menu of the Mesa or `#chk3D` in
-  setup), plays a full-screen Three.js animation instead of the 2D scene,
-  falling back to 2D if it can't. Everything under `js/personajes3d/` and
-  `vendor/three` is loaded with `import()` only when the mode is on — never
-  import it statically from game modules and don't add it to
-  `urlsToCache`. Same hidden-info rule: a card the viewer can't see is an
-  opaque hooded figure with no model inside. The scenes are predefined
-  animations on a generic stage, not the real table layout. The prototype
-  page `prototipos/personajes-3d.html` runs the same code.
+- **`js/escenas3d.js`** + **`js/personajes3d/`** — two ways to view a
+  game, named by the owner (2026-11-12): **Mesa** (the CSS-3D card table
+  below, with 2D espectáculo scenes; the default) and **Escenario** (since
+  1.36.0, `js/personajes3d/tablero.js`: the whole game in Three.js, no
+  cards). Switched with `#chk3D` in setup or the ☰ menu mid-game
+  (`fijarEscenario()`, `localStorage['invocadores.personajes3d']`). In
+  Escenario mode `renderMesa3D()` calls `renderEscenario()`: only the top
+  bar, player chips and turn buttons stay in the DOM (`body.modo-escenario`)
+  and the board is the canvas `#tablero3d`, fed the same pure
+  `construirVistaMesa()` view plus which Portals glow. The board diffs what
+  it shows against each new view and animates the difference (walk up the
+  stairs, cloak off, flip, Metamorfo whirl, Estratega swap, creature + Gems,
+  new Portal); `espectaculo.js` skips its 2D scenes and sends it
+  `anunciarEscenario()` events instead, and `cuandoTermineEspectaculo()`
+  also waits for the board (`escenarioOcupado()`). Taps come back to
+  `alTocarEscenario()` in `mesa3d.js`, which uses the same `actions.js`
+  functions: tap a hand figure to select, tap a Portal to play or pick a
+  target, double-tap a glowing Portal to activate its ability.
+  Everything under `js/personajes3d/` and `vendor/three` is loaded with
+  `import()` only when Escenario is chosen — never import it statically
+  from game modules and don't add it to `urlsToCache`. Same hidden-info
+  rule: a card the viewer can't see is an opaque hooded figure with no
+  model inside. The prototype page `prototipos/personajes-3d.html` runs the
+  predefined scenes of `escenas.js` with the same models.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
   (the owner chose it over Three.js). **It is the only view, on desktop

@@ -22,7 +22,7 @@
 // - cuandoTermineEspectaculo() / hayEspectaculoEnCurso() → espera a que acabe la cola
 // - espectaculoActivo() / fijarEspectaculo(bool)      → interruptor (setup.js / index.html)
 
-import { escenas3dActivas, reproducir3D, detener3D } from './escenas3d.js';
+import { escenarioEnUso, anunciarEscenario, escenarioOcupado, cuandoLibreEscenario } from './escenas3d.js';
 
 const CLAVE_PREFERENCIA = 'invocadores.espectaculo';
 
@@ -168,12 +168,13 @@ let saltarActual = null;
 let esperando = [];
 
 export function hayEspectaculoEnCurso() {
-  return reproduciendo || cola.length > 0;
+  return reproduciendo || cola.length > 0 || escenarioOcupado();
 }
 
+/** Resuelve cuando no queda ninguna escena: ni de la Mesa ni del Escenario 3D. */
 export function cuandoTermineEspectaculo() {
-  if (!reproduciendo && !cola.length) return Promise.resolve();
-  return new Promise(res => esperando.push(res));
+  if (!reproduciendo && !cola.length) return escenarioOcupado() ? cuandoLibreEscenario().then(cuandoTermineEspectaculo) : Promise.resolve();
+  return new Promise(res => esperando.push(res)).then(cuandoTermineEspectaculo);
 }
 
 /**
@@ -185,14 +186,6 @@ export function detenerEspectaculo() {
   esperando = [];
   cola.length = 0;
   if (saltarActual) saltarActual();
-}
-
-/** Nombres para los pergaminos de los Portales 3D: quien actúa y las dos siguientes. */
-function nombresDesde(actorIdx) {
-  const js = window.players ?? [];
-  if (!js.length) return [];
-  const i0 = Number.isInteger(actorIdx) ? actorIdx : 0;
-  return [0, 1, 2].filter(k => k < js.length).map(k => js[(i0 + k) % js.length].name);
 }
 
 function encolar(escena) {
@@ -237,23 +230,6 @@ function siguiente() {
     return;
   }
   reproduciendo = true;
-  // Personajes 3D (opcional): si la escena trae un descriptor `tres` y la
-  // jugadora lo ha activado, se ve la animación 3D en lugar de la 2D. Si no
-  // se puede (sin WebGL, sin red la primera vez…), se cae a la escena 2D.
-  if (escena.tres && escenas3dActivas() && !escena.sin3d) {
-    el.classList.add('hidden');
-    el.innerHTML = '';
-    const fin3d = () => detener3D();
-    saltarActual = fin3d;
-    const ritmo3d = cola.length >= 2 ? 0.55 : cola.length === 1 ? 0.8 : 1;
-    reproducir3D(escena.tres, { titulo: escena.titulo, subtitulo: escena.subtitulo, nombres: nombresDesde(escena.actor), ritmo: ritmo3d })
-      .then(visto => {
-        if (saltarActual === fin3d) saltarActual = null;
-        if (visto === null) { escena.sin3d = true; cola.unshift(escena); }
-        siguiente();
-      });
-    return;
-  }
   const reducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Si se acumulan escenas (p. ej. turnos seguidos de autómatas), se
   // aceleran para no ir por detrás de la partida.
@@ -357,6 +333,7 @@ function ranura({ clave, nombre, publica = true, x = 50, clase = '', etiqueta, e
 // ---------- Fase A: bajar una carta a un Portal ----------
 
 export function anunciarCartaJugada(jugadoraIdx, destKey) {
+  if (escenarioEnUso()) { anunciarEscenario({ tipo: 'carta', actor: jugadoraIdx }); return; }
   if (!espectaculoActivo()) return;
   const clave = normalizarClave(destKey, jugadoraIdx);
   const pila = pilaPorClave(clave);
@@ -368,13 +345,8 @@ export function anunciarCartaJugada(jugadoraIdx, destKey) {
   const jugadora = window.players[jugadoraIdx]?.name ?? '';
   const esCentinela = top.name === 'Centinela';
 
-  const [tpClave, duenoClave] = clave.split(':');
   encolar({
     tipo: 'carta',
-    tres: top.vis?.public !== false ? { tipo: 'carta', nombre, anterior: anteriorPublica, central: tpClave === 'n', propio: tpClave === 'n' || +duenoClave === jugadoraIdx } : null,
-    actor: jugadoraIdx,
-    titulo: nombre,
-    subtitulo: `${jugadora} lo invoca en ${frasePortal(clave, jugadoraIdx)}`,
     duracion: 2300,
     html: `
       <div class="esp-fondo" style="${vars(nombre)}"></div>
@@ -405,7 +377,11 @@ export function envolverHabilidad(name, ownerIdx, stack, onComplete) {
   return (...args) => {
     const r = onComplete(...args);
     try {
-      if (espectaculoActivo()) anunciarHabilidad(name, ownerIdx, claveOrigen, antes, fotoMesa());
+      if (escenarioEnUso()) {
+        // 'a:i:j' → 'i:j' (clave de Portal del Escenario); los centrales ya son 'n:k'.
+        const origen = claveOrigen?.startsWith('a:') ? claveOrigen.slice(2) : claveOrigen;
+        anunciarEscenario({ tipo: 'habilidad', nombre: name, actor: ownerIdx, origen });
+      } else if (espectaculoActivo()) anunciarHabilidad(name, ownerIdx, claveOrigen, antes, fotoMesa());
     } catch (e) {
       console.warn('Escena de habilidad no disponible:', e);
     }
@@ -435,13 +411,7 @@ function anunciarHabilidad(name, ownerIdx, claveOrigen, antes, despues) {
     Estratega: escenaEstratega,
     Aprendiz: escenaAprendiz,
   }[name] || escenaGenerica)({ name, jugadora, ownerIdx, claveOrigen, origen, cambios, antes, despues });
-  if (escena) encolar({
-    ...escena,
-    tres: { tipo: 'habilidad', nombre: name, aspecto: name === 'Metamorfo' ? origen?.nombre : undefined },
-    actor: ownerIdx,
-    titulo: name,
-    subtitulo: `${jugadora} activa su habilidad`,
-  });
+  if (escena) encolar(escena);
 }
 
 function cabecera(name, jugadora, lema) {
@@ -644,6 +614,7 @@ function escenaGenerica({ name, jugadora, claveOrigen }) {
 // ---------- Invocación completada ----------
 
 export function anunciarInvocacion({ nivel, nombre, need, recompensas, gemasAutomata = 0, entusiastas = [] }) {
+  if (escenarioEnUso()) { anunciarEscenario({ tipo: 'invocacion', nivel, nombre, need, recompensas }); return true; }
   if (!espectaculoActivo()) return false;
   const posiciones = need.length > 3 ? [[50, 14], [14, 52], [86, 52], [50, 80]] : [[50, 18], [16, 64], [84, 64]];
   const figuras = need.map((n, i) => {
@@ -654,12 +625,8 @@ export function anunciarInvocacion({ nivel, nombre, need, recompensas, gemasAuto
     .map(r => `<li>${esc(r.jugadora)} <b>+${r.gemas}</b> ${r.gemas === 1 ? 'Gema' : 'Gemas'}</li>`).join('')
     + (gemasAutomata > 0 ? `<li>🤖 Autómata central <b>+${gemasAutomata}</b> ${gemasAutomata === 1 ? 'Gema' : 'Gemas'}</li>` : '')
     + entusiastas.filter(e => e.perdida).map(e => `<li>🎉 ${esc(e.jugadora)} <b>−1</b> (Entusiasta)</li>`).join('');
-  const resumenGemas = recompensas.filter(r => r.gemas > 0).map(r => `${r.jugadora} +${r.gemas}`).join(' · ');
   encolar({
     tipo: 'invocacion',
-    tres: { tipo: 'invocacion', criatura: nombre, nivel, need },
-    titulo: nombre,
-    subtitulo: `Invocación ${nivel === '*' ? 'final' : nivel} completada${resumenGemas ? ` · ${resumenGemas}` : ''}`,
     duracion: 5200,
     html: `
       <div class="esp-fondo esp-fondo--invocacion" style="--c1:${COLOR_NIVEL[nivel] || '#c9b8ff'};--c2:#1a1033;"></div>

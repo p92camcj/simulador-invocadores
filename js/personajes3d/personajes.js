@@ -3,7 +3,7 @@
 // capucha de las cartas de la mano. Regla de oro que heredará la fase 2: un
 // encapuchado OPACO no lleva ningún modelo dentro (el nombre del personaje
 // ni siquiera llega aquí); el modelo solo se crea cuando la carta se revela.
-import { THREE, mundo, tw, cadaFrame, V, suave, sale, entra, lineal, mezcla } from './mundo.js';
+import { THREE, mundo, tw, cadaFrame, siempre, V, suave, sale, entra, lineal, mezcla } from './mundo.js';
 import { construirModelo } from './modelos.js';
 import { humo, chispas, absorber } from './efectos.js';
 import { S } from './sonido.js';
@@ -146,7 +146,8 @@ function sombra(radio) {
  * espectador no puede ver: sin modelo dentro) | 'translucida' (carta que sí
  * puede ver: se ve al personaje a través de la túnica).
  */
-export function crearActor(nombre, pos, { capa = null, rumbo = 0 } = {}) {
+export function crearActor(nombre, pos, o = {}) {
+  const { capa = null, rumbo = 0 } = o;
   const a = new THREE.Group(); a.position.copy(pos); a.rotation.y = rumbo;
   const cuerpo = new THREE.Group(); a.add(cuerpo);
   const som = sombra(nombre && INFO[nombre]?.gema ? 1.6 : 0.6); a.add(som);
@@ -154,8 +155,11 @@ export function crearActor(nombre, pos, { capa = null, rumbo = 0 } = {}) {
     rumbo, pose: 'reposo', P: { ...POSES.reposo }, rapidez: 7, eleva: 0, elevaObj: 0, vuelo: 0, libre: false };
   if (capa !== 'opaca') ponerModelo(a, nombre, !!capa);
   if (capa) { const c = crearCapa(capa === 'translucida'); cuerpo.add(c); a.userData.capa = c; }
-  mundo.escena.add(a);
-  cadaFrame((dt, t) => animar(a, dt, t));
+  (o.padre ?? mundo.escena).add(a);
+  // En el Escenario de la partida los actores viven mucho: `fijo` los anima
+  // siempre (no se borran al cambiar de escena) y quitarActor() los da de baja.
+  const fn = (dt, t) => animar(a, dt, t);
+  a.userData.parar = o.fijo ? siempre(fn) : cadaFrame(fn);
   return a;
 }
 function ponerModelo(a, nombre, bajoCapa) {
@@ -166,7 +170,7 @@ function ponerModelo(a, nombre, bajoCapa) {
   u.vuelo = bajoCapa ? 0 : (INFO[nombre]?.vuela ?? 0);
   return m;
 }
-export function quitarActor(a) { a?.parent?.remove(a); }
+export function quitarActor(a) { a?.userData?.parar?.(); a?.parent?.remove(a); }
 export const poseBase = a => INFO[a.userData.nombre]?.pose ?? 'reposo';
 /** Cambia la pose (los ángulos se alcanzan suavemente). */
 export function posar(a, nombre, rapidez = 7) { a.userData.pose = nombre ?? poseBase(a); a.userData.rapidez = rapidez; }

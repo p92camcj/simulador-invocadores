@@ -4,6 +4,50 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.36.0.170] - 2026-11-12
+
+### Añadido
+- **Modo Escenario (en pruebas)**: la partida entera en 3D, sin cartas.
+  Cada Portal es un umbral de piedra con su personaje encima y un pergamino
+  con el nombre de su dueña; las cartas de cada mano son figuras
+  encapuchadas junto a sus Portales (translúcidas, con el personaje dentro,
+  si quien mira puede verlas; opacas y sin modelo si no). Se juega tocando:
+  una figura propia para elegirla, un Portal para que suba a él, doble
+  toque en un Portal que brille para activar su habilidad y un toque en el
+  Portal objetivo. Arrastrar gira la vista, pellizcar (o la rueda) acerca,
+  dos dedos (o clic derecho) desplazan, mantener pulsado un Portal lo mueve
+  por la mesa (`localStorage['inv3d.tablero']`) y doble toque en un hueco
+  vuelve a ver toda la mesa.
+- `js/personajes3d/tablero.js`: compara lo que enseña con cada vista nueva
+  de `construirVistaMesa()` y lo escenifica: la figura camina, sube la
+  escalinata y se quita el manto; la de debajo se hunde; el Ocultista la
+  cubre o la destapa; el Metamorfo gira como un remolino; el Estratega
+  intercambia en arco; el Cronista baja a la mano; quien activa una
+  habilidad conjura hacia lo que cambia; en una invocación se encienden las
+  runas, llega la criatura y lanza las Gemas a cada jugadora; el Portal
+  nuevo se alza de la mesa; las cartas robadas salen del mazo y caminan a
+  su sitio.
+- Menú ☰: «Cambiar al Escenario 3D» / «Cambiar a la Mesa» en plena
+  partida, sonido del Escenario, «Ver toda la mesa» y «Devolver los
+  Portales a su sitio». En la pantalla de inicio, `#chk3D` elige empezar en
+  el Escenario.
+
+### Cambiado
+- Los dos modos se llaman **Mesa** (cartas con escenas 2D) y **Escenario**
+  (3D). Las escenas 3D predefinidas que se abrían encima de la Mesa (1.35.0)
+  se sustituyen por el Escenario: `js/personajes3d/juego.js` y
+  `escenaDeJuego()` desaparecen y `espectaculo.js` ya no lleva descriptores
+  `tres`; en el Escenario envía `anunciarEscenario()` en su lugar y
+  `cuandoTermineEspectaculo()` espera también a sus animaciones.
+- `escenas3d.js`: `escenarioActivo()`, `fijarEscenario()`,
+  `cargarTablero()`, `escenarioOcupado()`… en lugar de `escenas3dActivas()`,
+  `reproducir3D()` y `detener3D()`.
+- `personajes.js`: `crearActor(..., { fijo })` y `quitarActor()` dan de
+  baja la animación del actor (antes se quedaba sumando trabajo por
+  fotograma); `mundo.js`: `siempre()` devuelve con qué quitarlo.
+- En el Escenario, al elegir un Portal objetivo la hoja inferior se queda
+  en una franja con la lista plegada.
+
 ## [1.35.0.168] - 2026-11-12
 
 ### Añadido
