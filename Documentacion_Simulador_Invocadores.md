@@ -467,41 +467,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ## js/escenas3d.js
 
-Interruptor y cargador perezoso de las escenas con personajes 3D (1.35.0).
+Los dos modos de ver la partida (1.36.0): **Mesa** (cartas en perspectiva
+con escenas 2D) y **Escenario** (todo en 3D, `js/personajes3d/tablero.js`).
 Solo presentación; no toca reglas.
 
-- `escenas3dActivas()` / `fijarEscenas3D(valor)`: preferencia guardada en
-  `localStorage['invocadores.personajes3d']` (desactivada por defecto). Al
-  activarla se empieza a descargar `js/personajes3d/juego.js` (y con él
-  Three.js).
-- `sonido3dActivo()` / `fijarSonido3D(valor)`: sonido sintetizado de las
-  escenas 3D (`localStorage['inv3d.sonido']`, apagado por defecto).
-- `reproducir3D(descriptor, opciones)`: reproduce una escena a pantalla
-  completa; devuelve `true` si se vio o se saltó y `null` si no se pudo
-  (entonces `espectaculo.js` usa la escena 2D).
-- `detener3D()`: salta la escena en curso.
+- `escenarioActivo()` / `fijarEscenario(valor)`: modo elegido, guardado en
+  `localStorage['invocadores.personajes3d']` ('1' = Escenario; la Mesa es lo
+  normal). Se cambia en `#chk3D` (inicio) o en el menú ☰ en plena partida.
+- `cargarTablero()` / `tablero()`: carga perezosa del Escenario (Three.js y
+  `js/personajes3d/` solo se descargan al elegirlo) y el módulo ya cargado.
+- `escenarioEnUso()`: elegido, cargado y en pantalla.
+- `anunciarEscenario(evento)`: `espectaculo.js` cuenta lo que ha pasado
+  (`{ tipo: 'carta' | 'habilidad' | 'invocacion', ... }`, solo datos públicos).
+- `escenarioOcupado()` / `cuandoLibreEscenario()`: el turno espera a que
+  terminen las animaciones (los usa `cuandoTermineEspectaculo()`).
+- `reiniciarEscenario()`: partida nueva o salida al menú.
+- `sonido3dActivo()` / `fijarSonido3D(valor)`: sonido sintetizado
+  (`localStorage['inv3d.sonido']`, apagado por defecto).
 - `initEscenas3D()`: enlaza `#chk3D` de la pantalla de inicio.
 
 ## js/personajes3d/
 
-Motor de las escenas 3D (Three.js vendorizado en `vendor/three`). Lo usan
-el juego (a través de `juego.js`) y la maqueta `prototipos/personajes-3d.html`
-(a través de `main.js`).
+Motor 3D (Three.js vendorizado en `vendor/three`). Lo usan el Escenario de
+la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
+(`main.js` + `escenas.js`).
 
-- `juego.js`: `reproducirEscenaJuego(descriptor, { titulo, subtitulo, nombres, ritmo })`,
-  `saltar()`, `fijarSonido(si, gesto)`.
+- `tablero.js` (1.36.0): el Escenario jugable. `actualizar({ vista,
+  interaccion, margenes })` recibe la vista pública de `construirVistaMesa()`
+  (una carta que no se puede ver llega sin nombre y se dibuja como un
+  encapuchado opaco sin modelo dentro) y qué Portales brillan
+  ('destino' | 'objetivo' | 'bloqueado' | 'activable'); compara con lo que
+  enseña y lo escenifica (la figura camina y sube la escalinata, se quita el
+  manto, se voltea, el Metamorfo gira, el Estratega intercambia, llega la
+  criatura y reparte Gemas, un Portal nuevo se alza). `anunciar(evento)`,
+  `ocupado()`, `cuandoLibre()`, `mostrar()`, `ocultar()`, `reiniciar()`,
+  `fijarAlTocar(fn)` (toques: `{ tipo: 'portal', clave, doble }` o
+  `{ tipo: 'mano', jugadora, k, cv }`), `reencuadrar()`,
+  `recolocarPortales()`, `fijarSonido()`, y para pruebas
+  `puntoEnPantalla()` / `queHayEn()`. Gestos: arrastrar gira, pellizco o
+  rueda acercan, dos dedos (o clic derecho / mayúsculas) desplazan, mantener
+  pulsado un Portal lo mueve (`localStorage['inv3d.tablero']`), doble toque
+  en un hueco vuelve a ver toda la mesa.
 - `escenas.js`: `ESCENAS` (escenas de la maqueta), `reproducir(id)`,
-  `escenaDeJuego(descriptor)` (descriptor `{ tipo: 'carta' | 'habilidad' | 'invocacion', ... }`
-  solo con datos públicos), `detenerEscena()`, `ponerNombres(nombres)`,
-  `montarEscenario()`, `configurar()`, `modoColocar()`, `restablecerPortales()`.
+  `ponerNombres(nombres)`, `montarEscenario()`, `configurar()`,
+  `modoColocar()`, `restablecerPortales()`.
 - `modelos.js`: `construirModelo(nombre)` (personajes, animales y criaturas
   hechos por código, con telas pintadas y articulaciones).
-- `personajes.js`: actores (`crearActor`, `caminar`, `conjurar`,
-  `quitarCapa`, `transformar`…), `INFO`, `POSES`.
+- `personajes.js`: actores (`crearActor(nombre, pos, { capa, rumbo, fijo })`,
+  `quitarActor`, `caminar`, `conjurar`, `quitarCapa`, `aclararCapa`,
+  `opacarCapa`, `transformar`…), `INFO`, `POSES`.
 - `portales.js`: `crearPortal`, `encender`, `nombrarPortal`, `pergamino`.
 - `efectos.js`: partículas (`chispas`, `absorber`, `humo`, `onda`), `rayo`,
   `destello`, `gema`.
-- `mundo.js`: renderizador, cámara, tweens, `pausar()` / `reanudar()`.
+- `mundo.js`: renderizador, cámara, tweens, `pausar()` / `reanudar()`,
+  `siempre(fn)` (devuelve con qué darlo de baja).
 - `sonido.js`: sonidos sintetizados con Web Audio (`S`).
 
 ## js/espectaculo.js

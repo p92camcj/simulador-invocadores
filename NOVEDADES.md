@@ -6,6 +6,23 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.36.0.170 - 2026-11-12
+
+- Nuevo y en pruebas: el **Escenario**. Ahora hay dos formas de ver la
+  partida: la **Mesa**, con las cartas de siempre, y el **Escenario**, donde
+  todo es 3D y se juega sin ver cartas. Cámbialo cuando quieras desde el
+  menú ☰, también a mitad de partida, o elígelo en la pantalla de inicio.
+- En el Escenario tus cartas son figuras encapuchadas junto a tu Portal.
+  Toca una para elegirla y toca un Portal para que suba a él por la
+  escalinata. Para usar una habilidad, toca dos veces un Portal que brille
+  y luego toca el Portal objetivo.
+- Gira la mesa arrastrando el dedo, acerca con dos dedos y mantén pulsado
+  un Portal para moverlo de sitio. Toca dos veces en un hueco para volver a
+  ver toda la mesa.
+- Todo lo que pasa se ve con los personajes: se quitan el manto, se
+  cubren, se transforman, cambian de Portal, y la criatura invocada llega a
+  la mesa y lanza las Gemas a cada jugadora.
+
 ## 1.35.0.168 - 2026-11-12
 
 - Nuevo y en pruebas: **Personajes 3D**. Actívalo en el menú ☰ de la mesa

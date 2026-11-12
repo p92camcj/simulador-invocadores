@@ -34,7 +34,7 @@ export function tw(dur, fn, ease = suave) {
 }
 export const espera = s => tw(s, null);
 export function cadaFrame(fn) { porFrame.add(fn); return () => porFrame.delete(fn); }
-export function siempre(fn) { fijos.add(fn); }
+export function siempre(fn) { fijos.add(fn); return () => fijos.delete(fn); }
 export function cancelarTodo() {
   generacion++;
   for (const t of tweens) t.rej(CANCELADO);

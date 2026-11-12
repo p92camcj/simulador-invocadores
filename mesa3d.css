@@ -608,3 +608,20 @@ body.vista-mesa.mesa-en-partida #mesa3d { display: flex; }
   #mesa3d *, .m-hoja, .m-aviso, .m-rotulo, .m-telon, .m-efectos * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 body.vista-mesa .panel-retomar { border-color: #b48cff; background: rgba(123, 92, 255, .16); color: #fff; border-radius: 18px; }
+
+/* ---------- Modo Escenario (3D): el lienzo #tablero3d va detrás; aquí solo la barra y los marcadores ---------- */
+body.modo-escenario #mesa3d { background: transparent; pointer-events: none; }
+body.modo-escenario #mesa3d > * { pointer-events: auto; }
+body.modo-escenario #mesa3d > .m-hueco3d { pointer-events: none; }
+.m-hueco3d { flex: 1; min-height: 0; }
+.m-jugadores3d { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 2px 8px; }
+.m-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: .8rem;
+  background: var(--vidrio); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color) 55%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.m-chip.activa { box-shadow: inset 0 0 0 2px var(--color), 0 0 14px color-mix(in srgb, var(--color) 60%, transparent); }
+.m-chip .m-gemas { font-size: .74rem; }
+.m-pie3d { background: linear-gradient(180deg, transparent, #0b0720cc 35%); }
+.m-cargando3d { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--tenue); font-size: .95rem; }
+.m-hoja.mini .m-opciones { display: none; }
+.m-hoja.mini { padding-bottom: 10px; }
+.m-hoja-lista { display: block; margin: 0 auto 8px; }

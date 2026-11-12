@@ -696,44 +696,6 @@ export function modoColocar(si) {
 }
 export function restablecerPortales() { POS_INICIAL.forEach(([x, z], i) => { POS[i].set(x, 0, z); portales[i].position.copy(POS[i]); }); orientar(); try { localStorage.removeItem('inv3d.portales'); } catch { /* sin almacenamiento */ } }
 
-// --------------------------------------------- escenas que dispara el juego
-// El juego no conoce este módulo: espectaculo.js manda un descriptor con lo
-// que ya es público en la mesa (quién baja a qué Portal, qué habilidad se ha
-// usado, qué criatura llega) y aquí se elige la animación predefinida.
-const CRIATURA_POR_NIVEL = { C: 'Cirelia', B: 'Baelorith', A: 'Aelgorth', '*': 'Aelgorth' };
-/** Fase A: un personaje baja a un Portal (propio, de otra jugadora o central), tapando o no a otro. */
-async function cartaDeJuego({ nombre, anterior, propio = true, central = false }) {
-  const jug = propio ? 0 : 1, pi = central ? 3 : jug;
-  sin(plano(central ? dos(hueco(jug, 1), POS[3], 3.6) : propio ? { ...T.mio(), ancho: 5.8 } : T.rival(1), 0));
-  const viejo = anterior && INFO[anterior] ? actor(anterior, sobre(pi)) : null;
-  const nuevo = actor(nombre, hueco(jug, 1), { capa: 'translucida' }); actor(null, hueco(jug, -1), { capa: 'opaca' });
-  await espera(0.5);
-  if (!central) sin(plano({ ...(propio ? T.mio() : T.rival(1)), azimut: 0.35, ancho: 5.8 }, 3));
-  let hecho = false, fuera = null;
-  await subir(nuevo, pi, { vel: 1.0, enMarcha: k => { if (!hecho && k > 0.15) { hecho = true; sin(quitarCapa(nuevo)); } if (viejo && !fuera && k > 0.55) fuera = marcharse(viejo, pi); } });
-  if (viejo && !fuera) fuera = marcharse(viejo, pi);
-  llegada(pi, col(nombre)); if (nombre === 'Centinela') { escudos(pi); S.clang(); }
-  if (INFO[nombre].manos.length) { posar(nuevo, 'celebrar', 6); await espera(0.9); posar(nuevo, null, 4); } else { nuevo.userData.alegre = true; await saltar(nuevo, 0.25, 0.4); }
-  if (fuera) await sin(fuera);
-  await espera(1.3);
-}
-/** Lanza la animación que corresponde a un descriptor del juego. true = vista entera, false = saltada, null = no hay animación 3D para eso. */
-export async function escenaDeJuego(d) {
-  let fn = null;
-  if (d.tipo === 'carta' && INFO[d.nombre]) fn = () => cartaDeJuego(d);
-  else if (d.tipo === 'habilidad') { const e = ESCENAS.find(x => x.grupo === 'Habilidades' && x.titulo === d.nombre); if (e) fn = () => { ctx.aspecto = INFO[d.aspecto] && d.aspecto !== 'Metamorfo' ? d.aspecto : undefined; return e.run(); }; }
-  else if (d.tipo === 'invocacion') {
-    const criatura = INFO[d.criatura]?.gema ? d.criatura : CRIATURA_POR_NIVEL[d.nivel], need = (d.need ?? []).filter(n => INFO[n]).slice(0, 5);
-    const relleno = ['Lumo', 'Reena', 'Sora', 'Aprendiz', 'Cronista'].filter(n => !need.includes(n));
-    if (criatura && need.length) fn = () => invocacion({ criatura, need, mesa: [...need, ...relleno].slice(0, 5) });
-  }
-  if (!fn) return null;
-  limpiar();
-  try { await fn(); return true; } catch (err) { if (err !== CANCELADO) { console.error(err); return null; } return false; }
-}
-/** Corta la escena en curso (la jugadora ha tocado para saltarla). */
-export function detenerEscena() { cancelarTodo(); }
-
 export { ESCENAS };
 /** Lanza una escena (cancela la que hubiera). Devuelve true si llegó al final. */
 export async function reproducir(id) {

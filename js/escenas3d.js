@@ -1,10 +1,11 @@
-// Personajes 3D (1.35.0): interruptor y cargador perezoso de las escenas
-// tridimensionales. Capa de presentación pura, como espectaculo.js: no decide
-// nada del juego. Three.js y los modelos (js/personajes3d/, vendor/three)
-// solo se descargan si la jugadora activa esta opción; desactivada (lo
-// normal), la partida no carga ni un byte de todo eso.
+// Modos de ver la partida (1.36.0): «Mesa» (cartas en perspectiva con
+// escenas 2D, la de siempre) y «Escenario» (todo en 3D con los personajes,
+// js/personajes3d/tablero.js). Capa de presentación pura: no decide nada del
+// juego. Three.js y los modelos (js/personajes3d/, vendor/three) solo se
+// descargan si la jugadora elige el Escenario; con la Mesa (lo normal) la
+// partida no carga ni un byte de todo eso.
 
-const CLAVE = 'invocadores.personajes3d';
+const CLAVE = 'invocadores.personajes3d';   // '1' = Escenario (nombre antiguo de la preferencia)
 const CLAVE_SONIDO = 'inv3d.sonido';
 
 let activo = false;
@@ -12,65 +13,79 @@ let sonido = false;
 try {
   activo = localStorage.getItem(CLAVE) === '1';
   sonido = localStorage.getItem(CLAVE_SONIDO) === '1';
-} catch { /* sin almacenamiento: se queda desactivado */ }
+} catch { /* sin almacenamiento: Mesa */ }
 
 let cargando = null;
 let modulo = null;
 
-export function escenas3dActivas() {
+/** ¿Ha elegido la jugadora el Escenario? */
+export function escenarioActivo() {
   return activo && typeof document !== 'undefined';
+}
+
+/** El módulo del Escenario si ya está cargado (si no, null). */
+export function tablero() {
+  return modulo;
+}
+
+/** ¿Se está viendo ahora mismo el Escenario (elegido y cargado)? */
+export function escenarioEnUso() {
+  return escenarioActivo() && !!modulo && document.body.classList.contains('modo-escenario');
 }
 
 export function sonido3dActivo() {
   return sonido;
 }
 
-function cargar() {
-  cargando ??= import('./personajes3d/juego.js')
-    .then(m => { modulo = m; m.fijarSonido(sonido); return m; })
+/** Carga Three.js y el Escenario (una sola vez). */
+export function cargarTablero() {
+  cargando ??= import('./personajes3d/tablero.js')
+    .then(m => { m.iniciar(); m.fijarSonido(sonido); modulo = m; return m; })
     .catch(e => { cargando = null; throw e; });
   return cargando;
 }
 
-/** Activa o desactiva las escenas 3D. Al activarlas se empiezan a descargar. */
-export function fijarEscenas3D(valor) {
+/** Elige el modo: true = Escenario, false = Mesa. */
+export function fijarEscenario(valor) {
   activo = !!valor;
   try { localStorage.setItem(CLAVE, activo ? '1' : '0'); } catch { /* nada */ }
-  if (activo) cargar().catch(e => console.warn('Personajes 3D no disponibles:', e));
-  else detener3D();
+  if (!activo) modulo?.ocultar();
   const chk = document.querySelector('#chk3D');
   if (chk) chk.checked = activo;
 }
 
-/** Sonido de las escenas 3D (sintetizado, sin archivos). Hay que llamarlo desde un clic. */
+/** Sonido del Escenario (sintetizado, sin archivos). Hay que llamarlo desde un clic. */
 export function fijarSonido3D(valor) {
   sonido = !!valor;
   try { localStorage.setItem(CLAVE_SONIDO, sonido ? '1' : '0'); } catch { /* nada */ }
   modulo?.fijarSonido(sonido, true);
 }
 
-/**
- * Reproduce una escena 3D a pantalla completa. Devuelve true si se vio (entera
- * o saltándola) y null si no se pudo (sin WebGL, sin red la primera vez…),
- * para que espectaculo.js recurra a su escena 2D de siempre.
- */
-export async function reproducir3D(descriptor, opciones) {
-  try {
-    const m = await cargar();
-    return await m.reproducirEscenaJuego(descriptor, opciones);
-  } catch (e) {
-    console.warn('Escena 3D no disponible, se usa la escena 2D:', e);
-    return null;
-  }
+/** Lo que ha pasado en la partida, para que el Escenario lo escenifique. */
+export function anunciarEscenario(evento) {
+  if (escenarioEnUso()) modulo.anunciar(evento);
 }
 
-export function detener3D() {
-  modulo?.saltar();
+/** ¿Está el Escenario a mitad de una animación? (el turno espera a que acabe). */
+export function escenarioOcupado() {
+  return escenarioEnUso() && modulo.ocupado();
+}
+
+export function cuandoLibreEscenario() {
+  return escenarioEnUso() ? modulo.cuandoLibre() : Promise.resolve();
+}
+
+/** Partida nueva o vuelta al menú. */
+export function reiniciarEscenario() {
+  modulo?.reiniciar();
 }
 
 export function initEscenas3D() {
   const chk = document.querySelector('#chk3D');
   if (!chk) return;
   chk.checked = activo;
-  chk.addEventListener('change', e => fijarEscenas3D(e.target.checked));
+  chk.addEventListener('change', e => {
+    fijarEscenario(e.target.checked);
+    if (e.target.checked) cargarTablero().catch(() => {});   // se adelanta la descarga
+  });
 }
