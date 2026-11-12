@@ -218,7 +218,8 @@ function posPortal(clave) {
 function posMano(idx, lado) {
   const s = disp?.asientos.get(idx); if (!s) return null;
   const clave = `${idx}:${lado < 0 ? 0 : s.np - 1}`, p = portales.get(clave);
-  const base = p?.g.visible ? V(p.g.position.x, 0, p.g.position.z) : posPortal(clave);
+  // Mientras un Portal levita (Estratega, Portal nuevo) su mano espera en el sitio, sin seguirlo.
+  const base = p?.g.visible && !p.levita ? V(p.g.position.x, 0, p.g.position.z) : posPortal(clave);
   if (!base) return { pos: s.pos.clone().addScaledVector(s.t, lado * s.abre).addScaledVector(s.u, 0.35), rot: s.rot };
   return { pos: base.addScaledVector(s.t, lado * 2.05).addScaledVector(s.u, 0.35), rot: s.rot };
 }
@@ -414,7 +415,9 @@ function seguirActores(dt) {
     _d.subVectors(an.pos, a.position); _d.y = 0; const dist = _d.length();
     // Si su Portal se arrastra, la mano lo sigue sin quedarse atrás.
     const prisa = arrastrandoAlguno ? 4 : 1;
-    if (dist > 0.05) { const paso = Math.min(dist, dt * 2.6 * prisa); a.position.addScaledVector(_d, paso / dist); u.rumbo = Math.atan2(_d.x, _d.z); u.andandoObj = 1; u.cadencia = 8; }
+    if (dist > 0.05) { const paso = Math.min(dist, dt * 2.6 * prisa); a.position.addScaledVector(_d, paso / dist); u.rumbo = Math.atan2(_d.x, _d.z); u.andandoObj = 1; u.cadencia = 8;
+      // Las bases son sólidas: si el paso la mete en una, resbala por su borde.
+      if (!arrastrandoAlguno) for (const c of obstaculos()) { const ox = a.position.x - c.x, oz = a.position.z - c.z, l = Math.hypot(ox, oz); if (l < RADIO_BASE - 0.15 && l > 1e-3) { a.position.x = c.x + ox / l * (RADIO_BASE - 0.15); a.position.z = c.z + oz / l * (RADIO_BASE - 0.15); } } }
     else { u.andandoObj = 0; u.rumbo = an.rot; }
   }
   // Mano propia: la figura elegida se alza sobre un círculo dorado.
@@ -513,27 +516,61 @@ const sobre = clave => (portales.get(clave)?.g.position.clone() ?? V()).add(V(0,
 const local = (clave, x, z) => { const g = portales.get(clave).g, r = g.rotation.y; return V(g.position.x + x * Math.cos(r) + z * Math.sin(r), 0, g.position.z - x * Math.sin(r) + z * Math.cos(r)); };
 const escalon = (clave, k) => { const p = local(clave, 0, k ? 1.0 : 1.66); p.y = k ? ALTURA_TARIMA : 0; return p; };
 
-/** Subir a la tarima: de frente y por la escalinata; si se llega por un lado o por detrás, se rodea el Portal. */
+// Las bases de los Portales son sólidas: se rodean, se sube solo por la
+// escalinata (delante) y se sale solo por el arco (detrás).
+const RADIO_BASE = 1.75;
+/** Portales que estorban en el suelo (los que levitan van por el aire). */
+function obstaculos(excluir = []) { return [...portales.entries()].filter(([k, p]) => p.g.visible && !p.nuevo && !p.levita && !excluir.includes(k)).map(([, p]) => p.g.position); }
+/** Camino por el suelo de `desde` a `hasta` rodeando las bases: lista de puntos (incluye `hasta`). */
+function ruta(desde, hasta, excluir = [], prof = 0) {
+  const dx = hasta.x - desde.x, dz = hasta.z - desde.z, L2 = dx * dx + dz * dz;
+  if (L2 < 1e-4 || prof > 5) return [hasta];
+  let mejor = null, tMin = 2;
+  for (const c of obstaculos(excluir)) {
+    if (Math.hypot(desde.x - c.x, desde.z - c.z) < RADIO_BASE - 0.05 || Math.hypot(hasta.x - c.x, hasta.z - c.z) < RADIO_BASE - 0.05) continue;
+    const t = Math.max(0, Math.min(1, ((c.x - desde.x) * dx + (c.z - desde.z) * dz) / L2));
+    const qx = desde.x + dx * t, qz = desde.z + dz * t;
+    if (Math.hypot(qx - c.x, qz - c.z) < RADIO_BASE && t < tMin) { tMin = t; mejor = { c, qx, qz }; }
+  }
+  if (!mejor) return [hasta];
+  let nx = mejor.qx - mejor.c.x, nz = mejor.qz - mejor.c.z, l = Math.hypot(nx, nz);
+  if (l < 1e-3) { nx = -dz; nz = dx; l = Math.hypot(nx, nz); }
+  const w = V(mejor.c.x + nx / l * (RADIO_BASE + 0.4), 0, mejor.c.z + nz / l * (RADIO_BASE + 0.4));
+  return [...ruta(desde, w, excluir, prof + 1), ...ruta(w, hasta, excluir, prof + 1)];
+}
+/** Caminar por el suelo hasta `hasta` rodeando los Portales. */
+async function andar(a, hasta, o = {}) {
+  const pts = ruta(a.position.clone().setY(0), hasta.clone().setY(0), o.excluir ?? []);
+  for (let i = 0; i < pts.length; i++) {
+    const t = pts[i], sig = pts[i + 1];
+    if (a.position.distanceTo(t) < 0.2) continue;
+    await caminar(a, t, { vel: o.vel ?? 1.9, mudo: o.mudo, cadencia: o.cadencia, alFinal: sig ? Math.atan2(sig.x - t.x, sig.z - t.z) : o.alFinal });
+  }
+}
+
+/** Subir a la tarima: se llega rodeando lo que haya por medio hasta el pie de la escalinata, y se sube por ella. */
 async function subir(a, clave, o = {}) {
   const c = sobre(clave), rot = portales.get(clave).g.rotation.y, vel = o.vel ?? 1.9;
-  const punto = (an, r) => V(c.x + Math.sin(an + rot) * r, 0, c.z + Math.cos(an + rot) * r);
-  let an = Math.atan2(a.position.x - c.x, a.position.z - c.z) - rot; an = Math.atan2(Math.sin(an), Math.cos(an));
-  const lado = Math.sign(an) || 1, tramos = [];
-  if (Math.abs(an) > 2.0) tramos.push(punto(lado * 2.0, 2.9));
-  if (Math.abs(an) > 1.45) tramos.push(punto(lado * 1.3, 2.8));
-  if (Math.abs(an) > 0.5) tramos.push(punto(lado * 0.5, 2.45));
-  tramos.push(local(clave, 0, 2.05));
-  for (const t of tramos) if (a.position.distanceTo(t) > 0.25) await caminar(a, t, { vel, alFinal: Math.atan2(c.x - t.x, c.z - t.z) });
+  await andar(a, local(clave, 0, 2.05), { vel, mudo: o.mudo, cadencia: o.cadencia, alFinal: rot + Math.PI });
   await caminar(a, escalon(clave, 0), { vel: 1.1, alFinal: rot + Math.PI });
   await caminar(a, escalon(clave, 1), { vel: 0.8, cadencia: 7, ease: lineal, alFinal: rot + Math.PI });
   o.antesDeEntrar?.();
   await caminar(a, c, { vel: 1.1, alFinal: rot });
 }
-async function bajar(a, clave) {
-  const r = portales.get(clave).g.rotation.y;
-  await caminar(a, escalon(clave, 1), { vel: 1.1, alFinal: r });
-  await caminar(a, escalon(clave, 0), { vel: 0.8, cadencia: 7, ease: lineal, alFinal: r });
-  await caminar(a, local(clave, 0, 2.15), { vel: 1.1, alFinal: r });
+/** Salir de la tarima por el arco (detrás) y bajar al suelo. Devuelve dónde queda. */
+async function salirPorArco(a, clave, o = {}) {
+  const r = portales.get(clave).g.rotation.y + Math.PI, alto = p => { p.y = ALTURA_TARIMA; return p; };
+  await caminar(a, alto(local(clave, 0, -0.78)), { vel: o.vel ?? 1.1, alFinal: r });
+  await caminar(a, alto(local(clave, 0, -1.15)), { vel: o.vel ?? 1.1, alFinal: r });
+  const suelo = local(clave, 0, -1.95);
+  saltar(a, 0.25, 0.45).catch(() => {});
+  await caminar(a, suelo, { vel: 1.6, cadencia: 7, alFinal: r });
+  return suelo;
+}
+/** Bajar de la tarima (siempre por el arco) y rodear el Portal hasta el pie de la escalinata. */
+async function bajar(a, clave, o = {}) {
+  await salirPorArco(a, clave, o);
+  await andar(a, local(clave, 0, 2.15), { vel: o.vel ?? 1.9, mudo: o.mudo, cadencia: o.cadencia, alFinal: portales.get(clave).g.rotation.y });
 }
 
 function llegada(clave) {
@@ -555,10 +592,18 @@ async function disolver(a) {
   await tw(0.6, k => opacidad(a, 1 - k, ms));
   retirar(a);
 }
-/** El personaje de debajo queda tapado: se hunde en la tarima. */
-async function hundir(a) {
+/** El personaje de debajo queda tapado: deja sitio saliendo por el arco y se desvanece detrás del Portal. */
+async function hundir(a, clave = null) {
   if (!a) return;
-  a.userData.ocupado = true;
+  a.userData.ocupado = true; a.userData.ancla = null;
+  if (clave && portales.has(clave) && a.parent) {
+    try {
+      const fuera = await salirPorArco(a, clave, { vel: 1.4 });
+      const atras = fuera.clone().add(fuera.clone().sub(portales.get(clave).g.position.clone().setY(0)).setY(0).normalize().multiplyScalar(0.8));
+      await caminar(a, atras, { vel: 1.4 });
+    } catch (e) { if (e !== CANCELADO) throw e; }
+    return disolver(a);
+  }
   const y0 = a.position.y, ms = materialesDe(a);
   humo(a.position.clone().add(V(0, 0.2, 0)), { n: 6, radio: 0.4, color: 0x5a5290, tam: 0.4 });
   await tw(0.8, k => { a.position.y = y0 - k * 1.3; opacidad(a, 1 - k, ms); });
@@ -588,8 +633,8 @@ async function entrar(p, viajero, pv, mover = null) {
   if (nombre && INFO[nombre] && a.userData.capa) rev = quitarCapa(a, nombre);
   else if (!cv?.visible && a.userData.capa?.userData.translucida) rev = opacarCapa(a);
   try {
-    if (mover) await mover(a, clave, () => { hundir(viejo).catch(() => {}); });
-    else await subir(a, clave, { antesDeEntrar: () => { hundir(viejo).catch(() => {}); } });
+    if (mover) await mover(a, clave, () => { hundir(viejo, clave).catch(() => {}); });
+    else await subir(a, clave, { antesDeEntrar: () => { hundir(viejo, clave).catch(() => {}); } });
   } finally {
     if (p.actor === a && a.parent && a.userData.ocupado) a.userData.ancla = { tipo: 'portal', clave };
   }
@@ -615,7 +660,7 @@ async function entrar(p, viajero, pv, mover = null) {
 async function salir(p, pv) {
   const clave = claveDe(p), a = p.actor; p.actor = null;
   const tareas = [];
-  if (a) { a.userData.ocupado = true; a.userData.ancla = null; tareas.push(bajar(a, clave).then(() => disolver(a))); }
+  if (a) { a.userData.ocupado = true; a.userData.ancla = null; tareas.push(salirPorArco(a, clave).then(() => disolver(a))); }
   if (pv.top) tareas.push(espera(0.6).then(() => surgir(p, pv.top)));
   await Promise.all(tareas);
   return local(clave, 0, 2.15);
@@ -829,16 +874,16 @@ async function roboPicaro(p, cr, C, R) {
   try {
     const flota = alto.clone().add(V(0, 1.7, 0)), de0 = C.clone();
     S.gemaVuela(); tw(1.2, k => azul.position.copy(arco(de0, flota, k, 0.6))).catch(() => {});
-    posar(a, 'sigilo', 6); await bajar(a, clave);
+    posar(a, 'sigilo', 6); await salirPorArco(a, clave, { vel: 1.6 });
     const cerca = alto.clone().lerp(pie, Math.min(1, 0.9 / Math.max(0.9, alto.distanceTo(pie))));
-    await caminar(a, cerca, { vel: 2.6, mudo: true, cadencia: 11 });
+    await andar(a, cerca, { vel: 2.6, mudo: true, cadencia: 11 });
     posar(a, 'orbeAlto', 12); S.gemaVuela();
     const de1 = azul.position.clone(); await tw(0.45, k => azul.position.copy(arco(de1, mano(a).add(V(0, 0.25, 0)), k, 0.3)));
     S.picaro(); chispas(azul.position, { n: 14, color: INFO['Pícaro'].color, vel: 0.6 });
     lleva = cadaFrame(() => azul.position.copy(mano(a)).add(V(0, 0.22, 0)));
     posar(cr, 'dudaI', 5); S.duda(); await espera(0.5); posar(a, 'sigilo', 8);
-    await caminar(a, pie, { vel: 3.0, mudo: true, cadencia: 12 }); posar(cr, 'ofrenda', 3);
-    await subir(a, clave, { vel: 2.4 }); posar(a, 'reverencia', 8); await espera(0.4);
+    posar(cr, 'ofrenda', 3);
+    await subir(a, clave, { vel: 2.8, mudo: true, cadencia: 12 }); posar(a, 'reverencia', 8); await espera(0.4);
     lleva(); lleva = () => {};
     const de2 = azul.position.clone(), hasta = (sitioGemas(idx)?.pos ?? pie).clone().setY(0.4);
     await tw(0.6, k => azul.position.copy(arco(de2, hasta, k, 0.8)));
@@ -900,12 +945,39 @@ async function conjuro(an, destinos) {
  * círculo de la invocación se encoge hasta el sitio del Portal nuevo y se
  * queda como su runa mientras la piedra se alza.
  */
+/**
+ * Dónde se abre una invocación: en el circuncentro de los Portales de las
+ * jugadoras (círculo que mejor pasa por todos), pero nunca encima de un
+ * Portal central; si cae sobre uno, se aparta lo justo hacia un hueco libre.
+ */
+function sitioInvocacion(excluir = []) {
+  const pts = [...disp.portales.keys()].filter(k => !k.startsWith('n:')).map(posPortal).filter(Boolean);
+  let C = disp.centro.clone();
+  if (pts.length >= 3) {   // ajuste algebraico de un círculo (mínimos cuadrados)
+    let sx = 0, sz = 0, sxx = 0, szz = 0, sxz = 0, sxr = 0, szr = 0, sr = 0; const n = pts.length;
+    for (const p of pts) { const r = p.x * p.x + p.z * p.z; sx += p.x; sz += p.z; sxx += p.x * p.x; szz += p.z * p.z; sxz += p.x * p.z; sxr += p.x * r; szr += p.z * r; sr += r; }
+    const M = [[sxx, sxz, sx], [sxz, szz, sz], [sx, sz, n]], b = [sxr, szr, sr];
+    const det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    const D = det(M);
+    if (Math.abs(D) > 1e-6) { const col = (i) => M.map((f, r) => f.map((v, c) => c === i ? b[r] : v)); C = V(det(col(0)) / D / 2, 0, det(col(1)) / D / 2); }
+    else C = pts.reduce((a, p) => a.add(p), V()).multiplyScalar(1 / n);
+  } else if (pts.length) C = pts.reduce((a, p) => a.add(p), V()).multiplyScalar(1 / pts.length);
+  C.y = 0;
+  const centrales = [...disp.portales.keys()].filter(k => k.startsWith('n:') && !excluir.includes(k)).map(posPortal).filter(Boolean);
+  const libre = q => centrales.every(c => Math.hypot(c.x - q.x, c.z - q.z) > 2.4) && Math.hypot(disp.mazo.x - q.x, disp.mazo.z - q.z) > 2.2;
+  if (libre(C)) return C;
+  for (const r of [1.3, 2.6, 3.4]) for (let i = 0; i < 16; i++) {   // primero hacia quien mira (+z), luego alrededor
+    const a = Math.PI / 2 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * Math.PI / 8, q = C.clone().add(V(Math.cos(a) * r, 0, Math.sin(a) * r));
+    if (libre(q)) return q;
+  }
+  return C;
+}
+
 async function invocar(an, v, nuevos = []) {
   const nombre = INFO[an.nombre]?.gema ? an.nombre : CRIATURA_POR_NIVEL[an.nivel] ?? 'Cirelia';
   const tono = INFO[nombre].color, tono2 = INFO[nombre].color2;
   const ps = [...portales.values()].filter(p => p.g.visible && !p.nuevo);
-  const centrales = [...portales.entries()].filter(([k, p]) => k.startsWith('n:') && p.g.visible && !p.nuevo).map(([, p]) => p.g.position);
-  const R = (centrales.length ? centrales.reduce((a, b) => a.clone().add(b)).multiplyScalar(1 / centrales.length) : disp.centro.clone()).setY(0);
+  const R = sitioInvocacion(nuevos.map(claveDe));
   const ALTO_CR = 4.4, sitioCr = R.clone().add(V(0, 0, -0.9)), F = sitioCr.clone().add(V(0, ALTO_CR + 2.2, 0));
   // Cámara: se aleja y mira más de frente para ver a la criatura en lo alto.
   enfocar([...ps.map(p => p.g.position)], { y: 3.6, alto: 12, ancho: (camBase.ancho ?? 12) * 0.95, polar: 1.22 });
@@ -977,7 +1049,9 @@ async function invocar(an, v, nuevos = []) {
     for (let i = 0; i < Math.min(r.gemas, 4); i++) entregas.push({ idx, actor: suyos[i % Math.max(1, suyos.length)] ?? null });
   }
   const C = sitioCr.clone().add(V(0, ALTO_CR + 1.6, 0.4));
-  const gs = Array.from({ length: Math.max(5, entregas.length) }, (_, i) => { const g = gema(tipo, 1.25); g.position.copy(C); g.userData.orbita = true; g.userData.an = i / 5 * Math.PI * 2; return g; });
+  // Requeridos repetidos a la vista: su Gema no sabe a quién ir (nadie la recibe).
+  const repetidos = (an.need ?? []).filter((nom, i, l) => l.indexOf(nom) === i).map(nom => ps.map(p => p.actor).filter(a => a?.userData.modelo && a.userData.cv?.visible && (a.userData.cv.ficha || a.userData.cv.nombre) === nom)).filter(l => l.length > 1);
+  const gs = Array.from({ length: Math.max(5, entregas.length + (repetidos.length ? 1 : 0)) }, (_, i) => { const g = gema(tipo, 1.25); g.position.copy(C); g.userData.orbita = true; g.userData.an = i / 5 * Math.PI * 2; return g; });
   let radio = 0; tw(1.0, k => { radio = 1.6 * k; }, sale).catch(() => {});
   const orbita = cadaFrame((dt, t) => gs.forEach(g => { g.rotation.y += dt * 2.5; if (g.userData.orbita) { g.userData.an += dt * 1.3; g.position.set(C.x + Math.cos(g.userData.an) * radio, C.y + Math.sin(g.userData.an * 2 + t) * 0.15, C.z + Math.sin(g.userData.an) * radio * 0.55); } }));
   try {
@@ -998,6 +1072,23 @@ async function invocar(an, v, nuevos = []) {
       tw(0.8, k => g.position.copy(arco(de2, hasta, k, 1.2))).then(() => { destello(hasta, g.userData.color, 1.4, 0.5).catch(() => {}); S.gema(); quitar(g); }, () => quitar(g));
       await espera(0.35);
     }
+    // Con personajes repetidos la Gema duda entre ellos y vuelve a la criatura.
+    for (const dup of repetidos) {
+      const g = gs[n]; g.userData.orbita = false;   // vuelve a orbitar y se irá con la criatura
+      const [a1, a2] = dup, pa = cabeza(a1).add(V(0, 0.5, 0)), pb = cabeza(a2).add(V(0, 0.5, 0)), medio = pa.clone().lerp(pb, 0.5).add(V(0, 1.6, 0));
+      const volar = async (hasta, dur, alto) => { const de = g.position.clone(); await tw(dur, k => { g.position.copy(arco(de, hasta, k, alto)); if (Math.random() < 0.4) chispas(g.position, { n: 1, color: tono, vel: 0.05, vida: 0.6, tam: 0.1 }); }); };
+      if (lejano(claveDe([...portales.values()].find(p => p.actor === a1)) ?? '') || lejano(claveDe([...portales.values()].find(p => p.actor === a2)) ?? '')) enfocar([a1.position, a2.position, C], { y: 2.6, ancho: 9, polar: 1.15 });
+      S.gemaVuela(); await volar(medio, 1.0, 0.8);
+      for (let i = 0; i < 4; i++) {
+        const hacia = i % 2 ? pb : pa, quien = dup[i % 2], otro = dup[1 - i % 2];
+        posar(cr, hacia.x < sitioCr.x ? 'dudaD' : 'dudaI', 6); S.duda(); mirar(quien, g.position); posar(quien, 'celebrar', 6); posar(otro, null, 6);
+        await volar(medio.clone().lerp(hacia, 0.6), 0.6 - i * 0.05, 0.25); await volar(medio, 0.5 - i * 0.04, 0.2);
+      }
+      dup.forEach(a => posar(a, 'apuro', 6)); posar(cr, 'ofrenda', 4); S.perdida();
+      await volar(C.clone().add(V(0, 0, 0.3)), 1.3, 0.8); chispas(g.position, { n: 14, color: tono, vel: 0.5 });
+      g.userData.an = 0; g.userData.orbita = true;
+      await espera(0.8); dup.forEach(a => posar(a, null, 4));
+    }
     await espera(0.9);
     // Pasivas: el Pícaro le roba una Gema azul; la Entusiasta le regala una de su dueña.
     const enSuPortal = nom => ps.filter(p => !claveDe(p)?.startsWith('n:') && p.actor?.userData.modelo && !p.actor.userData.ocupado && p.actor.userData.cv?.visible && !p.actor.userData.cv.ficha && p.actor.userData.cv.nombre === nom);
@@ -1015,21 +1106,27 @@ async function invocar(an, v, nuevos = []) {
   parar(); retirar(cr);
   const adios = sitioCr.clone().setY(y0 + 5);
   destello(adios, 0xffffff, 6, 0.9).catch(() => {}); chispas(adios, { n: 70, color: tono, color2: tono2, vel: 2.2, vida: 1.6, grav: 1.2, tam: 0.18 }); onda(R, tono, 2, 44, 3); fogonazo(0.25);
-  const nuevo = nuevos[0];
-  if (nuevo) {
-    const destino = posPortal(claveDe(nuevo))?.setY(0.04) ?? R;
-    const de = gran.position.clone(); S.cargar(160, 2.0);
-    await tw(2.2, k => { gran.position.lerpVectors(de, destino, k); gran.scale.setScalar(mezcla(5.4, 1.03, k)); if (Math.random() < 0.6) { const a = Math.random() * 6.28, rr = gran.scale.x; chispas(gran.position.clone().add(V(Math.cos(a) * rr, 0.05, Math.sin(a) * rr)), { n: 1, color: tono, vel: 0.1, dir: V(0, 0.8, 0), vida: 0.8 }); } });
-    S.impacto(523); onda(destino, tono, 1, 30, 1.6); await espera(0.5);
-    await alzarPortal(nuevo, gran);
-  } else gran.userData.apagar(1.2);
+  // El gran círculo pierde brillo, gira cada vez más despacio y se encoge
+  // hasta quedarse quieto en un punto: de ahí emerge el Portal nuevo.
+  const nuevo = nuevos[0], g0 = gran.userData.giro, op0 = gran.material.opacity;
+  S.cargar(160, 3.0);
+  await tw(3.2, (k, kl) => {
+    gran.userData.giro = g0 * (1 - k) * (1 - k); gran.scale.setScalar(mezcla(1, 0.04, k)); gran.material.opacity = op0 * (1 - 0.8 * k);
+    if (Math.random() < 0.7 * (1 - kl)) { const a = Math.random() * 6.28, rr = 5.4 * gran.scale.x; chispas(R.clone().add(V(Math.cos(a) * rr, 0.05, Math.sin(a) * rr)), { n: 1, color: tono, vel: 0.1, dir: V(-Math.cos(a), 0.5, -Math.sin(a)), vida: 0.7 }); }
+  }, sale);
+  gran.userData.giro = 0; await espera(0.5);
+  destello(R.clone().setY(0.2), tono, 1.6, 0.6).catch(() => {}); S.impacto(523); onda(R, tono, 1, 30, 1.6);
+  gran.userData.apagar(0.4);
+  if (nuevo) await alzarPortal(nuevo, null, R);
   ps.forEach(p => encender(p.g, 0.6));
   soltarFoco();
 }
 
 /** Un Portal nuevo (tras una invocación) se alza desde debajo de la mesa; la runa que lo trajo se queda en su tarima. */
-async function alzarPortal(p, runaGuia = null) {
+async function alzarPortal(p, runaGuia = null, desde = null) {
   p.nuevo = false; p.g.visible = true; p.g.scale.set(1, 1, 1); p.levita = true;
+  // Emerge donde se cerró la invocación y luego se desliza a su sitio en la fila central.
+  if (desde) p.g.position.set(desde.x, p.g.position.y, desde.z);
   const x = p.g.position.x, z = p.g.position.z;
   if (p.actor) p.actor.visible = true;
   encender(p.g, 0.05); S.piedra?.();
@@ -1053,7 +1150,7 @@ function protegidos(v) {
   const s = new Set();
   const esC = pv => pv?.top?.visible && pv.top.nombre === 'Centinela';
   for (const a of [v.propio, ...v.rivales]) if (a.portales.some(esC)) a.portales.forEach((_, j) => s.add(`${a.idx}:${j}`));
-  v.centrales.forEach((pv, c) => { if (esC(pv)) s.add(`n:${c}`); });
+  // En un Portal central la Centinela no protege a nadie: sin escudos.
   return s;
 }
 function actualizarEscudos(v, conSonido = true) {

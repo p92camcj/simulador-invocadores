@@ -16,7 +16,8 @@ export function limpiarMagia() { for (const o of vivos) quitar(o); vivos.clear()
 export function runa(p, color, radio = 1, giro = 0.8, puntas = 8) {
   const m = temp(anilloRunico(texturaDisco(puntas), p, color, radio));
   sin(tw(0.5, k => { m.material.opacity = 0.9 * k; }));
-  const fin = cadaFrame(dt => { m.rotation.z += giro * dt; });
+  m.userData.giro = giro;   // se puede cambiar en marcha (la runa de la invocación frena)
+  const fin = cadaFrame(dt => { m.rotation.z += m.userData.giro * dt; });
   m.userData.apagar = (dur = 0.6) => sin(tw(dur, k => { m.material.opacity = 0.9 * (1 - k); }).then(() => { fin(); fuera(m); }));
   return m;
 }
