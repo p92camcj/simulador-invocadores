@@ -372,12 +372,15 @@ export async function transformar(a, nombre, alMedio, alCrear) {
   const msN = []; nuevo.raiz.traverse(o => { if (o.material && !msN.includes(o.material)) msN.push(o.material); });
   const ops = msN.map(m => [m, m.opacity, m.transparent]);
   for (const m of msN) { m.transparent = true; m.opacity = 0; }
-  await tw(1.3, (k, kl) => {
-    const j = 1 + Math.sin(kl * Math.PI * 5) * 0.12 * (1 - kl); cuerpo.scale.set(j, 2 - j, j);
-    for (const m of msV) { m.transparent = true; m.opacity = Math.max(0, 1 - k * 1.6); }
-    for (const [m, op] of ops) m.opacity = op * Math.min(1, Math.max(0, k * 1.6 - 0.6));
+  // Remolino: gira cada vez más rápido, se estiliza como una peonza y frena ya con el aspecto nuevo.
+  await tw(2.1, (k, kl) => {
+    const giro = kl < 0.5 ? 2 * kl * kl : 1 - 2 * (1 - kl) * (1 - kl), f = Math.sin(kl * Math.PI);
+    cuerpo.rotation.y = giro * Math.PI * 2 * 5; cuerpo.scale.set(1 - 0.3 * f, 1 + 0.12 * f, 1 - 0.3 * f);
+    for (const m of msV) { m.transparent = true; m.opacity = Math.max(0, Math.min(1, 1.9 - kl * 3.2)); }
+    for (const [m, op] of ops) m.opacity = op * Math.min(1, Math.max(0, kl * 3.2 - 1.3));
     alMedio?.(kl);
-  });
+  }, lineal);
+  cuerpo.rotation.y = 0;
   cuerpo.remove(viejo.raiz); cuerpo.scale.set(1, 1, 1);
   for (const [m, op, tr] of ops) { m.opacity = op; m.transparent = tr; }
   u.modelo = nuevo; u.pose = INFO[nombre]?.pose ?? 'reposo';   // u.nombre sigue siendo quien es de verdad

@@ -3,7 +3,7 @@
 // dónde y hacia qué Portal. Aquí no hay reglas: cada escena solo escenifica
 // un resultado que el motor ya habría calculado.
 import { THREE, mundo, tw, espera, cadaFrame, cancelarTodo, plano, temblar, reiniciarVistaUsuario, arco, V, suave, sale, entra, lineal, mezcla, rebote, CANCELADO, siempre } from './mundo.js';
-import { crearPortal, encender, VARIANTES, ALTURA_TARIMA, texturaDisco } from './portales.js';
+import { crearPortal, encender, VARIANTES, ALTURA_TARIMA, texturaDisco, nombrarPortal } from './portales.js';
 import { crearActor, quitarActor, INFO, posar, mirar, mano, cabeza, pecho, altura, aparecer, desvanecer, opacidad, materialesDe, caminar, quitarCapa, aclararCapa, opacarCapa, conjurar, saltar, transformar } from './personajes.js';
 import { chispas, humo, onda, destello, rayo, anilloRunico, gema, quitar, luz } from './efectos.js';
 import { S } from './sonido.js';
@@ -20,8 +20,10 @@ export function configurar(o) { ui = o; }
 
 export function montarEscenario() {
   VARIANTES.forEach((v, i) => { const p = crearPortal(v, i + 1); p.position.copy(POS[i]); mundo.escena.add(p); portales.push(p); });
-  portales[5].visible = false; orientar(); prepararColocacion();
+  portales[5].visible = false; orientar(); prepararColocacion(); ponerNombres(['Julio', 'Adrián', 'Autómata']);
 }
+/** Pergamino con el nombre sobre el Portal de cada jugadora (los centrales no llevan). */
+export function ponerNombres(nombres) { for (let i = 0; i < 3; i++) nombrarPortal(portales[i], nombres[i] ?? null); }
 /** Los Portales de los rivales se giran un poco hacia el centro de la mesa. */
 function orientar() { const c = centro(); for (const i of [1, 2]) portales[i].rotation.y = Math.atan2(c.x - POS[i].x, c.z - POS[i].z) * 0.55; }
 function limpiar() {
@@ -91,8 +93,20 @@ async function subir(a, i, o = {}) {
   if (Math.abs(an) > 0.5) tramos.push(punto(lado * 0.5, 2.45));
   tramos.push(pie(i));
   const total = tramos.length; let hecho = 0;
-  for (const t of tramos) { if (a.position.distanceTo(t) > 0.25) await caminar(a, t, { vel: o.vel ?? 0.95, alFinal: Math.atan2(c.x - t.x, c.z - t.z), enMarcha: k => o.enMarcha?.((hecho + k) / total) }); hecho++; }
-  await caminar(a, c, { vel: 0.8 });
+  for (const t of tramos) { if (a.position.distanceTo(t) > 0.25) await caminar(a, t, { vel: o.vel ?? 0.95, mudo: o.mudo, cadencia: o.cadencia, alFinal: Math.atan2(c.x - t.x, c.z - t.z), enMarcha: k => o.enMarcha?.((hecho + k) / total) }); hecho++; }
+  // La tarima está elevada: se sube peldaño a peldaño, nunca atravesando la base.
+  await caminar(a, escalon(i, 0), { vel: o.vel ?? 0.8, mudo: o.mudo, cadencia: o.cadencia, alFinal: Math.atan2(c.x - a.position.x, c.z - a.position.z) });
+  await caminar(a, escalon(i, 1), { vel: 0.55, mudo: o.mudo, cadencia: 7, ease: lineal, alFinal: Math.atan2(c.x - a.position.x, c.z - a.position.z) });
+  await caminar(a, c, { vel: o.vel ?? 0.8, mudo: o.mudo, cadencia: o.cadencia });
+}
+/** Pie (k = 0) y cabeza (k = 1) de la escalinata del Portal i. */
+const escalon = (i, k) => { const p = local(i, 0, k ? 1.0 : 1.66); p.y = k ? ALTURA_TARIMA : 0; return p; };
+/** Bajar de la tarima por la escalinata hasta el suelo de la mesa. */
+async function bajar(a, i, o = {}) {
+  const r = portales[i].rotation.y;
+  await caminar(a, escalon(i, 1), { vel: o.vel ?? 0.8, mudo: o.mudo, cadencia: o.cadencia, alFinal: r });
+  await caminar(a, escalon(i, 0), { vel: 0.55, mudo: o.mudo, cadencia: 7, ease: lineal, alFinal: r });
+  await caminar(a, pie(i), { vel: o.vel ?? 0.8, mudo: o.mudo, cadencia: o.cadencia, alFinal: o.alFinal ?? r });
 }
 /** El personaje que estaba en el Portal se marcha por el umbral y se desvanece en su luz. */
 async function marcharse(a, i) {
@@ -390,7 +404,7 @@ escena('6.5', 'Habilidades', 'Pícaro', async () => {
   cadaFrame(dt => gs.forEach(g => { g.rotation.y += dt * 2.5; if (g.userData.orbita) { g.userData.an += dt * 1.1; const baja = g.userData.color === 0x4aa8ff; g.position.set(C.x + Math.cos(g.userData.an) * 1.4, baja ? 1.5 : C.y, C.z + Math.sin(g.userData.an) * 0.8); } }));
   await espera(1.6);
   di('…el Pícaro se acerca con sigilo y le roba una Gema azul…');
-  posar(c, 'sigilo', 6); await caminar(c, pie(0), { vel: 0.7, mudo: true, cadencia: 9 });
+  posar(c, 'sigilo', 6); await bajar(c, 0, { vel: 0.7, mudo: true, cadencia: 9 });
   sin(plano(dos(POS[0], O, 5.5, { alto: 7, objetivo: O.clone().lerp(POS[0], 0.3).setY(1.2) }), 2.5));
   await caminar(c, sitioCr.clone().add(V(0.9, 0, 1.5)), { vel: 1.25, mudo: true, cadencia: 10, alFinal: Math.PI });
   const azul = gs[2]; azul.userData.orbita = false; S.gemaVuela(); posar(c, 'orbeAlto', 12);
@@ -400,10 +414,10 @@ escena('6.5', 'Habilidades', 'Pícaro', async () => {
   di('…vuelve a su Portal, la deja allí para su dueño…');
   await caminar(c, pie(0), { vel: 1.9, mudo: true, cadencia: 12 }); posar(cr, 'ofrenda', 3);
   sin(plano({ ...T.mio(), ancho: 5.4, alto: 4.2, objetivo: m0(1.2, 0.4) }, 1.4));
-  await caminar(c, sobre(0), { vel: 1.2, mudo: true }); posar(c, 'reverencia', 8); await espera(0.4);
+  await subir(c, 0, { vel: 1.2, mudo: true }); posar(c, 'reverencia', 8); await espera(0.4);
   lleva(); await volar(azul, sobre(0).add(V(0.45, 0.3, 0.45)), 0.5, 0.4); S.gema(2); chispas(azul.position, { n: 12, color: 0x4aa8ff, vel: 0.5 });
   di('…y se marcha del Portal para desvanecerse sin dejar rastro.');
-  posar(c, 'sigilo', 8); await caminar(c, pie(0).add(V(0.5, 0, 0.5)), { vel: 1.3, mudo: true, cadencia: 11, alFinal: 0 });
+  posar(c, 'sigilo', 8); await bajar(c, 0, { vel: 1.3, mudo: true, cadencia: 11 }); await caminar(c, pie(0).add(V(0.5, 0, 0.5)), { vel: 1.3, mudo: true, cadencia: 11, alFinal: 0 });
   posar(c, 'lanzarD', 14); await espera(0.2);
   S.puf(); humo(c.position, { n: 30, color: 0x6a7a9a, radio: 0.5, sube: 1.2, alfa: 0.8 }); chispas(pecho(c), { n: 14, color: col('Pícaro'), vel: 1 });
   await desvanecer(c, 0.15); encender(portales[0], 0.25);
@@ -518,30 +532,40 @@ escena('6.13', 'Habilidades', 'Metamorfo', async () => {
   di('Metamorfo: pago una Gema azul…');
   await espera(1.2); posar(c, 'abierto', 5); S.gemaVuela();
   await volar(gs[0], pecho(c).add(V(0, 0, 0.3)), 0.9, 1.0); S.pagar(); chispas(gs[0].position, { n: 22, color: 0x4aa8ff, color2: 0xffffff, vel: 0.8 }); quitar(gs[0]);
-  di('…y adopta el aspecto de otro personaje (aquí, el Cronomante). Conserva su melena rosa y su humo: sigue siendo él.');
+  di('…y gira sobre sí mismo como un remolino hasta adoptar el aspecto de otro personaje (aquí, el Cronomante). Conserva su melena rosa y su humo: sigue siendo él.');
   const r = runa(c.position, col('Metamorfo'), 1.0, 3);
   posar(c, 'alzar', 5); S.cargar(196, 0.8); await espera(0.8); S.metamorfo();
-  await transformar(c, 'Cronomante', kl => { for (let i = 0; i < 3; i++) { const an = kl * 16 + i * 2.1; chispas(c.position.clone().add(V(Math.cos(an) * 0.6, 0.2 + kl * 1.6, Math.sin(an) * 0.6)), { n: 1, color: col('Metamorfo'), color2: col2('Metamorfo'), vel: 0.15, vida: 0.9, tam: 0.2 }); }
-    if (Math.random() < 0.3) humo(c.position, { n: 1, color: 0xf0a8d0, radio: 0.4, alfa: 0.35 }); },
+  await transformar(c, 'Cronomante', kl => { const fz = Math.sin(kl * Math.PI), o = c.position;
+    for (let i = 0; i < 5; i++) { const an = kl * 30 + i * 1.257, y = ((kl * 2.2 + i * 0.2) % 1) * 2.1, r = 0.25 + (1 - Math.abs(y / 2.1 - 0.5) * 2) * 0.5; chispas(V(o.x + Math.cos(an) * r, o.y + y, o.z + Math.sin(an) * r), { n: fz, color: col('Metamorfo'), color2: col2('Metamorfo'), vel: 0.08, vida: 0.8, tam: 0.11, giro: 6, radio: 0.02 }); }
+    if (Math.random() < 0.6 * fz) humo(o, { n: 1, color: 0xf0a8d0, radio: 0.5, alfa: 0.35, alto: 1.6 }); },
     m => m.art.pelo.forEach(p => p.color.set(0xf0b8d8)));
   S.impacto(523); onda(sobre(0), col('Metamorfo'), 1, 30); r.userData.apagar();
   await espera(2.6);
 });
 
 escena('6.14', 'Habilidades', 'Entusiasta', async () => {
+  const O = centro(), sitioCr = O.clone().add(V(0, 0, -1.3));
   sin(plano({ ...T.mio(), ancho: 5.2, alto: 4.4, objetivo: m0(1.3, 0.4) }, 0));
   const c = actor('Entusiasta', sobre(0)); const gs = misGemas(3);
   di('Entusiasta (pasiva): cuando una invocación tiene éxito, lo celebra con tanto ímpetu…');
-  await espera(1.4); await destelloInvocacion();
+  await espera(1.4); S.invBoom(); ui.flash(0.5); temblar(0.3); sin(destello(O.clone().add(V(0, 3, -0.9)), col('Cirelia'), 8, 1.2));
+  const cr = actor('Cirelia', sitioCr); cr.userData.sombra.visible = false; posar(cr, 'ofrenda', 4); S.invCoro(9); sin(aparecer(cr, 1.2));
   posar(c, 'celebrar', 10); S.entusiasta(); S.boing(); await saltar(c, 0.45, 0.45);
   S.boing(); S.entusiasta(); await saltar(c, 0.6, 0.6, Math.PI * 2);
-  di('…que su dueño pierde una Gema azul.');
-  sin(caminar(c, sobre(0).add(V(-0.2, 0, 0.75)), { vel: 2.6, mudo: true }));
-  await espera(0.25); S.boing(); const g = gs[1];
-  await volar(g, V(1.8, 2.6, POS[0].z + 0.8), 0.7, 1.2, 0, sale); romperGema(g);
-  posar(c, 'apuro', 10); S.ups(); await espera(1.2);
+  di('…que coge una de las Gemas azules de su dueño y se la lanza a la criatura como ofrenda. (Si no le queda ninguna, no pasa nada.)');
+  sin(plano(dos(POS[0], O, 5.5, { alto: 7.5, objetivo: O.clone().lerp(POS[0], 0.45).setY(1.6) }), 2));
+  await caminar(c, sobre(0).add(V(-0.35, 0, 0.6)), { vel: 2.2, mudo: true, alFinal: -0.9 });
+  const g = gs[0]; S.gemaVuela(); posar(c, 'senalar', 10); await volar(g, mano(c).add(V(0, 0.2, 0)), 0.5, 0.5); S.picaro();
+  const lleva = cadaFrame(() => g.position.copy(mano(c)).add(V(0, 0.2, 0)));
+  mirar(c, sitioCr); posar(c, 'alzar', 7); S.boing(); await saltar(c, 0.35, 0.4); await espera(0.25);
+  lleva(); posar(c, 'lanzar', 18); S.lanzar(700);
+  const C = sitioCr.clone().add(V(0, 3.0, 0.3)), fin = cadaFrame(() => chispas(g.position, { n: 1, color: 0x4aa8ff, color2: 0xffffff, vel: 0.06, vida: 0.9, tam: 0.1 }));
+  await volar(g, C, 1.3, 2.4, 0, suave); fin();
+  S.gema(4); sin(destello(C, 0x4aa8ff, 2.6, 0.8)); chispas(C, { n: 30, color: 0x4aa8ff, color2: col('Cirelia'), vel: 0.9, vida: 1.2 }); quitar(g); posar(cr, 'alzar', 5);
+  posar(c, 'celebrar', 8); S.entusiasta(); await saltar(c, 0.4, 0.45); await espera(0.5);
+  posar(c, 'apuro', 10); S.ups(); mirar(c, sobre(0).add(V(0, 0, 3))); await espera(1.2); posar(cr, 'ofrenda', 3);
   sin(caminar(c, sobre(0), { vel: 1 })); posar(c, null, 4);
-  await espera(1.8);
+  await espera(2);
 });
 
 // ------------------------------------------------------------ invocación
