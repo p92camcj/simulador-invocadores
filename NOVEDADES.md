@@ -6,6 +6,22 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.37.3.179 - 2026-11-12
+
+- **Personajes más reconocibles en el Escenario.** Cada uno tiene ahora su
+  propia cara y su gesto: la Aprendiz sorprendida y con pecas, la Centinela
+  seria, el Entusiasta riendo, el Pícaro con media sonrisa.
+- **La Cronista es más gordita** y viste de verde con peto morado, como en
+  su carta.
+- **Metamorfo, Maestro y Cronomante ya no se confunden.** El Metamorfo lleva
+  esclavina rosa, túnica a rayas y humo rosa en las manos; el Maestro, casaca
+  bordada con cuello alto rojo; el Cronomante, abrigo gris abierto, cuello
+  morado, pelo oscuro revuelto y gesto serio.
+- **Más joyas y bordados** en las túnicas, como en las cartas.
+- **Mar más vivo**: agua turquesa en la orilla y azul al fondo, destellos del
+  sol o de la luna, espuma y olas que llegan a la playa.
+- **Nubes con más forma**, esponjosas y con luz y sombra.
+
 ## 1.37.2.175 - 2026-11-12
 
 - **Vuelven los escudos de la Centinela**: flotan alrededor de los Portales

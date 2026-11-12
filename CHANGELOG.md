@@ -4,6 +4,33 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.37.3.179] - 2026-11-12
+
+### Personajes del Escenario más distintos (`js/personajes3d/modelos.js`)
+- `texturaCara()` acepta rasgos propios (`rasgos` en `HUMANOS`): cejas
+  serias o arqueadas, boca (seria, abierta, risa, pícara, labios, amplia),
+  ojos entornados, pestañas, pecas, mofletes, sombra de ojos, ojeras, joya
+  en la frente y sombra de barba. Cada personaje tiene ahora su cara.
+- `humano()` admite `barriga`, `caraAncha`, `papada`, `cuelloAlto`,
+  `capelina`, `mangas.brazal`, `tunica.abierta` (abrigo abierto por delante),
+  `tunica.rayas`, `tunica.gemas` (joyas de colores en el paño),
+  `torso.banda`, cierre `filigrana` y pelo `despeinado`, `tupe` y `raya`.
+- Cronista más gordita y bajita, de verde con peto morado. Cronomante con
+  abrigo gris abierto, cuello alto morado, pelo oscuro revuelto y gesto
+  serio. Maestro con casaca bordada abierta, cuello alto rojo y tupé.
+  Metamorfo más fino, con esclavina rosa, túnica a rayas rosa y azul, joya
+  en la frente y volutas rosas en las manos.
+
+### Agua y nubes (`js/personajes3d/ambiente.js`)
+- Mar: color por profundidad (turquesa en la orilla, azul mar adentro),
+  rizos con relieve que se desplazan, camino de destellos bajo el sol o la
+  luna (`pintarBrillos()`), espuma de encaje y tres crestas que llegan a la
+  orilla. El agua ya no deja ver la arena entre ola y ola.
+- Nubes: tres formas pintadas (`texturaNube(k)`) con base plana, cima
+  abullonada, luz arriba y sombra abajo, en lugar de una sola mancha.
+
+---
+
 ## [1.37.2.175] - 2026-11-12
 
 ### Recuperado de la maqueta (Escenario)

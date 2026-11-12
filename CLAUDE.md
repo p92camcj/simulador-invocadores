@@ -471,7 +471,9 @@ in `nextTurn()`.
   (Estratega levitation, Clarividente eye, Cronomante hourglass and
   tappable echoes via `mostrarEcos()`), shows each seat's Gems in front of
   its Portals (count public, total only to its owner) and auto-zooms on
-  abilities applied to far Portals. The prototype page `prototipos/personajes-3d.html` runs the
+  abilities applied to far Portals. Since 1.37.3 each character in `modelos.js` has its own face
+  (`rasgos`) and clothing options matching the card art; keep them distinct.
+  The prototype page `prototipos/personajes-3d.html` runs the
   predefined scenes of `escenas.js` with the same models.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
