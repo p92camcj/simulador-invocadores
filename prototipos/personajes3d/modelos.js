@@ -17,12 +17,49 @@ const CONO = (r, h, n = 7) => new THREE.ConeGeometry(r, h, n);
 function materiales() {
   const cache = new Map();
   return (color, o = {}) => {
-    const k = color + JSON.stringify(o);
+    const k = color + JSON.stringify({ ...o, mapa: o.mapa?.uuid });
     if (!cache.has(k)) cache.set(k, o.luz
       ? new THREE.MeshBasicMaterial({ color, transparent: !!o.alfa, opacity: o.alfa ?? 1, side: o.doble ? THREE.DoubleSide : THREE.FrontSide, blending: o.aditivo ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: !o.aditivo })
-      : new THREE.MeshToonMaterial({ color, gradientMap: grad, side: o.doble ? THREE.DoubleSide : THREE.FrontSide, emissive: o.emisivo ?? 0x000000, emissiveIntensity: o.emisivo ? 0.6 : 1 }));
+      : new THREE.MeshToonMaterial({ color: o.mapa ? 0xffffff : color, map: o.mapa ?? null, gradientMap: grad, side: o.doble ? THREE.DoubleSide : THREE.FrontSide, emissive: o.emisivo ?? 0x000000, emissiveIntensity: o.emisivo ? 0.6 : 1 }));
     return cache.get(k);
   };
+}
+const hex = c => '#' + new THREE.Color(c).getHexString();
+const tono = (c, k) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
+/** Tela pintada: degradado, pliegues, bordado en el bajo y motivos dispersos. `bajo`: 'arriba' (túnicas) o 'abajo' (capas). */
+function texturaTela(c, c2, bajo = 'arriba', motivo = 'estrellas') {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256; const x = cv.getContext('2d');
+  const g = x.createLinearGradient(0, bajo === 'arriba' ? 256 : 0, 0, bajo === 'arriba' ? 0 : 256);
+  g.addColorStop(0, tono(c, 1.12)); g.addColorStop(0.6, hex(c)); g.addColorStop(1, tono(c, 0.72)); x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 16; i++) { x.fillStyle = i % 2 ? 'rgba(0,0,20,.07)' : 'rgba(255,255,255,.05)'; x.fillRect(i * 16 + 3, 0, 5, 256); }
+  let s = 11; const rnd = () => (s = (s * 16807 + 7) % 2147483647) / 2147483647;
+  x.fillStyle = x.strokeStyle = hex(c2); x.globalAlpha = 0.55;
+  for (let i = 0; i < 26; i++) { const px = rnd() * 256, py = 40 + rnd() * 180, r = 2 + rnd() * 3; x.beginPath();
+    if (motivo === 'estrellas') { for (let j = 0; j < 8; j++) { const a = j * Math.PI / 4, rr = j % 2 ? r * 0.4 : r * 1.5; x.lineTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr); } x.fill(); }
+    else { x.arc(px, py, r * 1.3, 0, 7); x.lineWidth = 1.2; x.stroke(); x.beginPath(); x.moveTo(px, py); x.lineTo(px, py - r); x.moveTo(px, py); x.lineTo(px + r * 0.7, py); x.stroke(); } }
+  x.globalAlpha = 1; const y0 = bajo === 'arriba' ? 0 : 226;
+  x.fillStyle = hex(c2); x.fillRect(0, y0, 256, 30); x.fillStyle = tono(c2, 0.6); x.fillRect(0, bajo === 'arriba' ? 30 : 222, 256, 4);
+  x.fillStyle = tono(c, 0.8); for (let i = 0; i < 16; i++) { const px = i * 16 + 8, py = y0 + 15; x.beginPath(); x.moveTo(px, py - 9); x.lineTo(px + 6, py); x.lineTo(px, py + 9); x.lineTo(px - 6, py); x.fill(); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
+}
+/** Cara pintada sobre la esfera de la cabeza (el frente cae en u = 0,25). */
+function texturaCara(piel, pelo, ojos, iris = 0x3a6a9a) {
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = hex(piel); x.fillRect(0, 0, 512, 256);
+  const cx = 128, cy = 128; x.lineCap = 'round';
+  for (const s of [1, -1]) {
+    const ex = cx + s * 30;
+    x.fillStyle = 'rgba(240,120,120,.28)'; x.beginPath(); x.ellipse(cx + s * 44, cy + 26, 15, 9, 0, 0, 7); x.fill();
+    x.strokeStyle = tono(pelo, 0.7); x.lineWidth = 4; x.beginPath(); x.moveTo(ex - 14, cy - 24 + s * 0); x.quadraticCurveTo(ex, cy - 31, ex + 14, cy - 24); x.stroke();
+    if (ojos === 'cerrados') { x.strokeStyle = '#2a1c24'; x.lineWidth = 4; x.beginPath(); x.moveTo(ex - 13, cy - 4); x.quadraticCurveTo(ex, cy + 8, ex + 13, cy - 4); x.stroke();
+      x.lineWidth = 2; for (const d of [-9, 0, 9]) { x.beginPath(); x.moveTo(ex + d, cy + (d ? 0 : 3)); x.lineTo(ex + d * 1.25, cy + (d ? 6 : 9)); x.stroke(); } }
+    else { x.fillStyle = '#fff'; x.beginPath(); x.ellipse(ex, cy, 13, 12, 0, 0, 7); x.fill(); x.fillStyle = hex(iris); x.beginPath(); x.arc(ex, cy + 1, 9, 0, 7); x.fill();
+      x.fillStyle = '#14101a'; x.beginPath(); x.arc(ex, cy + 1, 4.5, 0, 7); x.fill(); x.fillStyle = '#fff'; x.beginPath(); x.arc(ex + 3, cy - 3, 2.6, 0, 7); x.fill();
+      x.strokeStyle = '#2a1c24'; x.lineWidth = 3.5; x.beginPath(); x.moveTo(ex - 14, cy - 5); x.quadraticCurveTo(ex, cy - 16, ex + 14, cy - 5); x.stroke(); }
+  }
+  x.strokeStyle = 'rgba(120,50,50,.8)'; x.lineWidth = 3; x.beginPath(); x.moveTo(cx - 9, cy + 44); x.quadraticCurveTo(cx, cy + 50, cx + 9, cy + 44); x.stroke();
+  x.strokeStyle = 'rgba(90,50,40,.35)'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 2, cy + 18); x.lineTo(cx + 3, cy + 22); x.stroke();
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 function pieza(padre, geo, mat, x = 0, y = 0, z = 0, sx = 1, sy = sx, sz = sx) {
   const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); padre.add(m); return m;
@@ -60,8 +97,8 @@ function humano(p) {
 
   // Cabeza
   const cabeza = art.cabeza = pivote(torso, 0, 0.6, 0);
-  pieza(cabeza, ESF, piel, 0, 0.12, 0, 0.145, 0.16, 0.15);
-  if (p.ojos !== 'ninguno') for (const s of [1, -1]) {
+  pieza(cabeza, ESF, p.rico ? M(p.piel, { mapa: texturaCara(p.piel, p.pelo?.c ?? 0x3a2a20, p.ojos ?? 'abiertos', p.iris) }) : piel, 0, 0.12, 0, 0.145, 0.16, 0.15);
+  if (p.ojos !== 'ninguno' && !p.rico) for (const s of [1, -1]) {
     const cerr = p.ojos === 'cerrados';
     pieza(cabeza, ESF_BAJA, M(0x1a1420), s * 0.055, 0.115, 0.136, cerr ? 0.03 : 0.02, cerr ? 0.006 : 0.028, 0.012);
     pieza(cabeza, new THREE.BoxGeometry(0.05, 0.008, 0.01), M(p.pelo?.c ?? 0x3a2a20), s * 0.055, 0.165, 0.138).rotation.z = -s * 0.12;
@@ -96,6 +133,7 @@ function humano(p) {
     if (metal) pieza(c, CIL(0.045, 0.04, 0.26, 6), M(0x9aa0ac), 0, -0.13, 0);
     else if (mg.anchas) pieza(c, CIL(0.05, 0.115, 0.27, 9), cm, 0, -0.135, 0);
     else pieza(c, CIL(0.046, 0.04, 0.26, 8), mg.desnudo ? piel : cm, 0, -0.13, 0);
+    if (p.rico && !metal) { const pu = pieza(c, new THREE.TorusGeometry(mg.anchas ? 0.112 : 0.045, 0.014, 5, 12), M(p.tunica?.c2 ?? 0xc8a040), 0, -0.262, 0); pu.rotation.x = Math.PI / 2; }
     art['mano' + lado] = pieza(c, ESF_BAJA, metal ? M(0x7a808c) : M(p.manos ?? p.piel), 0, -0.3, 0, 0.05, 0.06, 0.05);
   };
   brazo('I'); brazo('D');
@@ -117,12 +155,12 @@ function humano(p) {
     const t = p.tunica, L = t.largo * 0.84, vu = t.vuelo ?? 0.34;
     const pts = [[0.165 * a, 0.12], [0.2 * a, -0.04], [(0.2 * a + vu) / 2, -L * 0.55], [vu, -L]].map(q => new THREE.Vector2(q[0], q[1]));
     const f = art.falda = pivote(cadera, 0, 0, 0);
-    const fm = pieza(f, new THREE.LatheGeometry(pts, 12), M(t.c, { doble: true })); fm.scale.z = 0.86;
+    const fm = pieza(f, new THREE.LatheGeometry(pts, p.rico ? 20 : 12), M(t.c, p.rico ? { doble: true, mapa: texturaTela(t.c, t.c2 ?? t.c, 'arriba', p.motivo) } : { doble: true })); fm.scale.z = 0.86; if (p.rico) fm.material.map.repeat.x = 2;
     if (t.c2) { const r = pieza(f, new THREE.TorusGeometry(vu, 0.022, 5, 14), M(t.c2), 0, -L, 0); r.rotation.x = Math.PI / 2; r.scale.set(1, 0.86, 1);
       if (t.panel) { const pn = pieza(f, new THREE.BoxGeometry(0.13, L, 0.015), M(t.c2), 0, -L / 2 - 0.02, (0.2 * a + vu) / 2 * 0.86 + 0.012); pn.rotation.x = -Math.atan2(vu - 0.2 * a, L) * 0.86; } }
   }
   if (p.capa) {
-    const c = p.capa, m = tela(torso, M(c.c, { doble: true }), (c.ancho ?? 0.52) * a, c.largo * 1.25, { curva: 0.13, caida: 0.1, abre: c.abre ?? 0.35, amp: 0.035 });
+    const c = p.capa, m = tela(torso, M(c.c, p.rico ? { doble: true, mapa: texturaTela(c.c, c.c2 ?? p.tunica?.c2 ?? 0xc8a040, 'abajo', p.motivo) } : { doble: true }), (c.ancho ?? 0.52) * a, c.largo * 1.25, { curva: 0.13, caida: 0.1, abre: c.abre ?? 0.35, amp: 0.035 });
     m.position.set(0, 0.5, -0.125); art.telas.push(m);
   }
   g.scale.setScalar((p.alto ?? 1.7) / 1.72);
@@ -138,11 +176,11 @@ const HUMANOS = {
     mangas: { c: 0xf0dca8 }, tunica: { c: 0xe8cf98, c2: 0x3f8f6a, largo: 0.36, vuelo: 0.27 }, piernas: { c: 0x6b4a2a, botas: 0x8a5a30 }, capa: { c: 0xe8843a, largo: 0.5 } },
   'Centinela': { alto: 1.74, piel: 0xa8693f, pelo: { c: 0x5a3520, largo: 0.45 }, torso: { c: 0xb8322a, c2: 0xd8a040 }, hombreras: 0xc8442f, cinturon: 0x7a5230,
     mangas: { c: 0x6a2a2a }, tunica: { c: 0x7a1f1f, c2: 0xd8a040, largo: 0.42, vuelo: 0.27 }, piernas: { c: 0x2a2a38, botas: 0xb8322a }, capa: { c: 0xa82820, largo: 0.92 } },
-  'Clarividente': { alto: 1.7, piel: 0xf0cfb0, pelo: { c: 0x1c1c2c, largo: 0.8 }, ojos: 'cerrados', capucha: 0x1f8a80, torso: { c: 0xe8d49a, c2: 0x1f8a80 }, cinturon: 0xc8a040, joya: 0x5fe8ff, joyas: [0x5fe8ff],
+  'Clarividente': { rico: true, motivo: 'estrellas', alto: 1.7, piel: 0xf0cfb0, pelo: { c: 0x1c1c2c, largo: 0.8 }, ojos: 'cerrados', capucha: 0x1f8a80, torso: { c: 0xe8d49a, c2: 0x1f8a80 }, cinturon: 0xc8a040, joya: 0x5fe8ff, joyas: [0x5fe8ff],
     mangas: { c: 0x23988c, anchas: true }, tunica: { c: 0xf0dca0, c2: 0xc8a040, largo: 1, vuelo: 0.42, panel: true }, capa: { c: 0x1f8a80, largo: 1, ancho: 0.6 } },
   'Cronista': { alto: 1.6, ancho: 1.28, piel: 0xf4c8a8, pelo: { c: 0xc8401c, largo: 0.1, rizos: true, volumen: 1.05 }, torso: { c: 0x2f8f7a, c2: 0xf0c84a }, cinturon: 0xc8a040, joya: 0x3fd8b0, joyas: [0xe04a4a, 0x3fd8b0],
     mangas: { c: 0x2f8f7a, anchas: true }, tunica: { c: 0x6f4a98, c2: 0xf0c84a, largo: 1, vuelo: 0.46, panel: true }, capa: { c: 0x8a5ab0, largo: 0.95, ancho: 0.62 } },
-  'Cronomante': { alto: 1.76, piel: 0xe0b090, pelo: { c: 0x4a3020, largo: 0.05, flequillo: true }, barba: 0x4a3020, torso: { c: 0xe8dcc0, c2: 0x8a6ab8 }, cinturon: 0x7a5230, joya: 0xe04a6a, joyas: [0xe04a6a, 0x5ab8e8],
+  'Cronomante': { rico: true, motivo: 'relojes', iris: 0x4a8ab8, alto: 1.76, piel: 0xe0b090, pelo: { c: 0x4a3020, largo: 0.05, flequillo: true }, barba: 0x4a3020, torso: { c: 0xe8dcc0, c2: 0x8a6ab8 }, cinturon: 0x7a5230, joya: 0xe04a6a, joyas: [0xe04a6a, 0x5ab8e8],
     mangas: { c: 0xe8dcc0 }, brazoMecanico: 'D', tunica: { c: 0xe8dcc0, c2: 0xb8a070, largo: 0.78, vuelo: 0.3 }, piernas: { c: 0x4a3828, botas: 0x7a5230 }, capa: { c: 0x7a5ab0, largo: 0.95 } },
   'Entusiasta': { alto: 1.52, piel: 0xf4c8a0, pelo: { c: 0xc85a2a, largo: 0 }, torso: { c: 0xe8408a, c2: 0x7a3ab8 }, cinturon: 0x3a8ae0,
     mangas: { cI: 0x3a6ad8, cD: 0x7a3ab8, abombadas: false }, manos: 0xb040c0, piernas: { cI: 0x7a3ab8, cD: 0xe8408a, botas: 0xe8408a } },
@@ -291,9 +329,20 @@ function criatura(nombre) {
   return { raiz: g, art, tipo: 'criatura', M, alto: 4.6, color: p.c, color2: p.c2 };
 }
 
+// --------------------------------------------------- ilustración recortada
+const LAMINAS = { 'Clarividente': { archivo: 'clarividente', alto: 1.7, razon: 475 / 747, mano: [0.33, 0.55] } };
+/** Alternativa a comparar: la ilustración original recortada, de pie y siempre de frente a la cámara. */
+function lamina(nombre) {
+  const d = LAMINAS[nombre], tex = new THREE.TextureLoader().load('../assets/figuras/' + d.archivo + '.webp'); tex.colorSpace = THREE.SRGBColorSpace;
+  const g = new THREE.Group(), geo = new THREE.PlaneGeometry(d.alto * d.razon, d.alto); geo.translate(0, d.alto / 2, 0);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.08, side: THREE.DoubleSide })); m.renderOrder = 5; g.add(m);
+  return { raiz: g, art: { telas: [], flotantes: [], pelo: [] }, tipo: 'lamina', alto: d.alto, ancho: d.alto * d.razon, manoUV: d.mano };
+}
+
 /** Construye el modelo 3D de un personaje o criatura por su nombre. */
 export function construirModelo(nombre) {
   let m;
+  if (nombre.startsWith('lamina:')) { m = lamina(nombre.slice(7)); m.nombre = nombre.slice(7); return m; }
   if (HUMANOS[nombre]) { m = humano(HUMANOS[nombre]); EXTRAS[nombre]?.(m); }
   else if (CUADRUPEDOS[nombre]) m = cuadrupedo(CUADRUPEDOS[nombre]);
   else if (nombre === 'Sora') m = buho();

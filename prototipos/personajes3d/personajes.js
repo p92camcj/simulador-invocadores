@@ -112,7 +112,7 @@ export function crearActor(nombre, pos, { capa = null, rumbo = 0 } = {}) {
 function ponerModelo(a, nombre, bajoCapa) {
   const u = a.userData, m = construirModelo(nombre);
   if (bajoCapa) m.raiz.scale.multiplyScalar(0.9);
-  u.cuerpo.add(m.raiz); u.modelo = m; u.nombre = nombre;
+  u.cuerpo.add(m.raiz); u.modelo = m; u.nombre = nombre = m.nombre;
   u.pose = bajoCapa ? 'recogido' : (INFO[nombre]?.pose ?? 'reposo'); Object.assign(u.P, POSES[u.pose]);
   u.vuelo = bajoCapa ? 0 : (INFO[nombre]?.vuela ?? 0);
   return m;
@@ -139,7 +139,12 @@ function animar(a, dt, t) {
   if (!m) return;
   const A = m.art, P = u.P, T = POSES[u.pose] ?? POSES.reposo, k = Math.min(1, dt * u.rapidez);
   for (const c in T) P[c] += (T[c] - P[c]) * k;
-  if (m.tipo === 'humano' || m.tipo === 'criatura') {
+  if (m.tipo === 'lamina') {   // ilustración recortada: de frente a la cámara; solo se balancea, se estira y brilla
+    const c = mundo.camara.position; m.raiz.rotation.y = Math.atan2(c.x - a.position.x, c.z - a.position.z) - a.rotation.y;
+    u.gesto = (u.gesto ?? 0) + ((u.pose !== poseBase(a) ? 1 : 0) - (u.gesto ?? 0)) * Math.min(1, dt * 6);
+    m.raiz.position.y = Math.abs(sw) * 0.05 * w; m.raiz.rotation.z = sw * 0.035 * w + resp * 0.006;
+    m.raiz.scale.set(1 - 0.04 * u.gesto, 1 + 0.06 * u.gesto + resp * 0.008, 1);
+  } else if (m.tipo === 'humano' || m.tipo === 'criatura') {
     const bal = sw * 0.28 * w * (1 - P.firme);
     A.brazoI.rotation.set(P.bIx - bal, 0, P.bIz + resp * 0.02); A.codoI.rotation.x = P.cI;
     A.brazoD.rotation.set(P.bDx + bal, 0, P.bDz - resp * 0.02); A.codoD.rotation.x = P.cD;
@@ -195,6 +200,8 @@ function animar(a, dt, t) {
 export function mano(a, i = 0) {
   const u = a.userData, m = u.modelo, inf = INFO[u.nombre];
   if (!m) return a.position.clone().add(V(0, 1.2, 0));
+  if (m.tipo === 'lamina') { const c = mundo.camara.position, an = Math.atan2(c.x - a.position.x, c.z - a.position.z), dx = (m.manoUV[0] - 0.5) * m.ancho;
+    return V(a.position.x + Math.cos(an) * dx, a.position.y + u.cuerpo.position.y + m.manoUV[1] * m.alto, a.position.z - Math.sin(an) * dx); }
   const lados = inf?.manos ?? []; const A = m.art;
   const obj = lados.length ? A['mano' + lados[i % lados.length]] : A.cabeza;
   const p = new THREE.Vector3(); obj.getWorldPosition(p); if (lados.length) p.y -= 0.02; return p;
