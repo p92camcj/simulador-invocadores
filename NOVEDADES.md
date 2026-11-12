@@ -6,7 +6,7 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
-## 1.37.4.180 - 2026-11-13
+## 1.38.1.184 - 2026-11-13
 
 - **Regla aclarada: la Centinela protege a la jugadora, no al Portal.** Si
   está en un Portal central no protege a nadie, así que puedes usar
@@ -21,6 +21,20 @@ detalle técnico completo, mira `CHANGELOG.md`.
 - **Los Portales son sólidos**: los personajes los rodean, suben por la
   escalera y salen por el arco. El que queda tapado ya no se hunde: sale por
   detrás.
+## 1.38.0.181 - 2026-11-12
+
+- **¡Ya se puede jugar online!** Cada persona en su casa, con su móvil o su
+  ordenador, en la misma partida y a la vez. Da igual que estéis en wifis
+  distintas o con datos.
+- **Cómo se juega**: una persona pulsa «Crear sala» y manda el enlace o el
+  código a sus amigas; ellas pulsan «Unirme a una sala». Quien crea la sala
+  hace de mesa y tiene que tener la app abierta mientras se juega.
+  Cualquiera puede crear la sala.
+- **Cada una ve solo lo suyo**: tu mano y tus Gemas no salen de tu
+  dispositivo y nadie más puede verlas. Las preguntas de las habilidades te
+  llegan solo a ti.
+- Se pueden mezclar personas y autómatas. Si se corta la conexión, vuelves
+  a tu asiento tú sola.
 
 ## 1.37.3.179 - 2026-11-12
 

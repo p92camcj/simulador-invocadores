@@ -396,11 +396,15 @@ aplicar la misma cadena de desempate, no partir de cero.
 
 ## Multijugador por red (una jugadora, un móvil)
 
-Bloque de mayor alcance de todo este documento — **sin fecha ni prioridad
-asignada todavía**, a diferencia de los bloques anteriores que sí son
-trabajo concreto de "ponerse al día". Ya se menciona como dirección a
-futuro en la sección "Future direction" de `CLAUDE.md`; se recoge aquí como
-un bloque más del backlog, no como plan activo:
+**Hecho en 1.38.0 (2026-11-12)**, opción A de la propuesta acordada con el
+propietario: conexión directa entre navegadores (PeerJS/WebRTC, gratis y
+sin servidor propio) en la que el dispositivo que crea la sala hace de mesa
+y manda a cada invitada solo lo que su asiento ve (`js/red/`). Pendiente
+como mejora: que las escenas 2D del modo espectáculo y el rótulo del
+narrador también salgan en el dispositivo de las invitadas (hoy ven los
+cambios con las animaciones de la Mesa o del Escenario y el historial), y
+la opción C (servidor pequeño) si la mesa no puede quedarse abierta o se
+quieren partidas "a ratos". Texto original del bloque:
 
 Cada jugadora usaría su propio móvil en vez de mirar todas a la misma
 pantalla compartida, uniéndose a una "sala" bien por la misma red Wi-Fi o

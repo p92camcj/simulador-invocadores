@@ -4,7 +4,7 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.37.4.180] - 2026-11-13
+## [1.38.1.184] - 2026-11-13
 
 ### Regla
 - **Centinela en un Portal central no protege a nadie** (aclaración de Julio):
@@ -36,6 +36,35 @@ Todas las versiones importantes del simulador de Invocadores.
   figuras de la mano resbalan por el borde de las bases.
 
 ---
+## [1.38.0.181] - 2026-11-12
+
+### Nuevo: jugar online, cada persona en su casa
+- Panel **«🌐 Jugar online»** en la pantalla de inicio: «Crear sala» da un
+  código de 5 letras y un enlace (`?sala=CÓDIGO`) para mandar por WhatsApp;
+  «Unirme a una sala» entra con el código y un nombre. Se puede jugar desde
+  redes distintas (wifi o datos del móvil).
+- Arquitectura (opción A de la propuesta): conexión directa entre
+  navegadores con PeerJS/WebRTC (`vendor/peerjs/`, 1.5.4, MIT; servidor de
+  salas y repetidores TURN gratuitos de PeerJS). El dispositivo que crea la
+  sala hace de mesa: tiene la partida, ejecuta el motor y las autómatas, y
+  manda a cada invitada solo lo que su asiento ve
+  (`sanearPartidaParaAsiento()` en `js/red/sanear.js`). Las invitadas
+  mandan sus acciones y la mesa las ejecuta con las mismas funciones de
+  `actions.js`; las preguntas de las habilidades viajan al dispositivo de
+  quien elige (`picker`/`pickerPortal` en `render.js`, `preguntarJugadora`
+  para el pago con Gema de asterisco y el intercambio del modo Experto),
+  igual que la elección de la Clarividente.
+- Asientos: el primer asiento de 👤 Persona es la mesa y los siguientes, las
+  invitadas por orden de llegada; el resto pueden ser autómatas.
+- Online cada dispositivo ve siempre desde su asiento y su propia mano, sin
+  telón de «pasa el móvil» (`asientoLocal()`, `pantallaPrivada` en
+  `construirVistaMesa()`). Marcador final también en las invitadas.
+- Reconexión: si se corta (o se recarga la página) la invitada vuelve sola
+  a su asiento; al retomar una partida online guardada, la mesa reabre la
+  sala con el mismo código. La versión de la app tiene que coincidir.
+- Pruebas: `tests/red.mjs` (nada oculto sale de la mesa) y partidas
+  completas con Playwright en dos pestañas (`?red=local`, BroadcastChannel)
+  y contra un servidor PeerJS local (`?servidorRed=`).
 
 ## [1.37.3.179] - 2026-11-12
 

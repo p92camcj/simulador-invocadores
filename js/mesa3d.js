@@ -32,6 +32,7 @@ import {
   cancelarSeleccion, ejecutarFinDeTurno,
 } from './actions.js';
 import { salirAlMenu } from './game.js';
+import { asientoLocal, partidaEnLinea, difundirFin } from './red/sala.js';
 import {
   construirVistaMesa, elegirAsientoPropio, claveJugar, claveObjetivo, firmaPortal,
   cambioPortal, pistaTurno, contarHumanas,
@@ -361,8 +362,10 @@ export function renderMesa3D() {
 
   const turno = partida.turn;
   if (partida.players[turno] && partida.players[turno].tipo !== 'auto') ultimaHumana = turno;
-  const asiento = elegirAsientoPropio(partida.players, turno, ultimaHumana);
-  const v = construirVistaMesa(partida, { asientoPropio: asiento });
+  // Partida online: cada dispositivo ve siempre desde su asiento.
+  const local = asientoLocal();
+  const asiento = local ?? elegirAsientoPropio(partida.players, turno, ultimaHumana);
+  const v = construirVistaMesa(partida, { asientoPropio: asiento, pantallaPrivada: local !== null });
 
   const miTurno = v.propio.activa && !v.propio.automata && !v.terminada;
   const puedeJugar = miTurno && !v.jugada;
@@ -604,9 +607,7 @@ function alTocarEscenario(t) {
   }
   const haySel = window.selectedCardIdx !== null && window.selectedCardIdx !== undefined;
   if (haySel && puedeJugarAhora()) {
-    const antes = p.played;
-    jugarEnPortal(destinoDe(clave));
-    if (!antes && !estado.partida.played) mostrarAviso('No puedes jugar esa carta ahí');
+    if (!jugarEnPortal(destinoDe(clave))) mostrarAviso('No puedes jugar esa carta ahí');
     return;
   }
   const op = activables.get(clave);
@@ -628,7 +629,9 @@ function programarLimpieza() {
 function puedeJugarAhora() {
   const p = estado.partida;
   const actual = p.players[p.turn];
+  const local = asientoLocal();
   return !!actual && actual.tipo !== 'auto' && !p.played && !p.juegoTerminado
+    && (local === null || local === p.turn)
     && !window.pickerObjetivoPortal && !document.querySelector('.m-telon');
 }
 
@@ -642,9 +645,7 @@ function jugarEn(dest, clave, rectOrigen) {
   const img = document.querySelector(`[data-mano="${idx}"] .c3d-cara`)?.getAttribute('src') || CARTA_OCULTA_IMG;
   const rect = rectOrigen || document.querySelector(`[data-mano="${idx}"]`)?.getBoundingClientRect();
   vuelo = { dest, clave, rect, src: img, lanzado: false };
-  const antes = estado.partida.played;
-  jugarEnPortal(dest);
-  if (antes || !estado.partida.played) {
+  if (!jugarEnPortal(dest)) {
     vuelo = null;
     mostrarAviso('No puedes jugar esa carta ahí');
     ultimoHtml = '';
@@ -1010,6 +1011,8 @@ export function preguntarMesa(titulo, opciones, responder) {
  * botones "Jugar otra vez" y "Ver la mesa".
  */
 export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
+  // Partida online: el marcador también sale en el dispositivo de cada invitada.
+  difundirFin({ motivo, resultado });
   cerrarHoja();
   document.querySelector('.m-fin')?.remove();
   const { stats, ganadores, motivoDesempate, intercambios = [] } = resultado;
@@ -1226,7 +1229,7 @@ let origenEscenario = null;   // Portal del Escenario desde el que se lanzó la 
 function activarDesde(origen) {
   const [tipo, k] = String(origen).split(':');
   origenEscenario = tipo === 'own' ? `${estado.partida.turn}:${k}` : `n:${k}`;
-  activarHabilidad();
+  activarHabilidad(origen);
   const h = hojaActual;
   if (h?.tipo === 'picker' && h.opciones?.some(o => o.val === origen && !o.disabled)) {
     cerrarHoja();
@@ -1267,7 +1270,9 @@ export function mostrarAviso(texto, { duracion } = {}) {
 export function anunciarTurnoMesa(jugadora, esAutomata) {
   document.querySelector('.m-telon')?.remove();
   const humanas = contarHumanas(estado.partida.players);
-  if (!esAutomata && humanas > 1) {
+  // Online cada una tiene su pantalla: no hay que pasar el móvil.
+  const enLinea = partidaEnLinea();
+  if (!esAutomata && humanas > 1 && !enLinea) {
     const telon = document.createElement('div');
     telon.className = 'm-telon';
     telon.innerHTML = `<div class="m-telon-caja">
@@ -1285,7 +1290,9 @@ export function anunciarTurnoMesa(jugadora, esAutomata) {
   }
   const rotulo = document.createElement('div');
   rotulo.className = 'm-rotulo';
-  rotulo.textContent = esAutomata ? `🤖 Turno de ${jugadora.name}` : `✦ ¡Tu turno, ${jugadora.name}! ✦`;
+  const deOtra = enLinea && estado.partida.players.indexOf(jugadora) !== asientoLocal();
+  rotulo.textContent = esAutomata ? `🤖 Turno de ${jugadora.name}`
+    : deOtra ? `Turno de ${jugadora.name}` : `✦ ¡Tu turno, ${jugadora.name}! ✦`;
   document.body.appendChild(rotulo);
   setTimeout(() => rotulo.remove(), 1800);
   return true;

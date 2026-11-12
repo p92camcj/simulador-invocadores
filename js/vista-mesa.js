@@ -119,12 +119,17 @@ export function estadoInvocacion(partida) {
 
 /**
  * Vista completa de la mesa desde el asiento `asientoPropio`.
+ * Con `pantallaPrivada` (online) ese asiento ve siempre su mano como dueña.
  * Los rivales salen en orden de turno a partir del asiento propio.
  */
-export function construirVistaMesa(partida, { asientoPropio }) {
+export function construirVistaMesa(partida, { asientoPropio, pantallaPrivada = false }) {
   const { players, neutrals, turn } = partida;
   const n = players.length;
-  const duena = veComoDuena(players, asientoPropio, turn);
+  // `pantallaPrivada` (partida online): nadie más mira esta pantalla, así
+  // que la persona ve siempre su carta, también fuera de su turno.
+  const duena = pantallaPrivada
+    ? !!players[asientoPropio] && players[asientoPropio].tipo !== 'auto'
+    : veComoDuena(players, asientoPropio, turn);
   // Al terminar la partida se ponen bocarriba las Gemas de todas.
   const terminada = !!partida.juegoTerminado;
 

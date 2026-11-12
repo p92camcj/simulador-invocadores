@@ -3,6 +3,8 @@ import { $, MODOS_JUEGO } from './utils.js';
 import { initGame, mostrarTablero, retomarPartida } from './game.js';
 import { nombresDisponiblesParaBots } from './bot.js';
 import { leerPartidaGuardada, borrarPartidaGuardada, describirPartidaGuardada } from './partida-guardada.js';
+import { initPanelOnline } from './red/panel-online.js';
+import { asignarAsientos } from './red/sala.js';
 
 /** Aviso "Tienes una partida a medias" del menú de inicio. */
 function pintarPanelRetomar() {
@@ -226,6 +228,7 @@ export function crearJugadoras(asientosPartida) {
  */
 export function initSetup() {
   pintarPanelRetomar();
+  initPanelOnline();
   const guardado = leerMenuGuardado();
   if (!asientos) {
     asientos = normalizarAsientos(guardado?.asientos);
@@ -260,7 +263,15 @@ export function initSetup() {
       numJug.oninput();
       return;
     }
-    window.players = crearJugadoras(asientos.slice(0, n));
+    const jugadoras = crearJugadoras(asientos.slice(0, n));
+    // Sala online abierta: los asientos de persona se reparten entre la
+    // mesa y las invitadas conectadas (js/red/sala.js).
+    const errorSala = asignarAsientos(jugadoras);
+    if (errorSala) {
+      alert(errorSala);
+      return;
+    }
+    window.players = jugadoras;
     window.neutrals = [];
     const eleccion = leerModoElegido();
     window.invocationSet = eleccion.invocationSet;

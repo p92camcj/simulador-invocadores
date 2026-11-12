@@ -16,6 +16,7 @@ import { comprobarFinPorManoVacia } from './motor/acciones.js';
 import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, mostrarFinMesa, preguntarMesa } from './mesa3d.js';
 import { detenerEspectaculo, cuandoTermineEspectaculo } from './espectaculo.js';
 import { guardarPartidaEnCurso, leerPartidaGuardada, borrarPartidaGuardada } from './partida-guardada.js';
+import { preguntarJugadora, alSalirAlMenu, esInvitada, reabrirSalaSiHaceFalta } from './red/sala.js';
 
 // Sube cada vez que se sale al menú: un turno de autómata que estaba
 // esperando su setTimeout no debe jugar en una partida que ya no está.
@@ -147,7 +148,7 @@ export function finalizarPartida(motivo) {
     }
     const propias = sumaGemas(p.gems);
     const deLaAutomata = sumaGemas(partida.automataCentral.gems);
-    preguntarMesa(`${p.name}, tienes la puntuación más baja (💎 ${propias}). ¿Cambias todas tus Gemas por las de la autómata central (💎 ${deLaAutomata})?`, [
+    preguntarJugadora(idx, `${p.name}, tienes la puntuación más baja (💎 ${propias}). ¿Cambias todas tus Gemas por las de la autómata central (💎 ${deLaAutomata})?`, [
       { val: 'si', lbl: `🔄 Cambiar (quedarme con ${deLaAutomata})` },
       { val: 'no', lbl: `Quedarme con las mías (${propias})` },
     ], val => {
@@ -195,6 +196,13 @@ export function mostrarTablero() {
  */
 export function salirAlMenu() {
   const partida = estado.partida;
+  if (esInvitada()) {
+    preguntarMesa('¿Salir de la partida online? Podrás volver a entrar con el mismo código mientras la mesa siga abierta.', [
+      { val: 'salir', lbl: '🚪 Salir' },
+      { val: 'seguir', lbl: 'Seguir jugando' },
+    ], val => { if (val === 'salir') volverAlMenu(); });
+    return;
+  }
   const enCurso = partida.players.length && !partida.juegoTerminado;
   if (!enCurso) {
     volverAlMenu();
@@ -212,6 +220,7 @@ export function salirAlMenu() {
 }
 
 function volverAlMenu() {
+  alSalirAlMenu();
   generacionPartida++;
   detenerEspectaculo();
   reiniciarNarrador();
@@ -228,5 +237,7 @@ export function retomarPartida() {
   cargarPartida(registro.partida);
   mostrarTablero();
   nextTurn();
+  // Partida online: se vuelve a abrir la sala para que vuelvan las demás.
+  reabrirSalaSiHaceFalta();
   return true;
 }

@@ -535,7 +535,7 @@ la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
 - `escenas.js`: `ESCENAS` (escenas de la maqueta), `reproducir(id)`,
   `ponerNombres(nombres)`, `montarEscenario()`, `configurar()`,
   `modoColocar()`, `restablecerPortales()`.
-- (1.37.4) `tablero.js`: `sitioInvocacion()` (circuncentro de los Portales de jugadoras, lejos de los centrales), `ruta()`/`andar()` (rodear bases), `salirPorArco()`; `runa()` de `magia.js` admite cambiar `userData.giro` en marcha.
+- (1.38.1) `tablero.js`: `sitioInvocacion()` (circuncentro de los Portales de jugadoras, lejos de los centrales), `ruta()`/`andar()` (rodear bases), `salirPorArco()`; `runa()` de `magia.js` admite cambiar `userData.giro` en marcha.
 - (1.37.3) `modelos.js`: cada entrada de `HUMANOS` lleva `rasgos` (cara propia, los pinta `texturaCara()`) y
   opciones de cuerpo y ropa (`barriga`, `cuelloAlto`, `capelina`, `tunica.abierta/rayas/gemas`, `mangas.brazal`).
   `ambiente.js`: mar con color por profundidad, destellos (`pintarBrillos()`), espuma y crestas; nubes de tres formas.
@@ -591,7 +591,7 @@ pantalla de inicio, barra de la partida y panel Ambiente).
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
-| `construirVistaMesa(partida, { asientoPropio })` | `función` | Cada carta visible lleva `nombre` (identidad real), `apariencia` (`aspecto \|\| name`, lo que cuenta para la invocación) y, si es un Metamorfo transformado, `ficha` (el personaje de la ficha que tiene encima: se pinta la carta del Metamorfo con un medallón, no la del personaje). Vista completa: invocación activa con el estado de cada personaje requerido, asiento propio (abajo), rivales en orden de turno, Portales centrales, mazo y fase del turno. El asiento propio ve sus cartas "de dueña" solo si es humana y es su turno, o si es la única humana de la partida. Una Clarividente visible oculta la mano entera al resto. Gemas: total exacto solo para quien ve como dueña; el resto, por nivel y las de asterisco reveladas. Con la partida terminada, todas las Gemas de todas salen bocarriba (`gemas.valores`: valor y nivel de cada una) con su total. |
+| `construirVistaMesa(partida, { asientoPropio, pantallaPrivada })` | `función` | Con `pantallaPrivada` (partida online, cada persona con su pantalla) el asiento propio humano ve siempre su mano como dueña, también fuera de su turno. Cada carta visible lleva `nombre` (identidad real), `apariencia` (`aspecto \|\| name`, lo que cuenta para la invocación) y, si es un Metamorfo transformado, `ficha` (el personaje de la ficha que tiene encima: se pinta la carta del Metamorfo con un medallón, no la del personaje). Vista completa: invocación activa con el estado de cada personaje requerido, asiento propio (abajo), rivales en orden de turno, Portales centrales, mazo y fase del turno. El asiento propio ve sus cartas "de dueña" solo si es humana y es su turno, o si es la única humana de la partida. Una Clarividente visible oculta la mano entera al resto. Gemas: total exacto solo para quien ve como dueña; el resto, por nivel y las de asterisco reveladas. Con la partida terminada, todas las Gemas de todas salen bocarriba (`gemas.valores`: valor y nivel de cada una) con su total. |
 | `elegirAsientoPropio(players, turno, ultimaHumana)` | `función` | Qué jugadora va abajo: la activa si es humana; en el turno de una autómata, la última humana (contra autómatas la humana no se mueve). |
 | `contarHumanas(players)` | `función` | Número de jugadoras humanas (decide si hace falta el telón para pasar el móvil). |
 | `estadoInvocacion(partida)` | `función` | Nivel, nombre y estado (`falta` / `esta` / `repetido`) de cada personaje requerido, contado por apariencia como el motor. |
@@ -693,3 +693,54 @@ es el del reglamento, y la web nunca los cambia. Los leen
 |--------|------|-------------|
 | `VARIANTES` | `objeto` | `gemasInicialesNoPuntuan` (las 3 Gemas de partida, marcadas `inicial`, pagan pero no puntúan), `duplicadoDaGema` (cada copia de un requisito duplicado da 1 Gema a su dueña), `metamorfoGratisPropio` (transformarse en un Portal propio no cuesta), `maestroSoloPicaroPropio` (el bonus del Maestro solo lo anula un Pícaro de la misma dueña). |
 | `reiniciarVariantes()` | `función` | Devuelve todas a su valor del reglamento (apagadas). |
+
+---
+
+## js/red/ (juego online)
+**Propósito:** (1.38.0) jugar una partida a la vez desde varios dispositivos,
+cada persona en su casa. Quien crea la sala es la **mesa** (anfitriona): su
+navegador tiene la partida entera, ejecuta el motor y las autómatas, y a
+cada invitada le manda solo lo que su asiento puede ver. Las invitadas
+pintan la Mesa o el Escenario con esa copia y mandan sus acciones; la mesa
+las ejecuta con las mismas funciones de `actions.js` que un toque. Las
+preguntas de las habilidades (`picker`, `pickerPortal`, `preguntarMesa`)
+viajan al dispositivo de quien debe elegir.
+
+### js/red/sanear.js (puro, `tests/red.mjs`)
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `sanearPartidaParaAsiento(partida, asiento)` | `función` | Copia de la partida con todo lo que ese asiento no puede ver tapado (`{ name: null, oculta: true, vis }`): cartas de mano no visibles para él (mismas reglas que `vista-mesa.js`, Clarividente incluida), cartas de los Portales que no son la de arriba bocarriba, el mazo (solo su longitud), valor de las Gemas ajenas y de la autómata central (hasta el final), memoria de las autómatas e `idRed`. No toca la original. |
+
+### js/red/transporte.js
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `abrirSala(codigo, { alConectar, alAviso })` | `función async` | Abre la sala (PeerJS, id `invocadores-sim-<código>`); `alConectar(conexion)` por cada invitada. Falla con `codigoOcupado` si el código está en uso. |
+| `unirseASala(codigo)` | `función async` | Conexión con la mesa. Cada conexión tiene `enviar(obj)`, `alRecibir(f)`, `alCerrar(f)`, `cerrar()`. |
+
+PeerJS (`vendor/peerjs/peerjs.min.js`, 1.5.4, MIT) se carga solo al abrir o
+unirse a una sala; usa el servidor de salas gratuito de PeerJS y sus
+repetidores TURN si la conexión directa no es posible. `?red=local` en la URL
+cambia a `BroadcastChannel` (pestañas del mismo navegador, para probar);
+`?servidorRed=host:puerto`, a un servidor PeerJS propio.
+
+### js/red/sala.js
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `crearSala()` / `cerrarSala()` / `reabrirSalaSiHaceFalta()` | `función` | Anfitriona. Reutiliza el último código (`localStorage['invocadores.salaAnfitriona']`). Al retomar una partida online guardada la sala se reabre sola. |
+| `asignarAsientos(players)` | `función` | Al iniciar con la sala abierta: primer asiento de persona = la mesa; los siguientes, las invitadas por orden de llegada (nombre e `idRed`). Devuelve un texto de error si no cuadran. |
+| `trasRepintar()` | `función` | La llama `render()`: manda a cada invitada su copia saneada si ha cambiado. |
+| `decisorRemoto()` / `pedirRemoto(...)` / `conDecisor(asiento, fn)` / `preguntarJugadora(idx, ...)` | `función` | Enrutado de preguntas y avisos: decide el asiento forzado por `conDecisor` o, si no, el del turno; si es remoto, la pregunta viaja y su respuesta vuelve al mismo callback. |
+| `difundirFin(datos)` / `alSalirAlMenu()` | `función` | Marcador final para todas; aviso de que la mesa vuelve al menú. |
+| `unirse(codigo, nombre)` / `salirDeSala()` | `función` | Invitada. Se reconecta sola si se corta o si se recarga la pestaña (`sessionStorage`). |
+| `enviarJugada` / `enviarActivar` / `enviarFinTurno` | `función` | Invitada: `actions.js` las usa en vez de ejecutar. La jugada se comprueba antes en la copia propia. |
+| `esInvitada()` / `esAnfitriona()` / `partidaEnLinea()` / `asientoLocal()` | `función` | Consultas: `asientoLocal()` fija el asiento de abajo de la mesa en una partida online. |
+
+### js/red/panel-online.js
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `initPanelOnline()` | `función` | Panel `#panelOnline` de la pantalla de inicio: crear sala, unirse (con `?sala=CÓDIGO` en el enlace) y lista de quién está. A la invitada solo le deja ver este panel. |
+
