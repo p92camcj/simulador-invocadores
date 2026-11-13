@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.9.200 - 2026-11-13
+
+- **Arreglado**: en el Escenario, los Portales centrales que nacen en cada
+  invocación parecían vacíos aunque se jugaran personajes en ellos. Las
+  invocaciones siempre se comprobaban bien; lo que fallaba era el dibujo.
+
+---
+
 ## 1.38.8.198 - 2026-11-13
 
 - **Arreglado**: en el Escenario, la partida se quedaba parada justo después

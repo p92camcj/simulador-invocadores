@@ -4,6 +4,19 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.9.200] - 2026-11-13
+
+### Corregido (Escenario)
+- **Los Portales centrales nuevos parecían quedarse siempre vacíos** (desde
+  1.38.7). El Portal creado durante la escena de la invocación
+  (`prepararPortalNuevo()`) no tenía firma de contenido, así que el diff de
+  `aplicar()` (`js/personajes3d/tablero.js`) nunca dibujaba lo que se jugaba
+  en él. El motor sí lo contaba ocupado: las invocaciones eran correctas,
+  solo fallaba el dibujo. Al adoptarlo la vista siguiente se le pone su
+  contenido real (`ponerContenido()`).
+
+---
+
 ## [1.38.8.198] - 2026-11-13
 
 ### Corregido (Escenario)
