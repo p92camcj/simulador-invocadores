@@ -460,7 +460,7 @@ function pintarEstados(v) {
 // dueña (rótulo con el total) y el de las Gemas de asterisco reveladas, todas.
 
 const gemasAsiento = new Map();   // idx → { g, firma, piezas, rotulo }
-const TIPO_GEMA = { unitaria: 'azul', C: 'C', B: 'B', A: 'A', '*': 'A' };
+const TIPO_GEMA = { unitaria: 'azul', C: 'C', B: 'B', A: 'A', '*': '*' };
 const unidadesPrevias = new Map();   // idx → Gemas de 1 que tenía (para saber si la Entusiasta ha regalado una)
 function actualizarGemas(v) {
   const vistos = new Set();
@@ -1038,7 +1038,7 @@ async function invocar(an, v, nuevos = []) {
     if (Math.random() < 0.35) chispas(R.clone().add(V((Math.random() - 0.5) * 9, ALTO_CR + 1 + Math.random() * 2, (Math.random() - 0.5) * 6)), { n: 1, color: tono2, color2: 0xffffff, vel: 0.05, grav: 0.5, vida: 2.2, tam: 0.1 }); });
   posar(cr, 'alzar', 3); await espera(1.2);
   // Sus Gemas orbitan a su alrededor…
-  const tipo = INFO[nombre].gema ?? (an.nivel === '*' ? 'A' : an.nivel);
+  const tipo = INFO[nombre].gema ?? an.nivel;
   const entregas = [];
   for (const r of an.recompensas ?? []) {
     if (!(r.gemas > 0)) continue;
