@@ -4,6 +4,22 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.7.196] - 2026-11-13
+
+### Corregido (Escenario)
+- **El Portal central nuevo nace dentro de la escena de la invocación, como
+  en la escena 7a de la maqueta.** El motor añade ese Portal justo después
+  del evento de invocación, así que el Escenario no lo tenía y lo alzaba
+  más tarde y aparte, mientras el círculo se apagaba donde estaba.
+  `prepararPortalNuevo()` (`js/personajes3d/tablero.js`) lo crea ya en su
+  sitio (`prevision`, que también aparta a los otros centrales para dejarle
+  hueco); la vista siguiente lo adopta (`provisional`). El círculo viaja
+  zigzagueando hasta el hueco, encogiéndose y dejando polvo; golpea, la
+  tierra tiembla y el Portal emerge con polvo y piedras. Cámara baja y
+  cercana, y todo al ritmo de la maqueta (no depende del deslizador).
+
+---
+
 ## [1.38.6.194] - 2026-11-13
 
 ### Objetivo principal: sin invocaciones, nadie gana (Julio)

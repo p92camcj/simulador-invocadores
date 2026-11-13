@@ -6,6 +6,15 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.7.196 - 2026-11-13
+
+- **En el Escenario, el Portal nuevo vuelve a nacer como en la maqueta**:
+  tras repartir las Gemas, el círculo de luz recorre la mesa buscando un
+  hueco libre, los Portales centrales le hacen sitio y allí emerge el Portal
+  nuevo con un temblor de tierra, todo visto de cerca.
+
+---
+
 ## 1.38.6.194 - 2026-11-13
 
 - **Si no se completa ninguna invocación, nadie gana.** Invocadores es
