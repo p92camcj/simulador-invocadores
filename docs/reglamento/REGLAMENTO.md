@@ -1,6 +1,6 @@
 # Reglamento — Invocadores
 
-> **Última actualización:** 2026-11-13 00:13 (Europe/Madrid)
+> **Última actualización:** 2026-11-13 08:41 (Europe/Madrid)
 >
 > Este documento es la **fuente de verdad** del reglamento del juego de mesa
 > «Invocadores», transcrito y organizado a partir del PDF de reglas más
@@ -151,6 +151,11 @@ ocupados.
 Tras una Invocación exitosa, cada jugador con un Personaje requerido visible
 y no duplicado en su Portal recibe una Gema de esa Invocación; las Gemas de
 Personajes duplicados se pierden y, tras el reparto, siempre sobran Gemas.
+
+Al tratarse de un juego semicooperativo, el objetivo es realizar la mayor
+cantidad de invocaciones posible, aunque la victoria es para quien tenga más
+Gemas. Si no se realiza ninguna invocación, no se considera cumplido el
+objetivo principal del juego.
 
 ---
 

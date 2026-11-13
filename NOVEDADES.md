@@ -6,6 +6,14 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.6.194 - 2026-11-13
+
+- **Si no se completa ninguna invocación, nadie gana.** Invocadores es
+  semicooperativo: el objetivo es invocar todo lo posible y, dentro de eso,
+  gana quien tenga más Gemas. Si la partida acaba sin ninguna invocación, el
+  marcador final lo indica y no hay ganadora. El reglamento lo explica en
+  "Objetivo del juego".
+
 ## 1.38.5.192 - 2026-11-13
 
 - **Las autómatas ahora cooperan para invocar.** Entienden que el objetivo

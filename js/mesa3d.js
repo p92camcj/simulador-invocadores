@@ -1018,8 +1018,12 @@ export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
   const { stats, ganadores, motivoDesempate, intercambios = [] } = resultado;
   const ids = new Set(ganadores.map(g => g.idx));
   const ganaAutomata = ganadores.length === 1 && ganadores[0].esAutomataCentral;
-  const titulo = ganaAutomata ? '¡Gana la autómata central!' : ganadores.length === 1 ? `¡Gana ${ganadores[0].nombre}!` : '¡Empate!';
-  let sub = ganadores.length === 1
+  const sinObjetivo = resultado.objetivoCumplido === false;
+  const titulo = sinObjetivo ? 'Nadie gana'
+    : ganaAutomata ? '¡Gana la autómata central!' : ganadores.length === 1 ? `¡Gana ${ganadores[0].nombre}!` : '¡Empate!';
+  let sub = sinObjetivo
+    ? 'No se ha completado ninguna invocación: no se ha cumplido el objetivo principal del juego. ¡A intentarlo otra vez!'
+    : ganadores.length === 1
     ? (motivoDesempate ? `Desempate: ${motivoDesempate}` : '')
     : `Comparten la victoria ${ganadores.map(g => g.nombre).join(', ')}${motivoDesempate ? ` (${motivoDesempate})` : ''}`;
   if (ganaAutomata) sub = `Todas las jugadoras pierden. ${sub}`.trim();
@@ -1028,7 +1032,7 @@ export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
   }
   let confeti = '';
   const colores = ['#ffe08b', '#ff9ad6', '#7fd8ff', '#b48cff', '#5dff9a'];
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < (sinObjetivo ? 0 : 40); i++) {
     confeti += `<i style="left:${(Math.random() * 100).toFixed(1)}%;background:${colores[i % colores.length]};`
       + `animation-delay:${(Math.random() * 1.6).toFixed(2)}s;animation-duration:${(2.4 + Math.random() * 2).toFixed(2)}s;--r:${Math.floor(Math.random() * 720)}deg"></i>`;
   }
@@ -1040,7 +1044,7 @@ export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
   fin.className = 'm-fin';
   fin.innerHTML = `<div class="m-fin-confeti" aria-hidden="true">${confeti}</div>
     <div class="m-fin-caja" role="dialog" aria-label="Final de la partida">
-      <span class="m-fin-corona" aria-hidden="true">👑</span>
+      <span class="m-fin-corona" aria-hidden="true">${sinObjetivo ? '🌫️' : '👑'}</span>
       <p class="m-fin-motivo">${escapeHtml(motivo)}</p>
       <h2>${escapeHtml(titulo)}</h2>
       ${sub ? `<p class="m-fin-sub">${escapeHtml(sub)}</p>` : ''}
@@ -1058,7 +1062,7 @@ export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
     }
   });
   document.body.appendChild(fin);
-  navigator.vibrate?.([40, 80, 40, 80, 120]);
+  if (!sinObjetivo) navigator.vibrate?.([40, 80, 40, 80, 120]);
 }
 
 function abrirMenu() {
