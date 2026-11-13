@@ -208,7 +208,11 @@ function disponer(v) {
   return d;
 }
 
+// Mientras una invocación prepara el sitio del Portal central nuevo (que el
+// motor añade justo después), los centrales ya se colocan donde irán.
+let prevision = null;   // clave → posición
 function posPortal(clave) {
+  if (prevision?.has(clave)) return prevision.get(clave).clone();
   const d = disp?.portales.get(clave); if (!d) return null;
   const o = desplaz[d.rel];
   return o ? d.pos.clone().add(V(o[0], 0, o[1])) : d.pos.clone();
@@ -1106,23 +1110,68 @@ async function invocar(an, v, nuevos = []) {
   parar(); retirar(cr);
   const adios = sitioCr.clone().setY(y0 + 5);
   destello(adios, 0xffffff, 6, 0.9).catch(() => {}); chispas(adios, { n: 70, color: tono, color2: tono2, vel: 2.2, vida: 1.6, grav: 1.2, tam: 0.18 }); onda(R, tono, 2, 44, 3); fogonazo(0.25);
-  // Como en la maqueta: el gran círculo deja su marca, se encoge hasta el
-  // tamaño de una runa de Portal mientras viaja a su sitio (girando cada vez
-  // más despacio y perdiendo brillo) y el Portal nuevo se alza a su alrededor.
-  const nuevo = nuevos[0], g0 = gran.userData.giro, op0 = gran.material.opacity;
-  const de = gran.position.clone(), dest = (nuevo && posPortal(claveDe(nuevo))) ?? R.clone();
-  dest.y = 0.04;
-  if (nuevo) enfocar([R, dest, ...ps.map(p => p.g.position)], { y: 1.4, polar: 1.1 });
-  S.cargar(160, 2.4);
-  await tw(2.6, (k, kl) => {
-    gran.position.lerpVectors(de, dest, k); gran.scale.setScalar(mezcla(5.4, 1.03, k));
-    gran.userData.giro = mezcla(g0, 0.12, kl); gran.material.opacity = op0 * (1 - 0.35 * kl);
-    if (Math.random() < 0.6) { const an = Math.random() * 6.28, rr = gran.scale.x; chispas(gran.position.clone().add(V(Math.cos(an) * rr, 0.05, Math.sin(an) * rr)), { n: 1, color: tono, vel: 0.1, dir: V(0, 0.8, 0), vida: 0.8 }); }
-  });
-  S.impacto(523); onda(dest, tono, 1, 30, 1.6); await espera(0.7);
-  if (nuevo) await alzarPortal(nuevo, gran); else gran.userData.apagar(0.8);
+  // Como en la escena 7a de la maqueta: el gran círculo deja su marca y,
+  // mientras se encoge hasta el tamaño de una runa, se desliza por el suelo
+  // buscando un hueco libre de la mesa (el sitio del Portal nuevo); allí
+  // golpea, la tierra tiembla y el Portal emerge a su alrededor. Todo a ritmo
+  // de maqueta: el suelo y las runas no dependen de la velocidad de los
+  // personajes (gusto de Julio).
+  const nuevo = nuevos[0] ?? prepararPortalNuevo();
+  const velPersonajes = mundo.velocidad; mundo.velocidad = 1;
+  try {
+    const g0 = gran.userData.giro, op0 = gran.material.opacity;
+    const de = gran.position.clone(), dest = (nuevo && posPortal(claveDe(nuevo))) ?? R.clone();
+    dest.y = 0.04;
+    // Plano cercano y bajo sobre el recorrido del círculo, como en la maqueta.
+    if (nuevo) enfocar([de, dest], { y: 1.2, polar: 1.12, ancho: 6, alto: 4.6 });
+    S.cargar(160, 2.2);
+    // El círculo no va en línea recta: titubea a un lado y a otro, como si
+    // buscara dónde no hay Portales, y se va encogiendo por el camino.
+    const lado = V(-(dest.z - de.z), 0, dest.x - de.x); if (lado.lengthSq() > 1e-6) lado.normalize();
+    const rastro = cadaFrame(() => { if (Math.random() < 0.35) humo(gran.position, { n: 1, color: 0x9a94a8, radio: gran.scale.x * 0.5 }); });
+    try {
+      await tw(2.6, (k, kl) => {
+        gran.position.lerpVectors(de, dest, k).addScaledVector(lado, Math.sin(kl * Math.PI * 2) * 1.1 * (1 - kl));
+        gran.position.y = 0.04;
+        gran.scale.setScalar(mezcla(5.4, 1.03, k));
+        gran.userData.giro = mezcla(g0, 0.12, kl); gran.material.opacity = op0 * (1 - 0.35 * kl);
+        if (Math.random() < 0.6) { const an = Math.random() * 6.28, rr = gran.scale.x; chispas(gran.position.clone().add(V(Math.cos(an) * rr, 0.05, Math.sin(an) * rr)), { n: 1, color: tono, vel: 0.1, dir: V(0, 0.8, 0), vida: 0.8 }); }
+      });
+    } finally { rastro(); }
+    gran.position.copy(dest);
+    // Golpe en el sitio elegido y onda por el suelo; luego emerge el Portal.
+    S.impacto(523); onda(dest, tono, 1, 30, 1.6); temblar(0.15); await espera(0.7);
+    if (nuevo) {
+      enfocar([dest], { y: 1.4, polar: 1.12, ancho: 6, alto: 4.6 });
+      await alzarPortal(nuevo, gran);
+      // Se deja ver el Portal recién nacido antes de volver a la mesa.
+      await espera(1.2);
+    } else gran.userData.apagar(0.8);
+  } finally { mundo.velocidad = velPersonajes; }
   ps.forEach(p => encender(p.g, 0.6));
   soltarFoco();
+}
+
+/**
+ * El motor añade el Portal central nuevo justo después de la invocación, así
+ * que la vista que llega con ella aún no lo tiene. Para que nazca dentro de la
+ * escena (como en la maqueta) se crea ya, en el sitio que tendrá, y los otros
+ * centrales se apartan para dejarle hueco. La vista siguiente lo adopta.
+ */
+function prepararPortalNuevo() {
+  if (!disp) return null;
+  const nc = [...disp.portales.keys()].filter(k => k.startsWith('n:')).length, clave = `n:${nc}`;
+  if (portales.get(clave)?.g.visible) return null;
+  prevision = new Map();
+  for (let c = 0; c <= nc; c++) {
+    const o = desplaz[`${disp.n}|n:${c}`];
+    prevision.set(`n:${c}`, V((c - nc / 2) * SEP + (o?.[0] ?? 0), 0, (disp.n === 3 ? -0.4 : 0) + (o?.[1] ?? 0)));
+  }
+  const p = asegurarPortal(clave);
+  p.g.visible = false; p.g.position.copy(prevision.get(clave)); p.g.rotation.y = 0; p.g.scale.set(1, 0.01, 1);
+  p.nuevo = true; p.provisional = true; ponerNombre(p, null);
+  if (p.actor) { retirar(p.actor); p.actor = null; }
+  return p;
 }
 
 /** Un Portal nuevo (tras una invocación) se alza desde debajo de la mesa; la runa que lo trajo se queda en su tarima. */
@@ -1133,9 +1182,10 @@ async function alzarPortal(p, runaGuia = null) {
   const x = p.g.position.x, z = p.g.position.z;
   if (p.actor) p.actor.visible = true;
   encender(p.g, 0.05); S.piedra?.();
-  const temblor = cadaFrame(() => { mundo.cam.temblor = Math.max(mundo.cam.temblor, 0.04); if (Math.random() < 0.5) humo(V(x, 0, z), { n: 1, color: 0x9a94a8, radio: 1.3 }); });
+  // Temblor de tierra continuo mientras sube la piedra, con polvo alrededor.
+  const temblor = cadaFrame(() => { mundo.cam.temblor = Math.max(mundo.cam.temblor, 0.05); if (Math.random() < 0.6) humo(V(x, 0, z), { n: 1, color: 0x9a94a8, radio: 1.3 }); if (Math.random() < 0.15) chispas(V(x + (Math.random() - 0.5) * 2.4, 0.1, z + (Math.random() - 0.5) * 2.4), { n: 2, color: 0x8a7a66, vel: 0.6, dir: V(0, 1.5, 0), vida: 0.7, grav: 3, tam: 0.12 }); });
   try {
-    await tw(2.4, k => { p.g.position.set(x, mezcla(-3.2, 0, k), z); if (runaGuia) runaGuia.position.y = Math.max(0.04, p.g.position.y + ALTURA_TARIMA + 0.02); }, sale);
+    await tw(2.6, k => { p.g.position.set(x, mezcla(-3.2, 0, k), z); if (runaGuia) runaGuia.position.y = Math.max(0.04, p.g.position.y + ALTURA_TARIMA + 0.02); }, sale);
   } finally { temblor(); p.g.position.y = 0; p.levita = false; }
   S.golpeSuelo(); temblar(0.3); encender(p.g, 1.6); S.runa(9); onda(V(x, 0, z), p.g.userData.tono, 1.2, 40, 2.4);
   runaGuia?.userData.apagar(1.2);
@@ -1276,7 +1326,7 @@ function emparejar(viejos, nuevos, preferido) {
 
 async function aplicar(v, an) {
   const antes = disp;
-  disp = disponer(v);
+  disp = disponer(v); prevision = null;
   if (!antes || antes.n !== disp.n) encuadrar(); else encuadrar();
   if (mazo) mazo.g.position.copy(disp.mazo);
   pintarEstados(v);
@@ -1285,6 +1335,7 @@ async function aplicar(v, an) {
   const nuevosPortales = [];
   disp.portales.forEach((d, clave) => {
     const existia = portales.has(clave) && portales.get(clave).g.visible;
+    if (portales.has(clave)) portales.get(clave).provisional = false;
     const p = asegurarPortal(clave);
     ponerNombre(p, d.nombre);
     if (!existia) {
@@ -1293,7 +1344,7 @@ async function aplicar(v, an) {
       nuevosPortales.push(p);
     }
   });
-  for (const [clave, p] of portales) if (p.g.visible && !disp.portales.has(clave)) { p.g.visible = false; retirar(p.actor); p.actor = null; }
+  for (const [clave, p] of portales) if (p.g.visible && !disp.portales.has(clave) && !p.provisional) { p.g.visible = false; retirar(p.actor); p.actor = null; }
 
   // 2. Manos: qué figuras se han ido (hacia un Portal, normalmente), cuáles quedan y cuáles llegan.
   const viajeros = [], llegan = [], morfos = [];

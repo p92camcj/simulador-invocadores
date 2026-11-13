@@ -539,6 +539,7 @@ la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
 - `escenas.js`: `ESCENAS` (escenas de la maqueta), `reproducir(id)`,
   `ponerNombres(nombres)`, `montarEscenario()`, `configurar()`,
   `modoColocar()`, `restablecerPortales()`.
+- (1.38.7) `tablero.js`: `prepararPortalNuevo()` crea el Portal central nuevo durante la invocación (el motor lo añade justo después); `prevision` adelanta las posiciones de los centrales y `posPortal()` la consulta primero.
 - (1.38.2) `modelos.js`: criaturas rehechas sobre un cuerpo común (`criatura()`) más los adornos propios de cada una (`ADORNOS_CRIATURA`: Cirelia, Baelorith, Aelgorth y las nuevas Caisis, Brose, Aures y Madain; `velos()`, `chispasFlotantes()`, opción `plano` de material facetado). `tablero.js`: `CRIATURA_POR_NIVEL['*']` = Madain; al cerrar la invocación la gran runa viaja encogiendo hasta el sitio del Portal nuevo, que se alza allí (`alzarPortal(p, runaGuia)`, como en la maqueta). `portales.js`: `pergamino()` a doble resolución y con tamaño que compensa la distancia de la cámara. `mundo.js`: suavizado siempre y resolución hasta 2× en calidad baja.
 - (1.38.1) `tablero.js`: `sitioInvocacion()` (circuncentro de los Portales de jugadoras, lejos de los centrales), `ruta()`/`andar()` (rodear bases), `salirPorArco()`; `runa()` de `magia.js` admite cambiar `userData.giro` en marcha.
 - (1.37.3) `modelos.js`: cada entrada de `HUMANOS` lleva `rasgos` (cara propia, los pinta `texturaCara()`) y
