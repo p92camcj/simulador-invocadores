@@ -4,6 +4,15 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.3.188] - 2026-11-13
+
+### Corregido (Escenario)
+- Las Gemas de Madain que cada asiento tiene delante de sus Portales se
+  pintaban como Gemas de la invocación A. `TIPO_GEMA` (`js/personajes3d/tablero.js`)
+  usa ahora el tipo `'*'` (Gema blanca de `efectos.js`), igual que la
+  entrega de Gemas al invocar. Revisado de paso: las reglas de Madain ya
+  estaban completas en el motor desde 1.34.0.
+
 ## [1.38.2.186] - 2026-11-13
 
 ### Mejorado (Escenario)

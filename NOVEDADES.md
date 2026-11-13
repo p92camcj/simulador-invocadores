@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.3.188 - 2026-11-13
+
+- **Las Gemas de Madain se ven con su propio color** en el modo Escenario,
+  también las que cada jugadora tiene delante. Antes parecían Gemas de la
+  invocación A.
+
 ## 1.38.2.186 - 2026-11-13
 
 - **Las criaturas de las invocaciones se parecen mucho más a sus cartas**:
