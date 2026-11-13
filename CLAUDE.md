@@ -421,7 +421,9 @@ in `nextTurn()`.
   `render.js`: a card's face is only shown if it is public on the table.
   Art comes from the original SVGs in `assets/personajes/` (full-body
   characters, the Portal card, and the creatures for Cirelia/Baelorith/
-  Aelgorth), turned into `assets/figuras/*.webp`, `assets/invocaciones/*.webp`
+  Aelgorth; Madain's comes from Julio's raster illustration
+  `assets/personajes/madain-original.jpg`, cut out from its white
+  background into `assets/invocaciones/madain.webp`), turned into `assets/figuras/*.webp`, `assets/invocaciones/*.webp`
   and `assets/portal.jpg` by `node tools/rasterizar_svg.cjs && python3
   tools/generar_figuras.py` (re-run both if the SVGs change; `build/` is
   ignored) — the project owner explicitly asked not to invent new

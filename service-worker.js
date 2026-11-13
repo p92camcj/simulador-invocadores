@@ -109,6 +109,7 @@ const urlsToCache = [
   './assets/invocaciones/cirelia.webp',
   './assets/invocaciones/baelorith.webp',
   './assets/invocaciones/aelgorth.webp',
+  './assets/invocaciones/madain.webp',
   './assets/figuras/maestro.webp',
   './assets/figuras/clarividente.webp',
   './assets/figuras/ocultista.webp',

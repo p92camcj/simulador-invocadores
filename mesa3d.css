@@ -192,7 +192,7 @@ body.vista-mesa.mesa-en-partida #mesa3d { display: flex; }
 .m-invocacion.nivel-C { box-shadow: inset 0 0 0 1px #f2c94c88, 0 0 14px #f2c94c33; }
 .m-invocacion.nivel-B { box-shadow: inset 0 0 0 1px #e0533a88, 0 0 14px #e0533a33; }
 .m-invocacion.nivel-A { box-shadow: inset 0 0 0 1px #9b59d088, 0 0 14px #9b59d033; }
-.m-invocacion.nivel-X { box-shadow: inset 0 0 0 1px #3fe0c588, 0 0 14px #3fe0c533; }
+.m-invocacion.nivel-X { box-shadow: inset 0 0 0 1px #ff6ec788, 0 0 14px #3a7bff44; }
 /* Modo Experto: Gemas de la autómata central sobre sus Portales */
 .m-automata-central { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
   margin: 2px auto 6px; padding: 4px 10px; border-radius: 999px; width: fit-content;
@@ -260,7 +260,7 @@ body.vista-mesa.mesa-en-partida #mesa3d { display: flex; }
 .m-gema--c { background: #f2c94c; color: #f2c94c; }
 .m-gema--b { background: #e0533a; color: #e0533a; }
 .m-gema--a { background: #9b59d0; color: #9b59d0; }
-.m-gema--x { background: #3fe0c5; color: #3fe0c5; }
+.m-gema--x { background: linear-gradient(135deg, #3a7bff 50%, #ff6ec7 50%); color: #b98cff; }  /* Madain: mitad azul, mitad rosa */
 
 /* Escena 3D: la mesa en perspectiva */
 .m-escena { flex: 1; min-height: 0; perspective: 900px; perspective-origin: 50% -10%;

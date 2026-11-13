@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.4.190 - 2026-11-13
+
+- **Madain ya tiene su ilustración.** Aparece al consultar la invocación final
+  y cuando se completa, en vez de la estrella provisional.
+- **Nuevo Madain en el Escenario**, hecho a partir de esa ilustración: alas
+  de plumas de colores, cabeza de luz con halo, gema en el pecho y gemas
+  flotando sobre la cabeza.
+- **Las Gemas de Madain son mitad azules y mitad rosas**, en la Mesa y en el
+  Escenario.
+
 ## 1.38.3.188 - 2026-11-13
 
 - **Las Gemas de Madain se ven con su propio color** en el modo Escenario,
