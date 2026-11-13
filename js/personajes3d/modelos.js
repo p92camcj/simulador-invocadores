@@ -487,6 +487,20 @@ function texturaArcoiris() {
   x.fillStyle = g; x.fillRect(0, 0, 8, 256);
   texArcoiris = new THREE.CanvasTexture(cv); texArcoiris.colorSpace = THREE.SRGBColorSpace; return texArcoiris;
 }
+/** Piel de Madain: iridiscente (azul abajo, rosa, naranja arriba) con vetas doradas. */
+const texMadain = {};
+function texturaMadain(parte) {
+  if (texMadain[parte]) return texMadain[parte];
+  const [cv, x] = lienzo(64, 256), g = x.createLinearGradient(0, 256, 0, 0);
+  (parte === 'brazo' ? [0xff9a6a, 0x3ad8c0, 0x3aa0ff, 0x5a8aff] : [0x5aa0ff, 0xff6ad8, 0xff8a5a, 0xffb84a, 0x5a9aff])
+    .forEach((c, i, a) => g.addColorStop(i / (a.length - 1), hex(c)));
+  x.fillStyle = g; x.fillRect(0, 0, 64, 256);
+  x.strokeStyle = 'rgba(255,214,110,0.95)'; x.lineWidth = 2.2;
+  for (let i = -2; i < 9; i++) { x.beginPath(); x.moveTo(0, i * 34); x.quadraticCurveTo(32, i * 34 + 22, 64, i * 34); x.stroke(); }
+  x.strokeStyle = 'rgba(255,214,110,0.6)'; x.lineWidth = 1.4;
+  for (const px of [16, 48]) { x.beginPath(); x.moveTo(px, 0); x.bezierCurveTo(px + 10, 90, px - 10, 170, px, 256); x.stroke(); }
+  return (texMadain[parte] = aTextura(cv));
+}
 /** Pétalo o hoja: elipsoide aplanado y apuntado (largo en Y desde su base). */
 const PETALO = (() => { const g = new THREE.SphereGeometry(1, 10, 8); const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = 1 - Math.max(0, y) * 0.75; p.setXYZ(i, p.getX(i) * k, (y + 1) / 2, p.getZ(i) * k); } g.computeVertexNormals(); return g; })();
@@ -618,21 +632,53 @@ const ADORNOS_CRIATURA = {
     pieza(tronco, CRISTAL, claroM, 0, 0.45, 0.16, 0.06, 0.16, 0.03);
     chispasFlotantes(m, [0xd8c8ff, 0x8a6ae8], 12, { tam: 0.045 });
   },
-  // Madain: cabeza de luz blanca, cuerpo y alas de arcoíris y gemas en arco.
-  'Madain'(m, p, { tronco, cab }) {
-    pieza(cab, ESF, m.M(0xffffff, { luz: true, alfa: 0.3, aditivo: true }), 0, 0.16, 0, 0.2, 0.26, 0.2);
-    pieza(cab, ESF, m.M(0xfff0ff, { luz: true, alfa: 0.18, aditivo: true }), 0, 0.16, 0, 0.32, 0.38, 0.3);
-    pieza(tronco, CRISTAL, m.M(0xffffff, { luz: true }), 0, 0.5, 0.17, 0.08, 0.18, 0.03);
-    pieza(tronco, CRISTAL, m.M(0xffe03a, { emisivo: 0xff9a2a, brillo: 0.8, plano: true }), 0, 0.5, 0.15, 0.11, 0.24, 0.04);
-    // Alas: bandas de arcoíris que caen desde los hombros abriéndose hasta el suelo.
-    // Cada banda cuelga del hombro de cara al frente y se abre hacia fuera: de cerca violeta, por fuera roja.
-    for (const s of [1, -1]) [...ARCOIRIS].reverse().forEach((c, i) => {
-      const t = tela(tronco, m.M(c, { luz: true, alfa: 0.88, doble: true }), 0.22, 3.0 - i * 0.08, { sx: 2, sy: 12, amp: 0.12, vel: 1.1, abre: 0.5, curva: 0.06, empuje: 0 });
-      t.position.set(s * (0.24 + i * 0.07), 0.98 + i * 0.02, -0.12 - i * 0.03); t.rotation.set(-0.12, 0, s * (0.12 + i * 0.13)); t.renderOrder = 9; m.art.telas.push(t);
-    });
-    ARCOIRIS.concat([0xffffff]).forEach((c, i) => { const an = (i / 6 - 0.5) * 2.4;
-      pieza(cab, CRISTAL, m.M(c, { luz: true }), Math.sin(an) * 0.62, 0.3 + Math.cos(an) * 0.55, -0.05, 0.05, 0.1, 0.03); });
-    chispasFlotantes(m, ARCOIRIS, 12, { tam: 0.04 });
+  // Madain (según su ilustración): cabeza de luz con halo de rayos, cuerpo
+  // iridiscente con vetas doradas, gema de arcoíris en el pecho, grandes alas
+  // de plumas (frías a un lado, cálidas al otro), gemas en arco sobre la
+  // cabeza y una estela de bruma turquesa bajo los pies.
+  'Madain'(m, p, { tronco, cab, cuerpoM }) {
+    const { M, art } = m;
+    // Cuerpo y brazos con su textura pintada (sustituye al arcoíris liso).
+    const pielM = M(0xffffff, { mapa: texturaMadain('cuerpo'), relieve: 0, emisivo: 0x5a4a5a, brillo: 0.8 });
+    const brazoM = M(0xffffff, { mapa: texturaMadain('brazo'), relieve: 0, emisivo: 0x4a5a5a, brillo: 0.8 });
+    tronco.traverse(o => { if (o.isMesh && o.material === cuerpoM) o.material = pielM; });
+    for (const l of ['I', 'D']) art['brazo' + l].traverse(o => { if (o.isMesh && (o.material === pielM || o.material === cuerpoM)) o.material = brazoM; });
+    // Cabeza de luz: resplandor, halo fino y rayos.
+    pieza(cab, ESF, M(0xfff4c8, { luz: true, alfa: 0.35, aditivo: true }), 0, 0.16, 0, 0.22, 0.28, 0.22);
+    pieza(cab, ESF, M(0xffe9a0, { luz: true, alfa: 0.16, aditivo: true }), 0, 0.16, 0, 0.36, 0.42, 0.34);
+    const aro = pieza(cab, new THREE.TorusGeometry(0.34, 0.012, 5, 40), M(0xfff0c0, { luz: true, alfa: 0.9 }), 0, 0.17, -0.06); art.halo = aro;
+    for (let i = 0; i < 10; i++) { const an = i / 10 * 6.283; const r = pieza(aro, CONO(0.012, i % 2 ? 0.14 : 0.26, 4), M(0xfff0c0, { luz: true, alfa: 0.7 }), Math.cos(an) * 0.42, Math.sin(an) * 0.42, 0); r.rotation.z = an - Math.PI / 2; }
+    // Gema de arcoíris en el pecho, con su brillo.
+    pieza(tronco, CRISTAL, M(0xffffff, { mapa: texturaArcoiris(), relieve: 0, emisivo: 0xb0a0c0, brillo: 0.9, plano: true }), 0, 0.5, 0.16, 0.09, 0.16, 0.04);
+    pieza(tronco, ESF, M(0xffffff, { luz: true, alfa: 0.12, aditivo: true }), 0, 0.5, 0.17, 0.12, 0.18, 0.05);
+    // Alas de plumas desde la espalda: borde de ataque hacia arriba y afuera,
+    // remeras largas que caen hasta las rodillas y coberteras encima.
+    for (const s of [1, -1]) {
+      const fria = s < 0;   // la de la izquierda de quien la mira es la fría
+      const pal = fria ? [0x5a4ad8, 0x6a5af0, 0x3a7ae8, 0x3ab0e0, 0x3ad0a0] : [0xd8303a, 0xe8502a, 0xf07a2a, 0xf8a03a, 0xffc84a];
+      const borde = fria ? 0x6ae0a0 : 0xffd060;
+      const ala = pivote(tronco, s * 0.16, 0.86, -0.16); ala.rotation.y = s * 0.18; art['ala' + (s > 0 ? 'D' : 'I')] = ala;
+      const mat = c => M(c, { emisivo: c, brillo: 0.45, doble: true });
+      const brazoAla = 0.95, ang = 0.95, mu = new THREE.Vector3(s * Math.sin(ang) * brazoAla, Math.cos(ang) * brazoAla, 0);
+      pieza(ala, PETALO, mat(borde), 0, 0, 0, 0.1, brazoAla, 0.05).rotation.z = -s * ang;
+      // Remeras: de la muñeca (largas, hacia fuera) al hombro (más cortas, rectas abajo).
+      for (let i = 0; i < 13; i++) { const t = i / 12, q = mu.clone().multiplyScalar(1 - t * 0.85);
+        const f = pieza(ala, PETALO, mat(pal[Math.min(pal.length - 1, Math.floor(t * pal.length))]), q.x, q.y, -0.02 - i * 0.004, 0.12, 2.75 - t * 1.2, 0.025);
+        f.rotation.z = -s * (2.45 + t * 0.62); }
+      // Coberteras: más cortas y claras, por encima de las remeras.
+      for (let i = 0; i < 9; i++) { const t = i / 8, q = mu.clone().multiplyScalar(1 - t * 0.8);
+        const f = pieza(ala, PETALO, mat(i % 2 ? borde : pal[pal.length - 1 - Math.floor(t * 2)]), q.x, q.y, 0.01, 0.13, 0.95 - t * 0.3, 0.025);
+        f.rotation.z = -s * (2.35 + t * 0.7); }
+      // Plumitas del borde superior, hacia arriba.
+      for (let i = 0; i < 4; i++) { const q = mu.clone().multiplyScalar(0.55 + i * 0.15);
+        pieza(ala, PETALO, mat(borde), q.x, q.y, 0.015, 0.08, 0.3 + i * 0.05, 0.02).rotation.z = -s * (0.4 + i * 0.25); }
+    }
+    // Gemas de colores en arco sobre la cabeza, como en su ilustración.
+    [0x9a5aff, 0x3a9aff, 0xff7a2a, 0xffa53a, 0x4ad86a, 0xff6a8a, 0xff4a7a].forEach((c, i) => { const an = (i / 6 - 0.5) * 2.5;
+      const g = pieza(cab, CRISTAL, M(c, { luz: true }), Math.sin(an) * 0.78, 0.35 + Math.cos(an) * 0.62, -0.08, 0.05, 0.11, 0.03); g.userData.gira = 0.4; });
+    // Bruma turquesa bajo los pies.
+    for (let i = 0; i < 3; i++) pieza(tronco, ESF, M(0x8ae8ff, { luz: true, alfa: 0.22 - i * 0.05, aditivo: true }), 0, -2.0 - i * 0.25, 0, 0.16 + i * 0.06, 0.32 + i * 0.1, 0.16 + i * 0.06);
+    chispasFlotantes(m, [0xffe9a0, 0x8ae8ff, 0xff9ad8], 12, { tam: 0.035 });
   },
 };
 

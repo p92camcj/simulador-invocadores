@@ -4,6 +4,26 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.4.190] - 2026-11-13
+
+### Madain (ilustración de Julio)
+- **Arte de Madain en la Mesa**: `assets/invocaciones/madain.webp`, recortada
+  del fondo blanco de la ilustración que pasó Julio (original en
+  `assets/personajes/madain-original.jpg`; la cabeza de luz se conserva opaca).
+  `CRIATURAS_CON_ARTE` (`js/espectaculo.js`) incluye Madain: el panel de la
+  invocación y la escena de invocación ya no muestran ✦. Añadida a
+  `urlsToCache`.
+- **Modelo 3D de Madain rehecho según la ilustración**
+  (`ADORNOS_CRIATURA.Madain`, `js/personajes3d/modelos.js`): grandes alas de
+  plumas (frías a un lado, cálidas al otro, con coberteras), cabeza de luz
+  con halo y rayos, piel iridiscente con vetas doradas (`texturaMadain()`),
+  gema de arcoíris en el pecho, arco de gemas de colores y bruma turquesa
+  bajo los pies. Sustituye a las bandas de arcoíris.
+- **Gemas de Madain mitad azules y mitad rosas** (como el Metamorfo, indicación
+  de Julio): `gema('*')` en `efectos.js` pinta cada cara según su lado; en la
+  Mesa, `.m-gema--x` (`mesa3d.css`) con degradado partido; tono de la
+  invocación final lila en `espectaculo.js`.
+
 ## [1.38.3.188] - 2026-11-13
 
 ### Corregido (Escenario)

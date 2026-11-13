@@ -54,8 +54,8 @@ const COLORES = {
   'Lumo': ['#ffe58b', '#3f9b4b'],
 };
 // Criaturas invocadas con arte propio (assets/invocaciones/<nombre>.webp).
-const CRIATURAS_CON_ARTE = new Set(['Cirelia', 'Baelorith', 'Aelgorth']);
-const COLOR_NIVEL = { C: '#f2c94c', B: '#e0533a', A: '#9b59d0', '*': '#3fe0c5' };
+const CRIATURAS_CON_ARTE = new Set(['Cirelia', 'Baelorith', 'Aelgorth', 'Madain']);
+const COLOR_NIVEL = { C: '#f2c94c', B: '#e0533a', A: '#9b59d0', '*': '#b98cff' };
 
 // ---------- Preferencia on/off ----------
 

@@ -160,14 +160,24 @@ export function anilloRunico(tex, p, color, radio = 1) {
   mundo.escena.add(m); return m;
 }
 
-const COLORES_GEMA = { azul: 0x4aa8ff, C: 0xffc94a, B: 0xff4a6e, A: 0x9a6bff, '*': 0xfff4ff };
-let geoGema;
-/** Gema 3D facetada. tipo: 'azul' (valor 1) | 'C' | 'B' | 'A'. */
+const COLORES_GEMA = { azul: 0x4aa8ff, C: 0xffc94a, B: 0xff4a6e, A: 0x9a6bff, '*': 0xb98cff };
+// Gemas de Madain: mitad azul, mitad rosa (como el Metamorfo).
+const MITADES_MADAIN = [0x3a7bff, 0xff6ec7];
+let geoGema, geoGemaMadain;
+/** Gema 3D facetada. tipo: 'azul' (valor 1) | 'C' | 'B' | 'A' | '*' (Madain, bicolor). */
 export function gema(tipo = 'azul', tam = 1) {
   geoGema ??= new THREE.OctahedronGeometry(0.13, 0);
+  const bicolor = tipo === '*';
+  if (bicolor && !geoGemaMadain) {
+    // Cada cara se pinta según el lado en que cae su centro: izquierda azul, derecha rosa.
+    geoGemaMadain = geoGema.clone(); const p = geoGemaMadain.attributes.position, cols = [];
+    const [az, ro] = MITADES_MADAIN.map(c => new THREE.Color(c));
+    for (let i = 0; i < p.count; i += 3) { const cx = p.getX(i) + p.getX(i + 1) + p.getX(i + 2), c = cx < 0 ? az : ro; for (let k = 0; k < 3; k++) cols.push(c.r, c.g, c.b); }
+    geoGemaMadain.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  }
   const col = COLORES_GEMA[tipo] ?? tipo;
   const g = new THREE.Group();
-  const m = new THREE.Mesh(geoGema, new THREE.MeshLambertMaterial({ color: col, emissive: col, emissiveIntensity: 0.55, flatShading: true, transparent: true }));
+  const m = new THREE.Mesh(bicolor ? geoGemaMadain : geoGema, new THREE.MeshLambertMaterial({ color: bicolor ? 0xffffff : col, vertexColors: bicolor, emissive: bicolor ? 0x40306a : col, emissiveIntensity: 0.55, flatShading: true, transparent: true }));
   m.scale.set(1, 1.35, 1); g.add(m);
   const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: texBrillo, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.6 }));
   b.scale.setScalar(0.55); g.add(b);
