@@ -42,6 +42,7 @@ import {
 } from '../js/bot.js';
 import {
   tableroDesdeVista, recompensasSiCierra, valorAmenazaSiguiente, evaluarJugadasFaseA,
+  PESOS,
 } from '../js/bot-estrategia.js';
 
 // pagarActivacionPortalCentral usa confirm()/alert() nativos del navegador;
@@ -864,7 +865,7 @@ test('Normal: prefiere denegar por duplicado un requisito que ya tiene una rival
   assert.equal(decision.destKey, 'p:0'); // gratis: su propio Portal, sin coste real
 });
 
-test('Normal: prefiere tapar el Portal ajeno con el único requisito visible de esa jugadora sobre una jugada neutra equivalente', () => {
+test('Normal: ya no tapa el único requisito visible de una rival (bloquearía la invocación, 1.38.5)', () => {
   const need = ['X', 'Y', 'Z'];
   const vista = {
     propiaCartaConocida: { name: 'W' }, // no es requisito: no aplica la denegación por duplicado
@@ -875,7 +876,7 @@ test('Normal: prefiere tapar el Portal ajeno con el único requisito visible de 
     neutrales: [null],
   };
   const decision = decidirJugadaFaseA(vista, need);
-  assert.equal(decision.destKey, 'a:1:0'); // tapa a Ana en vez de jugar en su propio Portal vacío
+  assert.notEqual(decision.destKey, 'a:1:0'); // no tapa la Y de Ana: juega en un Portal vacío
 });
 
 test('valorEsperadoDeAccion (Bloque 3): el término adversarial permite preferir denegar/tapar a una rival aunque el beneficio propio directo sea nulo', () => {
@@ -1016,8 +1017,14 @@ test('Fase A Difícil: sin carta oculta en la mano (final de partida) nunca elig
 test('valorAmenazaSiguiente: negativo si la siguiente jugadora puede cerrar y cobrar más que la bot', () => {
   // Queda un hueco central; si la siguiente (J1) juega Z ahí, cobra X e Y (suyos).
   const vista = vistaEstrategia([[{ name: 'W' }], [{ name: 'X' }, { name: 'Y' }]], [null]);
+  // Solo la parte competitiva: con PESOS.invocar (1.38.5) que la
+  // invocación salga adelante compensa a la bot aunque cobre otra.
+  const previo = PESOS.invocar;
+  PESOS.invocar = 0;
   const amenaza = valorAmenazaSiguiente(tableroDesdeVista(vista), ['X', 'Y', 'Z'], 3, 2, 0, 1, { Z: 0.5, Q: 0.5 });
+  PESOS.invocar = previo;
   assert.ok(amenaza < 0);
+  assert.ok(valorAmenazaSiguiente(tableroDesdeVista(vista), ['X', 'Y', 'Z'], 3, 2, 0, 1, { Z: 0.5, Q: 0.5 }) > 0);
 });
 
 console.log('Protección de Centinela en las decisiones de la autómata (bot.js)');

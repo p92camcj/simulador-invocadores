@@ -6,6 +6,19 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.5.192 - 2026-11-13
+
+- **Las autómatas ahora cooperan para invocar.** Entienden que el objetivo
+  común es completar las invocaciones: colocan requisitos en los Portales
+  centrales, intentan dejar uno en su propio Portal para llevarse la Gema y
+  cierran la invocación aunque otra cobre algo. Ya no se dedican a tapar los
+  requisitos de las demás.
+- Entre autómatas Difíciles se pasa de casi nunca invocar a unas 2
+  invocaciones por partida, y las Expertas llegan a Madain en la mayoría de
+  partidas del modo Experto.
+- Las Normales también colaboran, así que la diferencia con las Difíciles es
+  menor que antes (aunque siguen ganando bastante más las Difíciles).
+
 ## 1.38.4.190 - 2026-11-13
 
 - **Madain ya tiene su ilustración.** Aparece al consultar la invocación final

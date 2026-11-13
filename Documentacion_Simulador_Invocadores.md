@@ -194,7 +194,10 @@ saneada (`construirEstadoVisibleParaBot()`) y la distribución del conteo de
 cartas (`estimarProbabilidadesPersonajes()`); nunca leen el estado real.
 Pesos ajustables en el objeto mutable exportado `PESOS` (`rival`,
 `posicion`, `amenaza`, y `costeCentral`, que resta la Fase B de
-`'dificil'` en `js/bot.js` al activar un Portal central); el simulador `tools/arena.mjs` los cambia por
+`'dificil'` en `js/bot.js` al activar un Portal central, más la parte
+cooperativa desde 1.38.5: `invocar`, lo que vale que la invocación se
+complete cobre quien cobre, y `progreso`, por requisito distinto visible en
+cualquier Portal); el simulador `tools/arena.mjs` los cambia por
 asiento para enfrentar ajustes distintos. Los usa también `'experta'`
 (`js/bot-busqueda.js`) para puntuar cada mundo.
 
@@ -208,8 +211,9 @@ asiento para enfrentar ajustes distintos. Los usa también `'experta'`
 | `recompensasSiCierra(tablero, need, valorGemaNivel, nJugadoras)` | `función` | Gemas por jugadora si se cierra: requisito único en Portal con dueña (valor medio del nivel), Maestro (+3 si es requisito, único y sin Pícaro visible), Pícaro (+1). Usa la apariencia (la vista no sabe si un personaje es un Metamorfo transformado). |
 | `valorRelativo(ganancias, idx)` | `función` | `ganancias[idx] − PESO_RIVAL × máx(rivales)`. |
 | `valorPosicional(tablero, need, valorGemaNivel, nJugadoras, idx)` | `función` | Requisitos únicos ya colocados (propios menos la mejor rival) × `FACTOR_POSICION`. |
-| `valorAmenazaSiguiente(tablero, need, valorGemaNivel, nJugadoras, botIdx, siguienteIdx, probabilidadPorNombre)` | `función` | Valor esperado, para la bot, del cierre que podría hacer la siguiente jugadora con su carta privada (solo si le conviene a ella), × `FACTOR_AMENAZA`. |
-| `valorJugadaCierta(tablero, destKey, nombre, ctx)` / `valorJugadaOculta(tablero, destKey, ctx)` | `función` | Valor de jugar una carta conocida, o media sobre las identidades posibles de la carta oculta. |
+| `valorAmenazaSiguiente(tablero, need, valorGemaNivel, nJugadoras, botIdx, siguienteIdx, probabilidadPorNombre)` | `función` | Valor esperado, para la bot, del cierre que podría hacer la siguiente jugadora con su carta privada (solo si le conviene a ella), × `FACTOR_AMENAZA`. Desde 1.38.5 cada cierre suma además `PESOS.invocar`. |
+| `valorProgreso(tablero, need)` | `función` | Parte cooperativa (1.38.5): `PESOS.progreso` × (requisitos distintos visibles en cualquier Portal, también central − ½ por Portal vacío u oculto). Igual para todas las jugadoras. |
+| `valorJugadaCierta(tablero, destKey, nombre, ctx)` / `valorJugadaOculta(tablero, destKey, ctx)` | `función` | Valor de jugar una carta conocida, o media sobre las identidades posibles de la carta oculta. Cerrar suma `PESOS.invocar`; si no cierra, suma `valorProgreso`. |
 | `evaluarJugadasFaseA(vista, need, valorGemaNivel, probabilidadPorNombre)` | `función` | Lista `{ usaConocida, destKey, valor, cierra }` para cada carta × Portal. La usa `decidirJugadaFaseADificil()` (`js/bot.js`). |
 
 ---
@@ -228,8 +232,8 @@ completo (Fase A + Fase B) con el motor real sobre mundos posibles
 | `determinizar(partida, botIdx)` | `función` | Copia de la partida con la carta oculta de la bot, las cartas privadas de las rivales (y su mano entera si tienen la Clarividente visible) y el mazo repartidos al azar entre los personajes que la bot aún no ha visto (composición menos todas las cartas de los Portales, las de mano que ve y, en el análisis de equilibrio, las de `partida.cartasRequisito`), y las Gemas ajenas con el valor medio de su nivel. `tests/bot-busqueda.mjs` comprueba que no filtra nada oculto. |
 | `enumerarFasesB(partida, botIdx)` | `función` | `[null, { origen, guion }...]`: no activar nada, o cada habilidad activable (`opcionesActivarHabilidad`) con cada combinación de elecciones, descubiertas recorriendo las peticiones `ui.pedir` del motor en copias desechables. |
 | `aplicarConGuion(partida, botIdx, origen, guion, descubrir?)` | `función` | Aplica en `partida` la habilidad del origen (`'own:j'`/`'central:k'`) siguiendo las elecciones `guion` y cobra la activación; `false` si el guion no es aplicable. Exportada (1.34.1) para la saboteadora de `tools/equilibrio.mjs`. |
-| `puntuarMundo(antes, despues, botIdx, construirVista, probabilidadPorNombre)` | `función` | Gemas ganadas por la bot − `PESOS.rival` × las de la rival que más gana, más `valorPosicional` y `valorAmenazaSiguiente` (`bot-estrategia.js`) sobre la mesa que queda. |
-| `elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre, jugarRival)` | `función` | Media, entre mundos, del mejor turno (mejor Fase B) tras cada candidata de Fase A; devuelve la mejor con su `valor`. Con `BUSQUEDA.ronda`, tras ese turno juega en el mundo el turno de cada rival con `jugarRival(mundo, idx)` (en `bot.js`, la heurística `'dificil'`) y puntúa toda la ronda: Gemas propias − `PESOS.rival` × las de la mejor rival, más `valorPosicional`. |
+| `puntuarMundo(antes, despues, botIdx, construirVista, probabilidadPorNombre)` | `función` | Gemas ganadas por la bot − `PESOS.rival` × las de la rival que más gana, más `PESOS.invocar` por invocación completada, y `valorPosicional`, `valorProgreso` y `valorAmenazaSiguiente` (`bot-estrategia.js`) sobre la mesa que queda. |
+| `elegirFaseAExperta(partida, botIdx, candidatas, construirVista, probabilidadPorNombre, jugarRival)` | `función` | Media, entre mundos, del mejor turno (mejor Fase B) tras cada candidata de Fase A; devuelve la mejor con su `valor`. Con `BUSQUEDA.ronda`, tras ese turno juega en el mundo el turno de cada rival con `jugarRival(mundo, idx)` (en `bot.js`, la heurística `'dificil'`) y puntúa toda la ronda: Gemas propias − `PESOS.rival` × las de la mejor rival, más `PESOS.invocar` por invocación completada en la ronda, `valorPosicional` y `valorProgreso`. |
 | `elegirFaseBExperta(partida, botIdx, construirVista, probabilidadPorNombre)` | `función` | Con la Fase A ya jugada: la Fase B (o ninguna) con mejor media entre mundos, como `{ origen, guion, valor }` o `null`. `bot.js` pasa `guion` como `objetivoPreferido` a `crearUiAutomata`. |
 
 ---

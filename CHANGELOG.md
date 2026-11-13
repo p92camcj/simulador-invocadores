@@ -4,6 +4,31 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.5.192] - 2026-11-13
+
+### Autómatas: cooperar para invocar (pedido por Julio)
+- **Parte cooperativa en `PESOS`** (`js/bot-estrategia.js`): `invocar` (10),
+  lo que vale que la invocación se complete cobre quien cobre, y `progreso`
+  (1), por requisito distinto visible en cualquier Portal (también central)
+  menos ½ por Portal vacío u oculto (`valorProgreso()`, nueva). Difícil la
+  usa en Fase A (cierres, amenaza de la siguiente jugadora y posición) y
+  Experta al puntuar cada mundo y cada ronda (`puntuarMundo`,
+  `puntuarRonda`, `valorInvocaciones` en `js/bot-busqueda.js`). Con los dos a
+  0 juegan como antes.
+- **Fase B de Difícil** (`js/bot.js`): tapar u ocultar el único requisito de
+  una rival resta progreso; girar boca arriba un Portal oculto con Ocultista
+  suma; el Maestro que completa la invocación suma `invocar`.
+- **Normal** deja de tapar el único requisito visible de una rival y pone a
+  la vista un requisito que aún no esté en la mesa (Portal propio primero).
+- Medido con `tools/equilibrio.mjs` (detalle en `docs/ESTRATEGIA_AUTOMATAS.md`):
+  3 Difícil en modo Experto 0,08 → 2,10 invocaciones por partida (92 % → 4 %
+  sin ninguna); en modo Normal 0,37 → 2,11; 3 Normal 0,31 → 2,29; 3 Experta
+  en modo Experto 1,95 → 3,67 (Madain 20 % → 79 %). Difícil contra 2 Normal
+  gana el 45 % (antes 79 %).
+- Tests: `tests/bot-cooperacion.mjs` (nuevo); ajustados dos de
+  `tests/run-tests.mjs` (Normal ya no tapa; amenaza competitiva medida con
+  `invocar` a 0).
+
 ## [1.38.4.190] - 2026-11-13
 
 ### Madain (ilustración de Julio)

@@ -31,7 +31,7 @@ import {
   todosLosPortales, shuffle, nivelesPartida, datosInvocacion,
 } from './utils.js';
 import {
-  PESOS, tableroDesdeVista, valorPosicional, valorAmenazaSiguiente,
+  PESOS, tableroDesdeVista, valorPosicional, valorAmenazaSiguiente, valorProgreso,
 } from './bot-estrategia.js';
 
 // Presupuesto de búsqueda (ajustable desde tools/arena.mjs).
@@ -198,7 +198,8 @@ export function enumerarFasesB(partida, botIdx) {
 export function puntuarMundo(antes, despues, botIdx, construirVista, probabilidadPorNombre) {
   const delta = despues.players.map((p, i) => sumaGemas(p.gems) - sumaGemas(antes.players[i].gems));
   const rivales = delta.filter((_, i) => i !== botIdx);
-  let valor = delta[botIdx] - PESOS.rival * (rivales.length ? Math.max(...rivales) : 0);
+  let valor = delta[botIdx] - PESOS.rival * (rivales.length ? Math.max(...rivales) : 0)
+    + valorInvocaciones(antes, despues);
   if (despues.juegoTerminado) return valor;
 
   const inv = invocacionActiva(despues);
@@ -208,6 +209,7 @@ export function puntuarMundo(antes, despues, botIdx, construirVista, probabilida
   const tablero = tableroDesdeVista(vista);
   const n = despues.players.length;
   valor += valorPosicional(tablero, inv.need, valorGemaNivel, n, botIdx);
+  valor += valorProgreso(tablero, inv.need);
   valor += valorAmenazaSiguiente(tablero, inv.need, valorGemaNivel, n, botIdx, (botIdx + 1) % n, probabilidadPorNombre);
   return valor;
 }
@@ -242,14 +244,26 @@ function puntuarRonda(antes, mundo, botIdx, jugarRival) {
   }
   const delta = mundo.players.map((p, i) => sumaGemas(p.gems) - sumaGemas(antes.players[i].gems));
   const rivales = delta.filter((_, i) => i !== botIdx);
-  let valor = delta[botIdx] - PESOS.rival * (rivales.length ? Math.max(...rivales) : 0);
+  let valor = delta[botIdx] - PESOS.rival * (rivales.length ? Math.max(...rivales) : 0)
+    + valorInvocaciones(antes, mundo);
   if (mundo.juegoTerminado) return valor;
   const inv = invocacionActiva(mundo);
   if (!inv) return valor;
   const valorGemaNivel = inv.gemas.reduce((a, b) => a + b, 0) / inv.gemas.length;
   const tablero = tableroDesdeVistaReal(mundo, botIdx);
   valor += valorPosicional(tablero, inv.need, valorGemaNivel, n, botIdx);
+  valor += valorProgreso(tablero, inv.need);
   return valor;
+}
+
+/**
+ * Parte cooperativa (PESOS.invocar, ver js/bot-estrategia.js): cada
+ * invocación completada entre `antes` y `despues` vale lo mismo para la
+ * autómata, la cierre quien la cierre.
+ */
+function valorInvocaciones(antes, despues) {
+  const n = (despues.invocacionesCompletadas?.length || 0) - (antes.invocacionesCompletadas?.length || 0);
+  return n > 0 ? n * PESOS.invocar : 0;
 }
 
 /** Tablero simplificado (formato de bot-estrategia.js) de un mundo ya determinizado. */
