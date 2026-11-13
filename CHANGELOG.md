@@ -4,6 +4,19 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.6.194] - 2026-11-13
+
+### Objetivo principal: sin invocaciones, nadie gana (Julio)
+- `REGLAMENTO.md`, "Objetivo del juego": al ser semicooperativo, el objetivo
+  es realizar la mayor cantidad de invocaciones posible, aunque la victoria
+  es para quien tenga más Gemas; si no se realiza ninguna, no se considera
+  cumplido el objetivo principal (texto de Julio).
+- `calcularResultadoFinal()` (`js/utils.js`) devuelve `objetivoCumplido`;
+  sin ninguna invocación completada, `ganadores` viene vacío (también en
+  Modo Experto, vía `resultadoFinalExperto()`). `mostrarFinMesa()`
+  (`js/mesa3d.js`) muestra "Nadie gana" sin confeti, con la clasificación.
+- Test nuevo en `tests/run-tests.mjs`.
+
 ## [1.38.5.192] - 2026-11-13
 
 ### Autómatas: cooperar para invocar (pedido por Julio)

@@ -356,6 +356,18 @@ test('bajarCartaMaestro re-dispara el auto-giro de Centinela si la carta movida 
 
 console.log('Marcador final y desempate (utils.js) — Bloque 2');
 
+test('calcularResultadoFinal: sin ninguna invocación completada nadie gana (objetivo principal no cumplido)', () => {
+  const players = [
+    { name: 'Ana', gems: [{ valor: 1, nivel: 'unitaria' }, { valor: 1, nivel: 'unitaria' }] },
+    { name: 'Bob', gems: [{ valor: 1, nivel: 'unitaria' }] },
+  ];
+  const r = calcularResultadoFinal(players, []);
+  assert.deepEqual(r.ganadores, []);
+  assert.equal(r.objetivoCumplido, false);
+  assert.equal(r.stats[0].nombre, 'Ana'); // la clasificación se sigue mostrando
+  assert.equal(calcularResultadoFinal(players, ['C']).objetivoCumplido, true);
+});
+
 test('calcularResultadoFinal: gana quien tiene mayor suma total, sin necesidad de desempate', () => {
   const players = [
     { name: 'Ana', gems: [{ valor: 5, nivel: 'C' }] },

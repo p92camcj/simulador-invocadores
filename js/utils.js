@@ -669,6 +669,8 @@ export function aplicarEntusiastas(players, neutrals) {
  * jugadoras empatadas en el primer puesto; `motivoDesempate` es `null` si
  * la suma total ya decidió sin empate, o el nombre del criterio que
  * finalmente desempató (o "empate total" si ninguno lo consiguió).
+ * Sin ninguna invocación completada, `ganadores` viene vacío y
+ * `objetivoCumplido` es `false` (nadie gana: no se cumplió el objetivo).
  */
 export function calcularResultadoFinal(players, invocacionesCompletadas = []) {
   const nivelesDesdeElMasReciente = [...invocacionesCompletadas].reverse();
@@ -722,7 +724,13 @@ export function calcularResultadoFinal(players, invocacionesCompletadas = []) {
     motivoDesempate = criterio; // solo puede ser 'empate total' cuando cmp === 0
   }
 
-  return { stats: ordenados, ganadores, motivoDesempate };
+  // Objetivo principal (REGLAMENTO.md, "Final de la partida", Julio
+  // 2026-11-13): el juego es semicooperativo; si no se ha completado ninguna
+  // invocación, el objetivo no se ha cumplido y nadie gana.
+  if (!invocacionesCompletadas.length) {
+    return { stats: ordenados, ganadores: [], motivoDesempate: null, objetivoCumplido: false };
+  }
+  return { stats: ordenados, ganadores, motivoDesempate, objetivoCumplido: true };
 }
 
 // ---------- Modo Experto: autómata central ----------
