@@ -252,7 +252,17 @@ in `nextTurn()`.
   `costeCentral`, subtracted in `bot.js`'s 'dificil' Fase B when activating
   a central Portal: before 1.29.1 it ignored that Gem cost and burned its
   Gems, the biggest weakness found in self-play) so the arena can
-  try other values; tune them with `tools/ajustar-pesos.mjs`.
+  try other values; tune them with `tools/ajustar-pesos.mjs`. Since 1.38.5
+  `PESOS` also has a **cooperative** part (asked by Julio: the game is
+  semi-cooperative, completing the invocations is the main goal):
+  `invocar` (value of the invocation being completed, whoever cashes it)
+  and `progreso` (`valorProgreso()`: distinct required characters visible
+  on any Portal, central included, minus half per empty/hidden Portal).
+  'dificil' Fase A/B and 'experta' world scoring use both; with both at 0
+  the bots play exactly as before. Took bot-only tables from ~0.1-0.4 to
+  ~2.1 invocations per game (`docs/ESTRATEGIA_AUTOMATAS.md`). 'normal' no
+  longer covers a rival's only visible requirement and puts a not-yet-visible
+  required card face up (own Portal first).
 - **`js/bot-busqueda.js`** — the `'experta'` difficulty (1.29.0): PIMC /
   determinization over the REAL engine. `determinizar(partida, botIdx)` is
   the only function that receives the real game: it deep-copies it and
@@ -641,6 +651,7 @@ node tests/aprendizaje.mjs
 node tests/historial.mjs
 node tests/modos.mjs
 node tests/red.mjs
+node tests/bot-cooperacion.mjs
 ```
 
 ```bash

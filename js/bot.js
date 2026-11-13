@@ -249,20 +249,9 @@ function decidirJugadaAdversarialNormal(vista, need, conocida, portales) {
     }
   }
 
-  const conteoVisibles = {};
-  personajesVisiblesActuales(vista).forEach(n => { conteoVisibles[n] = (conteoVisibles[n] || 0) + 1; });
-  const objetivo = portales.find(p =>
-    !p.esPropio && p.estado?.name && need.includes(p.estado.name) && conteoVisibles[p.estado.name] === 1
-  );
-  if (objetivo) {
-    return {
-      usaConocida: true,
-      destKey: objetivo.destKey,
-      etiqueta: objetivo.etiqueta,
-      motivo: `tapa ${objetivo.etiqueta}, único requisito visible de esa jugadora`,
-    };
-  }
-
+  // Hasta 1.38.4 había una segunda regla: tapar el único requisito visible
+  // de una rival. Bloqueaba la invocación, que es el objetivo común del
+  // juego (semicooperativo), así que se quitó en 1.38.5.
   return null;
 }
 
@@ -310,6 +299,20 @@ export function decidirJugadaFaseA(vista, need) {
   }
 
   const usaConocida = conocida !== null;
+  // Parte cooperativa (1.38.5): un requisito que aún no está en la mesa se
+  // pone a la vista, en un Portal propio si se puede (así su Gema es suya)
+  // o, si no, en uno vacío u oculto; nunca tapando otro requisito.
+  const visibles = personajesVisiblesActuales(vista);
+  if (conocida && need.includes(conocida) && !visibles.includes(conocida)) {
+    const sinTaparRequisito = portales.filter(p => !need.includes(p.estado?.name));
+    const propios = sinTaparRequisito.filter(p => p.esPropio);
+    const huecos = sinTaparRequisito.filter(p => p.estado === null || p.estado?.hidden);
+    const lista = propios.length ? propios : huecos.length ? huecos : sinTaparRequisito;
+    if (lista.length) {
+      const elegido = elegirAlAzar(lista);
+      return { usaConocida: true, destKey: elegido.destKey, etiqueta: elegido.etiqueta, motivo: `pone a la vista ${conocida}, requisito de la invocación` };
+    }
+  }
   let candidatos = bloqueantes.length
     ? bloqueantes
     : portales.filter(p => !need.includes(p.estado?.name));
@@ -899,7 +902,10 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
           { personaje: memorizado, esPropio: p.esPropio, esCentral: p.key.startsWith('n:'), completaInvocacionSiSeJuega: false },
           probabilidades,
           contexto
-        ) * (c.name === 'Cronista' ? 0.5 : 1);
+        ) * (c.name === 'Cronista' ? 0.5 : 1)
+          // Parte cooperativa: girar boca arriba un Portal oculto quita un
+          // obstáculo para completar la invocación.
+          + (c.name === 'Ocultista' ? 0.5 * PESOS.progreso : 0);
         considerar({ ...c, ev, objetivoPreferido: p.key });
       });
       if (c.name === 'Cronista' || c.name === 'Ocultista') {
@@ -917,7 +923,10 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
               { personaje: null, esPropio: false, esCentral: false, destKey: destKeyFaseA, cubreNecesarioUnicoRival: true, completaInvocacionSiSeJuega: false },
               probabilidades,
               contexto
-            ) * (c.name === 'Cronista' ? 0.5 : 1);
+            ) * (c.name === 'Cronista' ? 0.5 : 1)
+              // Parte cooperativa: quitar un requisito de la mesa aleja la
+              // invocación (y ocultarlo deja además un Portal que la impide).
+              - PESOS.progreso * (c.name === 'Ocultista' ? 1.5 : 1);
             considerar({ ...c, ev, objetivoPreferido: p.key });
           });
       }
@@ -935,14 +944,15 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
       // pasa `destKey`, así que nunca coincide con el de esa rival).
       vista.jugadoras.forEach(j => {
         if (j.esUnoMismo || j.protegidaPorCentinela || !j.cartaOcultaPublica) return;
+        const completa = completariaLaInvocacionConMaestro(vista, need, j.cartaOcultaPublica);
         const ev = valorEsperadoDeAccion(
           {
             personaje: j.cartaOcultaPublica, esPropio: false, esCentral: false,
-            completaInvocacionSiSeJuega: completariaLaInvocacionConMaestro(vista, need, j.cartaOcultaPublica),
+            completaInvocacionSiSeJuega: completa,
           },
           probabilidades,
           contexto
-        );
+        ) + (completa ? PESOS.invocar : 0);
         considerar({ ...c, ev, objetivoPreferido: j.idx });
       });
     } else if (c.name === 'Cronomante') {
@@ -964,7 +974,7 @@ function decidirHabilidadFaseBDificil(vista, players, neutrals, botIdx, need, me
             },
             probabilidades,
             contexto
-          );
+          ) - (cubreNecesarioUnicoRival && !need.includes(nombre) ? PESOS.progreso : 0);
           considerar({ ...c, ev, objetivoPreferido: [p.key, nombre] });
         });
       });

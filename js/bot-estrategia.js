@@ -42,7 +42,16 @@
 //   Portal central (cuesta una Gema de valor 1, y cada Gema es un punto).
 //   Es mayor que 1 porque las estimaciones de esa fase son optimistas; con
 //   autojuego, 3 gana claramente a 0 (que gastaba Gemas sin retorno).
-export const PESOS = { rival: 0.75, posicion: 0.4, amenaza: 0.8, costeCentral: 3 };
+// - invocar / progreso: la parte COOPERATIVA del juego (1.38.5). Invocadores
+//   es semicooperativo: el objetivo común es completar las invocaciones y,
+//   dentro de eso, cada una compite por las Gemas. `invocar` es lo que vale
+//   para la autómata que la invocación se complete, cobre quien cobre;
+//   `progreso` lo que vale cada requisito distinto ya visible en la mesa
+//   (también en un Portal central, donde no se lo lleva nadie). Así prefiere
+//   poner requisitos en los Portales centrales y uno en un Portal propio, en
+//   vez de esperar a que otra se los sirva, y deja de bloquear por sistema.
+//   Con los dos a 0 juega exactamente como antes.
+export const PESOS = { rival: 0.75, posicion: 0.4, amenaza: 0.8, costeCentral: 3, invocar: 10, progreso: 1 };
 // Valor de cada Gema extra de Pícaro / Maestro (siempre valor 1).
 const VALOR_GEMA_UNITARIA = 1;
 
@@ -139,6 +148,20 @@ export function valorPosicional(tablero, need, valorGemaNivel, nJugadoras, idx) 
 }
 
 /**
+ * Valor cooperativo de un tablero sin cerrar: `PESOS.progreso` por cada
+ * requisito distinto visible en cualquier Portal (propio, ajeno o central),
+ * menos medio requisito por cada Portal vacío u oculto (impide cerrar).
+ * Es igual para todas las jugadoras: mide lo cerca que está la mesa de
+ * completar la invocación, el objetivo común.
+ */
+export function valorProgreso(tablero, need) {
+  if (!need.length || !PESOS.progreso) return 0;
+  const presentes = need.filter(n => tablero.some(p => p.nombre === n)).length;
+  const bloqueados = tablero.filter(p => p.bloqueado).length;
+  return PESOS.progreso * (presentes - 0.5 * bloqueados);
+}
+
+/**
  * Mejor cierre que tiene `jugadora` con una carta `nombre` en este
  * tablero, desde SU punto de vista: devuelve el tablero resultante del
  * cierre que más le conviene (y que le conviene, valor > 0), o `null` si
@@ -153,7 +176,7 @@ function mejorCierrePara(tablero, need, valorGemaNivel, nJugadoras, jugadora, no
   destinos.forEach(p => {
     const t = aplicarJugadaEnTablero(tablero, p.destKey, nombre);
     if (!invocacionCerrada(t, need)) return;
-    const v = valorRelativo(recompensasSiCierra(t, need, valorGemaNivel, nJugadoras), jugadora);
+    const v = valorRelativo(recompensasSiCierra(t, need, valorGemaNivel, nJugadoras), jugadora) + PESOS.invocar;
     if (v > mejorValor) { mejorValor = v; mejor = t; }
   });
   return mejor;
@@ -173,7 +196,7 @@ export function valorAmenazaSiguiente(tablero, need, valorGemaNivel, nJugadoras,
   Object.entries(probabilidadPorNombre).forEach(([nombre, prob]) => {
     if (!prob) return;
     const t = mejorCierrePara(tablero, need, valorGemaNivel, nJugadoras, siguienteIdx, nombre);
-    if (t) ev += prob * valorRelativo(recompensasSiCierra(t, need, valorGemaNivel, nJugadoras), botIdx);
+    if (t) ev += prob * (valorRelativo(recompensasSiCierra(t, need, valorGemaNivel, nJugadoras), botIdx) + PESOS.invocar);
   });
   return PESOS.amenaza * ev;
 }
@@ -186,9 +209,10 @@ export function valorJugadaCierta(tablero, destKey, nombre, ctx) {
   const { need, valorGemaNivel, nJugadoras, botIdx, siguienteIdx, probabilidadPorNombre } = ctx;
   const t = aplicarJugadaEnTablero(tablero, destKey, nombre);
   if (invocacionCerrada(t, need)) {
-    return { valor: valorRelativo(recompensasSiCierra(t, need, valorGemaNivel, nJugadoras), botIdx), cierra: true };
+    return { valor: valorRelativo(recompensasSiCierra(t, need, valorGemaNivel, nJugadoras), botIdx) + PESOS.invocar, cierra: true };
   }
   const valor = valorPosicional(t, need, valorGemaNivel, nJugadoras, botIdx)
+    + valorProgreso(t, need)
     + valorAmenazaSiguiente(t, need, valorGemaNivel, nJugadoras, botIdx, siguienteIdx, probabilidadPorNombre);
   return { valor, cierra: false };
 }
