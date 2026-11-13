@@ -1335,7 +1335,10 @@ async function aplicar(v, an) {
   const nuevosPortales = [];
   disp.portales.forEach((d, clave) => {
     const existia = portales.has(clave) && portales.get(clave).g.visible;
-    if (portales.has(clave)) portales.get(clave).provisional = false;
+    // El Portal central creado durante la invocación: la vista ya lo trae;
+    // se le pone el contenido real (sin esto se quedaba sin firma y nunca
+    // mostraba lo que se jugaba en él).
+    if (portales.get(clave)?.provisional) { const q = portales.get(clave); q.provisional = false; ponerContenido(q, verPortal(v, clave), true); }
     const p = asegurarPortal(clave);
     ponerNombre(p, d.nombre);
     if (!existia) {
