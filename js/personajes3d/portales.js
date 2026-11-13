@@ -94,25 +94,37 @@ const mBase = piedra(0x4a5282, 0, 29);
 
 /** Trozo de pergamino con el nombre de la jugadora; flota sobre su Portal mirando siempre a la cámara. */
 export function pergamino(nombre) {
-  const c = document.createElement('canvas'); c.width = 384; c.height = 128; const x = c.getContext('2d');
+  // Lienzo a doble resolución (768x256) dibujado con las mismas medidas: letras nítidas también de lejos.
+  const E = 2, c = document.createElement('canvas'); c.width = 384 * E; c.height = 128 * E; const x = c.getContext('2d'); x.scale(E, E);
   let s = 7 + nombre.length * 13; const rnd = () => (s = (s * 16807 + 5) % 2147483647) / 2147483647;
   x.beginPath(); x.moveTo(14, 22); for (let px = 14; px <= 370; px += 12) x.lineTo(px, 18 + rnd() * 7); for (let py = 22; py <= 106; py += 10) x.lineTo(366 + rnd() * 8, py); for (let px = 370; px >= 14; px -= 12) x.lineTo(px, 104 + rnd() * 8); for (let py = 106; py >= 22; py -= 10) x.lineTo(10 + rnd() * 8, py); x.closePath();
-  const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#f6e7c0'); g.addColorStop(0.55, '#ecd6a2'); g.addColorStop(1, '#c9a968'); x.fillStyle = g; x.shadowColor = 'rgba(0,0,0,.55)'; x.shadowBlur = 8; x.shadowOffsetY = 3; x.fill(); x.shadowColor = 'transparent';
+  const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#f8ecc8'); g.addColorStop(0.55, '#efdcab'); g.addColorStop(1, '#d2b476'); x.fillStyle = g; x.shadowColor = 'rgba(0,0,0,.55)'; x.shadowBlur = 8; x.shadowOffsetY = 3; x.fill(); x.shadowColor = 'transparent';
   x.save(); x.clip();
-  for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(120,80,30,${rnd() * 0.14})`; x.beginPath(); x.ellipse(rnd() * 384, rnd() * 128, 6 + rnd() * 26, 3 + rnd() * 10, rnd() * 3, 0, 7); x.fill(); }
+  for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(120,80,30,${rnd() * 0.1})`; x.beginPath(); x.ellipse(rnd() * 384, rnd() * 128, 6 + rnd() * 26, 3 + rnd() * 10, rnd() * 3, 0, 7); x.fill(); }
   for (const px of [18, 366]) { const e = x.createLinearGradient(px - 16, 0, px + 16, 0); e.addColorStop(0, 'rgba(90,55,20,.5)'); e.addColorStop(0.5, 'rgba(255,240,200,.35)'); e.addColorStop(1, 'rgba(90,55,20,0)'); x.fillStyle = e; x.fillRect(px - 16, 0, 32, 128); }
-  x.restore(); x.strokeStyle = 'rgba(110,70,30,.8)'; x.lineWidth = 2; x.stroke();
-  let t = 50; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#3a2410';
-  do { x.font = `italic 600 ${t}px Georgia, 'Times New Roman', serif`; t -= 2; } while (x.measureText(nombre).width > 320 && t > 16);
-  x.fillText(nombre, 192, 64);
+  x.restore(); x.strokeStyle = 'rgba(110,70,30,.85)'; x.lineWidth = 2.5; x.stroke();
+  let t = 62; x.textAlign = 'center'; x.textBaseline = 'middle';
+  do { x.font = `italic 700 ${t}px Georgia, 'Times New Roman', serif`; t -= 2; } while (x.measureText(nombre).width > 330 && t > 18);
+  // Contorno claro bajo la tinta para que el nombre se separe del fondo.
+  x.lineJoin = 'round'; x.lineWidth = 5; x.strokeStyle = 'rgba(255,248,225,.9)'; x.strokeText(nombre, 192, 66);
+  x.fillStyle = '#2a1606'; x.fillText(nombre, 192, 66);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false })); sp.scale.set(1.5, 0.5, 1); sp.renderOrder = 18;
-  const f = Math.random() * 6; siempre((dt, tt) => { sp.position.y = sp.userData.y + Math.sin(tt * 1.3 + f) * 0.06; sp.material.rotation = Math.sin(tt * 0.9 + f) * 0.05; });
+  tex.anisotropy = Math.min(8, mundo.renderer?.capabilities.getMaxAnisotropy?.() ?? 1);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, fog: false })); sp.scale.set(1.5, 0.5, 1); sp.renderOrder = 30;
+  // Al alejar la cámara el cartel encoge menos que la mesa: crece con la
+  // distancia (hasta 2,6 veces), así el nombre sigue legible en la vista general.
+  const f = Math.random() * 6, w = new THREE.Vector3();
+  sp.userData.quitar = siempre((dt, tt) => {
+    let k = 1; const cam = mundo.camara;
+    if (cam && sp.parent) { sp.parent.getWorldPosition(w); k = THREE.MathUtils.clamp(Math.pow(cam.position.distanceTo(w) / 11, 0.8), 1, 2.6); }
+    sp.scale.set(1.5 * k, 0.5 * k, 1);
+    sp.position.y = sp.userData.y + (k - 1) * 0.3 + Math.sin(tt * 1.3 + f) * 0.06; sp.material.rotation = Math.sin(tt * 0.9 + f) * 0.05;
+  });
   sp.userData.y = 3.25; sp.position.set(0, 3.25, -0.6); return sp;
 }
 /** Pone (o quita, con null) el pergamino con el nombre sobre un Portal. */
 export function nombrarPortal(portal, nombre) {
-  const d = portal.userData; if (d.letrero) { portal.remove(d.letrero); d.letrero.material.map.dispose(); d.letrero.visible = false; d.letrero = null; }
+  const d = portal.userData; if (d.letrero) { portal.remove(d.letrero); d.letrero.userData.quitar?.(); d.letrero.material.map.dispose(); d.letrero.visible = false; d.letrero = null; }
   if (nombre) { d.letrero = pergamino(String(nombre).slice(0, 18)); portal.add(d.letrero); }
 }
 

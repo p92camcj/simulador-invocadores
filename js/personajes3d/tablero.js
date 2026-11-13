@@ -27,7 +27,7 @@ export { OPCIONES_AMBIENTE, ambienteActual };
 import { firmaPortal, cambioPortal } from '../vista-mesa.js';
 
 const SEP = 3.5;                 // distancia entre Portales vecinos
-const CRIATURA_POR_NIVEL = { C: 'Cirelia', B: 'Baelorith', A: 'Aelgorth', '*': 'Aelgorth' };
+const CRIATURA_POR_NIVEL = { C: 'Cirelia', B: 'Baelorith', A: 'Aelgorth', '*': 'Madain' };
 const COLOR_ESTADO = { destino: 0xffd36a, objetivo: 0x5fe8ff, activable: 0xc58bff };
 const CLAVE_POSICIONES = 'inv3d.tablero';
 
@@ -1106,27 +1106,30 @@ async function invocar(an, v, nuevos = []) {
   parar(); retirar(cr);
   const adios = sitioCr.clone().setY(y0 + 5);
   destello(adios, 0xffffff, 6, 0.9).catch(() => {}); chispas(adios, { n: 70, color: tono, color2: tono2, vel: 2.2, vida: 1.6, grav: 1.2, tam: 0.18 }); onda(R, tono, 2, 44, 3); fogonazo(0.25);
-  // El gran círculo pierde brillo, gira cada vez más despacio y se encoge
-  // hasta quedarse quieto en un punto: de ahí emerge el Portal nuevo.
+  // Como en la maqueta: el gran círculo deja su marca, se encoge hasta el
+  // tamaño de una runa de Portal mientras viaja a su sitio (girando cada vez
+  // más despacio y perdiendo brillo) y el Portal nuevo se alza a su alrededor.
   const nuevo = nuevos[0], g0 = gran.userData.giro, op0 = gran.material.opacity;
-  S.cargar(160, 3.0);
-  await tw(3.2, (k, kl) => {
-    gran.userData.giro = g0 * (1 - k) * (1 - k); gran.scale.setScalar(mezcla(1, 0.04, k)); gran.material.opacity = op0 * (1 - 0.8 * k);
-    if (Math.random() < 0.7 * (1 - kl)) { const a = Math.random() * 6.28, rr = 5.4 * gran.scale.x; chispas(R.clone().add(V(Math.cos(a) * rr, 0.05, Math.sin(a) * rr)), { n: 1, color: tono, vel: 0.1, dir: V(-Math.cos(a), 0.5, -Math.sin(a)), vida: 0.7 }); }
-  }, sale);
-  gran.userData.giro = 0; await espera(0.5);
-  destello(R.clone().setY(0.2), tono, 1.6, 0.6).catch(() => {}); S.impacto(523); onda(R, tono, 1, 30, 1.6);
-  gran.userData.apagar(0.4);
-  if (nuevo) await alzarPortal(nuevo, null, R);
+  const de = gran.position.clone(), dest = (nuevo && posPortal(claveDe(nuevo))) ?? R.clone();
+  dest.y = 0.04;
+  if (nuevo) enfocar([R, dest, ...ps.map(p => p.g.position)], { y: 1.4, polar: 1.1 });
+  S.cargar(160, 2.4);
+  await tw(2.6, (k, kl) => {
+    gran.position.lerpVectors(de, dest, k); gran.scale.setScalar(mezcla(5.4, 1.03, k));
+    gran.userData.giro = mezcla(g0, 0.12, kl); gran.material.opacity = op0 * (1 - 0.35 * kl);
+    if (Math.random() < 0.6) { const an = Math.random() * 6.28, rr = gran.scale.x; chispas(gran.position.clone().add(V(Math.cos(an) * rr, 0.05, Math.sin(an) * rr)), { n: 1, color: tono, vel: 0.1, dir: V(0, 0.8, 0), vida: 0.8 }); }
+  });
+  S.impacto(523); onda(dest, tono, 1, 30, 1.6); await espera(0.7);
+  if (nuevo) await alzarPortal(nuevo, gran); else gran.userData.apagar(0.8);
   ps.forEach(p => encender(p.g, 0.6));
   soltarFoco();
 }
 
 /** Un Portal nuevo (tras una invocación) se alza desde debajo de la mesa; la runa que lo trajo se queda en su tarima. */
-async function alzarPortal(p, runaGuia = null, desde = null) {
+async function alzarPortal(p, runaGuia = null) {
   p.nuevo = false; p.g.visible = true; p.g.scale.set(1, 1, 1); p.levita = true;
-  // Emerge donde se cerró la invocación y luego se desliza a su sitio en la fila central.
-  if (desde) p.g.position.set(desde.x, p.g.position.y, desde.z);
+  // Emerge directamente en su sitio de la fila central (como en la maqueta).
+  const sitio = posPortal(claveDe(p)); if (sitio) p.g.position.set(sitio.x, p.g.position.y, sitio.z);
   const x = p.g.position.x, z = p.g.position.z;
   if (p.actor) p.actor.visible = true;
   encender(p.g, 0.05); S.piedra?.();

@@ -53,8 +53,10 @@ export function reanudar() { if (!mundo.renderer) return; ajustarTamano(); antes
 export function crearMundo(lienzo, calidad, { controles = true } = {}) {
   mundo.calidad = calidad; mundo.lienzo = lienzo;
   const alta = calidad === 'alta';
-  const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: alta, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, alta ? 2 : 1.25));
+  // Nitidez: suavizado de bordes siempre y resolución cercana a la de la
+  // pantalla (antes, en calidad baja, 1,25: en móviles se veía borroso al alejar).
+  const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, alta ? 2.5 : 2));
   const escena = new THREE.Scene();
   escena.background = new THREE.Color(0x0a0f24);
   escena.fog = new THREE.FogExp2(0x0a0f24, 0.028);

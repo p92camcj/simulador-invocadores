@@ -28,6 +28,10 @@ export const INFO = {
   'Cirelia':      { color: 0xffc94a, color2: 0xfff3c0, manos: ['D', 'I'], pose: 'ofrenda', gema: 'C' },
   'Baelorith':    { color: 0xff4a6e, color2: 0xffb0c0, manos: ['D', 'I'], pose: 'ofrenda', gema: 'B' },
   'Aelgorth':     { color: 0x9a6bff, color2: 0xc8b8ff, manos: ['D', 'I'], pose: 'ofrenda', gema: 'A' },
+  'Caisis':       { color: 0xffd23a, color2: 0xfff2a0, manos: ['D', 'I'], pose: 'ofrenda', gema: 'C' },
+  'Brose':        { color: 0xff3a4a, color2: 0xff9aa8, manos: ['D', 'I'], pose: 'ofrenda', gema: 'B' },
+  'Aures':        { color: 0x8a6ae8, color2: 0xd8c8ff, manos: ['D', 'I'], pose: 'ofrenda', gema: 'A' },
+  'Madain':       { color: 0xffffff, color2: 0xff9aff, manos: ['D', 'I'], pose: 'ofrenda', gema: '*' },
 };
 
 // Poses: ángulos de hombro (x adelante/atrás, z apertura), codo, cabeza y torso.
