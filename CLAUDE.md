@@ -473,6 +473,8 @@ in `nextTurn()`.
   its Portals (count public, total only to its owner) and auto-zooms on
   abilities applied to far Portals. Since 1.37.3 each character in `modelos.js` has its own face
   (`rasgos`) and clothing options matching the card art; keep them distinct.
+  Since 1.38.2 every invocation creature (normal, floral and Madain) has
+  its own model: shared body in `criatura()` plus `ADORNOS_CRIATURA`.
   The prototype page `prototipos/personajes-3d.html` runs the
   predefined scenes of `escenas.js` with the same models.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa

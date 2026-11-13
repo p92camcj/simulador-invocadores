@@ -160,7 +160,7 @@ export function anilloRunico(tex, p, color, radio = 1) {
   mundo.escena.add(m); return m;
 }
 
-const COLORES_GEMA = { azul: 0x4aa8ff, C: 0xffc94a, B: 0xff4a6e, A: 0x9a6bff };
+const COLORES_GEMA = { azul: 0x4aa8ff, C: 0xffc94a, B: 0xff4a6e, A: 0x9a6bff, '*': 0xfff4ff };
 let geoGema;
 /** Gema 3D facetada. tipo: 'azul' (valor 1) | 'C' | 'B' | 'A'. */
 export function gema(tipo = 'azul', tam = 1) {

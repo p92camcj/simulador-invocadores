@@ -20,7 +20,7 @@ function materiales() {
     const k = color + JSON.stringify({ ...o, mapa: o.mapa?.uuid });
     if (!cache.has(k)) cache.set(k, o.luz
       ? new THREE.MeshBasicMaterial({ color, transparent: !!o.alfa, opacity: o.alfa ?? 1, side: o.doble ? THREE.DoubleSide : THREE.FrontSide, blending: o.aditivo ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: !o.aditivo })
-      : new THREE.MeshToonMaterial({ color: o.mapa && !o.tinte ? 0xffffff : color, map: o.mapa ?? null, bumpMap: o.mapa && o.relieve !== 0 ? o.mapa : null, bumpScale: o.relieve ?? 1.6, gradientMap: grad, side: o.doble ? THREE.DoubleSide : THREE.FrontSide, emissive: o.emisivo ?? 0x000000, emissiveIntensity: o.emisivo ? 0.6 : 1 }));
+      : new THREE.MeshToonMaterial({ color: o.mapa && !o.tinte ? 0xffffff : color, map: o.mapa ?? null, bumpMap: o.mapa && o.relieve !== 0 ? o.mapa : null, bumpScale: o.relieve ?? 1.6, gradientMap: grad, side: o.doble ? THREE.DoubleSide : THREE.FrontSide, emissive: o.emisivo ?? 0x000000, emissiveIntensity: o.emisivo ? (o.brillo ?? 0.6) : 1, flatShading: !!o.plano }));
     return cache.get(k);
   };
 }
@@ -466,39 +466,175 @@ function buho() {
 }
 
 // ---------------------------------------------------------------- criaturas
+// Las criaturas de las invocaciones, como en sus cartas: figuras esbeltas,
+// sin rostro y hechas de luz, cada una con su rasgo (corona de llamas,
+// cristal y mantos, humo de estrellas, flores, arcoíris). Flotan: no andan.
 const CRIATURAS_3D = {
-  'Cirelia':   { c: 0xffc94a, c2: 0xfff3c0, cintas: [0xffc94a, 0xffe9a0, 0xff9a3a], halo: true, corona: 7 },
-  'Baelorith': { c: 0xd8284a, c2: 0xffb0c0, cintas: [0xd8284a, 0xff7a9a, 0xfff0f4], puas: true, corona: 5 },
-  'Aelgorth':  { c: 0x7a5ae8, c2: 0xc8b8ff, cintas: [0x7a5ae8, 0x4a3ab0, 0xb8a0ff], estrellas: true, corona: 0 },
+  'Cirelia':   { c: 0xffc94a, c2: 0xfff3c0, osc: 0xe08a20 },
+  'Baelorith': { c: 0xd8284a, c2: 0xffb0c0, osc: 0x8a1030, plano: true },
+  'Aelgorth':  { c: 0x6a4ae0, c2: 0xc8b8ff, osc: 0x2a1a80 },
+  'Caisis':    { c: 0xffd23a, c2: 0xfff2a0, osc: 0xe0a010 },
+  'Brose':     { c: 0xe0283a, c2: 0xff9aa8, osc: 0x9a1020, plano: true, sinCabeza: true },
+  'Aures':     { c: 0x8a6ae8, c2: 0xd8c8ff, osc: 0x4a30b0, plano: true },
+  'Madain':    { c: 0xfff6ff, c2: 0xffffff, osc: 0xd8c8ff },
 };
+const ARCOIRIS = [0xff3a4a, 0xff9a2a, 0xffe03a, 0x4ad86a, 0x3a9aff, 0x8a5aff];
+let texArcoiris = null;
+function texturaArcoiris() {
+  if (texArcoiris) return texArcoiris;
+  const [cv, x] = lienzo(8, 256), g = x.createLinearGradient(0, 256, 0, 0);
+  ARCOIRIS.forEach((c, i) => g.addColorStop(i / (ARCOIRIS.length - 1), hex(c)));
+  x.fillStyle = g; x.fillRect(0, 0, 8, 256);
+  texArcoiris = new THREE.CanvasTexture(cv); texArcoiris.colorSpace = THREE.SRGBColorSpace; return texArcoiris;
+}
+/** Pétalo o hoja: elipsoide aplanado y apuntado (largo en Y desde su base). */
+const PETALO = (() => { const g = new THREE.SphereGeometry(1, 10, 8); const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = 1 - Math.max(0, y) * 0.75; p.setXYZ(i, p.getX(i) * k, (y + 1) / 2, p.getZ(i) * k); } g.computeVertexNormals(); return g; })();
+const CRISTAL = new THREE.OctahedronGeometry(1, 0);
+
 function criatura(nombre) {
-  const p = CRIATURAS_3D[nombre], M = materiales(), g = new THREE.Group(), art = { telas: [], flotantes: [], pelo: [] };
-  const cuerpoM = M(p.c, { emisivo: p.c });
+  const p = CRIATURAS_3D[nombre], M = materiales(), g = new THREE.Group(), art = { telas: [], flotantes: [], pelo: [] }, m = { raiz: g, art, M };
+  const arco = nombre === 'Madain';
+  const cuerpoM = arco ? M(0xffffff, { mapa: texturaArcoiris(), relieve: 0, emisivo: 0x6a6a7a, brillo: 0.9 }) : M(p.c, { emisivo: p.c, plano: p.plano, brillo: 0.5 });
+  const claroM = M(p.c2, { emisivo: p.c2, plano: p.plano, brillo: 0.8 });
+  const oscM = M(p.osc, { emisivo: p.osc, plano: p.plano, brillo: 0.4 });
+  const seg = p.plano ? 6 : 12;
   const tronco = art.torso = pivote(g, 0, 2.3, 0);
-  const pts = [[0.02, -1.5], [0.12, -1.0], [0.2, -0.3], [0.16, 0.1], [0.3, 0.6], [0.34, 0.85], [0.12, 1.0]].map(q => new THREE.Vector2(q[0], q[1]));
-  pieza(tronco, new THREE.LatheGeometry(pts, 10), cuerpoM).scale.z = 0.7;
+  // Tronco: caderas, cintura de avispa, pecho y hombros.
+  pieza(tronco, new THREE.LatheGeometry(perfil([[0.0, -0.62], [0.2, -0.56], [0.25, -0.38], [0.16, 0.02], [0.22, 0.38], [0.31, 0.72], [0.28, 0.86], [0.08, 0.98]]), seg), cuerpoM).scale.z = 0.72;
+  pieza(tronco, CIL(0.06, 0.07, 0.18, seg), cuerpoM, 0, 1.02, 0);
+  // Piernas largas y finas que acaban en punta (flotan).
+  for (const s of [1, -1]) {
+    const pi = pivote(tronco, s * 0.12, -0.5, 0); pi.rotation.z = s * 0.04;
+    pieza(pi, CIL(0.1, 0.06, 0.95, seg), cuerpoM, 0, -0.47, 0); pieza(pi, CIL(0.06, 0.012, 0.9, seg), cuerpoM, 0, -1.37, 0.02);
+  }
+  // Cabeza sin rostro.
   const cab = art.cabeza = pivote(tronco, 0, 1.12, 0);
-  pieza(cab, ESF, M(p.c2, { emisivo: p.c2 }), 0, 0.14, 0, 0.14, 0.22, 0.15);
-  for (let i = 0; i < p.corona; i++) { const an = (i / (p.corona - 1) - 0.5) * 2.2; const k = pieza(cab, CONO(0.045, 0.5 - Math.abs(an) * 0.12, 4), cuerpoM, Math.sin(an) * 0.16, 0.38 + Math.cos(an) * 0.14, -0.02); k.rotation.z = -an; }
+  const cabM = arco ? M(0xffffff, { luz: true }) : claroM;
+  if (!p.sinCabeza) pieza(cab, ESF, cabM, 0, 0.16, 0, 0.13, nombre === 'Aelgorth' ? 0.24 : 0.19, 0.14);
+  // Brazos abiertos con manos de dedos largos.
   for (const lado of ['I', 'D']) {
-    const s = lado === 'I' ? 1 : -1; const b = art['brazo' + lado] = pivote(tronco, s * 0.36, 0.82, 0);
-    pieza(b, CIL(0.05, 0.035, 0.7, 6), cuerpoM, 0, -0.35, 0); const c = art['codo' + lado] = pivote(b, 0, -0.7, 0);
-    pieza(c, CIL(0.035, 0.02, 0.7, 6), cuerpoM, 0, -0.35, 0); art['mano' + lado] = pieza(c, ESF_BAJA, M(p.c2, { emisivo: p.c2 }), 0, -0.74, 0, 0.06, 0.1, 0.05);
-    if (p.puas) for (let i = 0; i < 3; i++) pieza(b, CONO(0.05, 0.4, 4), cuerpoM, s * 0.05, 0.06 + i * 0.02, -0.03 * i).rotation.z = -s * (0.5 + i * 0.5);
+    const s = lado === 'I' ? 1 : -1; const b = art['brazo' + lado] = pivote(tronco, s * 0.33, 0.8, 0);
+    pieza(b, ESF_BAJA, cuerpoM, 0, 0, 0, 0.09); pieza(b, CIL(0.065, 0.045, 0.66, seg), cuerpoM, 0, -0.33, 0);
+    const c = art['codo' + lado] = pivote(b, 0, -0.66, 0);
+    pieza(c, CIL(0.045, 0.03, 0.62, seg), cuerpoM, 0, -0.31, 0);
+    const mn = art['mano' + lado] = pivote(c, 0, -0.66, 0);
+    pieza(mn, ESF_BAJA, claroM, 0, 0, 0, 0.05, 0.07, 0.035);
+    for (let i = 0; i < 4; i++) pieza(mn, CONO(0.014, 0.16, 4), claroM, (i - 1.5) * 0.026 * s, -0.1, 0.01).rotation.z = (i - 1.5) * 0.18 * s;
   }
-  const n = 9;
-  for (let i = 0; i < n; i++) {
-    const an = i / n * Math.PI * 2, alto = i % 3 === 0;
-    const m = tela(tronco, M(p.cintas[i % 3], { luz: true, alfa: 0.72, doble: true }), 0.34, alto ? 2.6 : 2.0, { sx: 1, sy: 8, amp: 0.2, vel: 1.6, abre: -0.5, empuje: 0 });
-    m.position.set(Math.cos(an) * 0.22, alto ? 0.8 : -0.2, Math.sin(an) * 0.16 - 0.05); m.rotation.y = -an + Math.PI / 2; m.rotation.z = Math.cos(an) * 0.5; m.rotation.x = -0.25;
-    m.renderOrder = 9; art.telas.push(m);
-  }
-  if (p.halo) { const h = pieza(tronco, new THREE.TorusGeometry(1.0, 0.025, 5, 28), M(p.c2, { luz: true }), 0, 1.0, -0.3); art.halo = h;
-    for (let i = 0; i < 12; i++) { const an = i / 12 * 6.283; const r = pieza(h, CONO(0.035, i % 3 ? 0.22 : 0.4, 4), M(p.c2, { luz: true }), Math.cos(an) * 1.12, Math.sin(an) * 1.12, 0); r.rotation.z = an - Math.PI / 2; } }
-  if (p.estrellas) for (let i = 0; i < 14; i++) { const s = pieza(g, new THREE.OctahedronGeometry(0.05, 0), M(p.c2, { luz: true }), 0, 0, 0); flotante({ art }, s, 'torso', { radio: 0.7 + (i % 4) * 0.25, y: -1.4 + i * 0.2, vel: 0.3 + (i % 5) * 0.08, fase: i * 1.7, sube: 0.1 }); }
+  ADORNOS_CRIATURA[nombre]?.(m, p, { tronco, cab, cuerpoM, claroM, oscM });
   g.scale.setScalar(1.25);
   return { raiz: g, art, tipo: 'criatura', M, alto: 4.6, color: p.c, color2: p.c2 };
 }
+/** Velos que caen y ondean (llamas, mantos, humo). */
+function velos(m, padre, colores, o) {
+  const { M, art } = m;
+  for (let i = 0; i < o.n; i++) {
+    const k = o.n > 1 ? i / (o.n - 1) : 0.5, an = o.de + (o.a - o.de) * k;
+    const t = tela(padre, M(colores[i % colores.length], { luz: true, alfa: o.alfa ?? 0.7, doble: true, aditivo: o.aditivo }), o.ancho, o.largo * (o.var ? 0.75 + 0.5 * ((i * 7) % 5) / 4 : 1), { sx: 2, sy: 10, amp: o.amp ?? 0.22, vel: o.vel ?? 1.6, abre: o.abre ?? 0.6, curva: o.curva ?? 0.1, empuje: 0 });
+    t.position.set(Math.sin(an) * o.r + (o.x ?? 0), o.y, Math.cos(an) * o.r * 0.7 + (o.z ?? 0));
+    t.rotation.set(o.rx ?? -0.1, an, (o.inclina ?? 0) * Math.sin(an));
+    t.renderOrder = 9; art.telas.push(t);
+  }
+}
+function chispasFlotantes(m, colores, n, o = {}) {
+  for (let i = 0; i < n; i++) {
+    const c = pieza(m.raiz, CRISTAL, m.M(colores[i % colores.length], { luz: true }), 0, 0, 0, o.tam ?? 0.05, (o.tam ?? 0.05) * 1.8, o.tam ?? 0.05);
+    c.userData.gira = 0.5; flotante(m, c, 'torso', { radio: (o.radio ?? 0.9) + (i % 4) * 0.22, y: (o.y0 ?? -1.4) + i * ((o.alto ?? 3.6) / n), vel: 0.25 + (i % 5) * 0.07, fase: i * 1.7, sube: 0.12 });
+  }
+}
+const ADORNOS_CRIATURA = {
+  // Dorada, como una llama: corona de fuego, halo de sol y vestido de llamas.
+  'Cirelia'(m, p, { tronco, cab, claroM, cuerpoM }) {
+    const fuego = m.M(0xffd86a, { luz: true, alfa: 0.9 });
+    for (let i = 0; i < 9; i++) { const an = (i / 8 - 0.5) * 2.4, h = 0.75 - Math.abs(an) * 0.22;
+      const k = pieza(cab, PETALO, i % 2 ? fuego : claroM, Math.sin(an) * 0.11, 0.3 + Math.cos(an) * 0.05, -0.02, 0.06, h, 0.03); k.rotation.z = -an * 0.75; }
+    const h = pieza(tronco, new THREE.TorusGeometry(0.75, 0.018, 5, 36), m.M(p.c2, { luz: true, alfa: 0.8 }), 0, 1.3, -0.25); m.art.halo = h;
+    for (let i = 0; i < 16; i++) { const an = i / 16 * 6.283; const r = pieza(h, CONO(0.025, i % 2 ? 0.16 : 0.3, 4), m.M(p.c2, { luz: true, alfa: 0.8 }), Math.cos(an) * 0.85, Math.sin(an) * 0.85, 0); r.rotation.z = an - Math.PI / 2; }
+    velos(m, tronco, [0xffb428, 0xffdc6a, 0xff8a1e, 0xfff0b0], { n: 11, de: -2.6, a: 2.6, r: 0.2, y: -0.25, ancho: 0.42, largo: 2.2, abre: 0.9, var: true, inclina: 0.35, alfa: 0.72 });
+    chispasFlotantes(m, [0xffe9a0, 0xffc94a], 8, { tam: 0.045 });
+  },
+  // Cristal carmesí: corona de púas, hombreras afiladas, espada y un gran manto.
+  'Baelorith'(m, p, { tronco, cab, claroM, cuerpoM, oscM }) {
+    pieza(cab, CONO(0.07, 0.9, 4), cuerpoM, 0, 0.62, -0.02);
+    for (const s of [1, -1]) for (let i = 0; i < 3; i++) { const k = pieza(cab, CONO(0.045, 0.55 - i * 0.12, 4), i ? oscM : cuerpoM, s * (0.07 + i * 0.05), 0.42 - i * 0.05, -0.02); k.rotation.z = -s * (0.35 + i * 0.32); }
+    for (const s of [1, -1]) { for (let i = 0; i < 3; i++) { const k = pieza(tronco, CONO(0.06, 0.5 - i * 0.1, 4), cuerpoM, s * (0.3 + i * 0.07), 0.9 - i * 0.04, -0.03); k.rotation.z = -s * (0.25 + i * 0.35); }
+      pieza(tronco, CRISTAL, claroM, s * 0.1, 0.55, 0.15, 0.06, 0.14, 0.04); }
+    pieza(tronco, CRISTAL, claroM, 0, 0.3, 0.17, 0.05, 0.16, 0.04);
+    // Espada clavada delante, entre las manos.
+    const esp = pivote(m.raiz, 0, 0.35, 0.42);
+    pieza(esp, CONO(0.05, 0.35, 4), oscM, 0, -0.12, 0).rotation.x = Math.PI;
+    pieza(esp, new THREE.BoxGeometry(0.07, 1.5, 0.025), m.M(0xffc0cc, { emisivo: 0xd8284a, plano: true }), 0, 0.8, 0);
+    pieza(esp, new THREE.BoxGeometry(0.42, 0.05, 0.06), oscM, 0, 1.57, 0); pieza(esp, CIL(0.025, 0.025, 0.3, 5), oscM, 0, 1.75, 0); pieza(esp, CRISTAL, claroM, 0, 1.94, 0, 0.05);
+    // Manto: dos grandes alas de tela que caen de los hombros hasta el suelo.
+    for (const s of [1, -1]) velos(m, tronco, [0xd8284a, 0xff6a8a, 0xffd0dc, 0xa81838], { n: 5, de: s * 1.2, a: s * 2.4, r: 0.32, y: 0.85, ancho: 0.55, largo: 3.0, abre: 1.4, curva: 0.2, inclina: 0.5, alfa: 0.78, amp: 0.28, vel: 1.2 });
+    velos(m, tronco, [0xa81838, 0xd8284a], { n: 4, de: -0.9, a: 0.9, r: 0.18, y: -0.4, ancho: 0.3, largo: 1.5, abre: 0.5, var: true, inclina: 0.2 });
+    chispasFlotantes(m, [0xff3a5a, 0xffb0c0, 0xd8284a], 16, { tam: 0.05, radio: 1.0 });
+  },
+  // Violeta, sin rostro, casi una sombra: núcleo de luz y humo de estrellas.
+  'Aelgorth'(m, p, { tronco }) {
+    const nucleo = pieza(tronco, ESF, m.M(0xf0e8ff, { luz: true }), 0, 0.55, 0.14, 0.07); nucleo.userData.brillo = true;
+    pieza(tronco, ESF, m.M(0xb8a0ff, { luz: true, alfa: 0.35, aditivo: true }), 0, 0.55, 0.12, 0.2);
+    for (const s of [1, -1]) {
+      velos(m, tronco, [0x5a3ae8, 0x8a6aff, 0x3a2ab0, 0xb8a0ff], { n: 4, de: s * 1.6, a: s * 2.8, r: 0.3, y: 0.85, ancho: 0.4, largo: 3.2, abre: 1.6, curva: 0.35, inclina: 0.9, alfa: 0.6, amp: 0.45, vel: 0.9, var: true, aditivo: true });
+    }
+    chispasFlotantes(m, [0xffffff, 0xd8c8ff, 0x9a6bff], 18, { tam: 0.04, radio: 0.9 });
+    const orbe = pieza(m.raiz, ESF_BAJA, m.M(0x1a1040, { emisivo: 0x4a30b0 }), 0, 0, 0, 0.09); flotante(m, orbe, 'cabeza', { radio: 0.9, y: 0.4, vel: 0.4, sube: 0.15 });
+  },
+  // Girasol: cabeza de pétalos, hojas en los hombros y falda de pétalos.
+  'Caisis'(m, p, { tronco, cab, claroM, cuerpoM, oscM }) {
+    for (const [n, r, l, cM] of [[14, 0.15, 0.24, oscM], [12, 0.13, 0.2, cuerpoM]]) for (let i = 0; i < n; i++) {
+      const an = i / n * 6.283 + (cM === cuerpoM ? 0.2 : 0); const k = pieza(cab, PETALO, cM, Math.sin(an) * r, 0.16 + Math.cos(an) * r * 1.15, -0.05 - (cM === oscM ? 0.03 : 0), 0.075, l, 0.025); k.rotation.z = -an; }
+    pieza(cab, ESF, claroM, 0, 0.16, 0.02, 0.13, 0.16, 0.12);
+    const hoja = m.M(0xf0d040, { emisivo: 0xc8a020, brillo: 0.4, doble: true });
+    for (const s of [1, -1]) for (let i = 0; i < 2; i++) { const k = pieza(tronco, PETALO, hoja, s * (0.3 + i * 0.04), 0.8 - i * 0.14, -0.06, 0.1, 0.45 - i * 0.1, 0.03); k.rotation.set(-0.2, 0, -s * (0.9 + i * 0.6)); }
+    for (let i = 0; i < 10; i++) { const an = i / 10 * 6.283; const k = pieza(tronco, PETALO, i % 2 ? cuerpoM : oscM, Math.sin(an) * 0.2, -0.3, Math.cos(an) * 0.14, 0.13, 0.7, 0.04); k.rotation.set(Math.PI + Math.cos(an) * 0.45, 0, -Math.sin(an) * 0.45); }
+    velos(m, tronco, [0xffd23a, 0xffe880], { n: 6, de: -2.6, a: 2.6, r: 0.18, y: -0.5, ancho: 0.3, largo: 1.1, abre: 0.6, alfa: 0.55, var: true });
+    chispasFlotantes(m, [0xfff2a0, 0xffd23a], 8, { tam: 0.04 });
+  },
+  // Rosa roja: cabeza de pétalos enrollados y un cuerpo de pétalos facetados.
+  'Brose'(m, p, { tronco, cab, claroM, cuerpoM, oscM }) {
+    const petM = m.M(p.c, { emisivo: p.c, plano: true, doble: true, brillo: 0.5 }), petO = m.M(p.osc, { emisivo: p.osc, plano: true, doble: true, brillo: 0.4 });
+    // Capullo: anillos de pétalos cada vez más abiertos alrededor de un centro enrollado.
+    const rosa = pivote(cab, 0, 0.02, 0); rosa.scale.setScalar(1.3);
+    pieza(rosa, ESF, oscM, 0, 0.2, 0, 0.07, 0.1, 0.07);
+    for (let anillo = 0; anillo < 4; anillo++) { const n = 4 + anillo, r = 0.02 + anillo * 0.035, abre = -0.15 + anillo * 0.22;
+      for (let i = 0; i < n; i++) { const an = i / n * 6.283 + anillo * 0.7; const k = pieza(rosa, PETALO, anillo < 2 ? (anillo ? petM : petO) : (i % 2 ? petM : petO), Math.sin(an) * r, 0.02 + anillo * 0.01, Math.cos(an) * r, 0.09 + anillo * 0.025, 0.3 + anillo * 0.03, 0.035);
+        k.rotation.set(Math.cos(an) * abre, 0, -Math.sin(an) * abre); } }
+    for (let i = 0; i < 16; i++) { const an = i / 16 * 6.283, f = i % 2;
+      const k = pieza(tronco, CRISTAL, f ? cuerpoM : oscM, Math.sin(an) * 0.22, -0.25 - f * 0.3, Math.cos(an) * 0.15, 0.13, 0.55, 0.03); k.rotation.set(Math.cos(an) * 0.35, an, -Math.sin(an) * 0.35); }
+    for (const s of [1, -1]) for (let i = 0; i < 3; i++) { const k = pieza(tronco, CRISTAL, i % 2 ? oscM : cuerpoM, s * (0.3 + i * 0.05), 0.8 - i * 0.08, 0, 0.08, 0.22, 0.025); k.rotation.z = -s * (0.6 + i * 0.4); }
+    pieza(tronco, CRISTAL, claroM, 0, 0.5, 0.16, 0.08, 0.2, 0.03);
+    chispasFlotantes(m, [0xff3a4a, 0xff9aa8, 0xc81828], 16, { tam: 0.05, radio: 1.0 });
+  },
+  // Lirio violeta: corona de grandes pétalos y cuerpo facetado de pétalos.
+  'Aures'(m, p, { tronco, cab, claroM, cuerpoM, oscM }) {
+    const petM = m.M(p.c, { emisivo: p.c, plano: true, doble: true, brillo: 0.55 });
+    for (let i = 0; i < 7; i++) { const an = (i / 6 - 0.5) * 2.8; const k = pieza(cab, PETALO, i % 2 ? oscM : petM, Math.sin(an) * 0.08, 0.26, -0.03, 0.11, i === 3 ? 0.62 : 0.5, 0.035); k.rotation.z = -an * 0.8; }
+    for (const s of [1, -1]) { const k = pieza(cab, PETALO, petM, s * 0.12, 0.14, 0.02, 0.09, 0.4, 0.03); k.rotation.set(0.3, 0, -s * 2.2); }
+    for (let i = 0; i < 12; i++) { const an = i / 12 * 6.283, f = i % 2;
+      const k = pieza(tronco, PETALO, f ? cuerpoM : oscM, Math.sin(an) * 0.2, -0.15 - f * 0.2, Math.cos(an) * 0.14, 0.13, 0.85, 0.035); k.rotation.set(Math.PI + Math.cos(an) * 0.3, 0, -Math.sin(an) * 0.3); }
+    for (const s of [1, -1]) for (let i = 0; i < 2; i++) { const k = pieza(tronco, PETALO, petM, s * 0.32, 0.82 - i * 0.1, 0, 0.08, 0.32, 0.025); k.rotation.z = -s * (0.4 + i * 0.7); }
+    pieza(tronco, CRISTAL, claroM, 0, 0.45, 0.16, 0.06, 0.16, 0.03);
+    chispasFlotantes(m, [0xd8c8ff, 0x8a6ae8], 12, { tam: 0.045 });
+  },
+  // Madain: cabeza de luz blanca, cuerpo y alas de arcoíris y gemas en arco.
+  'Madain'(m, p, { tronco, cab }) {
+    pieza(cab, ESF, m.M(0xffffff, { luz: true, alfa: 0.3, aditivo: true }), 0, 0.16, 0, 0.2, 0.26, 0.2);
+    pieza(cab, ESF, m.M(0xfff0ff, { luz: true, alfa: 0.18, aditivo: true }), 0, 0.16, 0, 0.32, 0.38, 0.3);
+    pieza(tronco, CRISTAL, m.M(0xffffff, { luz: true }), 0, 0.5, 0.17, 0.08, 0.18, 0.03);
+    pieza(tronco, CRISTAL, m.M(0xffe03a, { emisivo: 0xff9a2a, brillo: 0.8, plano: true }), 0, 0.5, 0.15, 0.11, 0.24, 0.04);
+    // Alas: bandas de arcoíris que caen desde los hombros abriéndose hasta el suelo.
+    // Cada banda cuelga del hombro de cara al frente y se abre hacia fuera: de cerca violeta, por fuera roja.
+    for (const s of [1, -1]) [...ARCOIRIS].reverse().forEach((c, i) => {
+      const t = tela(tronco, m.M(c, { luz: true, alfa: 0.88, doble: true }), 0.22, 3.0 - i * 0.08, { sx: 2, sy: 12, amp: 0.12, vel: 1.1, abre: 0.5, curva: 0.06, empuje: 0 });
+      t.position.set(s * (0.24 + i * 0.07), 0.98 + i * 0.02, -0.12 - i * 0.03); t.rotation.set(-0.12, 0, s * (0.12 + i * 0.13)); t.renderOrder = 9; m.art.telas.push(t);
+    });
+    ARCOIRIS.concat([0xffffff]).forEach((c, i) => { const an = (i / 6 - 0.5) * 2.4;
+      pieza(cab, CRISTAL, m.M(c, { luz: true }), Math.sin(an) * 0.62, 0.3 + Math.cos(an) * 0.55, -0.05, 0.05, 0.1, 0.03); });
+    chispasFlotantes(m, ARCOIRIS, 12, { tam: 0.04 });
+  },
+};
 
 // --------------------------------------------------- ilustración recortada
 const LAMINAS = { 'Clarividente': { archivo: 'clarividente', alto: 1.7, razon: 475 / 747, mano: [0.33, 0.55] } };

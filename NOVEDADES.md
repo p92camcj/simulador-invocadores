@@ -6,6 +6,21 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.2.186 - 2026-11-13
+
+- **Las criaturas de las invocaciones se parecen mucho más a sus cartas**:
+  Cirelia con su corona y vestido de llamas, Baelorith de cristal rojo con
+  su espada y su manto, Aelgorth envuelta en humo de estrellas.
+- **Llegan las criaturas que faltaban**: Caisis, Brose y Aures del set
+  floral y Madain, con sus alas de arcoíris.
+- **El Portal nuevo vuelve a nacer como en la maqueta**: el gran círculo de
+  la invocación viaja encogiéndose hasta su sitio y de ahí sale el Portal.
+- **Los nombres de las rivales se leen mejor**: carteles más grandes y
+  nítidos que no se hacen pequeños al alejar la vista.
+- **Todo se ve más nítido**, sobre todo en el móvil al alejar la cámara.
+
+---
+
 ## 1.38.1.184 - 2026-11-13
 
 - **Regla aclarada: la Centinela protege a la jugadora, no al Portal.** Si

@@ -4,6 +4,31 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.2.186] - 2026-11-13
+
+### Mejorado (Escenario)
+- **Criaturas de las invocaciones más fieles a sus cartas**: `criatura()`
+  (`js/personajes3d/modelos.js`) tiene ahora un cuerpo esbelto común
+  (caderas, cintura, piernas que acaban en punta, manos de dedos largos) y
+  los adornos propios de cada una en `ADORNOS_CRIATURA`: Cirelia con corona
+  de llamas, halo de sol y vestido de llamas; Baelorith de cristal carmesí
+  con corona de púas, hombreras, espada y gran manto; Aelgorth violeta con
+  núcleo de luz y humo de estrellas.
+- **Criaturas nuevas**: Caisis (girasol), Brose (rosa) y Aures (lirio) del
+  set floral, y Madain (cabeza de luz, cuerpo y alas de arcoíris, gemas en
+  arco). `INFO` (`personajes.js`) las incluye y la invocación asterisco usa
+  Madain (antes, Aelgorth). Gema `'*'` blanca en `efectos.js`.
+- **Portal nuevo como en la maqueta**: tras la invocación, la gran runa
+  viaja encogiendo (y frenando su giro) hasta el sitio del Portal central
+  nuevo, que se alza del suelo a su alrededor (`alzarPortal(p, runaGuia)`).
+- **Carteles con el nombre de las rivales**: lienzo a doble resolución,
+  letra mayor con contorno, siempre por delante y con un tamaño que crece
+  con la distancia de la cámara (hasta 2,6×), así no encogen al alejar.
+- **Nitidez**: suavizado de bordes siempre activo y resolución hasta 2× la
+  de la pantalla también en calidad baja (antes 1,25×, borroso en móviles).
+
+---
+
 ## [1.38.1.184] - 2026-11-13
 
 ### Regla
