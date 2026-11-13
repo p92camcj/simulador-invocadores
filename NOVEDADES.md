@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.8.198 - 2026-11-13
+
+- **Arreglado**: en el Escenario, la partida se quedaba parada justo después
+  de que naciera el Portal nuevo de una invocación.
+
+---
+
 ## 1.38.7.196 - 2026-11-13
 
 - **En el Escenario, el Portal nuevo vuelve a nacer como en la maqueta**:

@@ -4,6 +4,17 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.8.198] - 2026-11-13
+
+### Corregido (Escenario)
+- **La partida se quedaba bloqueada tras nacer el Portal central nuevo**
+  (1.38.7). Al acabar de alzarse, `seguirMesa()` (`js/personajes3d/tablero.js`)
+  leía la orientación de ese Portal en la disposición, que aún no lo tenía;
+  el error en cada fotograma detenía la escena y el turno no avanzaba. Ahora
+  conserva su orientación hasta que llega la vista con el Portal.
+
+---
+
 ## [1.38.7.196] - 2026-11-13
 
 ### Corregido (Escenario)
