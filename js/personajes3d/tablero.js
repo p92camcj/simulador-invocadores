@@ -389,7 +389,7 @@ function seguirMesa(dt, t) {
       const obj = posPortal(clave);
       if (obj) {
         p.g.position.lerp(obj, Math.min(1, dt * 4));
-        const d = disp.portales.get(clave).rot - p.g.rotation.y; p.g.rotation.y += Math.atan2(Math.sin(d), Math.cos(d)) * Math.min(1, dt * 4);
+        const d = (disp.portales.get(clave)?.rot ?? p.g.rotation.y) - p.g.rotation.y; p.g.rotation.y += Math.atan2(Math.sin(d), Math.cos(d)) * Math.min(1, dt * 4);
       }
     }
     // Brillo según lo que se puede hacer con él.
