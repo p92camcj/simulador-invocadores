@@ -662,3 +662,4 @@ body.modo-escenario #mesa3d > .m-hueco3d { pointer-events: none; }
   content: ''; position: absolute; left: 22%; right: 22%; top: 50%;
   height: 3px; border-radius: 2px; background: #ff6b6b; transform: rotate(-45deg);
 }
+.m-amb-nota { margin: 0 0 8px; font-size: 0.85rem; opacity: 0.8; }

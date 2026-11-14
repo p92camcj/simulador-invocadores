@@ -4,7 +4,9 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
-## [1.39.0.204] - 2026-11-14
+## [1.40.0.206] - 2026-11-14
+
+### [1.39.0.204] - 2026-11-14
 
 ### Nuevo: chat de voz en las partidas online
 - `js/red/voz.js`: voz en directo entre todos los dispositivos de la sala
