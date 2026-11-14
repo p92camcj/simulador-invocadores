@@ -19,6 +19,7 @@
 import { estado } from '../motor/estado.js';
 import { sanearPartidaParaAsiento } from './sanear.js';
 import { abrirSala, unirseASala } from './transporte.js';
+import { configurarVoz, fijarParticipantes, detenerVoz } from './voz.js';
 import { jugarCarta } from '../motor/acciones.js';
 import { ejecutarJugada, activarHabilidad, ejecutarFinDeTurno } from '../actions.js';
 import { render, picker, pickerPortal } from '../render.js';
@@ -162,6 +163,7 @@ export async function crearSala() {
       sala = await abrirSala(c, { alConectar: alConectarInvitada, alAviso: t => mostrarAviso(t) });
       codigo = c;
       rol = 'anfitriona';
+      configurarVoz(sala.peer);
       try { localStorage.setItem(CLAVE_CODIGO, c); } catch { /* nada */ }
       avisarOyentes();
       return;
@@ -181,6 +183,7 @@ export function cerrarSala() {
   ordenLlegada = [];
   pendientes.clear();
   ultimoEnviado.clear();
+  detenerVoz();
   sala?.cerrar();
   sala = null;
   rol = null;
@@ -213,6 +216,10 @@ function enviarA(asiento, msg) {
 function enviarLobby() {
   const nombres = personasEnSala();
   invitadas.forEach(inv => inv.conexion?.enviar({ tipo: 'lobby', nombres }));
+  // Chat de voz: quién está conectada ahora (ids de PeerJS, mesa incluida).
+  const ids = [sala?.peer?.id, ...[...invitadas.values()].map(i => i.conexion?.idRemoto)].filter(Boolean);
+  invitadas.forEach(inv => inv.conexion?.enviar({ tipo: 'voz', ids }));
+  fijarParticipantes(ids);
 }
 
 function alConectarInvitada(con) {
@@ -541,6 +548,7 @@ async function conectarInvitada() {
   const con = await unirseASala(codigo);
   conexion = con;
   ultimoMensajeMesa = Date.now();
+  configurarVoz(con.peerLocal);
   con.alRecibir(msg => alRecibir(con, msg));
   con.alCerrar(() => { if (conexion === con) alPerderMesa(); });
   con.enviar({ tipo: 'unirse', idRed: miIdRed(), nombre: miNombre, version: await leerVersion() });
@@ -567,6 +575,9 @@ function alRecibir(con, msg) {
       rol = null;
       if (enTablero) volverAEspera();
       avisarOyentes();
+      return;
+    case 'voz':
+      fijarParticipantes(msg.ids);
       return;
     case 'lobby':
       nombresSala = Array.isArray(msg.nombres) ? msg.nombres.map(String) : [];
@@ -649,6 +660,7 @@ export function enviarFinTurno() {
 export function salirDeSala() {
   if (rol !== 'invitada' && !conexion) return;
   saliendo = true;
+  detenerVoz();
   olvidarSalaAnterior();
   const c = conexion;
   conexion = null;

@@ -69,6 +69,8 @@ function envolverPeer(conn) {
     });
   }
   return {
+    /** Id de PeerJS del otro extremo (para el chat de voz, js/red/voz.js). */
+    idRemoto: conn.peer,
     enviar(obj) { if (!cerrada && conn.open) conn.send(JSON.stringify(obj)); },
     alRecibir(f) { recibir.push(f); },
     alCerrar(f) { cerrar.push(f); },
@@ -102,7 +104,7 @@ export async function abrirSala(codigo, { alConectar, alAviso }) {
     let abierta = false;
     peer.on('open', () => {
       abierta = true;
-      ok({ cerrar: () => peer.destroy() });
+      ok({ cerrar: () => peer.destroy(), peer });
     });
     peer.on('connection', conn => {
       conn.on('open', () => alConectar(envolverPeer(conn)));
@@ -148,11 +150,16 @@ export async function unirseASala(codigo) {
         resuelta = true;
         clearTimeout(espera);
         const c = envolverPeer(conn);
+        c.peerLocal = peer;   // el chat de voz llama y recibe llamadas con él
         c.alCerrar(() => setTimeout(() => peer.destroy(), 0));
         ok(c);
       });
     });
     peer.on('error', err => { clearTimeout(espera); fallar(textoErrorPeer(err, codigo)); });
+    // Sin contacto con el servidor de salas no llegarían las llamadas de voz.
+    peer.on('disconnected', () => {
+      if (resuelta && !peer.destroyed) setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1500);
+    });
   });
 }
 

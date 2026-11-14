@@ -4,6 +4,27 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.39.0.204] - 2026-11-14
+
+### Nuevo: chat de voz en las partidas online
+- `js/red/voz.js`: voz en directo entre todos los dispositivos de la sala
+  con llamadas WebRTC de PeerJS en malla (sin servidor propio). Quien abre
+  el micro llama a cada participante con su audio; quien la recibe contesta
+  sin audio y la reproduce. La mesa reparte la lista de ids de PeerJS
+  (mensaje `voz`) cada vez que alguien entra o sale; al reconectar se
+  vuelve a llamar con el Peer nuevo.
+- Botones siempre a mano a los lados de la fila de personajes requeridos,
+  en la Mesa y en el Escenario: 🎤 abre/cierra tu micro (empieza cerrado;
+  la primera vez pide permiso; cerrar solo apaga la pista, así que volver
+  a hablar es instantáneo) y 🔊/🔇 oye o silencia a las demás.
+- Con cancelación de eco, supresión de ruido y control de ganancia del
+  navegador. No disponible con `?red=local`.
+- La invitada vuelve a conectarse al servidor de salas si lo pierde en
+  segundo plano (para seguir recibiendo llamadas).
+- Probado con Playwright (micrófono simulado, servidor PeerJS local, mesa y
+  dos invitadas): se oye mesa→invitada, invitada→mesa e invitada→invitada,
+  cerrar el micro corta el sonido y 🔇 silencia.
+
 ## [1.38.10.202] - 2026-11-14
 
 ### Corregido: volver a una partida online tras cambiar de app

@@ -651,3 +651,14 @@ body.modo-escenario #mesa3d > .m-hueco3d { pointer-events: none; }
 .m-amb-chip.activa { background: #b48cff40 !important; box-shadow: inset 0 0 0 2px #c8a8ff; }
 .m-amb-muestra { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px;
   margin-right: 5px; box-shadow: 0 0 0 1px #ffffff55; }
+
+/* Chat de voz de las partidas online (js/red/voz.js) */
+.m-fila-voz { display: flex; align-items: center; gap: 4px; padding: 0 8px; }
+.m-fila-voz .m-requeridos { flex: 1; min-width: 0; padding-left: 0; padding-right: 0; }
+.m-voz { position: relative; width: 36px; height: 36px; font-size: 1.1rem; }
+.m-voz.activo[data-accion="micro"] { box-shadow: 0 0 0 2px #5dff9a, 0 0 12px rgba(93, 255, 154, 0.55); }
+.m-voz.apagado { opacity: 0.6; }
+.m-voz.apagado[data-accion="micro"]::after {
+  content: ''; position: absolute; left: 22%; right: 22%; top: 50%;
+  height: 3px; border-radius: 2px; background: #ff6b6b; transform: rotate(-45deg);
+}

@@ -33,6 +33,7 @@ import {
 } from './actions.js';
 import { salirAlMenu } from './game.js';
 import { asientoLocal, partidaEnLinea, difundirFin } from './red/sala.js';
+import { botonesVozHtml, alternarMicro, alternarAltavoz, escucharVoz } from './red/voz.js';
 import {
   construirVistaMesa, elegirAsientoPropio, claveJugar, claveObjetivo, firmaPortal,
   cambioPortal, pistaTurno, contarHumanas,
@@ -94,6 +95,8 @@ export function initMesa3D() {
   };
 
   prepararPantallaInicio();
+  // Chat de voz online: los botones 🎤 / 🔊 cambian de aspecto.
+  escucharVoz(() => { if (document.body.classList.contains('mesa-en-partida')) renderMesa3D(); });
 
   conectarDeslizadores();
   const raiz = asegurarRaiz();
@@ -319,6 +322,16 @@ function invocacionHtml(inv) {
     + `</button>`;
 }
 
+/**
+ * Fila bajo la barra: personajes requeridos y, en una partida online, los
+ * botones del chat de voz a los lados (🎤 a la izquierda, 🔊 a la derecha).
+ */
+function filaRequeridos(inv) {
+  const voz = partidaEnLinea() ? botonesVozHtml() : null;
+  if (!voz) return requeridosHtml(inv);
+  return `<div class="m-fila-voz">${voz.micro}${requeridosHtml(inv) || '<div class="m-requeridos"></div>'}${voz.altavoz}</div>`;
+}
+
 function requeridosHtml(inv) {
   if (!inv) return '';
   return `<div class="m-requeridos">` + inv.requeridos.map(r => {
@@ -421,7 +434,7 @@ export function renderMesa3D() {
       <span class="m-mazo" title="Cartas en el mazo"><span class="m-mazo-pila"></span><b>${v.mazo}</b></span>
       ${deslizadorVelocidadHtml('m-velocidad--barra')}
     </header>
-    ${requeridosHtml(v.invocacion)}`;
+    ${filaRequeridos(v.invocacion)}`;
 
   // Modo Escenario: la mesa es el escenario 3D (js/personajes3d/tablero.js);
   // aquí solo quedan la barra, los marcadores y los botones del turno.
@@ -903,6 +916,8 @@ function ejecutarAccion(accion) {
   switch (accion) {
     case 'menu': return abrirMenu();
     case 'historial': return abrirHistorial();
+    case 'micro': return alternarMicro();
+    case 'altavoz': return alternarAltavoz();
     case 'invocacion': return verInvocacion();
     case 'habilidad': return activarHabilidad();
     case 'terminar': return ejecutarFinDeTurno();

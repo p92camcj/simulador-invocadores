@@ -744,6 +744,14 @@ cambia a `BroadcastChannel` (pestañas del mismo navegador, para probar);
 | `enviarJugada` / `enviarActivar` / `enviarFinTurno` | `función` | Invitada: `actions.js` las usa en vez de ejecutar. La jugada se comprueba antes en la copia propia. |
 | `esInvitada()` / `esAnfitriona()` / `partidaEnLinea()` / `asientoLocal()` | `función` | Consultas: `asientoLocal()` fija el asiento de abajo de la mesa en una partida online. |
 
+### js/red/voz.js
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `configurarVoz(peer)` / `fijarParticipantes(ids)` / `detenerVoz()` | `función` | Chat de voz por llamadas de PeerJS, en malla (cada uno llama a los demás con su micro; quien recibe contesta sin audio y lo reproduce en un `<audio data-voz>`). La mesa reparte la lista de ids de PeerJS (mensaje `voz`, desde `enviarLobby()`); tras reconectar llega un Peer nuevo y se vuelve a llamar. |
+| `alternarMicro()` / `alternarAltavoz()` | `función` | Botones 🎤 (micro propio: la primera vez pide permiso; después solo apaga/enciende la pista) y 🔊 (silenciar a las demás). Micro cerrado y voces abiertas al empezar. |
+| `botonesVozHtml()` / `vozDisponible()` / `escucharVoz(f)` | `función` | `{ micro, altavoz }` para la fila de requeridos de la Mesa y del Escenario (`filaRequeridos()` en `mesa3d.js`), solo en partidas online y con PeerJS (no con `?red=local`). |
+
 ### js/red/panel-online.js
 
 | Nombre | Tipo | Descripción |
