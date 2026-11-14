@@ -551,7 +551,11 @@ in `nextTurn()`.
   `alert()` inside `conDecisor` goes to that guest. Players on other
   devices carry `idRed`; `asientoLocal()` pins each device's own seat and
   `construirVistaMesa(..., { pantallaPrivada })` shows her hand all the
-  time (no hand-off curtain online). Test in one browser with `?red=local`
+  time (no hand-off curtain online). Since 1.38.10 guests keep their id in
+  `localStorage`, host and guests exchange heartbeats, and a guest that
+  comes back with a new id reclaims her seat by name (`reclamarPorNombre`).
+  Since 1.39.0 `voz.js` adds live voice chat (PeerJS media calls in a
+  mesh, 🎤/🔊 buttons beside the required-characters row). Test in one browser with `?red=local`
   (BroadcastChannel) and two tabs, or against a local PeerJS server with
   `?servidorRed=127.0.0.1:9000`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —

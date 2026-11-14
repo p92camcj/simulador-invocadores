@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.39.0.204 - 2026-11-14
+
+- **Chat de voz en las partidas online**: habla con tus amigas mientras
+  jugáis, sin llamada aparte. Arriba, a la izquierda, el botón 🎤 abre o
+  cierra tu micro (empieza cerrado y la primera vez te pide permiso); a la
+  derecha, 🔊 te deja oír o silenciar a las demás.
+
 ## 1.38.10.202 - 2026-11-14
 
 - **Partidas online más firmes**: si cambias de app, se bloquea el móvil o

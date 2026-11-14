@@ -90,6 +90,7 @@ const urlsToCache = [
   './js/red/transporte.js',
   './js/red/sala.js',
   './js/red/panel-online.js',
+  './js/red/voz.js',
   './assets/cards/maestro.png',
   './assets/cards/clarividente.png',
   './assets/cards/ocultista.png',
