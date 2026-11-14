@@ -30,9 +30,33 @@ const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_INVITADAS = 4;
 const CLAVE_SALA_INVITADA = 'invocadores.salaInvitada';
 
-/** Sala en la que estaba esta pestaña antes de recargar ({ codigo, nombre }), si la hay. */
+const LATIDO_MS = 4000;          // cada cuánto se saludan mesa e invitadas
+const SILENCIO_MAX_MS = 15000;   // sin noticias en este tiempo, la conexión se da por caída
+const VIGENCIA_SALA_MS = 6 * 3600 * 1000;
+
+/**
+ * Dónde recuerda la invitada quién es y en qué sala estaba. En el móvil,
+ * localStorage: así, si cambia de app y el navegador cierra la pestaña, o
+ * vuelve a abrir el enlace desde WhatsApp en otra pestaña, sigue siendo la
+ * misma y recupera su asiento. Con ?red=local (pruebas con varias pestañas
+ * del mismo navegador) cada pestaña es una persona distinta: sessionStorage.
+ */
+function almacenInvitada() {
+  try {
+    return new URLSearchParams(location.search).get('red') === 'local' ? sessionStorage : localStorage;
+  } catch { return null; }
+}
+
+/** Sala en la que estaba esta persona hace poco ({ codigo, nombre }), si la hay. */
 export function salaAnteriorDeEstaPestana() {
-  try { return JSON.parse(sessionStorage.getItem(CLAVE_SALA_INVITADA) || 'null'); } catch { return null; }
+  try {
+    const d = JSON.parse(almacenInvitada()?.getItem(CLAVE_SALA_INVITADA) || 'null');
+    return d && Date.now() - (d.hora || 0) < VIGENCIA_SALA_MS ? d : null;
+  } catch { return null; }
+}
+
+function olvidarSalaAnterior() {
+  try { almacenInvitada()?.removeItem(CLAVE_SALA_INVITADA); } catch { /* nada */ }
 }
 
 let rol = null;                 // 'anfitriona' | 'invitada' | null
@@ -59,6 +83,7 @@ let saliendo = false;
 let reintentos = 0;
 let nombresSala = [];
 let errorUltimo = '';
+let ultimoMensajeMesa = 0;
 
 // ---------- Consultas ----------
 
@@ -204,6 +229,10 @@ function alConectarInvitada(con) {
       const idRed = String(msg.idRed || '').slice(0, 40);
       if (!idRed) return;
       const enPartida = estado.partida.players.length > 0 && !estado.partida.juegoTerminado;
+      const nombre = String(msg.nombre || '').trim().slice(0, 24);
+      // Vuelve con otro identificador (otro navegador, datos borrados...):
+      // se le devuelve su sitio por el nombre, o el único asiento libre.
+      if (!invitadas.has(idRed)) reclamarPorNombre(idRed, nombre, enPartida);
       const asiento = asientoDeId(idRed);
       let inv = invitadas.get(idRed);
       if (!inv) {
@@ -217,7 +246,8 @@ function alConectarInvitada(con) {
       }
       id = idRed;
       inv.conexion = con;
-      if (asiento < 0) inv.nombre = String(msg.nombre || '').trim().slice(0, 24) || `Amiga ${ordenLlegada.indexOf(idRed) + 1}`;
+      inv.ultimoContacto = Date.now();
+      if (asiento < 0) inv.nombre = nombre || `Amiga ${ordenLlegada.indexOf(idRed) + 1}`;
       con.enviar({ tipo: 'bienvenida', codigo });
       enviarLobby();
       avisarOyentes();
@@ -232,7 +262,11 @@ function alConectarInvitada(con) {
       }
       return;
     }
-    if (id) procesar(id, msg);
+    if (!id) return;
+    const inv = invitadas.get(id);
+    if (inv?.conexion === con) inv.ultimoContacto = Date.now();
+    if (msg.tipo === 'latido') return;
+    procesar(id, msg);
   });
   con.alCerrar(() => {
     const inv = id ? invitadas.get(id) : null;
@@ -250,6 +284,54 @@ function alConectarInvitada(con) {
     avisarOyentes();
   });
 }
+
+const normalizar = t => String(t || '').trim().toLowerCase();
+
+/** ¿Sigue viva la conexión de esta invitada? */
+function conectada(inv) {
+  return !!inv?.conexion && Date.now() - (inv.ultimoContacto || 0) < SILENCIO_MAX_MS;
+}
+
+/**
+ * Una persona entra con un identificador nuevo. Si en la sala había otra
+ * con su mismo nombre que ya no responde (o, en plena partida, un único
+ * asiento de persona sin conexión), es ella que vuelve: se le pasa ese
+ * sitio. Así no sale repetida en la lista ni se queda fuera de su partida.
+ */
+function reclamarPorNombre(idNuevo, nombre, enPartida) {
+  const n = normalizar(nombre);
+  let idViejo = null;
+  if (enPartida) {
+    // Mismo nombre: es ella aunque su conexión vieja aún parezca viva.
+    const mismaPersona = estado.partida.players.find(p => p.idRed
+      && (normalizar(p.name) === n || normalizar(invitadas.get(p.idRed)?.nombre) === n));
+    const libres = estado.partida.players.filter(p => p.idRed && !conectada(invitadas.get(p.idRed)));
+    idViejo = (mismaPersona || (libres.length === 1 ? libres[0] : null))?.idRed || null;
+  } else {
+    idViejo = ordenLlegada.find(k => normalizar(invitadas.get(k)?.nombre) === n) || null;
+  }
+  if (!idViejo) return;
+  const vieja = invitadas.get(idViejo);
+  if (vieja?.conexion) { const c = vieja.conexion; vieja.conexion = null; c.cerrar(); }
+  invitadas.delete(idViejo);
+  invitadas.set(idNuevo, { idRed: idNuevo, nombre: vieja?.nombre || nombre, conexion: null });
+  ordenLlegada = ordenLlegada.map(k => (k === idViejo ? idNuevo : k));
+  if (!ordenLlegada.includes(idNuevo)) ordenLlegada.push(idNuevo);
+  estado.partida.players.forEach(p => { if (p.idRed === idViejo) p.idRed = idNuevo; });
+  ultimoEnviado.delete(idViejo);
+}
+
+// Latidos: la mesa saluda a cada invitada y cierra las que llevan un rato
+// calladas (un móvil que se fue a otra app sin despedirse). Al cerrarlas,
+// su asiento queda libre para que vuelvan.
+setInterval(() => {
+  if (rol !== 'anfitriona') return;
+  invitadas.forEach(inv => {
+    if (!inv.conexion) return;
+    if (Date.now() - (inv.ultimoContacto || 0) > SILENCIO_MAX_MS) inv.conexion.cerrar();
+    else inv.conexion.enviar({ tipo: 'latido' });
+  });
+}, LATIDO_MS);
 
 /** Ejecuta en la mesa lo que pide la invitada del asiento de `id`. */
 function procesar(id, msg) {
@@ -424,10 +506,11 @@ export function alSalirAlMenu() {
 function miIdRed() {
   const clave = 'invocadores.idRed';
   try {
-    let id = sessionStorage.getItem(clave);
+    const almacen = almacenInvitada();
+    let id = almacen.getItem(clave);
     if (!id) {
       id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-      sessionStorage.setItem(clave, id);
+      almacen.setItem(clave, id);
     }
     return id;
   } catch {
@@ -457,6 +540,7 @@ export async function unirse(cod, nombre) {
 async function conectarInvitada() {
   const con = await unirseASala(codigo);
   conexion = con;
+  ultimoMensajeMesa = Date.now();
   con.alRecibir(msg => alRecibir(con, msg));
   con.alCerrar(() => { if (conexion === con) alPerderMesa(); });
   con.enviar({ tipo: 'unirse', idRed: miIdRed(), nombre: miNombre, version: await leerVersion() });
@@ -464,16 +548,18 @@ async function conectarInvitada() {
 
 function alRecibir(con, msg) {
   if (con !== conexion || !msg) return;
+  ultimoMensajeMesa = Date.now();
+  if (msg.tipo === 'latido') { con.enviar({ tipo: 'latido' }); return; }
   switch (msg.tipo) {
     case 'bienvenida':
       rol = 'invitada';
       // Si se recarga la página, se vuelve a entrar sola (ver panel-online.js).
-      try { sessionStorage.setItem(CLAVE_SALA_INVITADA, JSON.stringify({ codigo, nombre: miNombre })); } catch { /* nada */ }
+      try { almacenInvitada()?.setItem(CLAVE_SALA_INVITADA, JSON.stringify({ codigo, nombre: miNombre, hora: Date.now() })); } catch { /* nada */ }
       quitarBandaConexion();
       avisarOyentes();
       return;
     case 'rechazo':
-      try { sessionStorage.removeItem(CLAVE_SALA_INVITADA); } catch { /* nada */ }
+      olvidarSalaAnterior();
       errorUltimo = msg.motivo;
       saliendo = true;
       conexion = null;
@@ -563,7 +649,7 @@ export function enviarFinTurno() {
 export function salirDeSala() {
   if (rol !== 'invitada' && !conexion) return;
   saliendo = true;
-  try { sessionStorage.removeItem(CLAVE_SALA_INVITADA); } catch { /* nada */ }
+  olvidarSalaAnterior();
   const c = conexion;
   conexion = null;
   c?.cerrar();
@@ -590,14 +676,14 @@ function volverAEspera() {
 function alPerderMesa() {
   conexion = null;
   if (saliendo) return;
-  if (!enTablero) {
+  if (!enTablero && rol !== 'invitada') {
     rol = null;
     errorUltimo = 'Se ha perdido la conexión con la mesa.';
     codigo = null;
     avisarOyentes();
     return;
   }
-  mostrarBandaConexion('Se ha perdido la conexión con la mesa. Reconectando…');
+  if (enTablero) mostrarBandaConexion('Se ha perdido la conexión con la mesa. Reconectando…');
   reintentar();
 }
 
@@ -614,13 +700,24 @@ function reintentar() {
   }, Math.min(2000 + reintentos * 500, 6000));
 }
 
-// Al volver a la app (el móvil estaba bloqueado) se reconecta enseguida.
+/** La conexión con la mesa lleva callada `ms`: se cierra para volver a conectar. */
+function comprobarSilencio(ms) {
+  if (rol !== 'invitada' || saliendo) return;
+  if (conexion && Date.now() - ultimoMensajeMesa > ms) {
+    const c = conexion;
+    c.cerrar();   // alPerderMesa() reconecta
+  }
+}
+
 if (typeof document !== 'undefined') {
+  setInterval(() => comprobarSilencio(SILENCIO_MAX_MS), LATIDO_MS);
+  // Al volver a la app (otra app, móvil bloqueado) se comprueba enseguida:
+  // si la mesa no ha dicho nada en unos segundos, la conexión se rehace.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && rol === 'invitada' && !conexion && !saliendo && enTablero) {
-      reintentos = 0;
-      conectarInvitada().catch(() => reintentar());
-    }
+    if (document.visibilityState !== 'visible' || rol !== 'invitada' || saliendo) return;
+    if (conexion) { comprobarSilencio(LATIDO_MS * 1.5); return; }
+    reintentos = 0;
+    conectarInvitada().catch(() => reintentar());
   });
 }
 

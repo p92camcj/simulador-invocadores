@@ -4,6 +4,24 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.38.10.202] - 2026-11-14
+
+### Corregido: volver a una partida online tras cambiar de app
+- La invitada que cambiaba de app (o reabría el enlace en otra pestaña)
+  volvía con un identificador nuevo (estaba en `sessionStorage`) y la mesa
+  la rechazaba con «La partida ya ha empezado»; además salía repetida en
+  la lista de la sala. Ahora el identificador y la sala se recuerdan en
+  `localStorage` (6 h; con `?red=local` sigue en `sessionStorage` para
+  probar con varias pestañas).
+- Si aun así entra con otro identificador, la mesa le devuelve su sitio
+  por el nombre (o el único asiento de persona sin conexión) y, antes de
+  empezar, sustituye a la entrada repetida (`reclamarPorNombre()` en
+  `js/red/sala.js`).
+- Latidos cada 4 s entre mesa e invitadas: una conexión callada 15 s se da
+  por caída (la mesa libera el asiento; la invitada se reconecta sola). Al
+  volver a la app se comprueba enseguida y, si hace falta, se rehace la
+  conexión, también en la sala de espera.
+
 ## [1.38.9.200] - 2026-11-13
 
 ### Corregido (Escenario)

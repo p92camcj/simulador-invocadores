@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.38.10.202 - 2026-11-14
+
+- **Partidas online más firmes**: si cambias de app, se bloquea el móvil o
+  vuelves a abrir el enlace, regresas a tu asiento en la partida en vez de
+  quedarte fuera. Y ya nadie sale repetido en la lista de la sala.
+
 ## 1.38.9.200 - 2026-11-13
 
 - **Arreglado**: en el Escenario, los Portales centrales que nacen en cada
