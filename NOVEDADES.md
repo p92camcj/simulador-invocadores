@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.40.1.208 - 2026-11-14
+
+- **Arreglado: los invitados no podían entrar en una sala nueva** si
+  habían jugado online hace poco. La app se empeñaba en volver a la sala
+  anterior en vez de abrir la del enlace. Ahora el enlace nuevo manda.
+
 ## 1.40.0.206 - 2026-11-14
 
 - **En las partidas online, el ambiente lo elige la mesa**: si quien hace de

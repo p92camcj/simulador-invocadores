@@ -6,7 +6,7 @@
 
 import {
   rolRed, codigoSala, crearSala, cerrarSala, unirse, salirDeSala, personasEnSala,
-  escucharSala, enlaceSala, limpiarCodigo, ultimoError, salaAnteriorDeEstaPestana,
+  escucharSala, enlaceSala, limpiarCodigo, ultimoError, salaAnteriorDeEstaPestana, olvidarSalaAnterior, borrarErrorRed,
 } from './sala.js';
 
 const CLAVE_NOMBRE = 'invocadores.nombreOnline';
@@ -34,13 +34,27 @@ export function initPanelOnline() {
       vista = 'unirse';
       pintar.codigoInicial = limpiarCodigo(cod);
     }
-    // Se ha recargado la página en mitad de una sala: se vuelve a entrar.
+    // Se ha recargado la página (o se vuelve a la app) en mitad de una sala:
+    // se vuelve a entrar sola. Pero si llega un enlace de OTRA sala, manda
+    // el enlace: la sala anterior se olvida.
+    const enlace = cod ? limpiarCodigo(cod) : '';
     const anterior = salaAnteriorDeEstaPestana();
-    if (anterior?.codigo && anterior?.nombre) {
+    if (anterior && enlace && limpiarCodigo(anterior.codigo) !== enlace) {
+      olvidarSalaAnterior();
+    } else if (anterior?.codigo && anterior?.nombre) {
       vista = 'unirse';
       pintar.codigoInicial = anterior.codigo;
       ocupado = true;
-      unirse(anterior.codigo, anterior.nombre).catch(() => {}).finally(() => { ocupado = false; pintar(); });
+      unirse(anterior.codigo, anterior.nombre)
+        .catch(() => {
+          // Esa sala ya no está: se olvida sin dar guerra y se deja el campo
+          // listo para escribir el código nuevo.
+          olvidarSalaAnterior();
+          borrarErrorRed();
+          pintar.codigoInicial = enlace;
+          if (!enlace) vista = 'inicio';
+        })
+        .finally(() => { ocupado = false; pintar(); });
     }
   }
   pintar();

@@ -57,7 +57,8 @@ export function salaAnteriorDeEstaPestana() {
   } catch { return null; }
 }
 
-function olvidarSalaAnterior() {
+/** Ya no se intentará volver sola a esa sala (se ha salido, se abre otra o ya no existe). */
+export function olvidarSalaAnterior() {
   try { almacenInvitada()?.removeItem(CLAVE_SALA_INVITADA); } catch { /* nada */ }
 }
 
@@ -94,6 +95,7 @@ export function codigoSala() { return codigo; }
 export function esInvitada() { return rol === 'invitada'; }
 export function esAnfitriona() { return rol === 'anfitriona'; }
 export function ultimoError() { return errorUltimo; }
+export function borrarErrorRed() { errorUltimo = ''; }
 
 /** ¿La partida en curso se juega online (con alguien en otro dispositivo)? */
 export function partidaEnLinea() {
@@ -156,6 +158,7 @@ export function enlaceSala() {
 export async function crearSala() {
   if (rol) return;
   errorUltimo = '';
+  olvidarSalaAnterior();   // quien hace de mesa no vuelve sola a una sala ajena
   let guardado = null;
   try { guardado = localStorage.getItem(CLAVE_CODIGO); } catch { /* nada */ }
   const candidatos = [guardado && /^[A-Z0-9]{5}$/.test(guardado) ? guardado : null, nuevoCodigo(), nuevoCodigo()].filter(Boolean);
