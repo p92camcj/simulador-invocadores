@@ -740,6 +740,7 @@ cambia a `BroadcastChannel` (pestañas del mismo navegador, para probar);
 | `trasRepintar()` | `función` | La llama `render()`: manda a cada invitada su copia saneada si ha cambiado. |
 | `decisorRemoto()` / `pedirRemoto(...)` / `conDecisor(asiento, fn)` / `preguntarJugadora(idx, ...)` | `función` | Enrutado de preguntas y avisos: decide el asiento forzado por `conDecisor` o, si no, el del turno; si es remoto, la pregunta viaja y su respuesta vuelve al mismo callback. |
 | `difundirAmbiente()` | `función` | Mesa: manda a las invitadas su ambiente del Escenario (`inv3d.ambiente`: hora, cielo, suelo, paleta) al entrar alguien y al cambiarlo; la invitada lo aplica y su panel de Ambiente solo deja la velocidad. |
+| `olvidarSalaAnterior()` / `borrarErrorRed()` | `función` | Invitada: deja de intentar volver sola a la sala guardada (al salir, al crear sala o si llega un enlace de otra sala) / borra el último error de red del panel. |
 | `difundirFin(datos)` / `alSalirAlMenu()` | `función` | Marcador final para todas; aviso de que la mesa vuelve al menú. |
 | `unirse(codigo, nombre)` / `salirDeSala()` | `función` | Invitada. Se reconecta sola si se corta, si vuelve de otra app o si se recarga (identificador y sala en `localStorage`; latidos cada 4 s, 15 s de silencio = caída). Si vuelve con otro identificador, la mesa le devuelve su asiento por el nombre. |
 | `enviarJugada` / `enviarActivar` / `enviarFinTurno` | `función` | Invitada: `actions.js` las usa en vez de ejecutar. La jugada se comprueba antes en la copia propia. |

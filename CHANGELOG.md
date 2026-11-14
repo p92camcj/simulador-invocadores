@@ -4,6 +4,21 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.40.1.208] - 2026-11-14
+
+### Corregido: los invitados no entraban en una sala nueva
+- Desde 1.38.10 la invitada guarda en `localStorage` la sala en la que
+  estaba (para volver sola si cambia de app). Al abrir un enlace de OTRA
+  sala, `initPanelOnline()` (`js/red/panel-online.js`) ignoraba el enlace e
+  intentaba volver a la sala vieja, que ya no existía: se quedaba en
+  «Conectando…» y luego mostraba el código antiguo. Ahora manda el enlace
+  (la sala anterior se olvida); si la vuelta automática falla, se olvida
+  sin mostrar error y el campo queda listo para el código nuevo.
+- `crearSala()` olvida la sala anterior: el dispositivo que hace de mesa ya
+  no intenta volver solo a una sala en la que fue invitada.
+- Nuevas exportaciones en `js/red/sala.js`: `olvidarSalaAnterior()` y
+  `borrarErrorRed()`.
+
 ## [1.40.0.206] - 2026-11-14
 
 ### [1.39.0.204] - 2026-11-14
