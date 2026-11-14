@@ -32,7 +32,7 @@ import {
   cancelarSeleccion, ejecutarFinDeTurno,
 } from './actions.js';
 import { salirAlMenu } from './game.js';
-import { asientoLocal, partidaEnLinea, difundirFin } from './red/sala.js';
+import { asientoLocal, partidaEnLinea, difundirFin, esInvitada, difundirAmbiente } from './red/sala.js';
 import { botonesVozHtml, alternarMicro, alternarAltavoz, escucharVoz } from './red/voz.js';
 import {
   construirVistaMesa, elegirAsientoPropio, claveJugar, claveObjetivo, firmaPortal,
@@ -1111,6 +1111,13 @@ function abrirAmbiente(refrescar = false) {
   if (!T) return;
   const a = T.ambienteActual(), O = T.OPCIONES_AMBIENTE;
   const sinDecorado = a.suelo === 'ninguno';
+  // Partida online: el ambiente lo elige la mesa; aquí solo la velocidad.
+  if (esInvitada()) {
+    const cuerpo = `<div class="m-ambiente"><p class="m-amb-nota">El suelo, la hora y el cielo los elige quien hace de mesa: ves lo mismo que ella.</p>`
+      + `<div class="m-amb-fila"><span class="m-amb-titulo">Velocidad</span>${deslizadorVelocidadHtml()}</div></div>`;
+    abrirHoja({ tipo: 'info', titulo: 'Ambiente del Escenario', cuerpo, compacta: true });
+    return;
+  }
   const fila = (campo, titulo, apagada = false) => `<div class="m-amb-fila ${apagada ? 'apagada' : ''}"><span class="m-amb-titulo">${titulo}</span><div class="m-amb-chips">`
     + O[campo].map(([val, icono, txt]) => campo === 'paleta'
       ? `<button type="button" class="m-amb-chip ${a[campo] === val ? 'activa' : ''}" data-menu="amb:${campo}:${val}" title="${escapeHtml(txt)}"><span class="m-amb-muestra" style="background:${icono}"></span>${escapeHtml(txt)}</button>`
@@ -1148,8 +1155,10 @@ function accionMenu(opcion) {
   }
   if (opcion === 'ambiente') { abrirAmbiente(); return; }
   if (opcion.startsWith('amb:')) {
+    if (esInvitada()) return;
     const [, campo, valor] = opcion.split(':');
     tablero()?.fijarAmbiente({ [campo]: valor });
+    difundirAmbiente();   // partida online: las invitadas ven lo mismo
     abrirAmbiente(true);
     return;
   }

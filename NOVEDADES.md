@@ -6,6 +6,12 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.40.0.206 - 2026-11-14
+
+- **En las partidas online, el ambiente lo elige la mesa**: si quien hace de
+  mesa pone noche estrellada con tormenta o un atardecer en la playa, todas
+  lo veis igual en el Escenario.
+
 ## 1.39.0.204 - 2026-11-14
 
 - **Chat de voz en las partidas online**: habla con tus amigas mientras

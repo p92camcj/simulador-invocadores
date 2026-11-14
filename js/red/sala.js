@@ -20,6 +20,7 @@ import { estado } from '../motor/estado.js';
 import { sanearPartidaParaAsiento } from './sanear.js';
 import { abrirSala, unirseASala } from './transporte.js';
 import { configurarVoz, fijarParticipantes, detenerVoz } from './voz.js';
+import { tablero } from '../escenas3d.js';
 import { jugarCarta } from '../motor/acciones.js';
 import { ejecutarJugada, activarHabilidad, ejecutarFinDeTurno } from '../actions.js';
 import { render, picker, pickerPortal } from '../render.js';
@@ -220,6 +221,34 @@ function enviarLobby() {
   const ids = [sala?.peer?.id, ...[...invitadas.values()].map(i => i.conexion?.idRemoto)].filter(Boolean);
   invitadas.forEach(inv => inv.conexion?.enviar({ tipo: 'voz', ids }));
   fijarParticipantes(ids);
+  difundirAmbiente();
+}
+
+// ---------- Ambiente del Escenario: lo elige la mesa ----------
+// La hora, el cielo, el suelo y la paleta del Escenario (js/personajes3d/
+// ambiente.js, guardados en localStorage) los decide quien hace de mesa;
+// las invitadas reciben lo mismo y no pueden cambiarlo.
+const CLAVE_AMBIENTE = 'inv3d.ambiente';
+
+function leerAmbienteGuardado() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_AMBIENTE) || 'null'); } catch { return null; }
+}
+
+/** Mesa: manda su ambiente a todas (al entrar alguien y cada vez que lo cambia). */
+export function difundirAmbiente() {
+  if (rol !== 'anfitriona') return;
+  const ambiente = tablero()?.ambienteActual?.() || leerAmbienteGuardado();
+  if (!ambiente) return;
+  invitadas.forEach(inv => inv.conexion?.enviar({ tipo: 'ambiente', ambiente }));
+}
+
+/** Invitada: aplica el ambiente de la mesa (y lo guarda, por si abre el Escenario después). */
+function aplicarAmbienteDeLaMesa(ambiente) {
+  if (!ambiente || typeof ambiente !== 'object') return;
+  const limpio = {};
+  ['hora', 'cielo', 'suelo', 'paleta'].forEach(k => { if (typeof ambiente[k] === 'string') limpio[k] = ambiente[k].slice(0, 30); });
+  try { localStorage.setItem(CLAVE_AMBIENTE, JSON.stringify({ ...(leerAmbienteGuardado() || {}), ...limpio })); } catch { /* nada */ }
+  tablero()?.fijarAmbiente(limpio);
 }
 
 function alConectarInvitada(con) {
@@ -578,6 +607,9 @@ function alRecibir(con, msg) {
       return;
     case 'voz':
       fijarParticipantes(msg.ids);
+      return;
+    case 'ambiente':
+      aplicarAmbienteDeLaMesa(msg.ambiente);
       return;
     case 'lobby':
       nombresSala = Array.isArray(msg.nombres) ? msg.nombres.map(String) : [];
