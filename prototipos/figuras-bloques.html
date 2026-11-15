@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invocadores · figuras de bloques (boceto)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1d1b2a; overflow: hidden; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  #ayuda { position: fixed; left: 12px; bottom: 10px; color: #cfc8e8; font-size: 13px; opacity: .8; }
+</style>
+</head>
+<body>
+<div id="ayuda">Boceto: arrastra para girar la cámara · rueda para acercar</div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.min.js';
+
+// ---------- escena ----------
+const params = new URLSearchParams(location.search);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+
+const escena = new THREE.Scene();
+escena.background = new THREE.Color('#2a2640');
+escena.fog = new THREE.Fog('#2a2640', 30, 60);
+const camara = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200);
+
+escena.add(new THREE.HemisphereLight('#fff6e8', '#5a4f7a', 1.1));
+const sol = new THREE.DirectionalLight('#fff3dc', 2.2);
+sol.position.set(6, 14, 10);
+sol.castShadow = true;
+sol.shadow.mapSize.set(2048, 2048);
+Object.assign(sol.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12 });
+escena.add(sol);
+const relleno = new THREE.DirectionalLight('#9fb6ff', 0.6);
+relleno.position.set(-8, 5, -6);
+escena.add(relleno);
+
+// plástico brillante
+const plastico = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.32, metalness: 0, ...extra });
+const brillo = (color, intensidad = 1.6) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensidad, roughness: 0.2, transparent: true, opacity: 0.85 });
+
+function sombra(m) { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; }
+
+// ---------- placa base con tetones ----------
+const TETON = new THREE.CylinderGeometry(0.24, 0.24, 0.17, 20);
+function placa(ancho, fondo, color, paso = 0.8) {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(ancho * paso, 0.32, fondo * paso), plastico(color));
+  base.position.y = -0.16;
+  g.add(base);
+  const mt = plastico(color);
+  const tetones = new THREE.InstancedMesh(TETON, mt, ancho * fondo);
+  let i = 0; const m = new THREE.Matrix4();
+  for (let x = 0; x < ancho; x++) for (let z = 0; z < fondo; z++) {
+    m.makeTranslation((x - (ancho - 1) / 2) * paso, 0.085, (z - (fondo - 1) / 2) * paso);
+    tetones.setMatrixAt(i++, m);
+  }
+  g.add(tetones);
+  return sombra(g);
+}
+const suelo = placa(40, 22, '#4f8a4b');
+suelo.position.y = -0.02;
+escena.add(suelo);
+
+// Portal de bloques: losa redonda con runas y arco
+function portal(color = '#7b5fd0') {
+  const g = new THREE.Group();
+  const losa = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.32, 40), plastico('#b9b4c7'));
+  losa.position.y = 0.16; g.add(losa);
+  const runa = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.07, 10, 48), brillo(color, 1.2));
+  runa.rotation.x = Math.PI / 2; runa.position.y = 0.34; g.add(runa);
+  for (let k = 0; k < 6; k++) {
+    const a = k / 6 * Math.PI * 2;
+    const t = new THREE.Mesh(TETON, plastico('#b9b4c7'));
+    t.position.set(Math.cos(a) * 0.62, 0.4, Math.sin(a) * 0.62); g.add(t);
+  }
+  return sombra(g);
+}
+
+// ---------- texturas impresas (cara y torso) ----------
+function lienzo(w, h, pinta) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); pinta(x, w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const NEGRO = '#1a1418';
+
+// la cara se dibuja centrada en u = 0.5 (la cabeza gira 180° para que el centro mire al frente)
+function cara(piel, opciones = {}) {
+  const { ojos = 'abiertos', boca = 'sonrisa', barba = null, cejas = NEGRO, gafas = false, sombraTotal = false, mejillas = false, ojosBrillo = null } = opciones;
+  return lienzo(512, 256, (x, w, h) => {
+    x.fillStyle = sombraTotal ? '#0b0d1a' : piel; x.fillRect(0, 0, w, h);
+    const cx = w / 2, oy = 108, sep = 34;
+    x.lineCap = 'round';
+    if (sombraTotal) {
+      if (ojosBrillo) {
+        x.shadowColor = ojosBrillo; x.shadowBlur = 18; x.fillStyle = ojosBrillo;
+        for (const s of [-1, 1]) { x.beginPath(); x.ellipse(cx + s * sep, oy + 8, 9, 5, 0, 0, Math.PI * 2); x.fill(); }
+        x.shadowBlur = 0;
+      }
+      return;
+    }
+    if (barba) {
+      x.fillStyle = barba;
+      x.beginPath(); x.moveTo(cx - 84, 70); x.lineTo(cx - 70, 70); x.quadraticCurveTo(cx - 66, 150, cx, 158); x.quadraticCurveTo(cx + 66, 150, cx + 70, 70); x.lineTo(cx + 84, 70);
+      x.quadraticCurveTo(cx + 86, 226, cx, 240); x.quadraticCurveTo(cx - 86, 226, cx - 84, 70); x.fill();
+      x.beginPath(); x.moveTo(cx - 44, 150); x.quadraticCurveTo(cx, 128, cx + 44, 150); x.quadraticCurveTo(cx, 146, cx - 44, 150); x.fill(); // bigote
+      x.fillStyle = piel; x.beginPath(); x.ellipse(cx, 172, 20, 8, 0, 0, Math.PI * 2); x.fill();
+      x.strokeStyle = NEGRO; x.lineWidth = 4; x.beginPath(); x.moveTo(cx - 12, 172); x.lineTo(cx + 12, 172); x.stroke();
+    }
+    x.strokeStyle = cejas; x.lineWidth = 7;
+    for (const s of [-1, 1]) { x.beginPath(); x.moveTo(cx + s * (sep - 16), oy - 26); x.quadraticCurveTo(cx + s * sep, oy - 34, cx + s * (sep + 16), oy - 26); x.stroke(); }
+    x.fillStyle = NEGRO; x.strokeStyle = NEGRO; x.lineWidth = 6;
+    for (const s of [-1, 1]) {
+      if (ojos === 'cerrados') { x.beginPath(); x.arc(cx + s * sep, oy - 2, 12, 0.15 * Math.PI, 0.85 * Math.PI); x.stroke(); }
+      else {
+        x.beginPath(); x.ellipse(cx + s * sep, oy, 8.5, 11, 0, 0, Math.PI * 2); x.fill();
+        x.fillStyle = '#fff'; x.beginPath(); x.arc(cx + s * sep + 3, oy - 4, 3, 0, Math.PI * 2); x.fill(); x.fillStyle = NEGRO;
+      }
+    }
+    if (gafas) {
+      x.strokeStyle = '#3a2a22'; x.lineWidth = 5;
+      for (const s of [-1, 1]) { x.beginPath(); x.arc(cx + s * sep, oy, 21, 0, Math.PI * 2); x.stroke(); }
+      x.beginPath(); x.moveTo(cx - 13, oy - 2); x.lineTo(cx + 13, oy - 2); x.stroke();
+    }
+    if (mejillas) { x.fillStyle = 'rgba(235,110,110,.45)'; for (const s of [-1, 1]) { x.beginPath(); x.arc(cx + s * 62, oy + 30, 13, 0, Math.PI * 2); x.fill(); } }
+    x.strokeStyle = NEGRO; x.lineWidth = 6;
+    if (boca === 'sonrisa') { x.beginPath(); x.arc(cx, 132, 26, 0.2 * Math.PI, 0.8 * Math.PI); x.stroke(); }
+    else if (boca === 'serena') { x.beginPath(); x.arc(cx, 128, 16, 0.25 * Math.PI, 0.75 * Math.PI); x.stroke(); }
+    else if (boca === 'carcajada') {
+      x.fillStyle = '#5a1a22'; x.beginPath(); x.moveTo(cx - 34, 130); x.quadraticCurveTo(cx, 186, cx + 34, 130); x.closePath(); x.fill();
+      x.fillStyle = '#fff'; x.fillRect(cx - 26, 130, 52, 9);
+    } else if (boca === 'firme' && !barba) { x.beginPath(); x.moveTo(cx - 16, 140); x.lineTo(cx + 16, 138); x.stroke(); }
+  });
+}
+
+// torso: lienzo frontal; pinta(x, w, h) dibuja los detalles impresos
+function torsoTex(color, pinta) {
+  return lienzo(256, 256, (x, w, h) => { x.fillStyle = color; x.fillRect(0, 0, w, h); pinta && pinta(x, w, h); });
+}
+function gema(x, cx, cy, r, color) {
+  x.fillStyle = '#e7c35a'; x.beginPath(); x.moveTo(cx, cy - r - 5); x.lineTo(cx + r + 5, cy); x.lineTo(cx, cy + r + 5); x.lineTo(cx - r - 5, cy); x.fill();
+  x.fillStyle = color; x.beginPath(); x.moveTo(cx, cy - r); x.lineTo(cx + r, cy); x.lineTo(cx, cy + r); x.lineTo(cx - r, cy); x.fill();
+  x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.arc(cx - r / 3, cy - r / 3, r / 4, 0, Math.PI * 2); x.fill();
+}
+
+// ---------- la figurita ----------
+// Medidas aproximadas de un muñequito de bloques (unidades: 1 ≈ 1 cm de juguete ×2.5)
+function trapecio(anchoArriba, anchoAbajo, alto, fondo) {
+  const g = new THREE.BoxGeometry(anchoAbajo, alto, fondo);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) p.setX(i, p.getX(i) * anchoArriba / anchoAbajo);
+  g.computeVertexNormals();
+  return g;
+}
+
+function figura(d) {
+  const f = new THREE.Group();
+  const piel = d.piel || '#f2c9a0';
+
+  // piernas o falda
+  if (d.falda) {
+    const falda = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.95, 1.55, 4, 1), plastico(d.falda));
+    falda.rotation.y = Math.PI / 4; falda.scale.z = 0.62; falda.position.y = 0.78;
+    f.add(falda);
+    if (d.faldaRibete) {
+      const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.97, 0.97, 0.12, 4, 1), plastico(d.faldaRibete));
+      rib.rotation.y = Math.PI / 4; rib.scale.z = 0.62; rib.position.y = 0.06; f.add(rib);
+    }
+  } else {
+    const cadera = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.28, 0.62), plastico(d.cadera || d.piernas[0]));
+    cadera.position.y = 1.45; f.add(cadera);
+    d.piernas.forEach((c, i) => {
+      const s = i === 0 ? -1 : 1;
+      const pierna = new THREE.Group();
+      const muslo = new THREE.Mesh(new THREE.BoxGeometry(0.58, 1.05, 0.62), plastico(c));
+      muslo.position.y = -0.55; pierna.add(muslo);
+      const pie = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.32, 0.78), plastico(d.botas || c));
+      pie.position.set(0, -1.15, 0.08); pierna.add(pie);
+      if (d.botas) { const caña = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.45, 0.64), plastico(d.botas)); caña.position.y = -0.85; pierna.add(caña); }
+      pierna.position.set(s * 0.31, 1.32, 0);
+      pierna.rotation.x = (d.paso || 0) * s;
+      f.add(pierna);
+    });
+  }
+
+  // torso con estampado
+  const tt = torsoTex(d.torso, d.estampado);
+  const matTorso = [plastico(d.torso), plastico(d.torso), plastico(d.torso), plastico(d.torso), plastico('#ffffff', { map: tt }), plastico(d.torso)];
+  const torso = new THREE.Mesh(trapecio(0.95, 1.3, 1.3, 0.62), matTorso);
+  torso.position.y = 2.25; f.add(torso);
+
+  // brazos y manos en C
+  const hombroY = 2.72;
+  [-1, 1].forEach(s => {
+    const brazo = new THREE.Group();
+    const color = (s < 0 ? d.brazoIzq : d.brazoDer) || d.brazos || d.torso;
+    const sup = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.23, 0.95, 16), plastico(color, color === '#9aa3ad' ? { metalness: 0.7, roughness: 0.25 } : {}));
+    sup.position.y = -0.45; brazo.add(sup);
+    const hombro = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), plastico(color)); brazo.add(hombro);
+    const puno = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.14, 16), plastico(d.puños || color)); puno.position.y = -0.95; brazo.add(puno);
+    const mano = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.08, 10, 18, Math.PI * 1.45), plastico(d.manos || piel));
+    mano.rotation.set(0, Math.PI / 2, Math.PI * 0.77); mano.position.y = -1.13; brazo.add(mano);
+    brazo.position.set(s * 0.6, hombroY, 0);
+    const pose = (s < 0 ? d.poseIzq : d.poseDer) || [0.25, 0.12];
+    brazo.rotation.x = -pose[0];
+    brazo.rotation.z = s * pose[1];
+    brazo.userData.mano = mano;
+    f.add(brazo);
+    f.userData[s < 0 ? 'brazoIzq' : 'brazoDer'] = brazo;
+  });
+
+  // cuello y cabeza
+  const cuello = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 16), plastico(piel)); cuello.position.y = 2.96; f.add(cuello);
+  const cabeza = new THREE.Group(); cabeza.position.y = 3.45; f.add(cabeza);
+  const caraMat = plastico('#ffffff', { map: cara(piel, d.cara) });
+  const craneo = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.82, 40, 1), [caraMat, plastico(d.cara?.sombraTotal ? '#0b0d1a' : piel), plastico(piel)]);
+  craneo.rotation.y = Math.PI; cabeza.add(craneo);
+  for (const y of [0.41, -0.41]) { const bisel = new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.05, 8, 40), plastico(piel)); bisel.rotation.x = Math.PI / 2; bisel.position.y = y; cabeza.add(bisel); }
+  const tet = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.16, 20), plastico(piel)); tet.position.y = 0.5; cabeza.add(tet);
+
+  if (d.pelo) cabeza.add(d.pelo());
+  if (d.capa) f.add(capa(d.capa, d.capaLarga));
+  if (d.extra) d.extra(f, cabeza);
+  f.userData.cabeza = cabeza;
+  return sombra(f);
+}
+
+// capa: lámina doblada a la espalda
+function capa(color, larga = 2.3) {
+  const g = new THREE.Group();
+  const forma = new THREE.Shape();
+  forma.moveTo(-0.5, 0); forma.lineTo(0.5, 0); forma.lineTo(0.85, -larga); forma.lineTo(-0.85, -larga); forma.closePath();
+  const geo = new THREE.ExtrudeGeometry(forma, { depth: 0.06, bevelEnabled: false });
+  const m = new THREE.Mesh(geo, plastico(color, { side: THREE.DoubleSide }));
+  m.position.set(0, 2.9, -0.37); m.rotation.x = 0.1;
+  g.add(m);
+  return g;
+}
+
+// ---------- piezas de pelo y sombreros ----------
+function peloMelena(color, largo = 1.0, flequillo = true) {
+  return () => {
+    const g = new THREE.Group(); const mt = plastico(color);
+    const casco = new THREE.Mesh(new THREE.SphereGeometry(0.52, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), mt); casco.position.y = 0.24; casco.scale.set(1, 1.05, 1); g.add(casco);
+    const trasera = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.62, largo, 32, 1, true, Math.PI * 0.3, Math.PI * 1.4), plastico(color, { side: THREE.DoubleSide }));
+    trasera.position.y = 0.26 - largo / 2; g.add(trasera);
+    for (const s of [-1, 1]) { const mech = new THREE.Mesh(new THREE.BoxGeometry(0.16, largo * 0.85, 0.3), mt); mech.position.set(s * 0.47, 0.26 - largo * 0.45, 0.22); mech.rotation.z = s * -0.08; g.add(mech); }
+    if (flequillo) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.16, 0.2), mt); f.position.set(0, 0.36, 0.38); f.rotation.x = -0.35; g.add(f); }
+    return g;
+  };
+}
+function peloCorto(color, despeinado = true) {
+  return () => {
+    const g = new THREE.Group(); const mt = plastico(color);
+    const casco = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), mt); casco.position.y = 0.27; casco.scale.y = 0.9; g.add(casco);
+    const nuca = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.5, 32, 1, true, Math.PI * 0.42, Math.PI * 1.16), plastico(color, { side: THREE.DoubleSide })); nuca.position.y = 0.1; g.add(nuca);
+    if (despeinado) for (let k = 0; k < 5; k++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), mt);
+      const a = -0.9 + k * 0.45; m.position.set(Math.sin(a) * 0.3, 0.62 - Math.abs(a) * 0.05, Math.cos(a) * 0.2 + 0.08); m.scale.set(1.2, 0.6, 1); m.rotation.z = -a * 0.5; g.add(m);
+    }
+    return g;
+  };
+}
+function capucha(color, forro = '#0b0d1a', pico = true) {
+  return () => {
+    const g = new THREE.Group();
+    const c = new THREE.Mesh(new THREE.SphereGeometry(0.64, 32, 20, Math.PI * 0.78, Math.PI * 1.44, 0, Math.PI * 0.78), plastico(color, { side: THREE.DoubleSide }));
+    c.position.y = 0.05;
+    const frente = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.2), plastico(color)); frente.position.y = 0.05; frente.scale.set(1, 1.15, 1); g.add(frente); c.scale.set(1, 1.15, 1); g.add(c);
+        if (pico) { const p = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.45, 16), plastico(color)); p.position.set(0, 0.62, -0.12); p.rotation.x = -0.5; g.add(p); }
+    const cuelloC = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.72, 0.28, 32), plastico(color)); cuelloC.position.y = -0.58; g.add(cuelloC);
+    return g;
+  };
+}
+
+// ---------- personajes ----------
+const PERSONAJES = {
+  clarividente: () => figura({
+    piel: '#f3d2b3', torso: '#e7b45c', brazos: '#e7b45c', falda: '#e9a24a', faldaRibete: '#1f6f6a',
+    capa: '#1f6f6a', capaLarga: 2.6,
+    cara: { ojos: 'cerrados', boca: 'serena', cejas: '#1a1418' },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#1f6f6a'; x.beginPath(); x.moveTo(w / 2 - 50, 0); x.lineTo(w / 2 + 50, 0); x.lineTo(w / 2 + 26, h); x.lineTo(w / 2 - 26, h); x.fill();
+      x.strokeStyle = '#f5d27a'; x.lineWidth = 6; x.stroke();
+      gema(x, w / 2, 70, 16, '#3fd0c0'); gema(x, w / 2, 150, 12, '#3fd0c0');
+      x.strokeStyle = '#f5d27a'; x.lineWidth = 5; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(w / 2 + s * 70, 30); x.quadraticCurveTo(w / 2 + s * 100, 120, w / 2 + s * 60, 230); x.stroke(); }
+    },
+    pelo: () => { const g = peloMelena('#16131c', 0.9, false)(); g.add(capucha('#1f6f6a')()); return g; },
+    poseDer: [1.1, 0.35], poseIzq: [0.35, 0.15],
+    extra: (f) => {
+      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 16), brillo('#5ff2e6', 2.2));
+      orbe.position.set(0.95, 2.35, 0.95); f.add(orbe);
+      const luz = new THREE.PointLight('#5ff2e6', 2, 3); luz.position.copy(orbe.position); f.add(luz);
+      humo(f, '#4fe0d6', 0.9);
+    },
+  }),
+
+  cronomante: () => figura({
+    piel: '#efc29a', torso: '#f1dfb4', brazoIzq: '#9aa3ad', brazoDer: '#f1dfb4', piernas: ['#4a3426', '#4a3426'], cadera: '#5b3d2a', botas: '#6b4428',
+    capa: '#6e4f9a', capaLarga: 2.4, manos: '#efc29a',
+    cara: { boca: 'firme', barba: '#5a3a22', cejas: '#4a2e1a' },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#6e4f9a'; x.beginPath(); x.moveTo(0, 0); x.lineTo(60, 0); x.lineTo(30, 120); x.lineTo(0, 140); x.fill();
+      x.beginPath(); x.moveTo(w, 0); x.lineTo(w - 60, 0); x.lineTo(w - 30, 120); x.lineTo(w, 140); x.fill();
+      x.fillStyle = '#5b3d2a'; x.fillRect(0, 175, w, 40);
+      gema(x, w / 2, 195, 17, '#d23a3a'); gema(x, w / 2 - 70, 195, 8, '#3a7bd2'); gema(x, w / 2 + 70, 195, 8, '#3aa65a');
+      gema(x, w / 2 - 42, 70, 9, '#c9479a'); gema(x, w / 2 + 42, 70, 9, '#c9479a');
+      x.strokeStyle = '#d6b36a'; x.lineWidth = 4; x.beginPath(); x.moveTo(w / 2, 0); x.lineTo(w / 2, 175); x.stroke();
+    },
+    pelo: peloCorto('#6b4226'),
+    poseDer: [1.25, 0.45], poseIzq: [1.25, 0.45],
+    extra: (f) => {
+      for (const s of [-1, 1]) {
+        const llama = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 12), brillo('#57c8ff', 2.4));
+        llama.position.set(s * 1.12, 2.55, 1.0); f.add(llama);
+        const n = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), brillo('#a9e6ff', 2)); n.position.set(s * 1.12, 2.25, 1.0); f.add(n);
+      }
+      const luz = new THREE.PointLight('#57c8ff', 5, 4); luz.position.set(0, 2.6, 1.2); f.add(luz);
+    },
+  }),
+
+  centinela: () => figura({
+    piel: '#8a5a3c', torso: '#b5332b', brazos: '#b5332b', piernas: ['#3a1e1e', '#3a1e1e'], cadera: '#7a2a24', botas: '#8f2a22', manos: '#8a5a3c',
+    capa: '#c2402f', capaLarga: 2.3,
+    cara: { boca: 'firme', cejas: '#1a1012' },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#8f2620'; x.fillRect(0, 0, w, 30);
+      x.strokeStyle = '#e2b453'; x.lineWidth = 7;
+      x.beginPath(); x.moveTo(30, 40); x.quadraticCurveTo(w / 2, 120, w - 30, 40); x.stroke();
+      x.beginPath(); x.moveTo(w / 2, 90); x.lineTo(w / 2, 230); x.stroke();
+      x.fillStyle = '#e2b453'; x.fillRect(0, 200, w, 22);
+      gema(x, w / 2, 210, 12, '#e8473a');
+      x.strokeStyle = '#7a1f1a'; x.lineWidth = 4; for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { x.beginPath(); x.moveTo(w / 2 + s * 30, 120 + k * 25); x.lineTo(w / 2 + s * 100, 110 + k * 25); x.stroke(); }
+    },
+    pelo: () => {
+      const g = peloCorto('#1c1210', false)();
+      const mono = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12), plastico('#1c1210')); mono.position.set(0, 0.45, -0.38); g.add(mono);
+      return g;
+    },
+    poseIzq: [0.95, 0.1], poseDer: [0.6, 0.25],
+    extra: (f) => {
+      const lanza = new THREE.Group();
+      const asta = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 5.4, 10), plastico('#6b4428')); lanza.add(asta);
+      const punta = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 4), plastico('#c9ced6', { metalness: 0.8, roughness: 0.25 })); punta.position.y = 2.95; lanza.add(punta);
+      lanza.position.set(-0.75, 2.4, 0.9); lanza.rotation.x = 0.05; f.add(lanza);
+      const escudo = new THREE.Group();
+      const placaE = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 6), plastico('#8f2a22')); placaE.rotation.x = Math.PI / 2; escudo.add(placaE);
+      const ribete = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 8, 6), plastico('#e2b453')); escudo.add(ribete);
+      const g = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), plastico('#e2b453')); g.position.z = 0.07; escudo.add(g);
+      escudo.position.set(1.25, 3.9, 0.5); escudo.rotation.y = -0.3; f.add(escudo);
+    },
+  }),
+
+  ocultista: () => figura({
+    piel: '#0b0d1a', torso: '#2b3f92', brazos: '#2b3f92', falda: '#2b3f92', faldaRibete: '#d6b05a', manos: '#efc29a',
+    capa: '#22327a', capaLarga: 2.8,
+    cara: { sombraTotal: true, ojosBrillo: '#8fd8ff' },
+    estampado: (x, w, h) => {
+      x.strokeStyle = '#d6b05a'; x.lineWidth = 6;
+      x.beginPath(); x.moveTo(w / 2 - 70, 0); x.lineTo(w / 2, 110); x.lineTo(w / 2 + 70, 0); x.stroke();
+      x.beginPath(); x.moveTo(w / 2, 110); x.lineTo(w / 2, h); x.stroke();
+      gema(x, w / 2, 70, 11, '#4a8cff');
+      for (let k = 0; k < 4; k++) { x.fillStyle = '#d6b05a'; x.beginPath(); x.arc(40 + k * 58, 230, 6, 0, Math.PI * 2); x.fill(); }
+    },
+    pelo: capucha('#2b3f92', '#0b0d1a', true),
+    poseDer: [1.0, -0.15], poseIzq: [1.0, -0.15],
+    extra: (f) => {
+      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16), brillo('#7fc6ff', 2.6)); orbe.position.set(0, 2.15, 1.05); f.add(orbe);
+      const luz = new THREE.PointLight('#7fc6ff', 6, 4); luz.position.copy(orbe.position); f.add(luz);
+    },
+  }),
+
+  entusiasta: () => figura({
+    piel: '#f3cba5', torso: '#e8457a', brazoIzq: '#7b3fb0', brazoDer: '#e8457a', piernas: ['#e8457a', '#7b3fb0'], cadera: '#3a8fd6', botas: null, manos: '#7b3fb0', puños: '#f2c230',
+    cara: { boca: 'carcajada', cejas: '#a2401c', mejillas: true },
+    estampado: (x, w, h) => {
+      for (let k = 0; k < 4; k++) { x.fillStyle = k % 2 ? '#7b3fb0' : '#f2c230'; x.beginPath(); const cx = 40 + k * 58; x.moveTo(cx, 0); x.lineTo(cx + 29, 50); x.lineTo(cx, 80); x.lineTo(cx - 29, 50); x.fill(); }
+      x.fillStyle = '#7b3fb0'; x.beginPath(); x.moveTo(w / 2, 100); x.lineTo(w, 100); x.lineTo(w, h); x.lineTo(w / 2, h); x.fill();
+      x.fillStyle = '#3a8fd6'; x.fillRect(0, 205, w, 30);
+    },
+    pelo: () => {
+      const g = new THREE.Group();
+      const banda = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.2, 32), plastico('#f2c230')); banda.position.y = 0.33; g.add(banda);
+      const base = new THREE.Mesh(new THREE.SphereGeometry(0.47, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), plastico('#7b3fb0')); base.position.y = 0.4; g.add(base);
+      [[-1, '#e8457a'], [1, '#7b3fb0']].forEach(([s, c]) => {
+        const curva = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.6, 0), new THREE.Vector3(s * 0.5, 1.05, 0), new THREE.Vector3(s * 1.0, 0.95, 0.05), new THREE.Vector3(s * 1.15, 0.55, 0.1)]);
+        const tubo = new THREE.Mesh(new THREE.TubeGeometry(curva, 24, 0.17, 12), plastico(c)); g.add(tubo);
+        const cascabel = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), plastico('#f2c230', { metalness: 0.6, roughness: 0.25 })); cascabel.position.set(s * 1.17, 0.4, 0.1); g.add(cascabel);
+      });
+      const mech = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.12, 0.15), plastico('#c4542a')); mech.position.set(0, 0.22, 0.4); g.add(mech);
+      return g;
+    },
+    poseDer: [1.35, 0.6], poseIzq: [0.3, 0.45], paso: 0.35,
+    extra: (f) => {
+      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 16), brillo('#7fc6ff', 2.2)); orbe.position.set(1.45, 3.7, 0.6); f.add(orbe);
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.66, 0.16, 8), plastico('#f2c230')); collar.position.y = 2.93; f.add(collar);
+    },
+  }),
+
+  estratega: () => figura({
+    piel: '#f6d6bd', torso: '#f2a77a', brazos: '#f6b994', falda: '#f2a77a', faldaRibete: '#d9744a',
+    cara: { ojos: 'cerrados', boca: 'serena', cejas: '#b8552c' },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#f6c9a8'; x.beginPath(); x.moveTo(w / 2 - 80, 0); x.quadraticCurveTo(w / 2, 90, w / 2 + 80, 0); x.fill();
+      x.strokeStyle = '#d9744a'; x.lineWidth = 5; x.beginPath(); x.moveTo(w / 2, 60); x.lineTo(w / 2, h); x.stroke();
+      gema(x, w / 2, 60, 13, '#2f9b5b'); gema(x, w / 2, 130, 9, '#2f9b5b'); gema(x, w / 2, 190, 9, '#2f9b5b');
+      x.fillStyle = '#c55d36'; x.fillRect(0, 225, w, 14);
+    },
+    pelo: peloMelena('#e0703a', 1.45, false),
+    poseDer: [0.7, 0.55], poseIzq: [0.7, 0.55],
+    extra: (f) => {
+      const colores = ['#e84a4a', '#f2c230', '#3fbf6b', '#3a8fd6', '#9a5ad6', '#ff8f3a', '#5fe0e6'];
+      colores.forEach((c, k) => {
+        const a = Math.PI * (0.05 + 0.9 * k / (colores.length - 1));
+        const o = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), brillo(c, 1.3));
+        o.position.set(Math.cos(a) * 1.45, 3.4 + Math.sin(a) * 1.2, 0.2); f.add(o);
+      });
+    },
+  }),
+};
+
+function humo(f, color, op) {
+  for (let k = 0; k < 9; k++) {
+    const r = new THREE.Mesh(new THREE.TorusGeometry(0.25 + 0.05 * (k % 3), 0.06, 8, 20, Math.PI * 1.2), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.9, transparent: true, opacity: op * 0.6 }));
+    const a = k / 9 * Math.PI * 2;
+    r.position.set(Math.cos(a) * 1.25, 1.2 + (k % 4) * 0.7, Math.sin(a) * 0.6 - 0.1);
+    r.rotation.set(a, a * 2, a);
+    f.add(r);
+  }
+}
+
+// ---------- montaje ----------
+const orden = (params.get('quien') || 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega').split(',');
+const figuras = [];
+const sep = Number(params.get('sep') || 4.1);
+orden.forEach((n, i) => {
+  if (!PERSONAJES[n]) return;
+  const g = new THREE.Group();
+  const p = portal(['#5ff2e6', '#57c8ff', '#e8473a', '#7fc6ff', '#f2c230', '#ff8f3a'][i % 6]);
+  g.add(p);
+  const fig = PERSONAJES[n](); fig.position.y = 0.34; g.add(fig);
+  g.position.x = (i - (orden.length - 1) / 2) * sep;
+  g.rotation.y = (i - (orden.length - 1) / 2) * -0.06;
+  escena.add(g); figuras.push(fig);
+});
+
+// cámara cenital 3/4 orbitable
+let ang = Number(params.get('ang') || 0), alt = Number(params.get('alt') || 0.55), dist = Number(params.get('dist') || 30);
+const objetivo = new THREE.Vector3(0, Number(params.get('y') || 1.9), 0);
+function colocarCamara() {
+  camara.position.set(objetivo.x + Math.sin(ang) * Math.cos(alt) * dist, objetivo.y + Math.sin(alt) * dist, objetivo.z + Math.cos(ang) * Math.cos(alt) * dist);
+  camara.lookAt(objetivo);
+}
+let arrastre = null;
+addEventListener('pointerdown', e => arrastre = [e.clientX, e.clientY]);
+addEventListener('pointerup', () => arrastre = null);
+addEventListener('pointermove', e => { if (!arrastre) return; ang -= (e.clientX - arrastre[0]) * 0.006; alt = Math.min(1.4, Math.max(0.05, alt + (e.clientY - arrastre[1]) * 0.004)); arrastre = [e.clientX, e.clientY]; });
+addEventListener('wheel', e => { dist = Math.min(60, Math.max(6, dist * (1 + e.deltaY * 0.001))); });
+addEventListener('resize', () => { camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const quieto = params.has('quieto');
+const reloj = new THREE.Clock();
+function bucle() {
+  const t = quieto ? 0.6 : reloj.getElapsedTime();
+  figuras.forEach((f, i) => {
+    f.userData.cabeza.rotation.y = Math.sin(t * 0.8 + i) * 0.18;
+    f.position.y = 0.34 + Math.abs(Math.sin(t * 2 + i)) * 0.04;
+  });
+  colocarCamara();
+  renderer.render(escena, camara);
+  requestAnimationFrame(bucle);
+}
+camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix();
+bucle();
+window.listo = true;
+</script>
+</body>
+</html>

@@ -11,3 +11,11 @@ Páginas de prueba que **no forman parte del juego** (no las carga
   provisionales (geometría por código); la idea es sustituirlos por modelos
   GLB generados a partir del arte original.
   Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/personajes-3d.html
+- `figuras-bloques.html` — boceto de estilo «figuritas de bloques de
+  juguete» (inspirado en los videojuegos de bloques, sin marcas): seis
+  personajes (Clarividente, Cronomante, Centinela, Ocultista, Entusiasta,
+  Estratega) con un cuerpo común y piezas, estampados y accesorios propios,
+  sobre Portales y una placa con tetones. Todo por código en el propio HTML
+  (Three.js de `vendor/three`). Parámetros: `?quien=a,b`, `dist`, `alt`,
+  `ang`, `quieto`. No toca el juego.
+  Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/figuras-bloques.html
