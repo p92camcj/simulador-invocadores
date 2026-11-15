@@ -1,6 +1,6 @@
 # Manual de modelado 3D de personajes (Invocadores)
 
-Última actualización: 2026-11-15 13:24 (Europe/Madrid)
+Última actualización: 2026-11-15 13:27 (Europe/Madrid)
 
 Manual práctico, escrito mientras aprendemos, para pasar un personaje de
 Invocadores de **una ilustración** a **un modelo 3D animado** que se pueda
@@ -60,6 +60,16 @@ Así que, para hacerlo todo en local, hay dos caminos:
      para Windows y para menos memoria, más lentas.
    - Sin NVIDIA (o con poca VRAM) no merece la pena: se usa la web y se hace
      en local todo lo demás.
+   - **Cómo saber qué gráfica tienes (Windows):** `Ctrl+Mayús+Esc` ▸
+     *Rendimiento* ▸ *GPU*. Arriba a la derecha sale el nombre y abajo la
+     *Memoria de GPU dedicada*. Otra forma: `Win+R`, escribir `dxdiag`,
+     pestaña *Pantalla*.
+   - **Nuestro caso:** el Minisforum lleva una **AMD Radeon 760M**, una
+     gráfica *integrada* (comparte la RAM del PC, sin memoria propia) y
+     sin CUDA de NVIDIA. TRELLIS y Hunyuan3D no van en ella de forma
+     práctica, así que la generación de la malla se sigue haciendo en la
+     web y todo lo demás (Blender, pesos, animaciones) en local. Blender sí
+     funciona bien con esa gráfica.
    Hunyuan3D trae además un complemento de Blender que llama a la IA
    instalada en tu PC, así que se puede lanzar desde el propio Blender.
 2. **Modelar a mano en Blender** usando la ilustración como plantilla de
@@ -188,5 +198,5 @@ convence, se aplica al resto.
 - **2026-11-15** — Primer personaje: GLB de trellis3d.co (1,7 MB, ~14.000
   vértices). Mixamo rechaza el GLB; con OBJ+MTL+PNG en ZIP sí riggea. Capa
   mal pesada (sigue al brazo). Siguiente: descargar T-pose, Idle y Walking
-  de Mixamo y arreglar pesos en Blender. Pendiente saber qué tarjeta
-  gráfica tiene el PC para decidir si la IA se ejecuta en local.
+  de Mixamo y arreglar pesos en Blender. Gráfica del PC: AMD Radeon 760M
+  integrada, así que la IA de imagen a 3D no se ejecuta en local.
