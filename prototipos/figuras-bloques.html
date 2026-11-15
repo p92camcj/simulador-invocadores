@@ -646,18 +646,7 @@ function animar(P, t, T) {
     f.position.y = ALTO + Math.abs(Math.sin(t * Math.PI * 1.55)) * 0.7;
     brazos(f, (b, rx, rz, s) => { b.rotation.x = -2.6; b.rotation.z = s * (0.5 + Math.sin(t * 12) * 0.15); });
   } else if (P.anim === 'habilidad') {
-    const c = t % 2.6;
-    if (c < 1.1) { // salto con giro y brazos arriba
-      const k = c / 1.1;
-      f.position.y = ALTO + Math.sin(k * Math.PI) * 1.2;
-      f.rotation.y = k * Math.PI * 2;
-      brazos(f, (b, rx, rz, s) => { b.rotation.x = -2.9 * Math.sin(k * Math.PI) + rx * (1 - Math.sin(k * Math.PI)); b.rotation.z = s * 0.4; });
-    } else { // lanza la magia
-      const k = (c - 1.1) / 1.5;
-      brazos(f, (b, rx, rz, s) => { b.rotation.x = -1.5; b.rotation.z = s * (0.2 + 0.3 * Math.sin(k * Math.PI)); });
-      anillo.visible = true; anillo.position.y = ALTO + 0.1 + k * 1.5; anillo.scale.setScalar(0.6 + k * 2.4);
-      anillo.material.opacity = 1 - k;
-    }
+    // la pose la pone la escena de su habilidad (ver HABILIDADES)
   }
 }
 
@@ -876,6 +865,261 @@ function pasoInvocacion(dt) {
   }
 }
 
+// ---------- una habilidad animada para cada personaje ----------
+// Cada escena recibe (E, dt) y devuelve true al acabar. E.t es el tiempo de la escena, E.P quien la usa,
+// E.objetivos los Portales afectados. Tras acabar se repite mientras siga elegida «Habilidad».
+const texCartas = {};
+function texCarta(n) { return texCartas[n] ||= (() => { const t = new THREE.TextureLoader().load(`../assets/cards/${n}.png`); t.colorSpace = THREE.SRGBColorSpace; return t; })(); }
+function carta(frente, reverso = 'carta-oculta-reverso') {
+  const lado = plastico('#e8e2d0');
+  const m = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.6, 0.05), [lado, lado, lado, lado,
+    new THREE.MeshStandardMaterial({ map: texCarta(frente), roughness: 0.5, transparent: true }), new THREE.MeshStandardMaterial({ map: texCarta(reverso), roughness: 0.5, transparent: true })]);
+  m.castShadow = true; return m;
+}
+function fantasma(id, color = '#7fe0ff') {
+  const g = PERSONAJES[id]();
+  g.traverse(o => { if (o.isMesh) { o.material = (Array.isArray(o.material) ? o.material[0] : o.material).clone(); o.material.transparent = true; o.material.opacity = 0.45; o.material.emissive = new THREE.Color(color); o.material.emissiveIntensity = 0.6; o.material.map = null; o.castShadow = false; } });
+  return g;
+}
+function opacidadObj(g, k) { g.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { m.transparent = true; m.userData.op ??= m.opacity; m.opacity = m.userData.op * k; }); } }); }
+function mirarA(f, P, Q) { const d = Q.g.position.clone().sub(P.g.position); f.rotation.y = Math.atan2(d.x, d.z); }
+function brazosA(f, rx, rz = 0.3) { brazos(f, (b, _rx, _rz, s) => { b.rotation.x = rx; b.rotation.z = s * rz; }); }
+const cima = (Q, dy = 0) => Q.g.position.clone().add(new THREE.Vector3(0, ALTO + dy, 0));
+const unaE = (E, k, fn) => { if (!E.hechos.has(k)) { E.hechos.add(k); fn(); } };
+const temp = (E, o) => { (E.temporales ||= []).push(o); escena.add(o); return o; };
+
+const HABILIDADES = {
+  // Centinela: golpe de lanza y escudos hexagonales que rodean su Portal (protege a la jugadora)
+  centinela(E, dt) {
+    const { P, t } = E, f = P.fig;
+    unaE(E, 'ini', () => {
+      narrar('Centinela: mientras esté visible, ninguna habilidad puede afectar a los Portales de su jugadora.');
+      E.escudos = [];
+      for (let k = 0; k < 6; k++) {
+        const e = new THREE.Group();
+        e.add(new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.14, 6), plastico('#b5332b', { emissive: '#e8473a', emissiveIntensity: 0.4, transparent: true })));
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.08, 6, 6), plastico('#e2b453', { transparent: true })); rib.rotation.x = Math.PI / 2; e.add(rib);
+        const g2 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2, 6), plastico('#e2b453', { transparent: true })); g2.position.y = 0.1; e.add(g2);
+        e.userData.a = k / 6 * Math.PI * 2; E.escudos.push(temp(E, e));
+      }
+    });
+    const subir = suave(limita((t - 0.7) / 1.1)), bajar = suave(limita((t - 4.4) / 0.8));
+    if (t < 0.7) { const k = t / 0.7; f.position.y = ALTO + Math.sin(k * Math.PI) * 0.9; brazosA(f, -2.6 * Math.sin(k * Math.PI), 0.2); }
+    unaE(E, 'golpe', () => {}); if (t >= 0.7) unaE(E, 'golpe2', () => { estallido(cima(P, 0.1), ['#e2b453', '#e8473a'], 30, 4, 6); INV.temblor = 0.35; });
+    E.escudos.forEach((e, k) => {
+      const a = e.userData.a + t * 0.5, R = 3.3;
+      e.position.set(P.g.position.x + Math.cos(a) * R, -1 + subir * 3.4 - bajar * 3.4, P.g.position.z + Math.sin(a) * R);
+      e.lookAt(P.g.position.x, e.position.y, P.g.position.z); e.rotateX(Math.PI / 2);
+      opacidadObj(e, (1 - bajar) * (0.75 + Math.sin(t * 5 + k) * 0.2));
+    });
+    if (t > 1.2 && t < 4.4) f.userData.brazoIzq.rotation.x = -0.95 + Math.sin(t * 3) * 0.05;
+    return t > 5.3;
+  },
+
+  // Ocultista: voltea la carta de arriba de un Portal; el personaje queda tapado por el encapuchado
+  ocultista(E, dt) {
+    const { P, t } = E, f = P.fig, Q = E.objetivos[0];
+    unaE(E, 'ini', () => {
+      narrar(`Ocultista: elige un Portal y voltea su carta de arriba. ${NOMBRES[Q.id]} queda oculta.`);
+      const capa = new THREE.Group();
+      const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.25, 3.4, 6), plastico('#14152a', { transparent: true })); cuerpo.position.y = 1.7; capa.add(cuerpo);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 6), plastico('#1d1f3a', { transparent: true })); cap.position.y = 4.0; capa.add(cap);
+      const hueco = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 6), plastico('#000000', { transparent: true })); hueco.rotation.x = Math.PI / 2; hueco.position.set(0, 3.5, 0.62); capa.add(hueco);
+      E.capa = temp(E, sombra(capa));
+    });
+    mirarA(f, P, Q);
+    if (t < 3.8) { brazosA(f, -1.6 + Math.sin(t * 8) * 0.05, 0.05); if (t < 1.8 && Math.random() < 0.8) chispa(manoDe(P), '#4a6cff', { hacia: cima(Q, 3), vida: 0.6, arco: 1.5 }); }
+    const baja = suave(limita((t - 0.9) / 0.9)), sube = suave(limita((t - 3.9) / 0.9));
+    E.capa.position.copy(cima(Q)).add(new THREE.Vector3(0, 8 * (1 - baja) + 8 * sube, 0));
+    E.capa.rotation.y = (1 - baja) * 3;
+    opacidadObj(E.capa, baja * (1 - sube));
+    if (t >= 1.8) unaE(E, 'tapa', () => { Q.fig.visible = false; estallido(cima(Q, 1), ['#4a6cff', '#14152a'], 20, 3, 4); });
+    if (t >= 3.9) unaE(E, 'destapa', () => { Q.fig.visible = true; narrar('(En el boceto la vuelve a girar para poder repetirlo.)'); });
+    return t > 5.2;
+  },
+
+  // Cronista: toma la carta de arriba de un Portal y se la lleva a la mano (al libro)
+  cronista(E, dt) {
+    const { P, t } = E, f = P.fig, Q = E.objetivos[0];
+    unaE(E, 'ini', () => { narrar(`Cronista: elige un Portal y toma su carta de arriba para su mano. Se lleva a ${NOMBRES[Q.id]}.`); E.carta = temp(E, carta(Q.id)); E.carta.visible = false; });
+    mirarA(f, P, Q);
+    const libro = () => f.userData.brazoIzq.localToWorld(new THREE.Vector3(0, -1.3, 0.35));
+    brazosA(f, -1.3, 0.15);
+    const enc = suave(limita((t - 0.6) / 1.6));
+    if (t < 2.4) { Q.fig.scale.setScalar(Math.max(0.01, 1 - enc)); Q.fig.rotation.y = enc * 6; if (t > 0.6 && Math.random() < 0.9) chispa(cima(Q, 2 + Math.random() * 2), '#f4ead0', { hacia: libro(), vida: 0.8, arco: 2, tam: 2 }); }
+    if (t >= 2.4) unaE(E, 'guarda', () => { Q.fig.visible = false; estallido(libro(), ['#f4ead0', '#e2b453'], 20, 2, 3); });
+    if (t >= 2.4 && t < 3.9) { E.carta.visible = true; E.carta.position.copy(libro()).add(new THREE.Vector3(0, 1.2 + (t - 2.4) * 0.4, 0)); E.carta.rotation.y = (t - 2.4) * 2.5; }
+    if (t >= 3.9) {
+      unaE(E, 'vuelve', () => { narrar('(En el boceto la devuelve a su Portal para poder repetirlo.)'); E.desde = E.carta.position.clone(); Q.fig.visible = true; });
+      const k = suave(limita((t - 3.9) / 1)); E.carta.position.lerpVectors(E.desde, cima(Q, 2), k); E.carta.position.y += Math.sin(k * Math.PI) * 2;
+      Q.fig.scale.setScalar(Math.max(0.01, limita((t - 4.6) / 0.5))); Q.fig.rotation.y = 0; E.carta.visible = t < 4.9;
+    }
+    return t > 5.4;
+  },
+
+  // Cronomante: reloj de arena (la arena SUBE), ecos del pasado del Portal y uno vuelve arriba
+  cronomante(E, dt) {
+    const { P, t } = E, f = P.fig, Q = E.objetivos[0];
+    unaE(E, 'ini', () => {
+      narrar(`Cronomante: examina toda la pila del Portal de ${NOMBRES[Q.id]} y coloca arriba la carta que elija.`);
+      const reloj = new THREE.Group(), vidrio = new THREE.MeshStandardMaterial({ color: '#bfeaff', transparent: true, opacity: 0.35, roughness: 0.05 });
+      for (const sy of [1, -1]) {
+        const v = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.3, 6, 1, true), vidrio); v.position.y = sy * 0.65; v.rotation.x = sy > 0 ? 0 : Math.PI; v.rotation.x += Math.PI; reloj.add(v);
+        const tapa = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.22, 6), plastico('#e2b453')); tapa.position.y = sy * 1.4; reloj.add(tapa);
+      }
+      for (const [x, z] of [[0.75, 0.3], [-0.75, 0.3], [0, -0.8]]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.8, 6), plastico('#6b4428')); c.position.set(x, 0, z); reloj.add(c); }
+      E.arenaArriba = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1, 6), plastico('#57c8ff', { emissive: '#57c8ff', emissiveIntensity: 0.6 }));
+      E.arenaAbajo = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1, 6), plastico('#57c8ff', { emissive: '#57c8ff', emissiveIntensity: 0.6 }));
+      E.arenaAbajo.rotation.x = Math.PI; reloj.add(E.arenaArriba, E.arenaAbajo);
+      E.reloj = temp(E, reloj);
+      const pasado = ['clarividente', 'ocultista', 'centinela', 'entusiasta', 'cronista', 'estratega'].filter(n => n !== Q.id && n !== 'cronomante').slice(0, 3);
+      E.ecos = pasado.map(n => temp(E, fantasma(n)));
+      E.elegido = 1;
+    });
+    // llamas arriba mientras dura el hechizo
+    brazosA(f, -1.9 + Math.sin(t * 4) * 0.1, 0.4); mirarA(f, P, Q);
+    const ap = suave(limita(t / 0.8)), fin = suave(limita((t - 6.0) / 0.8));
+    E.reloj.position.copy(cima(Q, 6.6)); E.reloj.scale.setScalar(ap * (1 - fin) + 0.001);
+    E.reloj.rotation.y = t * 0.6; E.reloj.rotation.z = suave(limita((t - 0.8) / 0.6)) * Math.PI;
+    // tras el giro, la arena pasa de la ampolla de abajo a la de arriba (sube)
+    const k = limita((t - 1.4) / 3.5), arriba = E.reloj.rotation.z > 1.5;
+    const llena = arriba ? 1 - k : k;
+    E.arenaArriba.scale.set(0.2 + 0.8 * (1 - llena), 0.05 + 0.95 * (1 - llena), 0.2 + 0.8 * (1 - llena)); E.arenaArriba.position.y = 0.95;
+    E.arenaAbajo.scale.set(0.2 + 0.8 * llena, 0.05 + 0.95 * llena, 0.2 + 0.8 * llena); E.arenaAbajo.position.y = -0.95;
+    // ecos: salen del Portal uno tras otro y esperan en arco
+    E.ecos.forEach((g, i) => {
+      const s0 = 1.4 + i * 0.7, kk = suave(limita((t - s0) / 0.9));
+      const ang = (i - 1) * 0.9, pos = cima(Q).add(new THREE.Vector3(Math.sin(ang) * 3.2, 1.5 + kk * 1.2, -Math.cos(ang) * 1.2 - 1));
+      g.visible = t > s0;
+      if (i === E.elegido && t > 4.2) {
+        const kb = suave(limita((t - 4.2) / 0.9)); g.position.lerpVectors(pos, cima(Q), kb); opacidadObj(g, 1 + kb * 1.2);
+        if (kb >= 1) unaE(E, 'pone', () => { Q.fig.visible = false; estallido(cima(Q, 2), ['#57c8ff', '#ffffff'], 24, 3, 4); });
+      } else { g.position.copy(pos).lerp(cima(Q), 1 - kk); opacidadObj(g, kk * (t > 4.4 ? 1 - limita((t - 4.4) / 0.6) : 1)); }
+      g.rotation.y = Math.sin(t + i) * 0.3;
+    });
+    if (t > 6.0) unaE(E, 'restaura', () => { narrar('(En el boceto vuelve todo a su sitio para poder repetirlo.)'); });
+    if (t > 6.4) { Q.fig.visible = true; E.ecos[E.elegido].visible = false; }
+    return t > 7;
+  },
+
+  // Estratega: sus orbes alzan dos Portales y los intercambian girando, con sus pilas
+  estratega(E, dt) {
+    const { P, t } = E, f = P.fig, [A, B] = E.objetivos;
+    unaE(E, 'ini', () => {
+      narrar(`Estratega: elige dos Portales y los intercambia en la mesa con todas sus cartas: ${NOMBRES[A.id]} ⇄ ${NOMBRES[B.id]}.`);
+      E.pa = A.g.position.clone(); E.pb = B.g.position.clone(); E.medio = E.pa.clone().lerp(E.pb, 0.5);
+      const col = ['#e84a4a', '#f2c230', '#3fbf6b', '#3a8fd6', '#9a5ad6', '#ff8f3a'];
+      E.orbes = col.map((c, i) => { const o = temp(E, new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), brillo(c, 1.6))); o.userData.i = i; return o; });
+    });
+    brazosA(f, -2.5 + Math.sin(t * 3) * 0.1, 0.55);
+    const vuela = suave(limita(t / 1)), alza = suave(limita((t - 1) / 0.8)), gira = suave(limita((t - 1.8) / 2.4)), baja = suave(limita((t - 4.2) / 0.7)), vuelve = suave(limita((t - 5) / 0.8));
+    const h = alza * (1 - baja) * 2.6;
+    const ang = gira * Math.PI, rel = E.pa.clone().sub(E.medio);
+    const rot = (v, a) => new THREE.Vector3(v.x * Math.cos(a) - v.z * Math.sin(a), 0, v.x * Math.sin(a) + v.z * Math.cos(a));
+    A.g.position.copy(E.medio).add(rot(rel, ang)).setY(h); B.g.position.copy(E.medio).add(rot(rel.clone().negate(), ang)).setY(h);
+    A.g.rotation.y = gira * Math.PI * 2; B.g.rotation.y = -gira * Math.PI * 2;
+    if (baja >= 1) unaE(E, 'aterriza', () => { INV.temblor = 0.3; [A, B].forEach(Q => estallido(Q.g.position.clone().setY(0.3), ['#c4bfd2', '#a9a4b8'], 16, 3, 6)); });
+    E.orbes.forEach(o => {
+      const Q = o.userData.i < 3 ? A : B, a = t * 2.4 + o.userData.i * 2.1;
+      const bajo = Q.g.position.clone().add(new THREE.Vector3(Math.cos(a) * 2.2, -0.4 + Math.sin(t * 3 + o.userData.i) * 0.2, Math.sin(a) * 2.2));
+      const mano = manoDe(P);
+      o.position.lerpVectors(mano, bajo, vuela * (1 - vuelve));
+    });
+    return t > 6;
+  },
+
+  // Clarividente: abre el gran ojo y ve también la carta de su mano que estaba oculta para ella
+  clarividente(E, dt) {
+    const { P, t } = E, f = P.fig;
+    unaE(E, 'ini', () => {
+      narrar('Clarividente: mientras esté visible, su jugadora ve las dos cartas de su mano… y los demás no ven ninguna.');
+      const ojo = new THREE.Group();
+      const blanco = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 6), plastico('#f4f1ea')); blanco.rotation.x = Math.PI / 2; blanco.scale.set(1.5, 1, 0.75); ojo.add(blanco);
+      const iris = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.24, 6), brillo('#3fd0c0', 1.2)); iris.rotation.x = Math.PI / 2; iris.position.z = 0.03; ojo.add(iris);
+      const pupila = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.28, 6), plastico('#0b0d1a')); pupila.rotation.x = Math.PI / 2; pupila.position.z = 0.05; ojo.add(pupila);
+      E.parpados = [1, -1].map(sy => { const pp = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.0, 0.4), plastico('#1f6f6a')); pp.position.z = 0.15; ojo.add(pp); pp.userData.sy = sy; return pp; });
+      for (let k = 0; k < 7; k++) { const pe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.1), plastico('#16131c')); const a = (k - 3) * 0.28; pe.position.set(Math.sin(a) * 1.6, 1.0 + Math.cos(a) * 0.2, 0.2); pe.rotation.z = -a; ojo.add(pe); }
+      E.ojo = temp(E, ojo); E.iris = iris;
+      E.visible = temp(E, carta('cronista')); E.oculta = temp(E, carta('estratega'));
+    });
+    const ap = suave(limita(t / 0.8)), abre = suave(limita((t - 0.9) / 0.6)), cierra = suave(limita((t - 4.4) / 0.5)), fin = suave(limita((t - 4.9) / 0.6));
+    E.ojo.position.copy(cima(P, 6.0 + Math.sin(t * 2) * 0.1)); E.ojo.scale.setScalar(0.62 * ap * (1 - fin) + 0.001);
+    E.parpados.forEach(pp => { const k = abre * (1 - cierra); pp.position.y = pp.userData.sy * (0.5 + k * 0.85); pp.scale.y = 1.2 - k * 0.5; });
+    E.iris.position.x = Math.sin(t * 1.5) * 0.25 * abre;
+    // sus dos cartas flotan delante: la de la izquierda la ve siempre; la otra se gira al abrir el ojo
+    const base = cima(P, 2.6).add(new THREE.Vector3(0, 0, 2.6));
+    E.visible.position.copy(base).add(new THREE.Vector3(-0.75, Math.sin(t * 2) * 0.08, 0)); E.visible.rotation.y = -0.15;
+    E.oculta.position.copy(base).add(new THREE.Vector3(0.75, Math.sin(t * 2 + 1) * 0.08, 0));
+    const gira = suave(limita((t - 1.7) / 0.6)) * (1 - suave(limita((t - 4.4) / 0.6)));
+    E.oculta.rotation.y = Math.PI * (1 - gira) + 0.15;
+    [E.visible, E.oculta].forEach(c => { c.scale.setScalar(ap * (1 - fin) + 0.001); });
+    if (abre > 0.5 && t < 4.4 && Math.random() < 0.6) chispa(E.ojo.position.clone().add(new THREE.Vector3(0, -0.5, 0.5)), '#5ff2e6', { hacia: E.oculta.position.clone(), vida: 0.6, arco: 0.3 });
+    brazosA(f, -1.2 - abre * 0.6, 0.35);
+    return t > 5.6;
+  },
+
+  // Entusiasta: si hay invocación con éxito, lo celebra tanto que pierde una Gema de valor 1
+  entusiasta(E, dt) {
+    const { P, t } = E, f = P.fig;
+    unaE(E, 'ini', () => {
+      narrar('Entusiasta: cuando una invocación tiene éxito lo celebra con tanto ímpetu… que pierde una Gema de valor 1.');
+      E.gemas = [0, 1].map(k => { const g = temp(E, gemaBloque('#3a8fd6')); g.scale.setScalar(0.7); g.position.copy(P.g.position).add(new THREE.Vector3(1.1 + k * 0.7, 0.75, 3.4)); return g; });
+    });
+    if (t < 2.6) {
+      const k = (t / 0.65) % 1;
+      f.position.y = ALTO + Math.sin(k * Math.PI) * 1.4; f.rotation.y = Math.floor(t / 0.65) % 2 ? k * Math.PI * 2 : 0;
+      brazosA(f, -2.7, 0.6 + Math.sin(t * 14) * 0.2);
+      if (k < 0.08) unaE(E, 'sal' + Math.floor(t / 0.65), () => estallido(cima(P, 0.2), ['#e8457a', '#7b3fb0', '#f2c230', '#3a8fd6'], 14, 3, 6));
+    }
+    const g = E.gemas[0];
+    if (t >= 2.6) {
+      unaE(E, 'pierde', () => { narrar('¡Ups! Una Gema de 1 sale despedida.'); g.userData.desde = g.position.clone(); });
+      const k = limita((t - 2.6) / 1.4);
+      g.position.lerpVectors(g.userData.desde, g.userData.desde.clone().add(new THREE.Vector3(5, 0, 6)), k); g.position.y += Math.sin(k * Math.PI) * 5;
+      g.rotation.x += dt * 10; g.scale.setScalar(0.7 * (1 - k * 0.8)); g.visible = k < 1;
+      // manos a la cabeza
+      brazos(f, (b, rx, rz, s) => { b.rotation.x = -2.9; b.rotation.z = s * -0.25; }); f.userData.cabeza.rotation.z = Math.sin(t * 10) * 0.12;
+    }
+    return t > 4.8;
+  },
+};
+
+const ESCENAS = [];
+function objetivosDe(P) {
+  // los Portales más cercanos, para que se vean bien en el móvil
+  const cerca = puestos.filter(Q => Q !== P).sort((a, b) => a.g.position.distanceTo(P.g.position) - b.g.position.distanceTo(P.g.position));
+  if (P.id === 'estratega') return [cerca[0], cerca[1]];
+  if (['ocultista', 'cronista', 'cronomante'].includes(P.id)) return [cerca[0]];
+  return [];
+}
+function empezarHabilidad(P) {
+  if (!HABILIDADES[P.id]) return;
+  const viejo = ESCENAS.find(E => E.P === P); if (viejo) terminarEscena(viejo);
+  const E = { P, t: 0, hechos: new Set(), objetivos: objetivosDe(P) };
+  ESCENAS.push(E);
+  E.objetivos.forEach(Q => Q.g.visible = true);
+  if (elegido >= 0) { // de cerca: encuadra el efecto y los Portales afectados
+    const ps = [P, ...E.objetivos].map(Q => Q.g.position), c = ps.reduce((a, b) => a.clone().add(b)).multiplyScalar(1 / ps.length);
+    const ancho = Math.max(...ps.map(p => p.distanceTo(c)));
+    destino = { pos: c.setY(3.8), dist: (vertical() ? 36 : 21) + ancho * (vertical() ? 3.6 : 1.8) };
+  }
+}
+function terminarEscena(E) {
+  (E.temporales || []).forEach(o => escena.remove(o));
+  E.objetivos.forEach(Q => { Q.fig.visible = true; Q.fig.scale.setScalar(1); Q.fig.rotation.set(0, 0, 0); Q.g.rotation.y = 0; Q.g.position.y = 0; Q.g.visible = elegido < 0 || puestos.indexOf(Q) === elegido || ESCENAS.some(X => X !== E && X.objetivos.includes(Q)); });
+  ESCENAS.splice(ESCENAS.indexOf(E), 1);
+}
+function pasoHabilidades(dt) {
+  for (const E of [...ESCENAS]) {
+    E.t += dt;
+    if (HABILIDADES[E.P.id](E, dt)) {
+      terminarEscena(E);
+      if (E.P.anim === 'habilidad') setTimeout(() => { if (E.P.anim === 'habilidad') empezarHabilidad(E.P); }, 900);
+      else narrar('Desliza para girar · pellizca para acercar · toca un personaje para verlo solo');
+    }
+  }
+}
+
 // ---------- cámara (cenital 3/4) y gestos ----------
 const distGeneral = () => vertical() ? 78 : 40;
 let ang = Number(params.get('ang') || 0), alt = Number(params.get('alt') || 0.6), dist = Number(params.get('dist') || distGeneral());
@@ -939,6 +1183,7 @@ boton(filaA, '✦ Invocar', () => empezarInvocacion(), 'invocar');
 
 function elegir(i) {
   elegido = i;
+  [...ESCENAS].forEach(E => { E.P.anim = 'reposo'; terminarEscena(E); });
   botonesP.forEach((b, k) => b.classList.toggle('activo', k === i + 1));
   puestos.forEach((P, k) => P.g.visible = i < 0 || k === i); // de cerca, solo el elegido
   botonesP[i + 1].scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
@@ -951,7 +1196,13 @@ function elegir(i) {
   marcarAnim();
 }
 function seleccionados() { return elegido < 0 ? puestos : [puestos[elegido]]; }
-function ponerAnim(k) { const t = reloj.getElapsedTime(); seleccionados().forEach(P => { P.anim = k; P.t0 = t; }); marcarAnim(); }
+function ponerAnim(k) {
+  const t = reloj.getElapsedTime();
+  seleccionados().forEach(P => { P.anim = k; P.t0 = t; });
+  [...ESCENAS].forEach(E => { if (E.P.anim !== 'habilidad') terminarEscena(E); });
+  if (k === 'habilidad') seleccionados().forEach(empezarHabilidad);
+  marcarAnim();
+}
 function marcarAnim() { const a = seleccionados()[0].anim; const igual = seleccionados().every(P => P.anim === a); Object.entries(botonesA).forEach(([k, b]) => b.classList.toggle('activo', igual && k === a)); }
 
 const quieto = params.has('quieto');
@@ -963,6 +1214,7 @@ function bucle() {
   puestos.forEach(P => animar(P, quieto ? 0.6 : T - P.t0, T));
   moverFlotantes(quieto ? 1.3 : real);
   if (INV.activo) pasoInvocacion(dtCam);
+  pasoHabilidades(dtCam);
   moverParticulas(dtCam);
   colocarCamara();
   renderer.render(escena, camara);
@@ -970,8 +1222,9 @@ function bucle() {
 }
 camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix();
 const inicial = orden.indexOf(params.get('ver'));
-if (params.get('anim')) puestos.forEach(P => P.anim = params.get('anim'));
+window.ESCENAS = ESCENAS;
 elegir(inicial);
+if (params.get('anim')) setTimeout(() => ponerAnim(params.get('anim')), 200);
 if (params.has('invocar')) setTimeout(empezarInvocacion, 300);
 if (inicial >= 0 || params.has('dist')) { if (destino) { objetivo.copy(destino.pos); if (!params.has('dist')) dist = destino.dist; destino = null; } }
 bucle();
