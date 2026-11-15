@@ -5,13 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Invocadores · figuras de bloques (boceto)</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #1d1b2a; overflow: hidden; font-family: system-ui, sans-serif; }
-  canvas { display: block; }
-  #ayuda { position: fixed; left: 12px; bottom: 10px; color: #cfc8e8; font-size: 13px; opacity: .8; }
+  html, body { margin: 0; height: 100%; background: #1d1b2a; overflow: hidden; font-family: system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  canvas { display: block; touch-action: none; }
+  #titulo { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; text-align: center; color: #fff;
+    font-weight: 700; font-size: 20px; text-shadow: 0 2px 6px #000a; pointer-events: none; }
+  #titulo small { display: block; font-weight: 400; font-size: 12px; opacity: .75; }
+  #panel { position: fixed; left: 0; right: 0; bottom: 0; padding: 8px 0 max(10px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, #14121fe6 30%); display: flex; flex-direction: column; gap: 8px; }
+  .fila { display: flex; gap: 8px; overflow-x: auto; padding: 0 12px; scrollbar-width: none; align-items: center; }
+  .fila::-webkit-scrollbar { display: none; }
+  .fila button { flex: none; border: 2px solid #ffffff30; background: #2c2842; color: #f3eefe; border-radius: 999px;
+    padding: 9px 15px; font-size: 15px; font-family: inherit; cursor: pointer; }
+  .fila button.activo { background: #f2c230; color: #2a1d05; border-color: #f2c230; font-weight: 700; }
+  .fila button.flecha { width: 44px; padding: 9px 0; font-size: 18px; }
+  .fila .sep { flex: none; width: 1px; height: 26px; background: #ffffff30; }
 </style>
 </head>
 <body>
-<div id="ayuda">Boceto: arrastra para girar la cámara · rueda para acercar</div>
+<div id="titulo">Todos<small>Desliza para girar · pellizca para acercar · toca un personaje para verlo solo</small></div>
+<div id="panel">
+  <div class="fila" id="filaPersonajes"></div>
+  <div class="fila" id="filaAnimaciones"></div>
+</div>
 <script type="module">
 import * as THREE from '../vendor/three/three.module.min.js';
 
@@ -29,7 +45,7 @@ document.body.appendChild(renderer.domElement);
 
 const escena = new THREE.Scene();
 escena.background = new THREE.Color('#2a2640');
-escena.fog = new THREE.Fog('#2a2640', 30, 60);
+escena.fog = new THREE.Fog('#2a2640', 70, 130);
 const camara = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200);
 
 escena.add(new THREE.HemisphereLight('#fff6e8', '#5a4f7a', 1.1));
@@ -166,6 +182,7 @@ function trapecio(anchoArriba, anchoAbajo, alto, fondo) {
 function figura(d) {
   const f = new THREE.Group();
   const piel = d.piel || '#f2c9a0';
+  f.userData.piernas = []; f.userData.falda = !!d.falda;
 
   // piernas o falda
   if (d.falda) {
@@ -189,7 +206,7 @@ function figura(d) {
       if (d.botas) { const caña = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.45, 0.64), plastico(d.botas)); caña.position.y = -0.85; pierna.add(caña); }
       pierna.position.set(s * 0.31, 1.32, 0);
       pierna.rotation.x = (d.paso || 0) * s;
-      f.add(pierna);
+      f.add(pierna); f.userData.piernas.push(pierna); pierna.userData.base = pierna.rotation.x;
     });
   }
 
@@ -214,7 +231,7 @@ function figura(d) {
     const pose = (s < 0 ? d.poseIzq : d.poseDer) || [0.25, 0.12];
     brazo.rotation.x = -pose[0];
     brazo.rotation.z = s * pose[1];
-    brazo.userData.mano = mano;
+    brazo.userData.mano = mano; brazo.userData.base = [brazo.rotation.x, brazo.rotation.z];
     f.add(brazo);
     f.userData[s < 0 ? 'brazoIzq' : 'brazoDer'] = brazo;
   });
@@ -440,47 +457,167 @@ function humo(f, color, op) {
 }
 
 // ---------- montaje ----------
-const orden = (params.get('quien') || 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega').split(',');
-const figuras = [];
+const NOMBRES = { clarividente: 'Clarividente', cronomante: 'Cronomante', centinela: 'Centinela', ocultista: 'Ocultista', entusiasta: 'Entusiasta', estratega: 'Estratega' };
+const COLOR_RUNA = { clarividente: '#5ff2e6', cronomante: '#57c8ff', centinela: '#e8473a', ocultista: '#7fc6ff', entusiasta: '#f2c230', estratega: '#ff8f3a' };
+const orden = (params.get('quien') || 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega').split(',').filter(n => PERSONAJES[n]);
+const puestos = [];
 const sep = Number(params.get('sep') || 4.1);
 orden.forEach((n, i) => {
-  if (!PERSONAJES[n]) return;
   const g = new THREE.Group();
-  const p = portal(['#5ff2e6', '#57c8ff', '#e8473a', '#7fc6ff', '#f2c230', '#ff8f3a'][i % 6]);
+  const p = portal(COLOR_RUNA[n]);
   g.add(p);
   const fig = PERSONAJES[n](); fig.position.y = 0.34; g.add(fig);
-  g.position.x = (i - (orden.length - 1) / 2) * sep;
-  g.rotation.y = (i - (orden.length - 1) / 2) * -0.06;
-  escena.add(g); figuras.push(fig);
+  // anillo mágico para la habilidad
+  const anillo = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 48), brillo(COLOR_RUNA[n], 2));
+  anillo.rotation.x = Math.PI / 2; anillo.visible = false; g.add(anillo);
+  const cols = Math.min(3, orden.length), filas = Math.ceil(orden.length / cols);
+  g.position.x = (i % cols - (cols - 1) / 2) * sep;
+  g.position.z = (Math.floor(i / cols) - (filas - 1) / 2) * sep * 1.7;
+  escena.add(g);
+  fig.traverse(o => o.userData.puesto = i);
+  puestos.push({ id: n, g, fig, anillo, anim: 'reposo', t0: 0 });
 });
 
-// cámara cenital 3/4 orbitable
-let ang = Number(params.get('ang') || 0), alt = Number(params.get('alt') || 0.55), dist = Number(params.get('dist') || 30);
-const objetivo = new THREE.Vector3(0, Number(params.get('y') || 1.9), 0);
+// ---------- animaciones ----------
+const ANIMACIONES = { reposo: 'Reposo', andar: 'Andar', saludar: 'Saludar', habilidad: 'Habilidad' };
+function brazos(f, fn) { ['brazoIzq', 'brazoDer'].forEach((k, i) => { const b = f.userData[k]; const [rx, rz] = b.userData.base; fn(b, rx, rz, i === 0 ? -1 : 1); }); }
+function animar(P, t, T) {
+  const { fig: f, anillo } = P;
+  const cab = f.userData.cabeza;
+  // valores de reposo
+  f.position.set(0, 0.34, 0); f.rotation.set(0, 0, 0); anillo.visible = false;
+  f.userData.piernas.forEach(p => p.rotation.x = p.userData.base);
+  brazos(f, (b, rx, rz) => { b.rotation.x = rx; b.rotation.z = rz; });
+  cab.rotation.set(0, 0, 0);
+  if (P.anim === 'reposo') {
+    cab.rotation.y = Math.sin(T * 0.8 + P.g.position.x) * 0.25;
+    f.position.y = 0.34 + Math.abs(Math.sin(T * 1.6)) * 0.03;
+    brazos(f, (b, rx, rz, s) => { b.rotation.x = rx + Math.sin(T * 1.6 + s) * 0.06; });
+  } else if (P.anim === 'andar') {
+    // baja del Portal, da una vuelta y vuelve a subir
+    const R = 1.9, w = 0.9, th = (t * w) % (Math.PI * 2);
+    const x = Math.sin(th) * R, z = R - Math.cos(th) * R;
+    f.position.set(x, Math.hypot(x, z) < 1.3 ? 0.34 : 0.02, z);
+    f.rotation.y = Math.PI / 2 - th;
+    const fase = t * 9;
+    f.userData.piernas.forEach((p, i) => p.rotation.x = Math.sin(fase + i * Math.PI) * 0.55);
+    brazos(f, (b, rx, rz, s) => { b.rotation.x = rx + Math.sin(fase + (s < 0 ? 0 : Math.PI)) * 0.45; });
+    f.position.y += Math.abs(Math.sin(fase)) * 0.12;
+    if (f.userData.falda) f.rotation.z = Math.sin(fase) * 0.07;
+    cab.rotation.y = Math.sin(fase / 2) * 0.1;
+  } else if (P.anim === 'saludar') {
+    const b = f.userData.brazoDer;
+    b.rotation.x = -2.7; b.rotation.z = 0.35 + Math.sin(t * 9) * 0.35;
+    cab.rotation.z = -0.12; cab.rotation.y = Math.sin(t * 2) * 0.15;
+    f.position.y = 0.34 + Math.abs(Math.sin(t * 4.5)) * 0.08;
+  } else if (P.anim === 'habilidad') {
+    const c = t % 2.6;
+    if (c < 1.1) { // salto con giro y brazos arriba
+      const k = c / 1.1;
+      f.position.y = 0.34 + Math.sin(k * Math.PI) * 1.2;
+      f.rotation.y = k * Math.PI * 2;
+      brazos(f, (b, rx, rz, s) => { b.rotation.x = -2.9 * Math.sin(k * Math.PI) + rx * (1 - Math.sin(k * Math.PI)); b.rotation.z = s * 0.4; });
+    } else { // lanza la magia
+      const k = (c - 1.1) / 1.5;
+      brazos(f, (b, rx, rz, s) => { b.rotation.x = -1.5; b.rotation.z = s * (0.2 + 0.3 * Math.sin(k * Math.PI)); });
+      anillo.visible = true; anillo.position.y = 0.4 + k * 1.5; anillo.scale.setScalar(0.6 + k * 2.4);
+      anillo.material.opacity = 1 - k;
+    }
+  }
+}
+
+// ---------- cámara (cenital 3/4) y gestos ----------
+const vertical = () => innerWidth < innerHeight;
+const distGeneral = () => vertical() ? 52 : 26;
+let ang = Number(params.get('ang') || 0), alt = Number(params.get('alt') || 0.6), dist = Number(params.get('dist') || distGeneral());
+const objetivo = new THREE.Vector3(0, Number(params.get('y') || 1.6), 0);
+let destino = null; // { pos, dist }
 function colocarCamara() {
+  if (destino) {
+    const k = 1 - Math.exp(-dtCam * 5);
+    objetivo.lerp(destino.pos, k); dist += (destino.dist - dist) * k;
+    if (objetivo.distanceTo(destino.pos) < 0.01 && Math.abs(destino.dist - dist) < 0.05) destino = null;
+  }
   camara.position.set(objetivo.x + Math.sin(ang) * Math.cos(alt) * dist, objetivo.y + Math.sin(alt) * dist, objetivo.z + Math.cos(ang) * Math.cos(alt) * dist);
   camara.lookAt(objetivo);
 }
-let arrastre = null;
-addEventListener('pointerdown', e => arrastre = [e.clientX, e.clientY]);
-addEventListener('pointerup', () => arrastre = null);
-addEventListener('pointermove', e => { if (!arrastre) return; ang -= (e.clientX - arrastre[0]) * 0.006; alt = Math.min(1.4, Math.max(0.05, alt + (e.clientY - arrastre[1]) * 0.004)); arrastre = [e.clientX, e.clientY]; });
-addEventListener('wheel', e => { dist = Math.min(60, Math.max(6, dist * (1 + e.deltaY * 0.001))); });
+const punteros = new Map();
+let pellizco = null, movido = 0;
+const lienzoEl = renderer.domElement;
+lienzoEl.addEventListener('pointerdown', e => { lienzoEl.setPointerCapture(e.pointerId); punteros.set(e.pointerId, [e.clientX, e.clientY]); movido = 0; pellizco = null; });
+lienzoEl.addEventListener('pointermove', e => {
+  if (!punteros.has(e.pointerId)) return;
+  const prev = punteros.get(e.pointerId); punteros.set(e.pointerId, [e.clientX, e.clientY]);
+  if (punteros.size === 1) {
+    const dx = e.clientX - prev[0], dy = e.clientY - prev[1]; movido += Math.abs(dx) + Math.abs(dy);
+    ang -= dx * 0.007; alt = Math.min(1.45, Math.max(0.08, alt + dy * 0.005));
+  } else if (punteros.size === 2) {
+    const [a, b] = [...punteros.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (pellizco) { dist = Math.min(70, Math.max(5, dist * pellizco / d)); destino = null; }
+    pellizco = d; movido += 99;
+  }
+});
+function soltar(e) {
+  if (punteros.size === 1 && movido < 8) tocar(e.clientX, e.clientY);
+  punteros.delete(e.pointerId); pellizco = null;
+}
+lienzoEl.addEventListener('pointerup', soltar);
+lienzoEl.addEventListener('pointercancel', e => { punteros.delete(e.pointerId); pellizco = null; });
+lienzoEl.addEventListener('wheel', e => { e.preventDefault(); destino = null; dist = Math.min(70, Math.max(5, dist * (1 + e.deltaY * 0.001))); }, { passive: false });
 addEventListener('resize', () => { camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const rayo = new THREE.Raycaster();
+function tocar(x, y) {
+  rayo.setFromCamera(new THREE.Vector2(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1), camara);
+  const hit = rayo.intersectObjects(puestos.map(p => p.g), true).find(h => h.object.userData.puesto !== undefined);
+  if (hit) elegir(hit.object.userData.puesto);
+}
+
+// ---------- panel ----------
+let elegido = -1; // -1 = todos
+const filaP = document.getElementById('filaPersonajes'), filaA = document.getElementById('filaAnimaciones');
+const titulo = document.getElementById('titulo');
+function boton(fila, texto, fn, clase = '') { const b = document.createElement('button'); b.textContent = texto; b.className = clase; b.onclick = fn; fila.appendChild(b); return b; }
+boton(filaP, '‹', () => elegir(elegido <= 0 ? puestos.length - 1 : elegido - 1), 'flecha');
+const botonesP = [boton(filaP, 'Todos', () => elegir(-1))];
+puestos.forEach((P, i) => botonesP.push(boton(filaP, NOMBRES[P.id], () => elegir(i))));
+boton(filaP, '›', () => elegir(elegido >= puestos.length - 1 ? 0 : elegido + 1), 'flecha');
+const botonesA = {};
+Object.entries(ANIMACIONES).forEach(([k, v]) => botonesA[k] = boton(filaA, v, () => ponerAnim(k)));
+
+function elegir(i) {
+  elegido = i;
+  botonesP.forEach((b, k) => b.classList.toggle('activo', k === i + 1));
+  puestos.forEach((P, k) => P.g.visible = i < 0 || k === i); // de cerca, solo el elegido
+  botonesP[i + 1].scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
+  if (i < 0) { destino = { pos: new THREE.Vector3(0, 1.6, 0), dist: distGeneral() }; titulo.firstChild.textContent = 'Todos'; }
+  else {
+    const P = puestos[i];
+    destino = { pos: new THREE.Vector3(P.g.position.x, 1.6, P.g.position.z + 1.2), dist: vertical() ? 21 : 13 };
+    titulo.firstChild.textContent = NOMBRES[P.id];
+  }
+  marcarAnim();
+}
+function seleccionados() { return elegido < 0 ? puestos : [puestos[elegido]]; }
+function ponerAnim(k) { const t = reloj.getElapsedTime(); seleccionados().forEach(P => { P.anim = k; P.t0 = t; }); marcarAnim(); }
+function marcarAnim() { const a = seleccionados()[0].anim; const igual = seleccionados().every(P => P.anim === a); Object.entries(botonesA).forEach(([k, b]) => b.classList.toggle('activo', igual && k === a)); }
 
 const quieto = params.has('quieto');
 const reloj = new THREE.Clock();
+let dtCam = 0.016, tPrev = 0;
 function bucle() {
-  const t = quieto ? 0.6 : reloj.getElapsedTime();
-  figuras.forEach((f, i) => {
-    f.userData.cabeza.rotation.y = Math.sin(t * 0.8 + i) * 0.18;
-    f.position.y = 0.34 + Math.abs(Math.sin(t * 2 + i)) * 0.04;
-  });
+  const real = reloj.getElapsedTime(); dtCam = Math.min(0.1, real - tPrev); tPrev = real;
+  const T = quieto ? 0.6 : real;
+  puestos.forEach(P => animar(P, quieto ? 0.6 : T - P.t0, T));
   colocarCamara();
   renderer.render(escena, camara);
   requestAnimationFrame(bucle);
 }
 camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix();
+const inicial = orden.indexOf(params.get('ver'));
+if (params.get('anim')) puestos.forEach(P => P.anim = params.get('anim'));
+elegir(inicial);
+if (inicial >= 0 || params.has('dist')) { if (destino) { objetivo.copy(destino.pos); if (!params.has('dist')) dist = destino.dist; destino = null; } }
 bucle();
 window.listo = true;
 </script>

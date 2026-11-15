@@ -16,6 +16,8 @@ Páginas de prueba que **no forman parte del juego** (no las carga
   personajes (Clarividente, Cronomante, Centinela, Ocultista, Entusiasta,
   Estratega) con un cuerpo común y piezas, estampados y accesorios propios,
   sobre Portales y una placa con tetones. Todo por código en el propio HTML
-  (Three.js de `vendor/three`). Parámetros: `?quien=a,b`, `dist`, `alt`,
+  (Three.js de `vendor/three`). Preparada para móvil: deslizar gira,
+  pellizcar acerca, tocar un personaje lo muestra solo; botones por personaje
+  y animaciones (reposo, andar, saludar, habilidad). Parámetros: `?quien=a,b`, `ver`, `anim`, `dist`, `alt`,
   `ang`, `quieto`. No toca el juego.
   Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/figuras-bloques.html
