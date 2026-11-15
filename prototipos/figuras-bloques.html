@@ -45,7 +45,7 @@ document.body.appendChild(renderer.domElement);
 
 const escena = new THREE.Scene();
 escena.background = new THREE.Color('#2a2640');
-escena.fog = new THREE.Fog('#2a2640', 70, 130);
+escena.fog = new THREE.Fog('#2a2640', 110, 200);
 const camara = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200);
 
 escena.add(new THREE.HemisphereLight('#fff6e8', '#5a4f7a', 1.1));
@@ -53,7 +53,7 @@ const sol = new THREE.DirectionalLight('#fff3dc', 2.2);
 sol.position.set(6, 14, 10);
 sol.castShadow = true;
 sol.shadow.mapSize.set(2048, 2048);
-Object.assign(sol.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12 });
+Object.assign(sol.shadow.camera, { left: -24, right: 24, top: 20, bottom: -20, far: 80 });
 escena.add(sol);
 const relleno = new THREE.DirectionalLight('#9fb6ff', 0.6);
 relleno.position.set(-8, 5, -6);
@@ -66,7 +66,23 @@ const brillo = (color, intensidad = 1.6) => new THREE.MeshStandardMaterial({ col
 function sombra(m) { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; }
 
 // ---------- placa base con tetones ----------
-const TETON = new THREE.CylinderGeometry(0.24, 0.24, 0.17, 20);
+// Tetones HEXAGONALES (no redondos): estilo propio, inspirado en los juguetes de bloques sin copiarlos.
+const TETON = new THREE.CylinderGeometry(0.25, 0.25, 0.17, 6);
+// Orbes y llamas que levitan: cada uno con su propio ritmo (arriba/abajo, izquierda/derecha).
+const FLOTANTES = [];
+let semillaFlot = 1;
+function flotar(obj, amp = 0.12) {
+  const r = () => (semillaFlot = (semillaFlot * 16807) % 2147483647) / 2147483647;
+  obj.userData.flota = { base: obj.position.clone(), amp, fx: 0.7 + r() * 0.9, fy: 0.9 + r() * 1.1, fz: 0.6 + r() * 0.8, px: r() * 6.28, py: r() * 6.28, pz: r() * 6.28 };
+  FLOTANTES.push(obj);
+  return obj;
+}
+function moverFlotantes(T) {
+  for (const o of FLOTANTES) {
+    const u = o.userData.flota;
+    o.position.set(u.base.x + Math.sin(T * u.fx + u.px) * u.amp, u.base.y + Math.sin(T * u.fy + u.py) * u.amp * 1.3, u.base.z + Math.sin(T * u.fz + u.pz) * u.amp * 0.6);
+  }
+}
 function placa(ancho, fondo, color, paso = 0.8) {
   const g = new THREE.Group();
   const base = new THREE.Mesh(new THREE.BoxGeometry(ancho * paso, 0.32, fondo * paso), plastico(color));
@@ -82,22 +98,100 @@ function placa(ancho, fondo, color, paso = 0.8) {
   g.add(tetones);
   return sombra(g);
 }
-const suelo = placa(40, 22, '#4f8a4b');
+const suelo = placa(48, 38, '#4f8a4b');
 suelo.position.y = -0.02;
 escena.add(suelo);
 
-// Portal de bloques: losa redonda con runas y arco
-function portal(color = '#7b5fd0') {
-  const g = new THREE.Group();
-  const losa = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.32, 40), plastico('#b9b4c7'));
-  losa.position.y = 0.16; g.add(losa);
-  const runa = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.07, 10, 48), brillo(color, 1.2));
-  runa.rotation.x = Math.PI / 2; runa.position.y = 0.34; g.add(runa);
-  for (let k = 0; k < 6; k++) {
-    const a = k / 6 * Math.PI * 2;
-    const t = new THREE.Mesh(TETON, plastico('#b9b4c7'));
-    t.position.set(Math.cos(a) * 0.62, 0.4, Math.sin(a) * 0.62); g.add(t);
+// Portal de bloques: la misma construcción que el Portal del Escenario (tarima escalonada con
+// disco rúnico, escalinata delantera, piedras bajas con ojos rúnicos, dos pilares altos con arco,
+// dos pilares bajos, resplandor del umbral), montada con ladrillos y tetones hexagonales.
+const ALTO = 0.96; // altura de la tarima: tres capas de ladrillo
+const PIEDRA = '#a9a4b8', PIEDRA_OSC = '#827d94', PIEDRA_CLARA = '#c4bfd2';
+function discoRunico(color) {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  x.translate(256, 256); x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round';
+  x.lineWidth = 10; x.beginPath(); x.arc(0, 0, 236, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 5; x.beginPath(); x.arc(0, 0, 200, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.arc(0, 0, 70, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 6; x.beginPath();
+  for (let k = 0; k <= 5; k++) { const a = -Math.PI / 2 + k * Math.PI * 4 / 5; const px = Math.cos(a) * 196, py = Math.sin(a) * 196; k ? x.lineTo(px, py) : x.moveTo(px, py); }
+  x.stroke();
+  for (let k = 0; k < 12; k++) { // runas cuadradas entre los dos círculos
+    const a = k / 12 * Math.PI * 2; x.save(); x.rotate(a); x.translate(0, -218);
+    x.lineWidth = 4; x.strokeRect(-9, -9, 18, 18); if (k % 3 === 0) x.fillRect(-4, -4, 8, 8); x.restore();
   }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({ map: t, color, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+}
+function ladrillo(ancho, alto, fondo, color, tetones = true) {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.BoxGeometry(ancho, alto, fondo), plastico(color)); g.add(b);
+  if (tetones) {
+    const nx = Math.max(1, Math.round(ancho / 0.8)), nz = Math.max(1, Math.round(fondo / 0.8));
+    for (let a = 0; a < nx; a++) for (let c = 0; c < nz; c++) {
+      const t = new THREE.Mesh(TETON, plastico(color)); t.position.set((a - (nx - 1) / 2) * 0.8 * Math.min(1, ancho / (nx * 0.8)), alto / 2 + 0.085, (c - (nz - 1) / 2) * 0.8 * Math.min(1, fondo / (nz * 0.8))); g.add(t);
+    }
+  }
+  return g;
+}
+function portal(color = '#7b5fd0', variante = 0) {
+  const g = new THREE.Group();
+  const runas = [];
+  // tarima: tres capas de 12 lados, cada una algo más estrecha, con tetones en el borde
+  [[2.55, PIEDRA, 18], [2.3, PIEDRA_OSC, 16], [2.05, '#5d5870', 0]].forEach(([rad, col, n], k) => {
+    const capa = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, 0.32, 12), plastico(col));
+    capa.position.y = 0.16 + k * 0.32; g.add(capa);
+    for (let q = 0; q < n; q++) {
+      const a = (q + 0.5) / n * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2))) < 0.42) continue; // hueco de la escalinata
+      const t = new THREE.Mesh(TETON, plastico(col)); t.position.set(Math.cos(a) * (rad - 0.18), 0.32 * (k + 1) + 0.085, Math.sin(a) * (rad - 0.18)); g.add(t);
+    }
+  });
+  // disco rúnico encendido sobre la tarima
+  const disco = new THREE.Mesh(new THREE.PlaneGeometry(3.9, 3.9), discoRunico(color));
+  disco.rotation.x = -Math.PI / 2; disco.position.y = ALTO + 0.01; g.add(disco); runas.push(disco);
+  // escalinata delantera
+  [[0.32, 3.0], [0.64, 2.6]].forEach(([h, z]) => { const e = ladrillo(1.6, h, 0.42, PIEDRA, true); e.position.set(0, h / 2, z); g.add(e); });
+  // piedras bajas con ojo rúnico alrededor
+  for (let q = 0; q < 9; q++) {
+    const a = q / 9 * Math.PI * 2 + 0.35; if (Math.abs(Math.atan2(Math.sin(a - Math.PI / 2), Math.cos(a - Math.PI / 2))) < 0.45) continue;
+    const pz = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.36, 6), plastico(PIEDRA_OSC)); pz.position.set(Math.cos(a) * 3.15, 0.18, Math.sin(a) * 3.15); g.add(pz);
+    const ojo = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.05, 6), brillo(color, 1.6)); ojo.position.set(pz.position.x, 0.38, pz.position.z); g.add(ojo); runas.push(ojo);
+  }
+  // pilares de ladrillos 1x1 con tira de runas
+  const pilar = (x, z, n, roto) => {
+    const pg = new THREE.Group(); pg.position.set(x, 0, z); g.add(pg);
+    const basa = ladrillo(1.0, 0.32, 1.0, PIEDRA_OSC, false); basa.position.y = 0.16; pg.add(basa);
+    for (let k = 0; k < n; k++) {
+      const b = ladrillo(0.78, 0.62, 0.78, k % 2 ? PIEDRA : PIEDRA_CLARA, k === n - 1);
+      b.position.y = 0.32 + 0.31 + k * 0.64;
+      if (roto && k === n - 1) { b.rotation.set(0.15, 0.4, 0.35); b.position.x += 0.12; }
+      pg.add(b);
+      if (!(roto && k === n - 1)) { const tira = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.36, 0.02), brillo(color, 1.4)); tira.position.set(0, b.position.y, 0.4); pg.add(tira); runas.push(tira); }
+    }
+    return 0.32 + n * 0.64;
+  };
+  const altoP = pilar(-1.45, -1.6, 7, false); pilar(1.45, -1.6, 7, variante === 2);
+  pilar(-2.35, -0.35, 3, variante === 1); pilar(2.35, -0.35, 3, false);
+  // arco de ladrillos entre los pilares altos (entero, o roto según la variante)
+  const piezas = 9;
+  for (let k = 0; k < piezas; k++) {
+    if (variante === 2 && k > 5) continue;
+    if (variante === 1 && k === 4) continue;
+    const a = Math.PI * (k + 0.5) / piezas;
+    const b = ladrillo(0.55, 0.42, 0.78, k % 2 ? PIEDRA : PIEDRA_CLARA, false);
+    b.position.set(-Math.cos(a) * 1.45, altoP + Math.sin(a) * 1.1, -1.6); b.rotation.z = a - Math.PI / 2; g.add(b);
+  }
+  const clave = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 6), brillo(color, 1.8)); clave.rotation.x = Math.PI / 2; clave.position.set(0, altoP + 1.1, -1.18);
+  if (variante !== 2) { g.add(clave); runas.push(clave); }
+  // resplandor del umbral
+  const umbral = new THREE.Mesh(new THREE.PlaneGeometry(2.3, altoP - ALTO + 0.6), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  umbral.position.set(0, ALTO + (altoP - ALTO + 0.6) / 2, -1.62); g.add(umbral);
+  // chispas flotantes del Portal
+  for (let k = 0; k < 4; k++) {
+    const ch = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), brillo(color, 2));
+    ch.position.set((k - 1.5) * 0.9, 2.2 + (k % 2) * 1.3, -1.0 + (k % 3) * 0.5); g.add(flotar(ch, 0.35));
+  }
+  g.userData.runas = runas;
   return sombra(g);
 }
 
@@ -243,7 +337,7 @@ function figura(d) {
   const craneo = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.82, 40, 1), [caraMat, plastico(d.cara?.sombraTotal ? '#0b0d1a' : piel), plastico(piel)]);
   craneo.rotation.y = Math.PI; cabeza.add(craneo);
   for (const y of [0.41, -0.41]) { const bisel = new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.05, 8, 40), plastico(piel)); bisel.rotation.x = Math.PI / 2; bisel.position.y = y; cabeza.add(bisel); }
-  const tet = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.16, 20), plastico(piel)); tet.position.y = 0.5; cabeza.add(tet);
+  const tet = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.16, 6), plastico(piel)); tet.position.y = 0.5; cabeza.add(tet);
 
   if (d.pelo) cabeza.add(d.pelo());
   if (d.capa) f.add(capa(d.capa, d.capaLarga));
@@ -315,9 +409,10 @@ const PERSONAJES = {
     pelo: () => { const g = peloMelena('#16131c', 0.9, false)(); g.add(capucha('#1f6f6a')()); return g; },
     poseDer: [1.1, 0.35], poseIzq: [0.35, 0.15],
     extra: (f) => {
+      // el orbe va en la mano derecha: la sigue al andar o al usar la habilidad, y levita sobre la palma
       const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 16), brillo('#5ff2e6', 2.2));
-      orbe.position.set(0.95, 2.35, 0.95); f.add(orbe);
-      const luz = new THREE.PointLight('#5ff2e6', 2, 3); luz.position.copy(orbe.position); f.add(luz);
+      orbe.position.set(0, -1.25, 0.6); f.userData.brazoDer.add(flotar(orbe, 0.07));
+      orbe.add(new THREE.PointLight('#5ff2e6', 2, 3));
       humo(f, '#4fe0d6', 0.9);
     },
   }),
@@ -338,11 +433,14 @@ const PERSONAJES = {
     poseDer: [1.25, 0.45], poseIzq: [1.25, 0.45],
     extra: (f) => {
       for (const s of [-1, 1]) {
-        const llama = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 12), brillo('#57c8ff', 2.4));
-        llama.position.set(s * 1.12, 2.55, 1.0); f.add(llama);
-        const n = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), brillo('#a9e6ff', 2)); n.position.set(s * 1.12, 2.25, 1.0); f.add(n);
+        // una llama azul sobre cada mano: va con el brazo y levita por su cuenta
+        const brazo = f.userData[s < 0 ? 'brazoIzq' : 'brazoDer'];
+        const fuego = new THREE.Group();
+        const llama = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 12), brillo('#57c8ff', 2.4)); llama.position.y = 0.3; fuego.add(llama);
+        const n = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), brillo('#a9e6ff', 2)); fuego.add(n);
+        fuego.position.set(0, -1.2, 0.55); fuego.rotation.x = brazo.rotation.x * -1; brazo.add(flotar(fuego, 0.08));
       }
-      const luz = new THREE.PointLight('#57c8ff', 5, 4); luz.position.set(0, 2.6, 1.2); f.add(luz);
+      f.userData.brazoDer.children.at(-1).add(new THREE.PointLight('#57c8ff', 3, 4));
     },
   }),
 
@@ -392,8 +490,8 @@ const PERSONAJES = {
     pelo: capucha('#2b3f92', '#0b0d1a', true),
     poseDer: [1.0, -0.15], poseIzq: [1.0, -0.15],
     extra: (f) => {
-      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16), brillo('#7fc6ff', 2.6)); orbe.position.set(0, 2.15, 1.05); f.add(orbe);
-      const luz = new THREE.PointLight('#7fc6ff', 6, 4); luz.position.copy(orbe.position); f.add(luz);
+      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16), brillo('#7fc6ff', 2.6)); orbe.position.set(0, 2.15, 1.05); f.add(flotar(orbe, 0.06));
+      orbe.add(new THREE.PointLight('#7fc6ff', 4, 4));
     },
   }),
 
@@ -419,7 +517,7 @@ const PERSONAJES = {
     },
     poseDer: [1.35, 0.6], poseIzq: [0.3, 0.45], paso: 0.35,
     extra: (f) => {
-      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 16), brillo('#7fc6ff', 2.2)); orbe.position.set(1.45, 3.7, 0.6); f.add(orbe);
+      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 16), brillo('#7fc6ff', 2.2)); orbe.position.set(1.45, 3.7, 0.6); f.add(flotar(orbe, 0.15));
       const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.66, 0.16, 8), plastico('#f2c230')); collar.position.y = 2.93; f.add(collar);
     },
   }),
@@ -440,7 +538,7 @@ const PERSONAJES = {
       colores.forEach((c, k) => {
         const a = Math.PI * (0.05 + 0.9 * k / (colores.length - 1));
         const o = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), brillo(c, 1.3));
-        o.position.set(Math.cos(a) * 1.45, 3.4 + Math.sin(a) * 1.2, 0.2); f.add(o);
+        o.position.set(Math.cos(a) * 1.45, 3.4 + Math.sin(a) * 1.2, 0.2); f.add(flotar(o, 0.13));
       });
     },
   }),
@@ -461,18 +559,18 @@ const NOMBRES = { clarividente: 'Clarividente', cronomante: 'Cronomante', centin
 const COLOR_RUNA = { clarividente: '#5ff2e6', cronomante: '#57c8ff', centinela: '#e8473a', ocultista: '#7fc6ff', entusiasta: '#f2c230', estratega: '#ff8f3a' };
 const orden = (params.get('quien') || 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega').split(',').filter(n => PERSONAJES[n]);
 const puestos = [];
-const sep = Number(params.get('sep') || 4.1);
+const sep = Number(params.get('sep') || 6.6);
 orden.forEach((n, i) => {
   const g = new THREE.Group();
-  const p = portal(COLOR_RUNA[n]);
+  const p = portal(COLOR_RUNA[n], i % 3);
   g.add(p);
-  const fig = PERSONAJES[n](); fig.position.y = 0.34; g.add(fig);
+  const fig = PERSONAJES[n](); fig.position.y = ALTO; g.add(fig);
   // anillo mágico para la habilidad
   const anillo = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 48), brillo(COLOR_RUNA[n], 2));
-  anillo.rotation.x = Math.PI / 2; anillo.visible = false; g.add(anillo);
+  anillo.rotation.x = Math.PI / 2; anillo.visible = false; g.add(anillo); anillo.userData.y0 = ALTO;
   const cols = Math.min(3, orden.length), filas = Math.ceil(orden.length / cols);
   g.position.x = (i % cols - (cols - 1) / 2) * sep;
-  g.position.z = (Math.floor(i / cols) - (filas - 1) / 2) * sep * 1.7;
+  g.position.z = (Math.floor(i / cols) - (filas - 1) / 2) * sep * 1.45;
   escena.add(g);
   fig.traverse(o => o.userData.puesto = i);
   puestos.push({ id: n, g, fig, anillo, anim: 'reposo', t0: 0 });
@@ -485,19 +583,20 @@ function animar(P, t, T) {
   const { fig: f, anillo } = P;
   const cab = f.userData.cabeza;
   // valores de reposo
-  f.position.set(0, 0.34, 0); f.rotation.set(0, 0, 0); anillo.visible = false;
+  f.position.set(0, ALTO, 0); f.rotation.set(0, 0, 0); anillo.visible = false;
   f.userData.piernas.forEach(p => p.rotation.x = p.userData.base);
   brazos(f, (b, rx, rz) => { b.rotation.x = rx; b.rotation.z = rz; });
   cab.rotation.set(0, 0, 0);
   if (P.anim === 'reposo') {
     cab.rotation.y = Math.sin(T * 0.8 + P.g.position.x) * 0.25;
-    f.position.y = 0.34 + Math.abs(Math.sin(T * 1.6)) * 0.03;
+    f.position.y = ALTO + Math.abs(Math.sin(T * 1.6)) * 0.03;
     brazos(f, (b, rx, rz, s) => { b.rotation.x = rx + Math.sin(T * 1.6 + s) * 0.06; });
   } else if (P.anim === 'andar') {
     // baja del Portal, da una vuelta y vuelve a subir
-    const R = 1.9, w = 0.9, th = (t * w) % (Math.PI * 2);
+    const R = 3.4, w = 0.7, th = (t * w) % (Math.PI * 2);
     const x = Math.sin(th) * R, z = R - Math.cos(th) * R;
-    f.position.set(x, Math.hypot(x, z) < 1.3 ? 0.34 : 0.02, z);
+    const dc = Math.hypot(x, z); // sobre la tarima, bajando la escalinata o en el suelo
+    f.position.set(x, dc < 2.0 ? ALTO : dc > 3.25 ? 0.02 : ALTO * (3.25 - dc) / 1.25, z);
     f.rotation.y = Math.PI / 2 - th;
     const fase = t * 9;
     f.userData.piernas.forEach((p, i) => p.rotation.x = Math.sin(fase + i * Math.PI) * 0.55);
@@ -509,18 +608,18 @@ function animar(P, t, T) {
     const b = f.userData.brazoDer;
     b.rotation.x = -2.7; b.rotation.z = 0.35 + Math.sin(t * 9) * 0.35;
     cab.rotation.z = -0.12; cab.rotation.y = Math.sin(t * 2) * 0.15;
-    f.position.y = 0.34 + Math.abs(Math.sin(t * 4.5)) * 0.08;
+    f.position.y = ALTO + Math.abs(Math.sin(t * 4.5)) * 0.08;
   } else if (P.anim === 'habilidad') {
     const c = t % 2.6;
     if (c < 1.1) { // salto con giro y brazos arriba
       const k = c / 1.1;
-      f.position.y = 0.34 + Math.sin(k * Math.PI) * 1.2;
+      f.position.y = ALTO + Math.sin(k * Math.PI) * 1.2;
       f.rotation.y = k * Math.PI * 2;
       brazos(f, (b, rx, rz, s) => { b.rotation.x = -2.9 * Math.sin(k * Math.PI) + rx * (1 - Math.sin(k * Math.PI)); b.rotation.z = s * 0.4; });
     } else { // lanza la magia
       const k = (c - 1.1) / 1.5;
       brazos(f, (b, rx, rz, s) => { b.rotation.x = -1.5; b.rotation.z = s * (0.2 + 0.3 * Math.sin(k * Math.PI)); });
-      anillo.visible = true; anillo.position.y = 0.4 + k * 1.5; anillo.scale.setScalar(0.6 + k * 2.4);
+      anillo.visible = true; anillo.position.y = ALTO + 0.1 + k * 1.5; anillo.scale.setScalar(0.6 + k * 2.4);
       anillo.material.opacity = 1 - k;
     }
   }
@@ -528,7 +627,7 @@ function animar(P, t, T) {
 
 // ---------- cámara (cenital 3/4) y gestos ----------
 const vertical = () => innerWidth < innerHeight;
-const distGeneral = () => vertical() ? 52 : 26;
+const distGeneral = () => vertical() ? 78 : 40;
 let ang = Number(params.get('ang') || 0), alt = Number(params.get('alt') || 0.6), dist = Number(params.get('dist') || distGeneral());
 const objetivo = new THREE.Vector3(0, Number(params.get('y') || 1.6), 0);
 let destino = null; // { pos, dist }
@@ -590,10 +689,10 @@ function elegir(i) {
   botonesP.forEach((b, k) => b.classList.toggle('activo', k === i + 1));
   puestos.forEach((P, k) => P.g.visible = i < 0 || k === i); // de cerca, solo el elegido
   botonesP[i + 1].scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
-  if (i < 0) { destino = { pos: new THREE.Vector3(0, 1.6, 0), dist: distGeneral() }; titulo.firstChild.textContent = 'Todos'; }
+  if (i < 0) { destino = { pos: new THREE.Vector3(0, 2, 0), dist: distGeneral() }; titulo.firstChild.textContent = 'Todos'; }
   else {
     const P = puestos[i];
-    destino = { pos: new THREE.Vector3(P.g.position.x, 1.6, P.g.position.z + 1.2), dist: vertical() ? 21 : 13 };
+    destino = { pos: new THREE.Vector3(P.g.position.x, 2.6, P.g.position.z + 1.0), dist: vertical() ? 30 : 18 };
     titulo.firstChild.textContent = NOMBRES[P.id];
   }
   marcarAnim();
@@ -609,6 +708,7 @@ function bucle() {
   const real = reloj.getElapsedTime(); dtCam = Math.min(0.1, real - tPrev); tPrev = real;
   const T = quieto ? 0.6 : real;
   puestos.forEach(P => animar(P, quieto ? 0.6 : T - P.t0, T));
+  moverFlotantes(quieto ? 1.3 : real);
   colocarCamara();
   renderer.render(escena, camara);
   requestAnimationFrame(bucle);

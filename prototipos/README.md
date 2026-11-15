@@ -15,7 +15,9 @@ Páginas de prueba que **no forman parte del juego** (no las carga
   juguete» (inspirado en los videojuegos de bloques, sin marcas): seis
   personajes (Clarividente, Cronomante, Centinela, Ocultista, Entusiasta,
   Estratega) con un cuerpo común y piezas, estampados y accesorios propios,
-  sobre Portales y una placa con tetones. Todo por código en el propio HTML
+  sobre Portales de ladrillos como los del Escenario y una placa con tetones
+  hexagonales (no redondos, para no imitar a ninguna marca). Orbes y llamas
+  levitan por su cuenta y siguen las manos. Todo por código en el propio HTML
   (Three.js de `vendor/three`). Preparada para móvil: deslizar gira,
   pellizcar acerca, tocar un personaje lo muestra solo; botones por personaje
   y animaciones (reposo, andar, saludar, habilidad). Parámetros: `?quien=a,b`, `ver`, `anim`, `dist`, `alt`,
