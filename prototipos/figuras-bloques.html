@@ -19,6 +19,7 @@
     padding: 9px 15px; font-size: 15px; font-family: inherit; cursor: pointer; }
   .fila button.activo { background: #f2c230; color: #2a1d05; border-color: #f2c230; font-weight: 700; }
   .fila button.flecha { width: 44px; padding: 9px 0; font-size: 18px; }
+  .fila button.invocar { background: #7a1022; border-color: #e8284a; }
   .fila .sep { flex: none; width: 1px; height: 26px; background: #ffffff30; }
 </style>
 </head>
@@ -98,7 +99,7 @@ function placa(ancho, fondo, color, paso = 0.8) {
   g.add(tetones);
   return sombra(g);
 }
-const suelo = placa(48, 38, '#4f8a4b');
+const suelo = placa(52, 50, '#4f8a4b');
 suelo.position.y = -0.02;
 escena.add(suelo);
 
@@ -522,6 +523,33 @@ const PERSONAJES = {
     },
   }),
 
+  cronista: () => figura({
+    piel: '#f2c29c', torso: '#6b4a9a', brazos: '#6b4a9a', falda: '#2f8a7a', faldaRibete: '#e2b453', manos: '#f2c29c', puños: '#e2b453',
+    capa: '#5b3d8f', capaLarga: 2.5,
+    cara: { boca: 'sonrisa', cejas: '#9a2e14', mejillas: true },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#2f8a7a'; x.beginPath(); x.moveTo(w / 2 - 46, 0); x.lineTo(w / 2 + 46, 0); x.lineTo(w / 2 + 30, h); x.lineTo(w / 2 - 30, h); x.fill();
+      x.strokeStyle = '#e2b453'; x.lineWidth = 6; x.stroke();
+      gema(x, w / 2, 60, 15, '#3fd0a0'); gema(x, w / 2, 140, 10, '#c9479a');
+      x.fillStyle = '#e2b453'; x.fillRect(0, 200, w, 18);
+    },
+    pelo: () => {
+      const g = peloCorto('#c8401e', false)(); const mt = plastico('#c8401e');
+      for (let k = 0; k < 11; k++) { const a = -2.4 + k * 0.48; const b = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mt); b.position.set(Math.sin(a) * 0.5, 0.25 + (k % 2) * 0.18, Math.cos(a) * 0.45 - 0.02); g.add(b); }
+      return g;
+    },
+    poseIzq: [1.2, 0.2], poseDer: [0.9, 0.4],
+    extra: (f) => {
+      // libro abierto en la mano izquierda
+      const libro = new THREE.Group();
+      for (const s of [-1, 1]) {
+        const tapa = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.06, 0.75), plastico('#7a3a1a')); tapa.position.x = s * 0.28; tapa.rotation.z = s * 0.18; libro.add(tapa);
+        const hojas = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.68), plastico('#f4ead0')); hojas.position.set(s * 0.26, 0.06, 0); hojas.rotation.z = s * 0.18; libro.add(hojas);
+      }
+      libro.position.set(0, -1.3, 0.35); libro.rotation.x = 1.2; f.userData.brazoIzq.add(flotar(libro, 0.03));
+    },
+  }),
+
   estratega: () => figura({
     piel: '#f6d6bd', torso: '#f2a77a', brazos: '#f6b994', falda: '#f2a77a', faldaRibete: '#d9744a',
     cara: { ojos: 'cerrados', boca: 'serena', cejas: '#b8552c' },
@@ -554,10 +582,11 @@ function humo(f, color, op) {
   }
 }
 
+const vertical = () => innerWidth < innerHeight;
 // ---------- montaje ----------
-const NOMBRES = { clarividente: 'Clarividente', cronomante: 'Cronomante', centinela: 'Centinela', ocultista: 'Ocultista', entusiasta: 'Entusiasta', estratega: 'Estratega' };
-const COLOR_RUNA = { clarividente: '#5ff2e6', cronomante: '#57c8ff', centinela: '#e8473a', ocultista: '#7fc6ff', entusiasta: '#f2c230', estratega: '#ff8f3a' };
-const orden = (params.get('quien') || 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega').split(',').filter(n => PERSONAJES[n]);
+const NOMBRES = { clarividente: 'Clarividente', cronomante: 'Cronomante', centinela: 'Centinela', ocultista: 'Ocultista', entusiasta: 'Entusiasta', estratega: 'Estratega', cronista: 'Cronista' };
+const COLOR_RUNA = { clarividente: '#5ff2e6', cronomante: '#57c8ff', centinela: '#e8473a', ocultista: '#7fc6ff', entusiasta: '#f2c230', estratega: '#ff8f3a', cronista: '#b48aff' };
+const orden = (params.get('quien') || 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega,cronista').split(',').filter(n => PERSONAJES[n]);
 const puestos = [];
 const sep = Number(params.get('sep') || 6.6);
 orden.forEach((n, i) => {
@@ -568,7 +597,7 @@ orden.forEach((n, i) => {
   // anillo mágico para la habilidad
   const anillo = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 48), brillo(COLOR_RUNA[n], 2));
   anillo.rotation.x = Math.PI / 2; anillo.visible = false; g.add(anillo); anillo.userData.y0 = ALTO;
-  const cols = Math.min(3, orden.length), filas = Math.ceil(orden.length / cols);
+  const cols = Math.min(vertical() ? 3 : 4, orden.length), filas = Math.ceil(orden.length / cols);
   g.position.x = (i % cols - (cols - 1) / 2) * sep;
   g.position.z = (Math.floor(i / cols) - (filas - 1) / 2) * sep * 1.45;
   escena.add(g);
@@ -609,6 +638,13 @@ function animar(P, t, T) {
     b.rotation.x = -2.7; b.rotation.z = 0.35 + Math.sin(t * 9) * 0.35;
     cab.rotation.z = -0.12; cab.rotation.y = Math.sin(t * 2) * 0.15;
     f.position.y = ALTO + Math.abs(Math.sin(t * 4.5)) * 0.08;
+  } else if (P.anim === 'alzar') { // invocando: brazos al cielo
+    brazos(f, (b, rx, rz, s) => { b.rotation.x = -2.8 + Math.sin(t * 6 + s) * 0.08; b.rotation.z = s * 0.25; });
+    cab.rotation.x = -0.25; f.position.y = ALTO + Math.min(1, t) * 0.25 + Math.sin(t * 3) * 0.05;
+  } else if (P.anim === 'celebrar') { // recibe su Gema: dos saltitos de alegría
+    if (t > 1.3) { P.anim = 'reposo'; return; }
+    f.position.y = ALTO + Math.abs(Math.sin(t * Math.PI * 1.55)) * 0.7;
+    brazos(f, (b, rx, rz, s) => { b.rotation.x = -2.6; b.rotation.z = s * (0.5 + Math.sin(t * 12) * 0.15); });
   } else if (P.anim === 'habilidad') {
     const c = t % 2.6;
     if (c < 1.1) { // salto con giro y brazos arriba
@@ -625,8 +661,222 @@ function animar(P, t, T) {
   }
 }
 
+// ---------- invocación de Baelorith (Estratega + Cronomante + Cronista) ----------
+const INVOCACION = { criatura: 'Baelorith', need: ['estratega', 'cronomante', 'cronista'], gemas: 5, color: '#e8284a', color2: '#ffb0c0' };
+const filasGrid = Math.max(...puestos.map(P => P.g.position.z));
+const SITIO = new THREE.Vector3(0, 0, filasGrid + 9.5);
+const CIELO = SITIO.clone().add(new THREE.Vector3(0, 9, 0));
+
+// Partículas: tetones y placas sueltas que vuelan (confeti de bloques)
+const PIEZA_CHISPA = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 6);
+const particulas = [];
+function chispa(pos, color, { vel = new THREE.Vector3(), vida = 1, grav = 0, hacia = null, arco = 0, tam = 1 } = {}) {
+  const m = new THREE.Mesh(PIEZA_CHISPA, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, transparent: true, roughness: 0.3 }));
+  m.position.copy(pos); m.scale.setScalar(tam); m.rotation.set(Math.random() * 6, Math.random() * 6, 0);
+  escena.add(m); particulas.push({ m, vel, vida, t: 0, grav, desde: pos.clone(), hacia, arco });
+}
+function moverParticulas(dt) {
+  for (let i = particulas.length - 1; i >= 0; i--) {
+    const q = particulas[i]; q.t += dt; const k = q.t / q.vida;
+    if (k >= 1) { escena.remove(q.m); q.m.material.dispose(); particulas.splice(i, 1); continue; }
+    if (q.hacia) { q.m.position.lerpVectors(q.desde, q.hacia, k); q.m.position.y += Math.sin(k * Math.PI) * q.arco; }
+    else { q.vel.y -= q.grav * dt; q.m.position.addScaledVector(q.vel, dt); }
+    q.m.rotation.x += dt * 4; q.m.rotation.y += dt * 3;
+    q.m.material.opacity = Math.min(1, (1 - k) * 2);
+  }
+}
+const azar = (a) => (Math.random() - 0.5) * a;
+function estallido(pos, colores, n, fuerza = 4, grav = 6) {
+  for (let i = 0; i < n; i++) chispa(pos, colores[i % colores.length], { vel: new THREE.Vector3(azar(2), Math.random(), azar(2)).normalize().multiplyScalar(fuerza * (0.5 + Math.random())), vida: 1 + Math.random(), grav });
+}
+
+// La criatura, construida con bloques: cristal carmesí, corona de púas, hombreras, espada y manto
+function criaturaBloques() {
+  const g = new THREE.Group();
+  const cuerpo = plastico('#c8203e', { emissive: '#5a0010', emissiveIntensity: 0.5 });
+  const claro = plastico('#ffb0c0', { emissive: '#ff6a8a', emissiveIntensity: 0.6 });
+  const oscuro = plastico('#7a1022', { emissive: '#30000a', emissiveIntensity: 0.4 });
+  const cristal = new THREE.MeshStandardMaterial({ color: '#ff8aa4', emissive: '#d8284a', emissiveIntensity: 0.9, transparent: true, opacity: 0.8, roughness: 0.1, flatShading: true });
+  const add = (geo, mat, x, y, z, padre = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); padre.add(m); return m; };
+  // piernas que acaban en punta (flota)
+  for (const s of [-1, 1]) { const pi = add(new THREE.CylinderGeometry(0.45, 0.1, 3.2, 4), cuerpo, s * 0.55, 2.0, 0); pi.rotation.y = Math.PI / 4; }
+  add(new THREE.BoxGeometry(2.0, 0.5, 1.0), oscuro, 0, 3.7, 0);
+  // torso trapezoidal con cristales incrustados
+  const torso = add(trapecio(1.6, 2.8, 2.6, 1.2), cuerpo, 0, 5.2, 0);
+  for (const [x, y] of [[0, 5.4], [-0.55, 5.9], [0.55, 5.9], [0, 4.5]]) add(new THREE.OctahedronGeometry(0.28), cristal, x, y, 0.62).scale.set(1, 1.5, 0.6);
+  // hombreras de púas
+  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const c = add(new THREE.ConeGeometry(0.28, 1.3 - i * 0.25, 4), i ? oscuro : cuerpo, s * (1.5 + i * 0.3), 6.6 - i * 0.15, 0); c.rotation.z = -s * (0.4 + i * 0.4); }
+  // brazos abiertos con manos en C
+  const brazos = [];
+  for (const s of [-1, 1]) {
+    const b = new THREE.Group(); b.position.set(s * 1.55, 6.2, 0); g.add(b); brazos.push(b);
+    add(new THREE.CylinderGeometry(0.3, 0.24, 2.6, 4), cuerpo, 0, -1.3, 0, b).rotation.y = Math.PI / 4;
+    const mano = add(new THREE.TorusGeometry(0.35, 0.16, 8, 12, Math.PI * 1.45), claro, 0, -2.75, 0, b); mano.rotation.set(0, Math.PI / 2, Math.PI * 0.77);
+    b.rotation.z = s * 0.7; b.rotation.x = -0.4;
+  }
+  // cabeza sin rostro: prisma hexagonal con gema y corona de púas
+  add(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 6), oscuro, 0, 6.65, 0);
+  const cab = add(new THREE.CylinderGeometry(0.7, 0.7, 1.2, 6), claro, 0, 7.4, 0);
+  add(new THREE.OctahedronGeometry(0.22), cristal, 0, 7.55, 0.66);
+  add(new THREE.ConeGeometry(0.22, 2.0, 4), cuerpo, 0, 8.9, 0);
+  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const c = add(new THREE.ConeGeometry(0.16, 1.4 - i * 0.3, 4), i ? oscuro : cuerpo, s * (0.25 + i * 0.25), 8.4 - i * 0.12, 0); c.rotation.z = -s * (0.35 + i * 0.35); }
+  // espada clavada delante
+  const esp = new THREE.Group(); esp.position.set(0, 0, 1.4); g.add(esp);
+  add(new THREE.BoxGeometry(0.28, 3.6, 0.1), cristal, 0, 2.2, 0, esp);
+  add(new THREE.ConeGeometry(0.2, 0.6, 4), cristal, 0, 0.1, 0, esp).rotation.x = Math.PI;
+  add(new THREE.BoxGeometry(1.4, 0.22, 0.3), oscuro, 0, 4.05, 0, esp);
+  add(new THREE.BoxGeometry(0.22, 0.9, 0.22), oscuro, 0, 4.6, 0, esp);
+  add(new THREE.OctahedronGeometry(0.22), cristal, 0, 5.2, 0, esp);
+  // manto de dos alas
+  for (const s of [-1, 1]) {
+    const forma = new THREE.Shape(); forma.moveTo(0, 0); forma.lineTo(s * 1.0, 0); forma.lineTo(s * 2.6, -5.2); forma.lineTo(s * 0.2, -5.6); forma.closePath();
+    const ala = add(new THREE.ExtrudeGeometry(forma, { depth: 0.08, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: '#d8284a', emissive: '#6a0018', emissiveIntensity: 0.5, transparent: true, opacity: 0.85, side: THREE.DoubleSide }), s * 0.3, 6.5, -0.7);
+    ala.rotation.x = 0.18;
+  }
+  // cristales flotando alrededor
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; const c = add(new THREE.OctahedronGeometry(0.2), cristal, Math.cos(a) * 2.6, 2.5 + (i % 4) * 1.3, Math.sin(a) * 1.4); c.scale.y = 1.6; flotar(c, 0.25); }
+  g.userData.brazos = brazos;
+  const mats = []; g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.userData.op = o.material.opacity; mats.push(o.material); o.castShadow = true; } });
+  g.userData.mats = mats;
+  return g;
+}
+function opacidadDe(g, k) { for (const m of g.userData.mats) m.opacity = m.userData.op * k; }
+
+function gemaBloque(color) {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.42), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.7, roughness: 0.15, flatShading: true }));
+  m.scale.set(1.5, 2, 1.5); g.add(m);
+  const halo = new THREE.PointLight(color, 2, 3); g.add(halo);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 6), plastico('#e2b453')); base.position.y = -0.5; g.add(base);
+  return sombra(g);
+}
+
+const INV = { activo: false, t: 0 }; window.INV = INV;
+let granCirculo = null, criatura = null, gemas = [], nuevoPortal = null, pila = 0;
+const narrar = (texto) => { titulo.lastChild.textContent = texto; };
+function limpiarInvocacion() {
+  [granCirculo, criatura, nuevoPortal, ...gemas].forEach(o => o && escena.remove(o));
+  granCirculo = criatura = nuevoPortal = null; gemas = [];
+}
+function empezarInvocacion() {
+  limpiarInvocacion(); elegir(-1);
+  INV.activo = true; INV.t = 0; INV.hechos = new Set();
+  INV.req = puestos.filter(P => INVOCACION.need.includes(P.id));
+  titulo.firstChild.textContent = 'Invocación';
+  destino = { pos: new THREE.Vector3(0, 3, (SITIO.z + filasGrid) / 2 + 1), dist: vertical() ? 74 : 36 };
+}
+const una = (clave, fn) => { if (!INV.hechos.has(clave)) { INV.hechos.add(clave); fn(); } };
+const suave = (k) => k * k * (3 - 2 * k), limita = (k) => Math.max(0, Math.min(1, k));
+function manoDe(P) { return P.fig.userData.brazoDer.userData.mano.getWorldPosition(new THREE.Vector3()); }
+
+function pasoInvocacion(dt) {
+  const t = (INV.t += dt);
+  const T = reloj.getElapsedTime();
+  // 1. Los requeridos alzan su magia; las runas de su Portal despiertan
+  una('inicio', () => {
+    narrar('Estratega, Cronomante y Cronista están en Portales distintos: las runas despiertan…');
+    INV.req.forEach(P => { P.anim = 'alzar'; P.t0 = T; });
+    granCirculo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), discoRunico(INVOCACION.color));
+    granCirculo.rotation.x = -Math.PI / 2; granCirculo.position.copy(SITIO).setY(0.12); granCirculo.scale.setScalar(0.01); escena.add(granCirculo);
+  });
+  if (t < 4.2) {
+    granCirculo.scale.setScalar(suave(limita(t / 2.5)) * 10);
+    granCirculo.rotation.z = t * 0.4;
+    if (Math.random() < 0.9) INV.req.forEach(P => chispa(manoDe(P), COLOR_RUNA[P.id], { hacia: CIELO, vida: 1.1, arco: 3, tam: 1.2 }));
+    if (t > 1.5) una('funde', () => narrar('…y funden su magia en el cielo.'));
+  }
+  // 2. Estallido: la criatura cruza el umbral desde el suelo
+  if (t >= 4.2) una('boom', () => {
+    narrar('¡Baelorith cruza el umbral!');
+    estallido(CIELO, [INVOCACION.color, INVOCACION.color2, '#ffffff'], 70, 7, 5);
+    INV.req.forEach(P => { P.anim = 'reposo'; });
+    criatura = criaturaBloques(); criatura.position.copy(SITIO).setY(-9); escena.add(criatura); opacidadDe(criatura, 0);
+    INV.temblor = 0.8;
+  });
+  if (criatura && t < 12.5) {
+    const k = suave(limita((t - 4.2) / 2.6));
+    criatura.position.y = -9 + k * 9.5 + (k >= 1 ? Math.sin(T * 1.2) * 0.2 : 0);
+    opacidadDe(criatura, Math.min(1, k * 1.6));
+    criatura.rotation.y = Math.sin(T * 0.5) * 0.15;
+    if (t < 7 && Math.random() < 0.7) chispa(SITIO.clone().add(new THREE.Vector3(azar(6), 0.3, azar(3))), INVOCACION.color, { vel: new THREE.Vector3(0, 3 + Math.random() * 2, 0), vida: 1.2 });
+  }
+  granCirculo.rotation.z += dt * (t < 12.5 ? 0.3 : 1.2);
+  // 3. Ofrece sus Gemas: orbitan a su alrededor
+  const C = SITIO.clone().add(new THREE.Vector3(0, 6.3, 1.4));
+  if (t >= 7.2) una('gemas', () => {
+    narrar('En agradecimiento, ofrece sus Gemas a quienes la invocaron.');
+    for (let i = 0; i < INVOCACION.gemas; i++) { const gm = gemaBloque(INVOCACION.color); gm.position.copy(C); escena.add(gm); gemas.push(gm); gm.userData.an = i / INVOCACION.gemas * Math.PI * 2; gm.userData.orbita = true; }
+    criatura.userData.brazos.forEach((b, i) => b.rotation.x = -1.1);
+  });
+  const radio = 2.6 * suave(limita((t - 7.2) / 1));
+  gemas.forEach(gm => {
+    gm.rotation.y += dt * 2.5;
+    if (gm.userData.orbita) { gm.userData.an += dt * 1.4; gm.position.set(C.x + Math.cos(gm.userData.an) * radio, C.y + Math.sin(gm.userData.an * 2 + T) * 0.25, C.z + Math.sin(gm.userData.an) * radio * 0.6); }
+  });
+  // 4. Reparto: una Gema vuela a cada requerido único en el Portal de un jugador
+  INV.req.forEach((P, i) => {
+    const t0 = 9.2 + i * 1.5, gm = gemas[i];
+    if (!gm || t < t0) return;
+    una('vuela' + i, () => { gm.userData.orbita = false; gm.userData.desde = gm.position.clone(); narrar(`Una Gema para ${NOMBRES[P.id]}…`); });
+    const destinoG = P.g.position.clone().add(new THREE.Vector3(0, ALTO + 5.2, 0.4));
+    const pilaG = P.g.position.clone().add(new THREE.Vector3(1.0, 0.75, 3.4)); // delante, junto a la escalinata
+    const k = limita((t - t0) / 1.2);
+    if (k < 1) { gm.position.lerpVectors(gm.userData.desde, destinoG, suave(k)); gm.position.y += Math.sin(k * Math.PI) * 4; }
+    else {
+      una('llega' + i, () => { P.anim = 'celebrar'; P.t0 = T; estallido(destinoG, [INVOCACION.color, '#ffffff', '#ffd86a'], 26, 3, 4); });
+      const k2 = suave(limita((t - t0 - 1.2) / 0.7)); gm.position.lerpVectors(destinoG, pilaG, k2); gm.position.y += Math.sin(k2 * Math.PI) * 1.2;
+      if (k2 >= 1) una('apila' + i, () => estallido(pilaG, ['#ffd86a', INVOCACION.color], 10, 1.5, 4));
+    }
+  });
+  // 5. Las Gemas que sobran vuelven con la criatura
+  if (t >= 14.2) {
+    una('sobran', () => { narrar('Las Gemas que nadie recibe se van con la criatura.'); gemas.slice(INV.req.length).forEach(gm => { gm.userData.orbita = false; gm.userData.desde = gm.position.clone(); }); });
+    gemas.slice(INV.req.length).forEach((gm, i) => { const k = limita((t - 14.2 - i * 0.2) / 0.8); gm.position.lerpVectors(gm.userData.desde, SITIO.clone().add(new THREE.Vector3(0, 5.2, 0.6)), suave(k)); gm.scale.setScalar(1 - k * 0.9); gm.visible = k < 1; });
+  }
+  // 6. La criatura parte; el círculo se encoge y queda como la runa del nuevo Portal
+  if (t >= 15.4 && criatura) {
+    una('parte', () => narrar('Baelorith parte. Su círculo deja la marca en el suelo y se encoge…'));
+    const k = limita((t - 15.4) / 2);
+    criatura.position.y = 0.5 + suave(k) * 6; opacidadDe(criatura, 1 - k); criatura.scale.setScalar(1 - k * 0.4);
+    if (Math.random() < 0.8) chispa(criatura.position.clone().add(new THREE.Vector3(azar(4), 3 + Math.random() * 5, azar(2))), INVOCACION.color2, { vel: new THREE.Vector3(0, 3, 0), vida: 1 });
+    if (k >= 1) { escena.remove(criatura); criatura = null; }
+  }
+  if (t >= 16.4 && t < 18.4) granCirculo.scale.setScalar(10 - suave((t - 16.4) / 2) * (10 - 3.9));
+  // 7. El nuevo Portal central se monta pieza a pieza alrededor de la runa
+  if (t >= 18.4) {
+    una('portal', () => {
+      narrar('…y el nuevo Portal central se construye a su alrededor, pieza a pieza.');
+      nuevoPortal = portal(INVOCACION.color, 0); nuevoPortal.position.copy(SITIO); escena.add(nuevoPortal);
+      nuevoPortal.userData.runas[0].visible = false; // la runa es el propio círculo de la invocación
+      const piezas = [];
+      nuevoPortal.traverse(o => { if (o !== nuevoPortal && o.parent === nuevoPortal) piezas.push(o); });
+      piezas.forEach(o => {
+        const y = new THREE.Box3().setFromObject(o).min.y - SITIO.y;
+        o.userData.fin = { p: o.position.clone(), r: o.rotation.clone() };
+        o.userData.ini = { p: o.position.clone().add(new THREE.Vector3(azar(10), 9 + Math.random() * 6, azar(10))), r: new THREE.Euler(azar(6), azar(6), azar(6)) };
+        o.userData.retraso = Math.min(2.6, y * 0.32) + Math.random() * 0.35;
+        o.visible = false;
+      });
+      INV.piezas = piezas;
+    });
+    const tp = t - 18.4;
+    INV.piezas.forEach(o => {
+      if (o.userData.flota) return; // las chispas del Portal flotan por su cuenta
+      const k = limita((tp - o.userData.retraso) / 0.65), { ini, fin } = o.userData;
+      o.visible = k > 0;
+      const e = 1 - Math.pow(1 - k, 3);
+      o.position.lerpVectors(ini.p, fin.p, e);
+      o.rotation.set(ini.r.x + (fin.r.x - ini.r.x) * e, ini.r.y + (fin.r.y - ini.r.y) * e, ini.r.z + (fin.r.z - ini.r.z) * e);
+      if (k >= 1 && !o.userData.encajado) { o.userData.encajado = true; pila++; if (pila % 3 === 0) estallido(SITIO.clone().add(fin.p).setY(fin.p.y + 0.2), ['#c4bfd2', '#a9a4b8'], 3, 1.5, 6); }
+    });
+    // la runa sube con la tarima
+    granCirculo.position.y = 0.12 + suave(limita((tp - 0.4) / 1.4)) * (ALTO - 0.11);
+    if (tp > 3.6) una('enciende', () => { narrar('¡Nuevo Portal central!'); estallido(SITIO.clone().setY(ALTO + 0.3), [INVOCACION.color, '#ffffff'], 40, 5, 5); INV.temblor = 0.3; });
+    if (tp > 5.5) { INV.activo = false; titulo.firstChild.textContent = 'Todos'; narrar('Desliza para girar · pellizca para acercar · toca un personaje para verlo solo'); }
+  }
+}
+
 // ---------- cámara (cenital 3/4) y gestos ----------
-const vertical = () => innerWidth < innerHeight;
 const distGeneral = () => vertical() ? 78 : 40;
 let ang = Number(params.get('ang') || 0), alt = Number(params.get('alt') || 0.6), dist = Number(params.get('dist') || distGeneral());
 const objetivo = new THREE.Vector3(0, Number(params.get('y') || 1.6), 0);
@@ -639,6 +889,7 @@ function colocarCamara() {
   }
   camara.position.set(objetivo.x + Math.sin(ang) * Math.cos(alt) * dist, objetivo.y + Math.sin(alt) * dist, objetivo.z + Math.cos(ang) * Math.cos(alt) * dist);
   camara.lookAt(objetivo);
+  if (INV.temblor > 0) { INV.temblor = Math.max(0, INV.temblor - dtCam); const a = INV.temblor * 0.6; camara.position.add(new THREE.Vector3(azar(a), azar(a), azar(a))); }
 }
 const punteros = new Map();
 let pellizco = null, movido = 0;
@@ -683,6 +934,8 @@ puestos.forEach((P, i) => botonesP.push(boton(filaP, NOMBRES[P.id], () => elegir
 boton(filaP, '›', () => elegir(elegido >= puestos.length - 1 ? 0 : elegido + 1), 'flecha');
 const botonesA = {};
 Object.entries(ANIMACIONES).forEach(([k, v]) => botonesA[k] = boton(filaA, v, () => ponerAnim(k)));
+filaA.appendChild(Object.assign(document.createElement('span'), { className: 'sep' }));
+boton(filaA, '✦ Invocar', () => empezarInvocacion(), 'invocar');
 
 function elegir(i) {
   elegido = i;
@@ -709,6 +962,8 @@ function bucle() {
   const T = quieto ? 0.6 : real;
   puestos.forEach(P => animar(P, quieto ? 0.6 : T - P.t0, T));
   moverFlotantes(quieto ? 1.3 : real);
+  if (INV.activo) pasoInvocacion(dtCam);
+  moverParticulas(dtCam);
   colocarCamara();
   renderer.render(escena, camara);
   requestAnimationFrame(bucle);
@@ -717,6 +972,7 @@ camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix();
 const inicial = orden.indexOf(params.get('ver'));
 if (params.get('anim')) puestos.forEach(P => P.anim = params.get('anim'));
 elegir(inicial);
+if (params.has('invocar')) setTimeout(empezarInvocacion, 300);
 if (inicial >= 0 || params.has('dist')) { if (destino) { objetivo.copy(destino.pos); if (!params.has('dist')) dist = destino.dist; destino = null; } }
 bucle();
 window.listo = true;

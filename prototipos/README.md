@@ -21,5 +21,7 @@ Páginas de prueba que **no forman parte del juego** (no las carga
   (Three.js de `vendor/three`). Preparada para móvil: deslizar gira,
   pellizcar acerca, tocar un personaje lo muestra solo; botones por personaje
   y animaciones (reposo, andar, saludar, habilidad). Parámetros: `?quien=a,b`, `ver`, `anim`, `dist`, `alt`,
-  `ang`, `quieto`. No toca el juego.
+  `ang`, `quieto`, `invocar`. Botón «✦ Invocar»: invocación de Baelorith
+  (Estratega + Cronomante + Cronista), reparto de Gemas y nuevo Portal central
+  montándose pieza a pieza. No toca el juego.
   Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/figuras-bloques.html
