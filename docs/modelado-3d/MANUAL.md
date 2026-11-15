@@ -1,6 +1,6 @@
 # Manual de modelado 3D de personajes (Invocadores)
 
-Última actualización: 2026-11-15 13:27 (Europe/Madrid)
+Última actualización: 2026-11-15 17:28 (Europe/Madrid)
 
 Manual práctico, escrito mientras aprendemos, para pasar un personaje de
 Invocadores de **una ilustración** a **un modelo 3D animado** que se pueda
@@ -76,6 +76,36 @@ Así que, para hacerlo todo en local, hay dos caminos:
    fondo. Es lo más lento, pero es lo que más se aprende y lo que da un
    modelo limpio desde el principio (ideal para clase). Los personajes
    "por código" que ya tiene el juego son, en el fondo, esta idea.
+
+### Dónde usar TRELLIS gratis: Hugging Face
+
+Las webs tipo trellis3d.co cobran: el modelo es gratis (código abierto,
+licencia MIT), pero la tarjeta gráfica que lo ejecuta cuesta dinero, y esas
+webs revenden ese tiempo de máquina. La alternativa gratuita es
+**Hugging Face** (huggingface.co), "el GitHub de la IA". Allí hay dos cosas
+con el mismo nombre que conviene distinguir:
+
+| En el buscador | Qué es | Para qué sirve |
+|---|---|---|
+| **Models** (p. ej. `microsoft/TRELLIS-image-large`) | Los archivos del modelo: el "cerebro" entrenado, varios GB | Descargarlo y ejecutarlo en tu propio ordenador o en Colab. No tiene botones. |
+| **Spaces** (p. ej. `microsoft/TRELLIS`) | Una página web con una aplicación ya montada que usa ese modelo | Subir imágenes y descargar el 3D desde el navegador, sin instalar nada. |
+
+Analogía para clase: el *Model* es la receta y los ingredientes; el *Space*
+es un restaurante que ya la cocina por ti.
+
+**Para pasar imágenes 2D a 3D se elige el Space `microsoft/TRELLIS`:**
+
+1. Entrar en huggingface.co (mejor con una cuenta gratuita: da más cuota
+   diaria de GPU) y buscar `microsoft/TRELLIS`; en el apartado **Spaces**.
+2. Subir la imagen frontal. Si hay varias vistas del mismo personaje, usar
+   la pestaña de varias imágenes (*Multiple Images*).
+3. Pulsar **Generate** y esperar (puede haber cola).
+4. Revisar la vista previa y pulsar **Extract GLB**; descargar el `.glb`.
+   Con *Simplify* se reduce el número de triángulos y con *Texture Size*
+   el tamaño de la textura (1024 basta para el juego).
+
+`microsoft/TRELLIS.2` es la versión nueva, con más detalle; merece la pena
+probarla con la misma imagen y comparar.
 
 ### Lo que hemos hecho hasta ahora (2026-11-15)
 
@@ -200,3 +230,7 @@ convence, se aplica al resto.
   mal pesada (sigue al brazo). Siguiente: descargar T-pose, Idle y Walking
   de Mixamo y arreglar pesos en Blender. Gráfica del PC: AMD Radeon 760M
   integrada, así que la IA de imagen a 3D no se ejecuta en local.
+- **2026-11-15 (tarde)** — trellis3d.co pasa a pedir suscripción. Se
+  cambia al Space gratuito `microsoft/TRELLIS` de Hugging Face. Julio
+  prepara con Gemini vistas en T-pose (frontal, trasera y laterales) con
+  los brazos separados de la capa.
