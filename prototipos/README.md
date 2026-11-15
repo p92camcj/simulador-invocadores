@@ -12,18 +12,21 @@ Páginas de prueba que **no forman parte del juego** (no las carga
   GLB generados a partir del arte original.
   Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/personajes-3d.html
 - `figuras-bloques.html` — boceto de estilo «figuritas de bloques de
-  juguete» (inspirado en los videojuegos de bloques, sin marcas): seis
-  personajes (Clarividente, Cronomante, Centinela, Ocultista, Entusiasta,
-  Estratega) con un cuerpo común y piezas, estampados y accesorios propios,
-  sobre Portales de ladrillos como los del Escenario y una placa con tetones
-  hexagonales (no redondos, para no imitar a ninguna marca). Orbes y llamas
-  levitan por su cuenta y siguen las manos. Todo por código en el propio HTML
-  (Three.js de `vendor/three`). Preparada para móvil: deslizar gira,
+  juguete» (inspirado en los videojuegos de bloques, sin marcas): los 14
+  personajes (11 con cuerpo común y piezas, estampados y accesorios propios,
+  y los animales Reena, Sora y Lumo) sobre Portales de ladrillos como los del
+  Escenario y una placa con tetones hexagonales (no redondos, para no imitar a
+  ninguna marca). Cada Portal lleva delante la mano de su jugador: un
+  personaje que ven los demás y otro encapuchado. Orbes y llamas levitan por
+  su cuenta y siguen las manos. Todo por código en el propio HTML (Three.js de
+  `vendor/three`); Portales y manos se funden en pocas mallas (`fundir()`)
+  para que vaya fluido en móvil. Preparada para móvil: deslizar gira,
   pellizcar acerca, tocar un personaje lo muestra solo; botones por personaje
-  y animaciones (reposo, andar, saludar, habilidad). Parámetros: `?quien=a,b`, `ver`, `anim`, `dist`, `alt`,
-  `ang`, `quieto`, `invocar`. Botón «✦ Invocar»: invocación de Baelorith
-  (Estratega + Cronomante + Cronista), reparto de Gemas y nuevo Portal central
-  montándose pieza a pieza. «Habilidad» lanza una escena propia por personaje
-  (Centinela, Ocultista, Cronista, Cronomante, Estratega, Clarividente,
-  Entusiasta). No toca el juego.
+  y animaciones (reposo, andar, saludar, habilidad). Parámetros: `?quien=a,b`,
+  `ver`, `anim`, `dist`, `alt`, `ang`, `quieto`, `sep`, `invocar=<criatura>`.
+  «✦ Invocar» abre un selector con las 10 invocaciones (Cilast, Burnio y
+  Aspir con aspecto inventado, aún sin arte): runas, criatura levitando,
+  reparto de Gemas y nuevo Portal central montándose pieza a pieza.
+  «Habilidad» lanza una escena propia por personaje, sin cartas en ninguna.
+  No toca el juego.
   Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/figuras-bloques.html

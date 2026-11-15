@@ -20,6 +20,8 @@
   .fila button.activo { background: #f2c230; color: #2a1d05; border-color: #f2c230; font-weight: 700; }
   .fila button.flecha { width: 44px; padding: 9px 0; font-size: 18px; }
   .fila button.invocar { background: #7a1022; border-color: #e8284a; }
+  .fila[hidden] { display: none; }
+  .fila button.criatura { background: #2a1830; }
   .fila .sep { flex: none; width: 1px; height: 26px; background: #ffffff30; }
 </style>
 </head>
@@ -27,6 +29,7 @@
 <div id="titulo">Todos<small>Desliza para girar · pellizca para acercar · toca un personaje para verlo solo</small></div>
 <div id="panel">
   <div class="fila" id="filaPersonajes"></div>
+  <div class="fila" id="filaInvocaciones" hidden></div>
   <div class="fila" id="filaAnimaciones"></div>
 </div>
 <script type="module">
@@ -35,7 +38,7 @@ import * as THREE from '../vendor/three/three.module.min.js';
 // ---------- escena ----------
 const params = new URLSearchParams(location.search);
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -47,14 +50,15 @@ document.body.appendChild(renderer.domElement);
 const escena = new THREE.Scene();
 escena.background = new THREE.Color('#2a2640');
 escena.fog = new THREE.Fog('#2a2640', 110, 200);
-const camara = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 200);
+const camara = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 400);
 
 escena.add(new THREE.HemisphereLight('#fff6e8', '#5a4f7a', 1.1));
 const sol = new THREE.DirectionalLight('#fff3dc', 2.2);
 sol.position.set(6, 14, 10);
 sol.castShadow = true;
 sol.shadow.mapSize.set(2048, 2048);
-Object.assign(sol.shadow.camera, { left: -24, right: 24, top: 20, bottom: -20, far: 80 });
+Object.assign(sol.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, far: 150 });
+sol.position.set(10, 30, 20);
 escena.add(sol);
 const relleno = new THREE.DirectionalLight('#9fb6ff', 0.6);
 relleno.position.set(-8, 5, -6);
@@ -65,6 +69,32 @@ const plastico = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, 
 const brillo = (color, intensidad = 1.6) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensidad, roughness: 0.2, transparent: true, opacity: 0.85 });
 
 function sombra(m) { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; }
+// Une las piezas fijas de un grupo en una malla por material (muchas menos llamadas de dibujo en móvil).
+// Deja aparte lo transparente, lo multimaterial y lo que flota o se anima.
+function firma(m) { return [m.color?.getHexString(), m.emissive?.getHexString(), m.emissiveIntensity, m.metalness, m.roughness, m.map?.uuid, m.side].join('|'); }
+function fundir(g) {
+  g.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(g.matrixWorld).invert(), lotes = new Map(), quitar = [];
+  g.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material) || o.material.transparent) return;
+    for (let a = o; a && a !== g; a = a.parent) if (a.userData.flota || a.userData.noFundir) return;
+    const k = firma(o.material); if (!lotes.has(k)) lotes.set(k, { mat: o.material, piezas: [] });
+    lotes.get(k).piezas.push({ geo: o.geometry, m: new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld) }); quitar.push(o);
+  });
+  quitar.forEach(o => o.parent.remove(o));
+  for (const { mat, piezas } of lotes.values()) {
+    const pos = [], nor = [], uv = [];
+    for (const { geo, m } of piezas) {
+      const gg = (geo.index ? geo.toNonIndexed() : geo.clone()).applyMatrix4(m);
+      pos.push(...gg.attributes.position.array); nor.push(...gg.attributes.normal.array);
+      if (gg.attributes.uv) uv.push(...gg.attributes.uv.array); else uv.push(...new Array(gg.attributes.position.count * 2).fill(0));
+    }
+    const bg = new THREE.BufferGeometry();
+    bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); bg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    const mm = new THREE.Mesh(bg, mat); mm.castShadow = mm.receiveShadow = true; g.add(mm);
+  }
+  return g;
+}
 
 // ---------- placa base con tetones ----------
 // Tetones HEXAGONALES (no redondos): estilo propio, inspirado en los juguetes de bloques sin copiarlos.
@@ -395,6 +425,68 @@ function capucha(color, forro = '#0b0d1a', pico = true) {
   };
 }
 
+// ---------- animales de bloques ----------
+function animal(tipo) {
+  const f = new THREE.Group(), U = f.userData;
+  U.animal = true; U.piernas = []; U.falda = false;
+  const add = (geo, mat, x, y, z, padre = f) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); padre.add(m); return m; };
+  const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const cabeza = new THREE.Group(); f.add(cabeza); U.cabeza = cabeza;
+  const ojo = (padre, x, y, z, iris = '#3aa65a', r = 0.12) => { add(new THREE.CylinderGeometry(r, r, 0.06, 6), plastico(iris), x, y, z, padre).rotation.x = Math.PI / 2; add(new THREE.CylinderGeometry(r * 0.5, r * 0.5, 0.08, 6), plastico('#111'), x, y, z + 0.02, padre).rotation.x = Math.PI / 2; add(new THREE.SphereGeometry(r * 0.25, 6, 4), plastico('#fff'), x + r * 0.3, y + r * 0.3, z + 0.05, padre); };
+  const pata = (x, z, alto, color, pezuna) => { const g = new THREE.Group(); g.position.set(x, alto, z); f.add(g); add(B(0.32, alto, 0.34), plastico(color), 0, -alto / 2, 0, g); if (pezuna) add(B(0.34, 0.16, 0.38), plastico(pezuna), 0, -alto + 0.08, 0.02, g); g.userData.base = 0; U.piernas.push(g); return g; };
+  if (tipo === 'perro') { // Reena: perrita blanca y negra con capa azul
+    const blanco = '#f4f1ea', negro = '#1d1b20';
+    add(B(1.0, 0.9, 1.9), plastico(blanco), 0, 1.45, 0); add(B(1.02, 0.4, 0.9), plastico(negro), 0, 1.75, -0.4);
+    [[-0.32, 0.65], [0.32, 0.65], [-0.32, -0.65], [0.32, -0.65]].forEach(([x, z]) => pata(x, z, 1.0, blanco));
+    // capa azul con correa morada y gema
+    add(B(1.25, 0.12, 1.7), plastico('#1f4fb0'), 0, 1.96, -0.05); for (const s of [-1, 1]) add(B(0.1, 0.9, 1.7), plastico('#1f4fb0'), s * 0.62, 1.55, -0.05);
+    add(B(1.1, 0.22, 0.2), plastico('#6a3aa0'), 0, 1.65, 0.9); add(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 6), brillo('#4ab0ff', 1.2), 0, 1.65, 1.02).rotation.x = Math.PI / 2;
+    cabeza.position.set(0, 2.35, 1.0);
+    add(B(0.85, 0.75, 0.75), plastico(blanco), 0, 0, 0, cabeza); add(B(0.87, 0.35, 0.77), plastico(negro), 0, 0.22, 0, cabeza);
+    add(B(0.45, 0.35, 0.5), plastico(blanco), 0, -0.18, 0.55, cabeza); add(B(0.2, 0.14, 0.12), plastico(negro), 0, -0.06, 0.82, cabeza);
+    for (const s of [-1, 1]) { const o = add(B(0.12, 0.5, 0.35), plastico(negro), s * 0.48, 0.35, -0.05, cabeza); o.rotation.z = s * 0.5; ojo(cabeza, s * 0.2, 0.05, 0.38, '#5a3a22', 0.1); }
+    const cola = new THREE.Group(); cola.position.set(0, 1.85, -0.95); f.add(cola); const tubo = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.5, -0.3), new THREE.Vector3(0, 0.9, -0.1), new THREE.Vector3(0, 0.8, 0.2)]);
+    add(new THREE.TubeGeometry(tubo, 12, 0.11, 6), plastico(blanco), 0, 0, 0, cola); U.cola = cola;
+  } else if (tipo === 'buho') { // Sora: búho naranja de ojos verdes, alas abiertas
+    const nar = '#e8843a', claro = '#f6c08a', osc = '#b8551e';
+    const cuerpo = add(new THREE.CylinderGeometry(0.7, 0.85, 1.6, 6), plastico(nar), 0, 1.8, 0);
+    add(new THREE.CylinderGeometry(0.5, 0.62, 1.2, 6, 1, false, -0.8, 1.6), plastico(claro), 0, 1.7, 0.12);
+    for (let k = 0; k < 4; k++) add(new THREE.OctahedronGeometry(0.1), brillo('#ffd86a', 1), (k % 2 ? 0.18 : -0.18), 1.4 + k * 0.22, 0.75);
+    cabeza.position.set(0, 3.0, 0);
+    add(new THREE.CylinderGeometry(0.75, 0.72, 0.85, 6), plastico(nar), 0, 0, 0, cabeza);
+    add(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 6), plastico(claro), 0, 0, 0.62, cabeza).rotation.x = Math.PI / 2;
+    for (const s of [-1, 1]) { ojo(cabeza, s * 0.27, 0.05, 0.68, '#3fbf6b', 0.2); const t = add(new THREE.ConeGeometry(0.16, 0.5, 4), plastico(osc), s * 0.48, 0.55, 0, cabeza); t.rotation.z = -s * 0.35; }
+    add(new THREE.ConeGeometry(0.1, 0.3, 4), plastico('#f2c230'), 0, -0.15, 0.72, cabeza).rotation.x = Math.PI / 2 + 0.4;
+    U.alas = [-1, 1].map(s => { const ala = new THREE.Group(); ala.position.set(s * 0.7, 2.4, -0.1); f.add(ala);
+      for (let k = 0; k < 4; k++) { const pl = add(B(0.5, 0.12, 1.6 - k * 0.25), plastico(k % 2 ? osc : nar), s * (0.35 + k * 0.42), 0.2 + k * 0.28, -0.1, ala); pl.rotation.z = s * 0.15; }
+      ala.rotation.z = s * 0.5; return ala; });
+    for (const s of [-1, 1]) { const g = pata(s * 0.3, 0.1, 0.9, '#f2c230'); }
+  } else { // Lumo: cervato dorado con capa verde y gemas
+    const piel = '#f2d58a', claro = '#fbe8b8';
+    add(B(0.85, 0.8, 1.7), plastico(piel), 0, 1.75, 0);
+    [[-0.27, 0.6], [0.27, 0.6], [-0.27, -0.6], [0.27, -0.6]].forEach(([x, z]) => pata(x, z, 1.35, piel, '#3a2a1e'));
+    for (let k = 0; k < 4; k++) add(new THREE.OctahedronGeometry(0.11), brillo('#ffb84a', 1), (k % 2 ? 0.44 : -0.44), 1.75, -0.5 + k * 0.33);
+    add(B(1.0, 0.12, 1.0), plastico('#3f7a3a'), 0, 2.18, 0.35); for (const s of [-1, 1]) add(B(0.1, 0.5, 0.9), plastico('#3f7a3a'), s * 0.5, 1.95, 0.35);
+    add(new THREE.OctahedronGeometry(0.14), brillo('#ffb84a', 1.2), 0, 2.0, 0.92);
+    add(B(0.4, 0.9, 0.45), plastico(piel), 0, 2.45, 0.7).rotation.x = 0.35;
+    cabeza.position.set(0, 3.0, 0.95);
+    add(B(0.65, 0.6, 0.65), plastico(piel), 0, 0, 0, cabeza); add(B(0.4, 0.32, 0.45), plastico(claro), 0, -0.14, 0.42, cabeza); add(B(0.16, 0.12, 0.1), plastico('#2a1d14'), 0, -0.04, 0.66, cabeza);
+    for (const s of [-1, 1]) { const o = add(B(0.18, 0.7, 0.35), plastico(piel), s * 0.48, 0.5, -0.05, cabeza); o.rotation.z = s * 0.7; ojo(cabeza, s * 0.18, 0.08, 0.33, '#3fbf6b', 0.12); }
+    add(new THREE.OctahedronGeometry(0.1), brillo('#ffb84a', 1.2), 0, 0.3, 0.33, cabeza);
+    const cola = new THREE.Group(); cola.position.set(0, 2.05, -0.85); f.add(cola); add(B(0.2, 0.35, 0.18), plastico(claro), 0, 0.1, 0, cola); U.cola = cola;
+  }
+  // brazos de mentira (las animaciones comunes los ignoran) y «mano» en la cabeza
+  for (const k of ['brazoIzq', 'brazoDer']) { const b = new THREE.Group(); b.userData.base = [0, 0]; b.userData.mano = new THREE.Object3D(); cabeza.add(b); b.add(b.userData.mano); b.userData.mano.position.set(0, 0, 0.6); U[k] = b; }
+  U.extraAnim = (f, t, modo) => {
+    const rapido = modo === 'andar' || modo === 'celebrar' || modo === 'saludar' || modo === 'alzar';
+    if (U.cola) U.cola.rotation.z = Math.sin(t * (rapido ? 14 : 5)) * 0.5;
+    if (U.alas) U.alas.forEach((a, i) => { a.rotation.z = (i ? 1 : -1) * (0.5 + Math.sin(t * (rapido ? 12 : 3)) * (rapido ? 0.5 : 0.12)); });
+    if (U.alas) f.position.y += 0.4 + Math.sin(t * 2) * 0.1; // el búho flota un poco
+    if (modo === 'saludar' || modo === 'alzar') { f.position.y += Math.abs(Math.sin(t * 5)) * 0.5; cabeza.rotation.z = Math.sin(t * 6) * 0.2; }
+  };
+  return sombra(f);
+}
+
 // ---------- personajes ----------
 const PERSONAJES = {
   clarividente: () => figura({
@@ -550,6 +642,87 @@ const PERSONAJES = {
     },
   }),
 
+  aprendiz: () => figura({
+    piel: '#f3cfae', torso: '#f1e3c4', brazos: '#ecdcb8', puños: '#2f8a7a', piernas: ['#6b4a2a', '#6b4a2a'], cadera: '#5b3d2a', botas: '#7a4a24', manos: '#f3cfae',
+    capa: '#d4572a', capaLarga: 1.7,
+    cara: { boca: 'sonrisa', cejas: '#5a2a6a', gafas: true },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#d4572a'; x.beginPath(); x.moveTo(0, 0); x.lineTo(w, 0); x.lineTo(w, 40); x.quadraticCurveTo(w / 2, 110, 0, 40); x.fill();
+      x.fillStyle = '#3f8a5a'; x.fillRect(20, 60, 50, 140); x.fillRect(w - 70, 60, 50, 140);
+      gema(x, w / 2, 70, 15, '#3fd0c0');
+      x.fillStyle = '#6b4428'; x.fillRect(0, 195, w, 26); x.fillStyle = '#8a5a30'; x.fillRect(150, 205, 40, 40);
+      x.fillStyle = '#e2b453'; x.fillRect(116, 198, 24, 20);
+    },
+    pelo: () => { const g = peloCorto('#7b3fa0', true)(); const f = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.2), plastico('#7b3fa0')); f.position.set(-0.05, 0.38, 0.38); f.rotation.set(-0.3, 0, 0.2); g.add(f); return g; },
+    poseDer: [1.0, 0.55], poseIzq: [0.9, 0.55],
+    extra: (f) => {
+      for (let k = 0; k < 6; k++) { // hojas de papel revoloteando
+        const a = k / 6 * Math.PI * 2, hoja = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.6, 0.03), plastico('#f6efdc'));
+        hoja.position.set(Math.cos(a) * 1.5, 1.2 + (k % 3) * 1.0, Math.sin(a) * 0.9); hoja.rotation.set(a, a * 2, a); f.add(flotar(hoja, 0.25));
+      }
+    },
+  }),
+
+  picaro: () => figura({
+    piel: '#f3cfae', torso: '#2a5c9a', brazos: '#2a5c9a', piernas: ['#26262e', '#26262e'], cadera: '#5b3d2a', botas: null, manos: '#f3cfae', puños: '#1f467a',
+    capa: '#33363f', capaLarga: 2.1,
+    cara: { boca: 'firme', cejas: '#b8862a' },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#3a72b8'; x.beginPath(); x.moveTo(w / 2 - 70, 0); x.lineTo(w / 2, 120); x.lineTo(w / 2 + 70, 0); x.fill();
+      x.strokeStyle = '#d6b05a'; x.lineWidth = 4; for (let k = 0; k < 3; k++) { x.beginPath(); x.moveTo(30, 150 + k * 12); x.lineTo(70, 130 + k * 12); x.lineTo(110, 150 + k * 12); x.stroke(); }
+      x.strokeStyle = '#1f3a66'; x.lineWidth = 5; x.beginPath(); x.moveTo(w / 2, 120); x.lineTo(w / 2, h); x.stroke();
+      x.fillStyle = '#6b4428'; x.fillRect(0, 205, w, 24);
+    },
+    pelo: () => { const g = peloCorto('#f0c24a', true)(); const cap = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), plastico('#2a5c9a')); cap.position.set(0, -0.4, -0.42); cap.rotation.x = -1.4; g.add(cap); return g; },
+    poseDer: [1.15, 0.3], poseIzq: [0.2, 0.12],
+    extra: (f) => {
+      // pies descalzos
+      f.userData.piernas.forEach(p => { const pie = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.72), plastico('#f3cfae')); pie.position.set(0, -1.2, 0.1); p.add(pie); });
+      const orbe = new THREE.Mesh(new THREE.SphereGeometry(0.26, 20, 14), brillo('#5fb8ff', 2)); orbe.position.set(0, -1.25, 0.55); f.userData.brazoDer.add(flotar(orbe, 0.08));
+    },
+  }),
+
+  maestro: () => figura({
+    piel: '#f3d2b3', torso: '#ecd39a', brazos: '#ecd39a', falda: '#e8c27a', faldaRibete: '#a8322a', manos: '#f3d2b3', puños: '#b8862a',
+    capa: '#a8322a', capaLarga: 2.9,
+    cara: { boca: 'firme', cejas: '#b8862a' },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#a8322a'; x.fillRect(0, 0, 44, h); x.fillRect(w - 44, 0, 44, h);
+      x.strokeStyle = '#b8862a'; x.lineWidth = 5; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(w / 2 + s * 20, 10); x.quadraticCurveTo(w / 2 + s * 70, 100, w / 2 + s * 30, 200); x.stroke(); }
+      gema(x, w / 2, 60, 15, '#d23a3a'); gema(x, w / 2, 120, 10, '#3aa65a'); gema(x, w / 2 - 50, 150, 8, '#3a7bd2'); gema(x, w / 2 + 50, 150, 8, '#c9479a');
+      x.fillStyle = '#7a4a24'; x.fillRect(0, 200, w, 22); gema(x, w / 2, 211, 9, '#e2b453');
+    },
+    pelo: peloCorto('#f0c24a', false),
+    poseDer: [0.95, 0.55], poseIzq: [0.95, 0.55],
+    extra: (f) => {
+      ['#e84a4a', '#3fbf6b', '#3a8fd6', '#9a5ad6', '#f2c230', '#ff8f3a'].forEach((c, k) => {
+        const s = k < 3 ? -1 : 1, j = k % 3; const o = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), brillo(c, 1.3));
+        o.position.set(s * (1.1 + j * 0.35), 2.6 + j * 0.45, 0.6); f.add(flotar(o, 0.14));
+      });
+      const hombreras = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.68, 0.18, 8), plastico('#b8862a')); hombreras.position.y = 2.93; f.add(hombreras);
+    },
+  }),
+
+  metamorfo: () => figura({
+    piel: '#f6d6c8', torso: '#f5b8b0', brazos: '#f7c4b4', falda: '#86cbe0', faldaRibete: '#f59ab0', manos: '#f6d6c8', puños: '#86cbe0',
+    capa: '#f7a6b8', capaLarga: 2.8,
+    cara: { ojos: 'cerrados', boca: 'serena', cejas: '#d87aa0' },
+    estampado: (x, w, h) => {
+      x.fillStyle = '#86cbe0'; x.beginPath(); x.moveTo(w / 2 - 50, 0); x.lineTo(w / 2 + 50, 0); x.lineTo(w / 2 + 34, h); x.lineTo(w / 2 - 34, h); x.fill();
+      x.strokeStyle = '#e2b453'; x.lineWidth = 5; x.stroke();
+      gema(x, w / 2, 60, 14, '#f06aa8'); gema(x, w / 2, 130, 9, '#5fb8ff');
+      x.fillStyle = '#c87a5a'; x.fillRect(0, 205, w, 16);
+    },
+    pelo: peloMelena('#f6b6c8', 1.45, false),
+    poseDer: [0.8, 0.55], poseIzq: [0.8, 0.55],
+    extra: (f) => { humo(f, '#ff8ad8', 0.9); },
+  }),
+
+  // ---------- animales: no tienen habilidad, cuentan para las invocaciones ----------
+  reena: () => animal('perro'),
+  sora: () => animal('buho'),
+  lumo: () => animal('cervato'),
+
   estratega: () => figura({
     piel: '#f6d6bd', torso: '#f2a77a', brazos: '#f6b994', falda: '#f2a77a', faldaRibete: '#d9744a',
     cara: { ojos: 'cerrados', boca: 'serena', cejas: '#b8552c' },
@@ -584,30 +757,66 @@ function humo(f, color, op) {
 
 const vertical = () => innerWidth < innerHeight;
 // ---------- montaje ----------
-const NOMBRES = { clarividente: 'Clarividente', cronomante: 'Cronomante', centinela: 'Centinela', ocultista: 'Ocultista', entusiasta: 'Entusiasta', estratega: 'Estratega', cronista: 'Cronista' };
-const COLOR_RUNA = { clarividente: '#5ff2e6', cronomante: '#57c8ff', centinela: '#e8473a', ocultista: '#7fc6ff', entusiasta: '#f2c230', estratega: '#ff8f3a', cronista: '#b48aff' };
-const orden = (params.get('quien') || 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega,cronista').split(',').filter(n => PERSONAJES[n]);
+const NOMBRES = { clarividente: 'Clarividente', cronomante: 'Cronomante', centinela: 'Centinela', ocultista: 'Ocultista', entusiasta: 'Entusiasta', estratega: 'Estratega', cronista: 'Cronista',
+  aprendiz: 'Aprendiz', picaro: 'Pícaro', maestro: 'Maestro', metamorfo: 'Metamorfo', reena: 'Reena', sora: 'Sora', lumo: 'Lumo' };
+const COLOR_RUNA = { clarividente: '#5ff2e6', cronomante: '#57c8ff', centinela: '#e8473a', ocultista: '#7fc6ff', entusiasta: '#f2c230', estratega: '#ff8f3a', cronista: '#b48aff',
+  aprendiz: '#3fd0a0', picaro: '#5fb8ff', maestro: '#ffd86a', metamorfo: '#ff8ad8', reena: '#4ab0ff', sora: '#ff9a4a', lumo: '#9adf5a' };
+const TODOS = 'clarividente,cronomante,centinela,ocultista,entusiasta,estratega,cronista,aprendiz,picaro,maestro,metamorfo,reena,sora,lumo';
+const orden = (params.get('quien') || TODOS).split(',').filter(n => PERSONAJES[n]);
 const puestos = [];
-const sep = Number(params.get('sep') || 6.6);
+const sep = Number(params.get('sep') || 7.2), sepZ = sep * 1.6;
+const cols = Math.min(vertical() ? 3 : 5, orden.length), filas = Math.ceil(orden.length / cols);
+
+// La mano de cada jugador, junto a su Portal: un personaje que ven los demás y uno encapuchado
+// (el que solo ve su dueña). Los demás nunca ven qué hay bajo la capucha.
+function encapuchado() {
+  const g = new THREE.Group();
+  const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.25, 3.4, 6), plastico('#2a2c58')); cuerpo.position.y = 1.7; g.add(cuerpo);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.7, 6), plastico('#3a3e7a')); cap.position.y = 4.05; g.add(cap);
+  const borde = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.09, 6, 6), plastico('#6a6eb0')); borde.position.set(0, 3.55, 0.58); borde.rotation.x = -0.25; g.add(borde);
+  const hueco = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.1, 6), plastico('#05050c')); hueco.rotation.x = Math.PI / 2 - 0.25; hueco.position.set(0, 3.55, 0.6); g.add(hueco);
+  for (const sx of [-1, 1]) { const o = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.07, 0.05), brillo('#b8c0ff', 1.6)); o.position.set(sx * 0.15, 3.6, 0.67); g.add(o); }
+  const ribete = new THREE.Mesh(new THREE.CylinderGeometry(1.27, 1.27, 0.14, 6), plastico('#6a6eb0')); ribete.position.y = 0.07; g.add(ribete);
+  return sombra(g);
+}
+const ESCALA_MANO = 0.72, SITIO_MANO = { vis: new THREE.Vector3(-1.75, 0, 4.9), ocu: new THREE.Vector3(1.75, 0, 4.9) };
+function montarMano(P, vis, ocu) {
+  [P.manoVisG, P.manoOcuG].forEach(o => o && P.g.remove(o));
+  P.mano = { vis, ocu };
+  P.manoVisG = fundir(PERSONAJES[vis]()); P.manoVisG.scale.setScalar(ESCALA_MANO); P.manoVisG.position.copy(SITIO_MANO.vis); P.manoVisG.rotation.y = 0.25;
+  P.manoOcuG = encapuchado(); P.manoOcuG.scale.setScalar(ESCALA_MANO); P.manoOcuG.position.copy(SITIO_MANO.ocu); fundir(P.manoOcuG);
+  P.g.add(P.manoVisG, P.manoOcuG);
+}
+
 orden.forEach((n, i) => {
   const g = new THREE.Group();
-  const p = portal(COLOR_RUNA[n], i % 3);
+  const p = fundir(portal(COLOR_RUNA[n], i % 3));
   g.add(p);
   const fig = PERSONAJES[n](); fig.position.y = ALTO; g.add(fig);
   // anillo mágico para la habilidad
   const anillo = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 48), brillo(COLOR_RUNA[n], 2));
   anillo.rotation.x = Math.PI / 2; anillo.visible = false; g.add(anillo); anillo.userData.y0 = ALTO;
-  const cols = Math.min(vertical() ? 3 : 4, orden.length), filas = Math.ceil(orden.length / cols);
   g.position.x = (i % cols - (cols - 1) / 2) * sep;
-  g.position.z = (Math.floor(i / cols) - (filas - 1) / 2) * sep * 1.45;
+  g.position.z = (Math.floor(i / cols) - (filas - 1) / 2) * sepZ;
   escena.add(g);
   fig.traverse(o => o.userData.puesto = i);
   puestos.push({ id: n, g, fig, anillo, anim: 'reposo', t0: 0 });
 });
+// reparto de manos de ejemplo (cada una distinta de su dueño y entre sí)
+puestos.forEach((P, i) => {
+  const otros = orden.filter(n => n !== P.id);
+  const vis = otros[(i * 5 + 2) % otros.length]; let ocu = otros[(i * 3 + 6) % otros.length]; if (ocu === vis) ocu = otros[(i * 3 + 7) % otros.length];
+  montarMano(P, vis, ocu);
+});
+// la placa crece con la mesa
+{
+  const ancho = Math.ceil((cols * sep + 14) / 0.8), fondo = Math.ceil((filas * sepZ + 34) / 0.8);
+  escena.remove(suelo); const nuevo = placa(ancho, fondo, '#4f8a4b'); nuevo.position.set(0, -0.02, 6); escena.add(nuevo);
+}
 
 // ---------- animaciones ----------
 const ANIMACIONES = { reposo: 'Reposo', andar: 'Andar', saludar: 'Saludar', habilidad: 'Habilidad' };
-function brazos(f, fn) { ['brazoIzq', 'brazoDer'].forEach((k, i) => { const b = f.userData[k]; const [rx, rz] = b.userData.base; fn(b, rx, rz, i === 0 ? -1 : 1); }); }
+function brazos(f, fn) { if (f.userData.animal) return; ['brazoIzq', 'brazoDer'].forEach((k, i) => { const b = f.userData[k]; const [rx, rz] = b.userData.base; fn(b, rx, rz, i === 0 ? -1 : 1); }); }
 function animar(P, t, T) {
   const { fig: f, anillo } = P;
   const cab = f.userData.cabeza;
@@ -648,13 +857,148 @@ function animar(P, t, T) {
   } else if (P.anim === 'habilidad') {
     // la pose la pone la escena de su habilidad (ver HABILIDADES)
   }
+  f.userData.extraAnim?.(f, P.anim === 'reposo' ? T : t, P.anim);
 }
 
-// ---------- invocación de Baelorith (Estratega + Cronomante + Cronista) ----------
-const INVOCACION = { criatura: 'Baelorith', need: ['estratega', 'cronomante', 'cronista'], gemas: 5, color: '#e8284a', color2: '#ffb0c0' };
+// ---------- las invocaciones ----------
+// Los colores y adornos siguen a los modelos del Escenario (js/personajes3d/modelos.js).
+// Cilast, Burnio y Aspir aún no tienen arte: su aspecto es una propuesta.
+const CRIATURAS = {
+  cilast: { nombre: 'Cilast', set: 'Introductorio', need: ['reena', 'picaro', 'sora'], gemas: 5, c: '#4ab0ff', c2: '#d4f0ff', osc: '#1a5a9a', cabeza: 'orejas', hombros: 'plumas', manto: true, flotan: 'plumas' },
+  burnio: { nombre: 'Burnio', set: 'Introductorio', need: ['aprendiz', 'cronista', 'lumo'], gemas: 5, c: '#ff7a2a', c2: '#ffd27a', osc: '#8a3010', cabeza: 'astas', hombros: 'hojas', falda: 'llamas', flotan: 'brasas' },
+  aspir: { nombre: 'Aspir', set: 'Introductorio', need: ['cronomante', 'estratega', 'sora'], gemas: 5, c: '#3fd0c0', c2: '#e0fff8', osc: '#146a6a', cabeza: 'remolino', alas: 'aire', flotan: 'anillos' },
+  cirelia: { nombre: 'Cirelia', set: 'Normal', need: ['aprendiz', 'picaro', 'centinela'], gemas: 5, c: '#ffc94a', c2: '#fff3c0', osc: '#e08a20', cabeza: 'llamas', halo: true, falda: 'llamas', flotan: 'brasas' },
+  baelorith: { nombre: 'Baelorith', set: 'Normal', need: ['estratega', 'cronomante', 'cronista'], gemas: 5, c: '#d8284a', c2: '#ffb0c0', osc: '#8a1030', cabeza: 'puas', hombros: 'puas', espada: true, manto: true, flotan: 'cristales' },
+  aelgorth: { nombre: 'Aelgorth', set: 'Normal', need: ['clarividente', 'maestro', 'ocultista'], gemas: 5, c: '#6a4ae0', c2: '#c8b8ff', osc: '#2a1a80', cabeza: 'vacio', nucleo: true, manto: true, flotan: 'estrellas' },
+  caisis: { nombre: 'Caisis', set: 'Floral', need: ['cronista', 'ocultista', 'centinela'], gemas: 5, c: '#ffd23a', c2: '#fff2a0', osc: '#e0a010', cabeza: 'girasol', hombros: 'hojas', falda: 'petalos', flotan: 'petalos' },
+  brose: { nombre: 'Brose', set: 'Floral', need: ['aprendiz', 'maestro', 'estratega'], gemas: 5, c: '#e0283a', c2: '#ff9aa8', osc: '#9a1020', cabeza: 'capullo', hombros: 'hojas', falda: 'petalos', flotan: 'petalos' },
+  aures: { nombre: 'Aures', set: 'Floral', need: ['picaro', 'clarividente', 'cronomante'], gemas: 5, c: '#8a6ae8', c2: '#d8c8ff', osc: '#4a30b0', cabeza: 'lirio', falda: 'petalos', manto: true, flotan: 'petalos' },
+  madain: { nombre: 'Madain', set: 'Cuarta invocación', need: ['reena', 'metamorfo', 'sora', 'lumo'], gemas: 5, c: '#f4eefe', c2: '#ffffff', osc: '#b8a8e8', cabeza: 'luz', halo: true, nucleo: true, alas: 'plumas', flotan: 'gemas', gema: '*' },
+};
+const VERDE = '#3f9a4a';
+
+// Una criatura de bloques: el mismo cuerpo para todas y los adornos de cada una
+function criaturaBloques(D) {
+  const g = new THREE.Group();
+  const em = (c, i) => ({ emissive: c, emissiveIntensity: i });
+  const cuerpo = plastico(D.c, em(D.osc, 0.45));
+  const claro = plastico(D.c2, em(D.c, 0.55));
+  const oscuro = plastico(D.osc, em(D.osc, 0.3));
+  const cristal = new THREE.MeshStandardMaterial({ color: D.c2, emissive: D.c, emissiveIntensity: 0.9, transparent: true, opacity: 0.8, roughness: 0.1, flatShading: true });
+  const hoja = plastico(VERDE, em('#1a5a20', 0.3));
+  const add = (geo, mat, x, y, z, padre = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); padre.add(m); return m; };
+  const cono = (r, h, mat, x, y, z, rz = 0, rx = 0, padre = g) => { const c = add(new THREE.ConeGeometry(r, h, 4), mat, x, y, z, padre); c.rotation.set(rx, 0, rz); return c; };
+  // piernas que acaban en punta (flota), cinturón y torso con cristales
+  for (const s of [-1, 1]) add(new THREE.CylinderGeometry(0.45, 0.1, 3.2, 4), cuerpo, s * 0.55, 2.0, 0).rotation.y = Math.PI / 4;
+  add(new THREE.BoxGeometry(2.0, 0.5, 1.0), oscuro, 0, 3.7, 0);
+  add(trapecio(1.6, 2.8, 2.6, 1.2), cuerpo, 0, 5.2, 0);
+  if (D.nucleo) { const n = add(new THREE.OctahedronGeometry(0.55), D.gema ? arcoiris() : brillo(D.c2, 2), 0, 5.3, 0.62); n.scale.set(1, 1.3, 0.6); flotar(n, 0.05); }
+  else for (const [x, y] of [[0, 5.4], [-0.55, 5.9], [0.55, 5.9], [0, 4.5]]) add(new THREE.OctahedronGeometry(0.28), cristal, x, y, 0.62).scale.set(1, 1.5, 0.6);
+  // hombros
+  for (const s of [-1, 1]) {
+    if (D.hombros === 'puas') for (let i = 0; i < 3; i++) cono(0.28, 1.3 - i * 0.25, i ? oscuro : cuerpo, s * (1.5 + i * 0.3), 6.6 - i * 0.15, 0, -s * (0.4 + i * 0.4));
+    if (D.hombros === 'hojas') for (let i = 0; i < 2; i++) { const h = add(new THREE.BoxGeometry(1.5, 0.12, 0.7), hoja, s * (1.7 + i * 0.4), 6.4 - i * 0.35, 0); h.rotation.z = -s * (0.35 + i * 0.3); }
+    if (D.hombros === 'plumas') for (let i = 0; i < 3; i++) { const p = add(new THREE.BoxGeometry(0.35, 1.5 - i * 0.3, 0.12), i % 2 ? claro : cuerpo, s * (1.45 + i * 0.32), 6.5 - i * 0.2, 0); p.rotation.z = -s * (0.6 + i * 0.35); }
+  }
+  // brazos abiertos con manos en C
+  const brazos = [];
+  for (const s of [-1, 1]) {
+    const b = new THREE.Group(); b.position.set(s * 1.55, 6.2, 0); g.add(b); brazos.push(b);
+    add(new THREE.CylinderGeometry(0.3, 0.24, 2.6, 4), cuerpo, 0, -1.3, 0, b).rotation.y = Math.PI / 4;
+    const mano = add(new THREE.TorusGeometry(0.35, 0.16, 8, 12, Math.PI * 1.45), claro, 0, -2.75, 0, b); mano.rotation.set(0, Math.PI / 2, Math.PI * 0.77);
+    b.rotation.z = s * 0.7; b.rotation.x = -0.4;
+  }
+  // cabeza
+  add(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 6), oscuro, 0, 6.65, 0);
+  const H = D.cabeza;
+  if (H === 'capullo') { // Brose: sin cabeza, un capullo de rosa de pétalos enrollados
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; const p = add(new THREE.CylinderGeometry(0.5, 0.25, 1.6, 6, 1, true, 0, Math.PI), i % 2 ? cuerpo : claro, Math.cos(a) * 0.25, 7.5, Math.sin(a) * 0.25); p.rotation.y = -a; p.material = p.material.clone(); p.material.side = THREE.DoubleSide; }
+    add(new THREE.SphereGeometry(0.45, 6, 4), cuerpo, 0, 7.9, 0);
+    for (const s of [-1, 1]) { const h = add(new THREE.BoxGeometry(1.0, 0.1, 0.5), hoja, s * 0.6, 6.9, 0); h.rotation.z = s * 0.5; }
+  } else if (H === 'girasol') { // Caisis: cara de girasol con pétalos
+    const disco = add(new THREE.CylinderGeometry(0.75, 0.75, 0.35, 6), plastico('#6b4428'), 0, 7.6, 0.1); disco.rotation.x = Math.PI / 2;
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; const p = add(new THREE.BoxGeometry(0.4, 1.0, 0.12), i % 2 ? cuerpo : claro, Math.cos(a) * 1.15, 7.6 + Math.sin(a) * 1.15, 0.05); p.rotation.z = a - Math.PI / 2; }
+  } else if (H === 'luz') { // Madain: cabeza de luz blanca con corona de rayos
+    const c = add(new THREE.CylinderGeometry(0.75, 0.75, 1.25, 6), brillo('#ffffff', 2.5), 0, 7.45, 0); flotar(c, 0.04);
+  } else {
+    const cab = add(new THREE.CylinderGeometry(0.7, 0.7, 1.2, 6), H === 'vacio' ? plastico('#1a1040', em('#2a1a80', 0.4)) : claro, 0, 7.4, 0);
+    if (H === 'vacio') { const ojo = add(new THREE.OctahedronGeometry(0.3), brillo(D.c2, 2.2), 0, 7.45, 0.68); ojo.scale.set(1.4, 0.7, 0.5); }
+    else add(new THREE.OctahedronGeometry(0.22), cristal, 0, 7.55, 0.66);
+    if (H === 'puas') { cono(0.22, 2.0, cuerpo, 0, 8.9, 0); for (const s of [-1, 1]) for (let i = 0; i < 3; i++) cono(0.16, 1.4 - i * 0.3, i ? oscuro : cuerpo, s * (0.25 + i * 0.25), 8.4 - i * 0.12, 0, -s * (0.35 + i * 0.35)); }
+    if (H === 'llamas') for (let i = 0; i < 7; i++) { const a = (i - 3) * 0.32; cono(0.2, 1.1 + (3 - Math.abs(i - 3)) * 0.35, i % 2 ? claro : cuerpo, Math.sin(a) * 0.7, 8.3 + Math.cos(a) * 0.2, 0, -a); }
+    if (H === 'lirio') for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const p = add(new THREE.BoxGeometry(0.6, 1.9, 0.12), i % 2 ? cuerpo : claro, Math.cos(a) * 0.55, 8.6, Math.sin(a) * 0.55); p.rotation.set(Math.sin(a) * 0.55, -a, -Math.cos(a) * 0.55); }
+    if (H === 'orejas') for (const s of [-1, 1]) { cono(0.3, 1.9, cuerpo, s * 0.55, 8.6, 0, -s * 0.35); cono(0.16, 1.2, claro, s * 0.55, 8.4, 0.12, -s * 0.35); }
+    if (H === 'astas') for (const s of [-1, 1]) {
+      const a = add(new THREE.CylinderGeometry(0.1, 0.13, 1.6, 6), oscuro, s * 0.55, 8.6, 0); a.rotation.z = -s * 0.45;
+      for (let i = 0; i < 2; i++) cono(0.14, 0.9, claro, s * (0.95 + i * 0.3), 8.9 + i * 0.45, 0, -s * (0.9 - i * 0.5));
+      cono(0.16, 0.9, cuerpo, s * 0.95, 9.5, 0, -s * 0.2);
+    }
+    if (H === 'remolino') { const r = add(new THREE.TorusGeometry(1.05, 0.09, 6, 6), brillo(D.c2, 1.5), 0, 7.4, 0); r.rotation.x = Math.PI / 2.4; g.userData.gira = r; cono(0.3, 1.4, cuerpo, 0, 8.6, 0); }
+  }
+  // halo de rayos tras la cabeza
+  if (D.halo) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; const r = add(new THREE.BoxGeometry(0.16, 0.9 + (i % 2) * 0.5, 0.08), brillo(D.gema ? '#fff6c8' : D.c, 1.6), Math.cos(a) * 1.6, 7.6 + Math.sin(a) * 1.6, -0.5); r.rotation.z = a - Math.PI / 2; }
+  // falda
+  if (D.falda) for (let i = 0; i < 10; i++) {
+    const a = i / 10 * Math.PI * 2, x = Math.cos(a) * 1.2, z = Math.sin(a) * 0.7;
+    if (D.falda === 'llamas') { const c = cono(0.32, 1.6 + (i % 3) * 0.4, i % 2 ? claro : cuerpo, x, 3.0, z, 0, Math.PI); c.rotation.z = -Math.cos(a) * 0.3; c.rotation.x = Math.PI + Math.sin(a) * 0.3; }
+    else { const p = add(new THREE.BoxGeometry(0.75, 1.9, 0.14), i % 2 ? claro : cuerpo, x, 2.8, z); p.rotation.set(Math.sin(a) * 0.35, -a + Math.PI / 2, 0); }
+  }
+  // espada clavada delante
+  if (D.espada) {
+    const esp = new THREE.Group(); esp.position.set(0, 0, 1.4); g.add(esp);
+    add(new THREE.BoxGeometry(0.28, 3.6, 0.1), cristal, 0, 2.2, 0, esp);
+    add(new THREE.ConeGeometry(0.2, 0.6, 4), cristal, 0, 0.1, 0, esp).rotation.x = Math.PI;
+    add(new THREE.BoxGeometry(1.4, 0.22, 0.3), oscuro, 0, 4.05, 0, esp);
+    add(new THREE.BoxGeometry(0.22, 0.9, 0.22), oscuro, 0, 4.6, 0, esp);
+    add(new THREE.OctahedronGeometry(0.22), cristal, 0, 5.2, 0, esp);
+  }
+  // manto de dos paños
+  if (D.manto) for (const s of [-1, 1]) {
+    const forma = new THREE.Shape(); forma.moveTo(0, 0); forma.lineTo(s * 1.0, 0); forma.lineTo(s * 2.6, -5.2); forma.lineTo(s * 0.2, -5.6); forma.closePath();
+    const ala = add(new THREE.ExtrudeGeometry(forma, { depth: 0.08, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: D.c, emissive: D.osc, emissiveIntensity: 0.5, transparent: true, opacity: 0.85, side: THREE.DoubleSide }), s * 0.3, 6.5, -0.7);
+    ala.rotation.x = 0.18;
+  }
+  // alas: de plumas (Madain, un lado frío y otro cálido) o de aire (Aspir)
+  if (D.alas) {
+    g.userData.alas = [];
+    for (const s of [-1, 1]) {
+      const ala = new THREE.Group(); ala.position.set(s * 0.8, 6.3, -0.6); g.add(ala); g.userData.alas.push(ala);
+      const cols = D.alas === 'plumas' ? (s < 0 ? ['#bfe6ff', '#8ac8ff', '#e6f6ff'] : ['#ffe2b0', '#ffb8d0', '#fff2dc']) : [D.c, D.c2, D.c];
+      for (let i = 0; i < 6; i++) {
+        const largo = 3.4 - Math.abs(i - 1.5) * 0.45;
+        const p = add(new THREE.BoxGeometry(0.5, largo, 0.1), D.alas === 'aire' ? new THREE.MeshStandardMaterial({ color: cols[i % 3], emissive: D.c, emissiveIntensity: 0.6, transparent: true, opacity: 0.6 }) : plastico(cols[i % 3], em(cols[i % 3], 0.35)), s * (0.6 + i * 0.55), 0.6 + i * 0.15, 0, ala);
+        p.rotation.z = -s * (0.2 + i * 0.28); p.geometry.translate(0, largo / 2, 0);
+      }
+    }
+  }
+  // lo que flota a su alrededor
+  const N = D.flotan === 'gemas' ? 7 : 8;
+  for (let i = 0; i < N; i++) {
+    const a = i / N * Math.PI * 2; let c;
+    const ARCO = ['#e84a4a', '#f2c230', '#3fbf6b', '#3a8fd6', '#9a5ad6', '#ff8f3a', '#5ff2e6'];
+    if (D.flotan === 'gemas') { c = add(new THREE.OctahedronGeometry(0.3), plastico(ARCO[i], em(ARCO[i], 0.8)), (i / (N - 1) - 0.5) * 7, 6.5 + Math.sin(i / (N - 1) * Math.PI) * 4, -0.9); c.scale.y = 1.5; }
+    else if (D.flotan === 'estrellas') { c = add(new THREE.OctahedronGeometry(0.16), brillo('#ffffff', 2), Math.cos(a) * 2.8, 2.5 + (i % 4) * 1.4, Math.sin(a) * 1.6); }
+    else if (D.flotan === 'petalos' || D.flotan === 'plumas') { c = add(new THREE.BoxGeometry(0.35, 0.08, 0.6), i % 2 ? claro : (D.flotan === 'petalos' ? cuerpo : hoja), Math.cos(a) * 2.8, 2.5 + (i % 4) * 1.3, Math.sin(a) * 1.5); c.rotation.set(a, a, 0); if (D.flotan === 'plumas') c.material = claro; }
+    else if (D.flotan === 'brasas') { c = add(new THREE.BoxGeometry(0.25, 0.25, 0.25), brillo(i % 2 ? D.c : D.c2, 1.8), Math.cos(a) * 2.6, 2.4 + (i % 4) * 1.4, Math.sin(a) * 1.4); }
+    else if (D.flotan === 'anillos') { c = add(new THREE.TorusGeometry(0.3, 0.06, 6, 6), brillo(D.c2, 1.5), Math.cos(a) * 2.7, 2.5 + (i % 4) * 1.3, Math.sin(a) * 1.5); }
+    else { c = add(new THREE.OctahedronGeometry(0.2), cristal, Math.cos(a) * 2.6, 2.5 + (i % 4) * 1.3, Math.sin(a) * 1.4); c.scale.y = 1.6; }
+    flotar(c, 0.25);
+  }
+  g.userData.brazos = brazos;
+  const mats = []; g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.userData.op = o.material.opacity; mats.push(o.material); o.castShadow = true; } });
+  g.userData.mats = mats;
+  return g;
+}
+// Un material tornasolado para el corazón de Madain
+function arcoiris() {
+  const t = lienzo(64, 64, (x) => { const gr = x.createLinearGradient(0, 0, 64, 64); ['#ff6a6a', '#ffd86a', '#6aff9a', '#6ac8ff', '#c86aff'].forEach((col, i) => gr.addColorStop(i / 4, col)); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); });
+  return new THREE.MeshStandardMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.9, roughness: 0.1 });
+}
+let INVOCACION = CRIATURAS.baelorith;
 const filasGrid = Math.max(...puestos.map(P => P.g.position.z));
-const SITIO = new THREE.Vector3(0, 0, filasGrid + 9.5);
-const CIELO = SITIO.clone().add(new THREE.Vector3(0, 9, 0));
+const SITIO = new THREE.Vector3(0, 0, filasGrid + 13);
+const CIELO = SITIO.clone().add(new THREE.Vector3(0, 12, 0));
+const ALTURA_VUELO = 3.5; // a qué altura levita la criatura
 
 // Partículas: tetones y placas sueltas que vuelan (confeti de bloques)
 const PIEZA_CHISPA = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 6);
@@ -679,62 +1023,14 @@ function estallido(pos, colores, n, fuerza = 4, grav = 6) {
   for (let i = 0; i < n; i++) chispa(pos, colores[i % colores.length], { vel: new THREE.Vector3(azar(2), Math.random(), azar(2)).normalize().multiplyScalar(fuerza * (0.5 + Math.random())), vida: 1 + Math.random(), grav });
 }
 
-// La criatura, construida con bloques: cristal carmesí, corona de púas, hombreras, espada y manto
-function criaturaBloques() {
-  const g = new THREE.Group();
-  const cuerpo = plastico('#c8203e', { emissive: '#5a0010', emissiveIntensity: 0.5 });
-  const claro = plastico('#ffb0c0', { emissive: '#ff6a8a', emissiveIntensity: 0.6 });
-  const oscuro = plastico('#7a1022', { emissive: '#30000a', emissiveIntensity: 0.4 });
-  const cristal = new THREE.MeshStandardMaterial({ color: '#ff8aa4', emissive: '#d8284a', emissiveIntensity: 0.9, transparent: true, opacity: 0.8, roughness: 0.1, flatShading: true });
-  const add = (geo, mat, x, y, z, padre = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); padre.add(m); return m; };
-  // piernas que acaban en punta (flota)
-  for (const s of [-1, 1]) { const pi = add(new THREE.CylinderGeometry(0.45, 0.1, 3.2, 4), cuerpo, s * 0.55, 2.0, 0); pi.rotation.y = Math.PI / 4; }
-  add(new THREE.BoxGeometry(2.0, 0.5, 1.0), oscuro, 0, 3.7, 0);
-  // torso trapezoidal con cristales incrustados
-  const torso = add(trapecio(1.6, 2.8, 2.6, 1.2), cuerpo, 0, 5.2, 0);
-  for (const [x, y] of [[0, 5.4], [-0.55, 5.9], [0.55, 5.9], [0, 4.5]]) add(new THREE.OctahedronGeometry(0.28), cristal, x, y, 0.62).scale.set(1, 1.5, 0.6);
-  // hombreras de púas
-  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const c = add(new THREE.ConeGeometry(0.28, 1.3 - i * 0.25, 4), i ? oscuro : cuerpo, s * (1.5 + i * 0.3), 6.6 - i * 0.15, 0); c.rotation.z = -s * (0.4 + i * 0.4); }
-  // brazos abiertos con manos en C
-  const brazos = [];
-  for (const s of [-1, 1]) {
-    const b = new THREE.Group(); b.position.set(s * 1.55, 6.2, 0); g.add(b); brazos.push(b);
-    add(new THREE.CylinderGeometry(0.3, 0.24, 2.6, 4), cuerpo, 0, -1.3, 0, b).rotation.y = Math.PI / 4;
-    const mano = add(new THREE.TorusGeometry(0.35, 0.16, 8, 12, Math.PI * 1.45), claro, 0, -2.75, 0, b); mano.rotation.set(0, Math.PI / 2, Math.PI * 0.77);
-    b.rotation.z = s * 0.7; b.rotation.x = -0.4;
-  }
-  // cabeza sin rostro: prisma hexagonal con gema y corona de púas
-  add(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 6), oscuro, 0, 6.65, 0);
-  const cab = add(new THREE.CylinderGeometry(0.7, 0.7, 1.2, 6), claro, 0, 7.4, 0);
-  add(new THREE.OctahedronGeometry(0.22), cristal, 0, 7.55, 0.66);
-  add(new THREE.ConeGeometry(0.22, 2.0, 4), cuerpo, 0, 8.9, 0);
-  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const c = add(new THREE.ConeGeometry(0.16, 1.4 - i * 0.3, 4), i ? oscuro : cuerpo, s * (0.25 + i * 0.25), 8.4 - i * 0.12, 0); c.rotation.z = -s * (0.35 + i * 0.35); }
-  // espada clavada delante
-  const esp = new THREE.Group(); esp.position.set(0, 0, 1.4); g.add(esp);
-  add(new THREE.BoxGeometry(0.28, 3.6, 0.1), cristal, 0, 2.2, 0, esp);
-  add(new THREE.ConeGeometry(0.2, 0.6, 4), cristal, 0, 0.1, 0, esp).rotation.x = Math.PI;
-  add(new THREE.BoxGeometry(1.4, 0.22, 0.3), oscuro, 0, 4.05, 0, esp);
-  add(new THREE.BoxGeometry(0.22, 0.9, 0.22), oscuro, 0, 4.6, 0, esp);
-  add(new THREE.OctahedronGeometry(0.22), cristal, 0, 5.2, 0, esp);
-  // manto de dos alas
-  for (const s of [-1, 1]) {
-    const forma = new THREE.Shape(); forma.moveTo(0, 0); forma.lineTo(s * 1.0, 0); forma.lineTo(s * 2.6, -5.2); forma.lineTo(s * 0.2, -5.6); forma.closePath();
-    const ala = add(new THREE.ExtrudeGeometry(forma, { depth: 0.08, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: '#d8284a', emissive: '#6a0018', emissiveIntensity: 0.5, transparent: true, opacity: 0.85, side: THREE.DoubleSide }), s * 0.3, 6.5, -0.7);
-    ala.rotation.x = 0.18;
-  }
-  // cristales flotando alrededor
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; const c = add(new THREE.OctahedronGeometry(0.2), cristal, Math.cos(a) * 2.6, 2.5 + (i % 4) * 1.3, Math.sin(a) * 1.4); c.scale.y = 1.6; flotar(c, 0.25); }
-  g.userData.brazos = brazos;
-  const mats = []; g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.userData.op = o.material.opacity; mats.push(o.material); o.castShadow = true; } });
-  g.userData.mats = mats;
-  return g;
-}
 function opacidadDe(g, k) { for (const m of g.userData.mats) m.opacity = m.userData.op * k; }
 
-function gemaBloque(color) {
+function gemaBloque(color, color2) {
   const g = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.42), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.7, roughness: 0.15, flatShading: true }));
-  m.scale.set(1.5, 2, 1.5); g.add(m);
+  const mat = (c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.7, roughness: 0.15, flatShading: true });
+  if (color2) { // Gema de Madain: mitad azul, mitad rosa
+    for (const [c, sy] of [[color, 1], [color2, -1]]) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.42, 4), mat(c)); h.position.y = sy * 0.21; if (sy < 0) h.rotation.x = Math.PI; h.scale.set(1.5, 2, 1.5); h.position.y *= 2; g.add(h); }
+  } else { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.42), mat(color)); m.scale.set(1.5, 2, 1.5); g.add(m); }
   const halo = new THREE.PointLight(color, 2, 3); g.add(halo);
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 6), plastico('#e2b453')); base.position.y = -0.5; g.add(base);
   return sombra(g);
@@ -747,13 +1043,20 @@ function limpiarInvocacion() {
   [granCirculo, criatura, nuevoPortal, ...gemas].forEach(o => o && escena.remove(o));
   granCirculo = criatura = nuevoPortal = null; gemas = [];
 }
-function empezarInvocacion() {
+const lista = (ids) => ids.map(n => NOMBRES[n]).join(', ').replace(/, ([^,]*)$/, ' y $1');
+function empezarInvocacion(clave = 'baelorith') {
   limpiarInvocacion(); elegir(-1);
+  INVOCACION = CRIATURAS[clave];
   INV.activo = true; INV.t = 0; INV.hechos = new Set();
   INV.req = puestos.filter(P => INVOCACION.need.includes(P.id));
-  titulo.firstChild.textContent = 'Invocación';
-  destino = { pos: new THREE.Vector3(0, 3, (SITIO.z + filasGrid) / 2 + 1), dist: vertical() ? 74 : 36 };
+  titulo.firstChild.textContent = INVOCACION.nombre;
+  // encuadra los Portales de los requeridos y el sitio donde aparece la criatura
+  const ps = [...INV.req.map(P => P.g.position), SITIO, SITIO, SITIO];
+  const c = ps.reduce((a, b) => a.clone().add(b)).multiplyScalar(1 / ps.length);
+  const ancho = Math.max(10, ...ps.map(p => Math.hypot(p.x - c.x, (p.z - c.z) * 0.8)));
+  destino = { pos: c.setY(6), dist: vertical() ? 30 + ancho * 3.3 : 16 + ancho * 1.6 };
 }
+const colorGema = () => INVOCACION.gema ? '#3a8fff' : INVOCACION.c;
 const una = (clave, fn) => { if (!INV.hechos.has(clave)) { INV.hechos.add(clave); fn(); } };
 const suave = (k) => k * k * (3 - 2 * k), limita = (k) => Math.max(0, Math.min(1, k));
 function manoDe(P) { return P.fig.userData.brazoDer.userData.mano.getWorldPosition(new THREE.Vector3()); }
@@ -763,9 +1066,9 @@ function pasoInvocacion(dt) {
   const T = reloj.getElapsedTime();
   // 1. Los requeridos alzan su magia; las runas de su Portal despiertan
   una('inicio', () => {
-    narrar('Estratega, Cronomante y Cronista están en Portales distintos: las runas despiertan…');
+    narrar(`${lista(INVOCACION.need)} están a la vista en Portales distintos: las runas despiertan…`);
     INV.req.forEach(P => { P.anim = 'alzar'; P.t0 = T; });
-    granCirculo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), discoRunico(INVOCACION.color));
+    granCirculo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), discoRunico(INVOCACION.c));
     granCirculo.rotation.x = -Math.PI / 2; granCirculo.position.copy(SITIO).setY(0.12); granCirculo.scale.setScalar(0.01); escena.add(granCirculo);
   });
   if (t < 4.2) {
@@ -776,25 +1079,27 @@ function pasoInvocacion(dt) {
   }
   // 2. Estallido: la criatura cruza el umbral desde el suelo
   if (t >= 4.2) una('boom', () => {
-    narrar('¡Baelorith cruza el umbral!');
-    estallido(CIELO, [INVOCACION.color, INVOCACION.color2, '#ffffff'], 70, 7, 5);
+    narrar(`¡${INVOCACION.nombre} cruza el umbral!`);
+    estallido(CIELO, [INVOCACION.c, INVOCACION.c2, '#ffffff'], 70, 7, 5);
     INV.req.forEach(P => { P.anim = 'reposo'; });
-    criatura = criaturaBloques(); criatura.position.copy(SITIO).setY(-9); escena.add(criatura); opacidadDe(criatura, 0);
+    criatura = criaturaBloques(INVOCACION); criatura.position.copy(SITIO).setY(-9); escena.add(criatura); opacidadDe(criatura, 0);
     INV.temblor = 0.8;
   });
   if (criatura && t < 12.5) {
     const k = suave(limita((t - 4.2) / 2.6));
-    criatura.position.y = -9 + k * 9.5 + (k >= 1 ? Math.sin(T * 1.2) * 0.2 : 0);
+    criatura.position.y = -9 + k * (9 + ALTURA_VUELO) + (k >= 1 ? Math.sin(T * 1.2) * 0.35 : 0);
+    criatura.userData.alas?.forEach((a, i) => a.rotation.y = (i ? -1 : 1) * (0.2 + Math.sin(T * 2.4) * 0.25));
+    if (criatura.userData.gira) criatura.userData.gira.rotation.z = T * 2;
     opacidadDe(criatura, Math.min(1, k * 1.6));
     criatura.rotation.y = Math.sin(T * 0.5) * 0.15;
-    if (t < 7 && Math.random() < 0.7) chispa(SITIO.clone().add(new THREE.Vector3(azar(6), 0.3, azar(3))), INVOCACION.color, { vel: new THREE.Vector3(0, 3 + Math.random() * 2, 0), vida: 1.2 });
+    if (t < 7 && Math.random() < 0.7) chispa(SITIO.clone().add(new THREE.Vector3(azar(6), 0.3, azar(3))), INVOCACION.c, { vel: new THREE.Vector3(0, 3 + Math.random() * 2, 0), vida: 1.2 });
   }
   granCirculo.rotation.z += dt * (t < 12.5 ? 0.3 : 1.2);
   // 3. Ofrece sus Gemas: orbitan a su alrededor
-  const C = SITIO.clone().add(new THREE.Vector3(0, 6.3, 1.4));
+  const C = SITIO.clone().add(new THREE.Vector3(0, 6.3 + ALTURA_VUELO, 1.6));
   if (t >= 7.2) una('gemas', () => {
     narrar('En agradecimiento, ofrece sus Gemas a quienes la invocaron.');
-    for (let i = 0; i < INVOCACION.gemas; i++) { const gm = gemaBloque(INVOCACION.color); gm.position.copy(C); escena.add(gm); gemas.push(gm); gm.userData.an = i / INVOCACION.gemas * Math.PI * 2; gm.userData.orbita = true; }
+    for (let i = 0; i < INVOCACION.gemas; i++) { const gm = gemaBloque(colorGema(), INVOCACION.gema ? '#ff6ac0' : null); gm.position.copy(C); escena.add(gm); gemas.push(gm); gm.userData.an = i / INVOCACION.gemas * Math.PI * 2; gm.userData.orbita = true; }
     criatura.userData.brazos.forEach((b, i) => b.rotation.x = -1.1);
   });
   const radio = 2.6 * suave(limita((t - 7.2) / 1));
@@ -812,22 +1117,22 @@ function pasoInvocacion(dt) {
     const k = limita((t - t0) / 1.2);
     if (k < 1) { gm.position.lerpVectors(gm.userData.desde, destinoG, suave(k)); gm.position.y += Math.sin(k * Math.PI) * 4; }
     else {
-      una('llega' + i, () => { P.anim = 'celebrar'; P.t0 = T; estallido(destinoG, [INVOCACION.color, '#ffffff', '#ffd86a'], 26, 3, 4); });
+      una('llega' + i, () => { P.anim = 'celebrar'; P.t0 = T; estallido(destinoG, [colorGema(), '#ffffff', '#ffd86a'], 26, 3, 4); });
       const k2 = suave(limita((t - t0 - 1.2) / 0.7)); gm.position.lerpVectors(destinoG, pilaG, k2); gm.position.y += Math.sin(k2 * Math.PI) * 1.2;
-      if (k2 >= 1) una('apila' + i, () => estallido(pilaG, ['#ffd86a', INVOCACION.color], 10, 1.5, 4));
+      if (k2 >= 1) una('apila' + i, () => estallido(pilaG, ['#ffd86a', colorGema()], 10, 1.5, 4));
     }
   });
   // 5. Las Gemas que sobran vuelven con la criatura
   if (t >= 14.2) {
     una('sobran', () => { narrar('Las Gemas que nadie recibe se van con la criatura.'); gemas.slice(INV.req.length).forEach(gm => { gm.userData.orbita = false; gm.userData.desde = gm.position.clone(); }); });
-    gemas.slice(INV.req.length).forEach((gm, i) => { const k = limita((t - 14.2 - i * 0.2) / 0.8); gm.position.lerpVectors(gm.userData.desde, SITIO.clone().add(new THREE.Vector3(0, 5.2, 0.6)), suave(k)); gm.scale.setScalar(1 - k * 0.9); gm.visible = k < 1; });
+    gemas.slice(INV.req.length).forEach((gm, i) => { const k = limita((t - 14.2 - i * 0.2) / 0.8); gm.position.lerpVectors(gm.userData.desde, SITIO.clone().add(new THREE.Vector3(0, 5.2 + ALTURA_VUELO, 0.6)), suave(k)); gm.scale.setScalar(1 - k * 0.9); gm.visible = k < 1; });
   }
   // 6. La criatura parte; el círculo se encoge y queda como la runa del nuevo Portal
   if (t >= 15.4 && criatura) {
-    una('parte', () => narrar('Baelorith parte. Su círculo deja la marca en el suelo y se encoge…'));
+    una('parte', () => narrar(`${INVOCACION.nombre} parte. Su círculo deja la marca en el suelo y se encoge…`));
     const k = limita((t - 15.4) / 2);
-    criatura.position.y = 0.5 + suave(k) * 6; opacidadDe(criatura, 1 - k); criatura.scale.setScalar(1 - k * 0.4);
-    if (Math.random() < 0.8) chispa(criatura.position.clone().add(new THREE.Vector3(azar(4), 3 + Math.random() * 5, azar(2))), INVOCACION.color2, { vel: new THREE.Vector3(0, 3, 0), vida: 1 });
+    criatura.position.y = ALTURA_VUELO + suave(k) * 8; opacidadDe(criatura, 1 - k); criatura.scale.setScalar(1 - k * 0.4);
+    if (Math.random() < 0.8) chispa(criatura.position.clone().add(new THREE.Vector3(azar(4), 3 + Math.random() * 5, azar(2))), INVOCACION.c2, { vel: new THREE.Vector3(0, 3, 0), vida: 1 });
     if (k >= 1) { escena.remove(criatura); criatura = null; }
   }
   if (t >= 16.4 && t < 18.4) granCirculo.scale.setScalar(10 - suave((t - 16.4) / 2) * (10 - 3.9));
@@ -835,7 +1140,7 @@ function pasoInvocacion(dt) {
   if (t >= 18.4) {
     una('portal', () => {
       narrar('…y el nuevo Portal central se construye a su alrededor, pieza a pieza.');
-      nuevoPortal = portal(INVOCACION.color, 0); nuevoPortal.position.copy(SITIO); escena.add(nuevoPortal);
+      nuevoPortal = portal(INVOCACION.c, 0); nuevoPortal.position.copy(SITIO); escena.add(nuevoPortal);
       nuevoPortal.userData.runas[0].visible = false; // la runa es el propio círculo de la invocación
       const piezas = [];
       nuevoPortal.traverse(o => { if (o !== nuevoPortal && o.parent === nuevoPortal) piezas.push(o); });
@@ -860,7 +1165,7 @@ function pasoInvocacion(dt) {
     });
     // la runa sube con la tarima
     granCirculo.position.y = 0.12 + suave(limita((tp - 0.4) / 1.4)) * (ALTO - 0.11);
-    if (tp > 3.6) una('enciende', () => { narrar('¡Nuevo Portal central!'); estallido(SITIO.clone().setY(ALTO + 0.3), [INVOCACION.color, '#ffffff'], 40, 5, 5); INV.temblor = 0.3; });
+    if (tp > 3.6) una('enciende', () => { narrar('¡Nuevo Portal central!'); estallido(SITIO.clone().setY(ALTO + 0.3), [INVOCACION.c, '#ffffff'], 40, 5, 5); INV.temblor = 0.3; });
     if (tp > 5.5) { INV.activo = false; titulo.firstChild.textContent = 'Todos'; narrar('Desliza para girar · pellizca para acercar · toca un personaje para verlo solo'); }
   }
 }
@@ -868,14 +1173,6 @@ function pasoInvocacion(dt) {
 // ---------- una habilidad animada para cada personaje ----------
 // Cada escena recibe (E, dt) y devuelve true al acabar. E.t es el tiempo de la escena, E.P quien la usa,
 // E.objetivos los Portales afectados. Tras acabar se repite mientras siga elegida «Habilidad».
-const texCartas = {};
-function texCarta(n) { return texCartas[n] ||= (() => { const t = new THREE.TextureLoader().load(`../assets/cards/${n}.png`); t.colorSpace = THREE.SRGBColorSpace; return t; })(); }
-function carta(frente, reverso = 'carta-oculta-reverso') {
-  const lado = plastico('#e8e2d0');
-  const m = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.6, 0.05), [lado, lado, lado, lado,
-    new THREE.MeshStandardMaterial({ map: texCarta(frente), roughness: 0.5, transparent: true }), new THREE.MeshStandardMaterial({ map: texCarta(reverso), roughness: 0.5, transparent: true })]);
-  m.castShadow = true; return m;
-}
 function fantasma(id, color = '#7fe0ff') {
   const g = PERSONAJES[id]();
   g.traverse(o => { if (o.isMesh) { o.material = (Array.isArray(o.material) ? o.material[0] : o.material).clone(); o.material.transparent = true; o.material.opacity = 0.45; o.material.emissive = new THREE.Color(color); o.material.emissiveIntensity = 0.6; o.material.map = null; o.castShadow = false; } });
@@ -916,11 +1213,11 @@ const HABILIDADES = {
     return t > 5.3;
   },
 
-  // Ocultista: voltea la carta de arriba de un Portal; el personaje queda tapado por el encapuchado
+  // Ocultista: pone bocabajo al personaje de arriba de un Portal; queda tapado por el encapuchado
   ocultista(E, dt) {
     const { P, t } = E, f = P.fig, Q = E.objetivos[0];
     unaE(E, 'ini', () => {
-      narrar(`Ocultista: elige un Portal y voltea su carta de arriba. ${NOMBRES[Q.id]} queda oculta.`);
+      narrar(`Ocultista: elige un Portal y pone bocabajo al personaje de arriba. ${NOMBRES[Q.id]} queda encapuchado.`);
       const capa = new THREE.Group();
       const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.25, 3.4, 6), plastico('#14152a', { transparent: true })); cuerpo.position.y = 1.7; capa.add(cuerpo);
       const cap = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 6), plastico('#1d1f3a', { transparent: true })); cap.position.y = 4.0; capa.add(cap);
@@ -938,30 +1235,41 @@ const HABILIDADES = {
     return t > 5.2;
   },
 
-  // Cronista: toma la carta de arriba de un Portal y se la lleva a la mano (al libro)
+  // Cronista: toma el personaje de arriba de un Portal y se lo lleva a su mano (entra en su libro y sale a su lado)
   cronista(E, dt) {
     const { P, t } = E, f = P.fig, Q = E.objetivos[0];
-    unaE(E, 'ini', () => { narrar(`Cronista: elige un Portal y toma su carta de arriba para su mano. Se lleva a ${NOMBRES[Q.id]}.`); E.carta = temp(E, carta(Q.id)); E.carta.visible = false; });
-    mirarA(f, P, Q);
+    unaE(E, 'ini', () => {
+      narrar(`Cronista: elige un Portal y se lleva a su mano el personaje de arriba. Se lleva a ${NOMBRES[Q.id]}.`);
+      E.copia = temp(E, fundir(PERSONAJES[Q.id]())); E.copia.visible = false;
+      E.sitio = P.g.localToWorld(new THREE.Vector3(0, 0, 6.6));
+    });
     const libro = () => f.userData.brazoIzq.localToWorld(new THREE.Vector3(0, -1.3, 0.35));
-    brazosA(f, -1.3, 0.15);
+    if (t < 3.2) { mirarA(f, P, Q); brazosA(f, -1.3, 0.15); } else { f.rotation.y = 0; brazosA(f, -0.7, 0.2); }
+    // el personaje se encoge girando y entra en el libro convertido en hojas
     const enc = suave(limita((t - 0.6) / 1.6));
     if (t < 2.4) { Q.fig.scale.setScalar(Math.max(0.01, 1 - enc)); Q.fig.rotation.y = enc * 6; if (t > 0.6 && Math.random() < 0.9) chispa(cima(Q, 2 + Math.random() * 2), '#f4ead0', { hacia: libro(), vida: 0.8, arco: 2, tam: 2 }); }
-    if (t >= 2.4) unaE(E, 'guarda', () => { Q.fig.visible = false; estallido(libro(), ['#f4ead0', '#e2b453'], 20, 2, 3); });
-    if (t >= 2.4 && t < 3.9) { E.carta.visible = true; E.carta.position.copy(libro()).add(new THREE.Vector3(0, 1.2 + (t - 2.4) * 0.4, 0)); E.carta.rotation.y = (t - 2.4) * 2.5; }
-    if (t >= 3.9) {
-      unaE(E, 'vuelve', () => { narrar('(En el boceto la devuelve a su Portal para poder repetirlo.)'); E.desde = E.carta.position.clone(); Q.fig.visible = true; });
-      const k = suave(limita((t - 3.9) / 1)); E.carta.position.lerpVectors(E.desde, cima(Q, 2), k); E.carta.position.y += Math.sin(k * Math.PI) * 2;
-      Q.fig.scale.setScalar(Math.max(0.01, limita((t - 4.6) / 0.5))); Q.fig.rotation.y = 0; E.carta.visible = t < 4.9;
+    if (t >= 2.4) unaE(E, 'guarda', () => { Q.fig.visible = false; estallido(libro(), ['#f4ead0', '#e2b453'], 20, 2, 3); narrar(`${NOMBRES[Q.id]} pasa a la mano del Cronista.`); });
+    // y sale del libro para quedarse junto a él, en su mano
+    if (t >= 2.6 && t < 4.4) {
+      E.copia.visible = true; const k = suave(limita((t - 2.6) / 0.9));
+      E.copia.position.lerpVectors(libro(), E.sitio, k); E.copia.position.y += Math.sin(k * Math.PI) * 2;
+      E.copia.scale.setScalar(0.05 + (ESCALA_MANO - 0.05) * k); E.copia.rotation.y = (1 - k) * 4;
+      if (k >= 1) unaE(E, 'aterriza', () => estallido(E.sitio.clone().setY(0.4), ['#f4ead0', '#b48aff'], 10, 2, 5));
     }
-    return t > 5.4;
+    if (t >= 4.4) {
+      unaE(E, 'vuelve', () => { narrar('(En el boceto lo devuelve a su Portal para poder repetirlo.)'); E.desde = E.copia.position.clone(); });
+      const k = suave(limita((t - 4.4) / 1)); E.copia.position.lerpVectors(E.desde, cima(Q), k); E.copia.position.y += Math.sin(k * Math.PI) * 3;
+      E.copia.scale.setScalar(ESCALA_MANO + (1 - ESCALA_MANO) * k);
+      if (k >= 1) { Q.fig.visible = true; Q.fig.scale.setScalar(1); Q.fig.rotation.y = 0; E.copia.visible = false; }
+    }
+    return t > 5.8;
   },
 
   // Cronomante: reloj de arena (la arena SUBE), ecos del pasado del Portal y uno vuelve arriba
   cronomante(E, dt) {
     const { P, t } = E, f = P.fig, Q = E.objetivos[0];
     unaE(E, 'ini', () => {
-      narrar(`Cronomante: examina toda la pila del Portal de ${NOMBRES[Q.id]} y coloca arriba la carta que elija.`);
+      narrar(`Cronomante: examina todos los personajes apilados en el Portal de ${NOMBRES[Q.id]} y sube arriba el que elija.`);
       const reloj = new THREE.Group(), vidrio = new THREE.MeshStandardMaterial({ color: '#bfeaff', transparent: true, opacity: 0.35, roughness: 0.05 });
       for (const sy of [1, -1]) {
         const v = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.3, 6, 1, true), vidrio); v.position.y = sy * 0.65; v.rotation.x = sy > 0 ? 0 : Math.PI; v.rotation.x += Math.PI; reloj.add(v);
@@ -1006,7 +1314,7 @@ const HABILIDADES = {
   estratega(E, dt) {
     const { P, t } = E, f = P.fig, [A, B] = E.objetivos;
     unaE(E, 'ini', () => {
-      narrar(`Estratega: elige dos Portales y los intercambia en la mesa con todas sus cartas: ${NOMBRES[A.id]} ⇄ ${NOMBRES[B.id]}.`);
+      narrar(`Estratega: elige dos Portales y los intercambia en la mesa con todo lo que tienen apilado: ${NOMBRES[A.id]} ⇄ ${NOMBRES[B.id]}.`);
       E.pa = A.g.position.clone(); E.pb = B.g.position.clone(); E.medio = E.pa.clone().lerp(E.pb, 0.5);
       const col = ['#e84a4a', '#f2c230', '#3fbf6b', '#3a8fd6', '#9a5ad6', '#ff8f3a'];
       E.orbes = col.map((c, i) => { const o = temp(E, new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), brillo(c, 1.6))); o.userData.i = i; return o; });
@@ -1028,11 +1336,11 @@ const HABILIDADES = {
     return t > 6;
   },
 
-  // Clarividente: abre el gran ojo y ve también la carta de su mano que estaba oculta para ella
+  // Clarividente: mientras está a la vista, su jugadora ve sus dos personajes de la mano… y los demás ninguno
   clarividente(E, dt) {
     const { P, t } = E, f = P.fig;
     unaE(E, 'ini', () => {
-      narrar('Clarividente: mientras esté visible, su jugadora ve las dos cartas de su mano… y los demás no ven ninguna.');
+      narrar('Clarividente: mientras esté a la vista, su jugadora ve los dos personajes de su mano… y los demás no ven ninguno.');
       const ojo = new THREE.Group();
       const blanco = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 6), plastico('#f4f1ea')); blanco.rotation.x = Math.PI / 2; blanco.scale.set(1.5, 1, 0.75); ojo.add(blanco);
       const iris = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.24, 6), brillo('#3fd0c0', 1.2)); iris.rotation.x = Math.PI / 2; iris.position.z = 0.03; ojo.add(iris);
@@ -1040,22 +1348,37 @@ const HABILIDADES = {
       E.parpados = [1, -1].map(sy => { const pp = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.0, 0.4), plastico('#1f6f6a')); pp.position.z = 0.15; ojo.add(pp); pp.userData.sy = sy; return pp; });
       for (let k = 0; k < 7; k++) { const pe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.1), plastico('#16131c')); const a = (k - 3) * 0.28; pe.position.set(Math.sin(a) * 1.6, 1.0 + Math.cos(a) * 0.2, 0.2); pe.rotation.z = -a; ojo.add(pe); }
       E.ojo = temp(E, ojo); E.iris = iris;
-      E.visible = temp(E, carta('cronista')); E.oculta = temp(E, carta('estratega'));
+      // una capucha cae sobre el personaje que los demás veían
+      E.capucha = temp(E, encapuchado()); E.capucha.scale.setScalar(ESCALA_MANO * 1.04); opacidadObj(E.capucha, 0);
+      // su visión: los dos personajes de su mano, como espíritus de luz sobre ellos
+      E.vision = [['vis', P.mano.vis], ['ocu', P.mano.ocu]].map(([k, id]) => { const g = temp(E, fantasma(id, '#5ff2e6')); g.userData.sitio = k; g.scale.setScalar(0.001); return g; });
+      E.alTerminar = () => { P.manoVisG.visible = true; };
+      E.burbujas = E.vision.map(() => { const b = temp(E, new THREE.Mesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshStandardMaterial({ color: '#5ff2e6', emissive: '#3fd0c0', emissiveIntensity: 0.6, transparent: true, opacity: 0, flatShading: true, depthWrite: false }))); return b; });
     });
-    const ap = suave(limita(t / 0.8)), abre = suave(limita((t - 0.9) / 0.6)), cierra = suave(limita((t - 4.4) / 0.5)), fin = suave(limita((t - 4.9) / 0.6));
+    const ap = suave(limita(t / 0.8)), abre = suave(limita((t - 0.9) / 0.6)), cierra = suave(limita((t - 5.0) / 0.5)), fin = suave(limita((t - 5.5) / 0.6));
     E.ojo.position.copy(cima(P, 6.0 + Math.sin(t * 2) * 0.1)); E.ojo.scale.setScalar(0.62 * ap * (1 - fin) + 0.001);
+    E.ojo.lookAt(P.g.localToWorld(new THREE.Vector3(0, 0, 4.9)).setY(1));
     E.parpados.forEach(pp => { const k = abre * (1 - cierra); pp.position.y = pp.userData.sy * (0.5 + k * 0.85); pp.scale.y = 1.2 - k * 0.5; });
     E.iris.position.x = Math.sin(t * 1.5) * 0.25 * abre;
-    // sus dos cartas flotan delante: la de la izquierda la ve siempre; la otra se gira al abrir el ojo
-    const base = cima(P, 2.6).add(new THREE.Vector3(0, 0, 2.6));
-    E.visible.position.copy(base).add(new THREE.Vector3(-0.75, Math.sin(t * 2) * 0.08, 0)); E.visible.rotation.y = -0.15;
-    E.oculta.position.copy(base).add(new THREE.Vector3(0.75, Math.sin(t * 2 + 1) * 0.08, 0));
-    const gira = suave(limita((t - 1.7) / 0.6)) * (1 - suave(limita((t - 4.4) / 0.6)));
-    E.oculta.rotation.y = Math.PI * (1 - gira) + 0.15;
-    [E.visible, E.oculta].forEach(c => { c.scale.setScalar(ap * (1 - fin) + 0.001); });
-    if (abre > 0.5 && t < 4.4 && Math.random() < 0.6) chispa(E.ojo.position.clone().add(new THREE.Vector3(0, -0.5, 0.5)), '#5ff2e6', { hacia: E.oculta.position.clone(), vida: 0.6, arco: 0.3 });
     brazosA(f, -1.2 - abre * 0.6, 0.35);
-    return t > 5.6;
+    // 1) la capucha baja sobre el personaje visible de su mano: los demás dejan de verlo
+    const sitioVis = P.g.localToWorld(SITIO_MANO.vis.clone());
+    const cae = suave(limita((t - 1.3) / 0.8)), sube = suave(limita((t - 5.0) / 0.7));
+    E.capucha.position.copy(sitioVis).add(new THREE.Vector3(0, 6 * (1 - cae) + 6 * sube, 0)); E.capucha.rotation.y = (1 - cae) * 2;
+    opacidadObj(E.capucha, cae * (1 - sube));
+    P.manoVisG.visible = !(cae >= 1 && sube <= 0);
+    if (cae >= 1) unaE(E, 'tapa', () => { estallido(sitioVis.clone().setY(2.5), ['#1d1f3a', '#5ff2e6'], 14, 2, 4); narrar('Los demás ya no ven ninguno de sus personajes…'); });
+    // 2) su ojo ilumina los dos: aparecen sobre ellos como espíritus que solo ve ella
+    const ve = suave(limita((t - 2.3) / 0.7)) * (1 - suave(limita((t - 4.6) / 0.5)));
+    if (t >= 2.3) unaE(E, 've', () => narrar('…pero ella ve los dos: el que todos veían y el que tenía encapuchado.'));
+    E.vision.forEach((g, i) => {
+      const s = P.g.localToWorld(SITIO_MANO[g.userData.sitio].clone()).add(new THREE.Vector3(0, 4.3 + Math.sin(t * 2 + i) * 0.15, 0));
+      g.position.copy(s); g.scale.setScalar(ESCALA_MANO * 0.8 * ve + 0.001); g.rotation.y = Math.sin(t + i) * 0.4;
+      E.burbujas[i].position.copy(s).add(new THREE.Vector3(0, 1.7, 0)); E.burbujas[i].scale.set(1.6, 2.1, 1.6).multiplyScalar(ve + 0.001); E.burbujas[i].material.opacity = 0.18 * ve; E.burbujas[i].rotation.y = t * 0.5;
+      if (ve > 0.3 && Math.random() < 0.35) chispa(E.ojo.position.clone(), '#5ff2e6', { hacia: s.clone().add(new THREE.Vector3(0, 1.5, 0)), vida: 0.6, arco: 0.5 });
+    });
+    if (t > 6.0) P.manoVisG.visible = true;
+    return t > 6.2;
   },
 
   // Entusiasta: si hay invocación con éxito, lo celebra tanto que pierde una Gema de valor 1
@@ -1082,6 +1405,143 @@ const HABILIDADES = {
     }
     return t > 4.8;
   },
+  // Aprendiz: intercambia las manos de dos rivales (sin girar nada: cada uno sigue sin ver lo que no veía)
+  aprendiz(E, dt) {
+    const { P, t } = E, f = P.fig, [A, B] = E.objetivos;
+    unaE(E, 'ini', () => {
+      narrar(`Aprendiz: intercambia las manos de dos jugadores, tal cual: ${NOMBRES[A.id]} ⇄ ${NOMBRES[B.id]}. Nadie descubre nada nuevo.`);
+      E.viajes = [];
+      for (const [Q, R] of [[A, B], [B, A]]) for (const k of ['manoVisG', 'manoOcuG']) {
+        const o = Q[k], desde = o.getWorldPosition(new THREE.Vector3()), hasta = R.g.localToWorld(SITIO_MANO[k === 'manoVisG' ? 'vis' : 'ocu'].clone());
+        escena.attach(o); E.viajes.push({ o, desde, hasta, Q, R, k, rot: o.rotation.y });
+      }
+      // cada grupo pasa a ser de su nuevo dueño (también si se interrumpe la escena)
+      E.alTerminar = () => {
+        if (E.cambiadas) return; E.cambiadas = true;
+        E.viajes.forEach(v => { v.o.position.copy(v.hasta); v.R.g.attach(v.o); v.o.rotation.y = v.rot; });
+        const a = [A.manoVisG, A.manoOcuG, A.mano]; A.manoVisG = B.manoVisG; A.manoOcuG = B.manoOcuG; A.mano = B.mano; [B.manoVisG, B.manoOcuG, B.mano] = a;
+      };
+      E.papeles = [];
+      for (let i = 0; i < 10; i++) { const h = temp(E, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.65), plastico('#f4ead0'))); h.userData.i = i; E.papeles.push(h); }
+    });
+    mirarA(f, P, t < 2.4 ? A : B);
+    brazosA(f, -2.3 + Math.sin(t * 5) * 0.15, 0.6);
+    // las hojas de sus apuntes giran como un remolino entre las dos manos
+    const centro = E.viajes[0].desde.clone().lerp(E.viajes[2].desde, 0.5).setY(3);
+    E.papeles.forEach(h => { const a = t * 3 + h.userData.i * 0.63, ap = suave(limita(t / 0.8)) * (1 - suave(limita((t - 4.6) / 0.6)));
+      h.position.lerpVectors(manoDe(P), centro.clone().add(new THREE.Vector3(Math.cos(a) * 3.2, Math.sin(a * 1.7) * 0.8 + 1, Math.sin(a) * 1.6)), ap); h.rotation.set(a, a * 0.7, 0); h.visible = ap > 0.02; });
+    const k = suave(limita((t - 1.0) / 2.6));
+    E.viajes.forEach((v, i) => {
+      v.o.position.lerpVectors(v.desde, v.hasta, k); v.o.position.y += Math.sin(k * Math.PI) * (4 + (i % 2) * 1.2);
+      v.o.rotation.y = v.rot + k * Math.PI * 2;
+      if (k > 0 && k < 1 && Math.random() < 0.15) chispa(v.o.position.clone().add(new THREE.Vector3(0, 1.5, 0)), '#3fd0a0', { vel: new THREE.Vector3(0, 1, 0), vida: 0.6 });
+    });
+    if (k >= 1) unaE(E, 'aterriza', () => { E.alTerminar(); E.viajes.forEach(v => estallido(v.hasta.clone().setY(0.4), ['#3fd0a0', '#f4ead0'], 8, 2, 5)); narrar('¡Hecho! Las manos han cambiado de dueño.'); });
+    return t > 5.4;
+  },
+
+  // Maestro: baja al Portal de un rival el personaje de su mano que los demás ven; ese rival roba otro
+  maestro(E, dt) {
+    const { P, t } = E, f = P.fig, Q = E.objetivos[0];
+    unaE(E, 'ini', () => {
+      narrar(`Maestro: elige a ${NOMBRES[Q.id]} y baja a su Portal el personaje de su mano que todos ven. Después roba otro.`);
+      E.orig = { ...Q.mano }; E.o = Q.manoVisG; E.desde = E.o.getWorldPosition(new THREE.Vector3()); escena.attach(E.o); temp(E, E.o);
+      E.aro = temp(E, new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.1, 6, 6), brillo('#ffd86a', 1.8))); E.aro.rotation.x = Math.PI / 2;
+      E.alTerminar = () => { if (E.restaurado) return; E.restaurado = true; montarMano(Q, E.orig.vis, E.orig.ocu); Q.fig.visible = true; };
+    });
+    mirarA(f, P, Q); brazosA(f, -2.0 + Math.sin(t * 4) * 0.1, 0.5);
+    // un aro de luz dorada atrapa al personaje y lo sube a lo alto del Portal
+    const atrapa = suave(limita((t - 0.5) / 0.6)), vuela = suave(limita((t - 1.2) / 1.4));
+    const fin = cima(Q);
+    E.o.position.lerpVectors(E.desde, fin, vuela); E.o.position.y += Math.sin(vuela * Math.PI) * 3.5 + atrapa * (1 - vuela) * 0.6;
+    E.o.scale.setScalar(ESCALA_MANO + (1 - ESCALA_MANO) * vuela); E.o.rotation.y = vuela * Math.PI * 2;
+    E.aro.position.copy(E.o.position).add(new THREE.Vector3(0, 1.8, 0)); E.aro.scale.setScalar(atrapa * (1 - suave(limita((t - 2.8) / 0.4))) + 0.001); E.aro.rotation.z = t * 3;
+    if (t > 0.5 && t < 2.6 && Math.random() < 0.7) chispa(manoDe(P), '#ffd86a', { hacia: E.o.position.clone().add(new THREE.Vector3(0, 2, 0)), vida: 0.5, arco: 1 });
+    if (vuela >= 1) unaE(E, 'llega', () => { Q.fig.visible = false; estallido(cima(Q, 1), ['#ffd86a', '#ffffff'], 24, 3, 5); INV.temblor = 0.25; });
+    if (t >= 3.0) unaE(E, 'roba', () => {
+      const libres = orden.filter(n => n !== Q.id && n !== E.orig.vis && n !== E.orig.ocu);
+      montarMano(Q, libres[Math.floor(Math.random() * libres.length)], E.orig.ocu); E.nuevo = Q.manoVisG;
+      estallido(Q.g.localToWorld(SITIO_MANO.vis.clone()).setY(0.5), ['#ffd86a', '#c4bfd2'], 14, 2, 5);
+      narrar(`${NOMBRES[Q.id]} roba un personaje nuevo para su mano.`);
+    });
+    if (E.nuevo) E.nuevo.position.y = -2.6 * (1 - suave(limita((t - 3.0) / 0.6)));
+    if (t >= 5.0) unaE(E, 'restaura', () => { E.alTerminar(); narrar('(En el boceto todo vuelve a su sitio para poder repetirlo.)'); });
+    return t > 5.6;
+  },
+
+  // Pícaro (pasiva): cuando hay invocación con éxito y él cuenta, se lleva una Gema de más
+  picaro(E, dt) {
+    const { P, t } = E, f = P.fig;
+    unaE(E, 'ini', () => {
+      narrar('Pícaro: si una invocación tiene éxito y él cuenta, birla una Gema de más a la criatura.');
+      E.gema = temp(E, gemaBloque('#3a8fd6')); E.alto = cima(P, 7).add(new THREE.Vector3(0, 0, -0.5));
+      E.pila = P.g.position.clone().add(new THREE.Vector3(1.0, 0.75, 3.0)); E.humo = [];
+    });
+    const T = reloj.getElapsedTime();
+    // la Gema flota en lo alto, como si la criatura la estuviera ofreciendo
+    if (t < 1.6) { E.gema.position.copy(E.alto).add(new THREE.Vector3(Math.sin(T * 2) * 0.3, Math.sin(T * 3) * 0.2, 0)); E.gema.scale.setScalar(suave(limita(t / 0.5)) * 0.9 + 0.001); f.userData.cabeza.rotation.x = -0.5; }
+    // salto mortal hacia arriba, la atrapa y cae
+    const salto = limita((t - 1.0) / 1.4);
+    if (salto > 0 && salto < 1) {
+      f.position.y = ALTO + Math.sin(salto * Math.PI) * 6.2; f.rotation.x = -salto * Math.PI * 2;
+      brazosA(f, salto < 0.45 ? -2.9 : -0.6, 0.3);
+      if (salto > 0.45) { unaE(E, 'atrapa', () => { estallido(E.gema.position.clone(), ['#3a8fd6', '#ffffff'], 12, 2, 3); narrar('¡Zas! Una Gema más para el Pícaro…'); }); E.gema.position.copy(manoDe(P)); }
+    }
+    if (salto >= 1 && t < 3.6) { f.rotation.x = 0; brazosA(f, -0.6, 0.2); const k = suave(limita((t - 2.4) / 0.8)); E.gema.position.lerpVectors(manoDe(P), E.pila, k); E.gema.position.y += Math.sin(k * Math.PI) * 1.2; E.gema.scale.setScalar(0.9 - k * 0.25); }
+    if (t >= 3.2) unaE(E, 'guarda', () => estallido(E.pila, ['#3a8fd6', '#ffd86a'], 8, 1.5, 4));
+    // guiño y desaparece en una nube de humo
+    if (t >= 3.6) unaE(E, 'humo', () => {
+      narrar('…y desaparece en una nube de humo antes de que nadie se dé cuenta.');
+      f.visible = false;
+      for (let i = 0; i < 9; i++) { const n = temp(E, new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 6), new THREE.MeshStandardMaterial({ color: '#8a8aa0', transparent: true, opacity: 0.8 }))); n.position.copy(cima(P, 1 + Math.random() * 2.5)).add(new THREE.Vector3(azar(1.6), 0, azar(1.6))); E.humo.push(n); }
+    });
+    E.humo.forEach((n, i) => { const k = limita((t - 3.6) / 1.6); n.scale.setScalar(1 + k * 1.6); n.position.y += dt * 0.6; n.material.opacity = 0.8 * (1 - k); n.rotation.y += dt * (i % 2 ? 1 : -1); });
+    if (t >= 4.9) unaE(E, 'vuelve', () => { f.visible = true; estallido(cima(P, 1.5), ['#8a8aa0', '#3a8fd6'], 10, 2, 4); });
+    return t > 5.6;
+  },
+
+  // Metamorfo: gira entre humo rosa y pasa a parecer otro personaje (no animal), con la ficha encima
+  metamorfo(E, dt) {
+    const { P, t } = E, f = P.fig;
+    unaE(E, 'ini', () => {
+      const opciones = ['clarividente', 'cronomante', 'centinela', 'ocultista', 'estratega', 'cronista', 'aprendiz', 'picaro', 'maestro'];
+      P.ciclo = ((P.ciclo ?? -1) + 1) % opciones.length; E.como = opciones[P.ciclo];
+      narrar(`Metamorfo: paga una Gema de 1 y toma la ficha de ${NOMBRES[E.como]}. Cuenta como él mientras siga a la vista.`);
+      E.otro = PERSONAJES[E.como](); E.otro.visible = false; P.g.add(E.otro); (E.temporales ||= []).push(E.otro);
+      // la ficha: medallón hexagonal rosa con el color del personaje imitado
+      const ficha = new THREE.Group();
+      ficha.add(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.16, 6), plastico('#ff8ad8', { emissive: '#ff4ab8', emissiveIntensity: 0.4 })));
+      const centro = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.2, 6), brillo(COLOR_RUNA[E.como], 1.4)); ficha.add(centro);
+      const aro = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.07, 6, 6), plastico('#e2b453')); aro.rotation.x = Math.PI / 2; ficha.add(aro);
+      ficha.children.forEach(c => c.rotation.x += Math.PI / 2);
+      E.ficha = temp(E, ficha);
+    });
+    const giro1 = limita(t / 1.4), giro2 = limita((t - 4.2) / 1.2);
+    const quien = t < 1.4 || t >= 4.8 ? f : E.otro;
+    f.visible = quien === f; E.otro.visible = quien === E.otro;
+    E.otro.position.set(0, ALTO, 0);
+    const w = (giro1 > 0 && giro1 < 1) ? giro1 : (giro2 > 0 && giro2 < 1 ? giro2 : 0);
+    quien.rotation.y = w * Math.PI * 6; quien.position.y = ALTO + Math.sin(w * Math.PI) * 1.2;
+    if (w > 0 && Math.random() < 0.9) chispa(cima(P, Math.random() * 4).add(new THREE.Vector3(azar(2.4), 0, azar(2.4))), Math.random() < 0.5 ? '#ff8ad8' : '#5fe0d0', { vel: new THREE.Vector3(azar(2), 2, azar(2)), vida: 0.9 });
+    if (t >= 1.4) unaE(E, 'cambia', () => { estallido(cima(P, 2), ['#ff8ad8', '#5fe0d0', '#ffffff'], 30, 4, 4); });
+    if (t >= 4.8) unaE(E, 'vuelve', () => { estallido(cima(P, 2), ['#ff8ad8', '#5fe0d0'], 20, 3, 4); narrar('Al taparlo o girarlo, la ficha vuelve a la reserva y es de nuevo Metamorfo.'); });
+    const ve = suave(limita((t - 1.6) / 0.5)) * (1 - suave(limita((t - 4.2) / 0.4)));
+    E.ficha.position.copy(cima(P, 5.6 + Math.sin(t * 2) * 0.15)); E.ficha.rotation.y = t * 1.5; E.ficha.scale.setScalar(ve + 0.001);
+    if (E.otro.visible) brazosA(E.otro, -0.6 + Math.sin(t * 3) * 0.1, 0.35);
+    return t > 6.2;
+  },
+};
+// Los animales no tienen habilidad: solo cuentan para algunas invocaciones
+for (const id of ['reena', 'sora', 'lumo']) HABILIDADES[id] = (E, dt) => {
+  const { P, t } = E, f = P.fig;
+  unaE(E, 'ini', () => {
+    const para = Object.values(CRIATURAS).filter(C => C.need.includes(id)).map(C => C.nombre).join(', ').replace(/, ([^,]*)$/, ' y $1');
+    narrar(`${NOMBRES[id]} no tiene habilidad, pero hace falta para invocar a ${para}.`);
+  });
+  const k = (t / 0.8) % 1;
+  if (t < 2.4) { f.position.y = ALTO + Math.sin(k * Math.PI) * 0.9; f.rotation.y = Math.floor(t / 0.8) === 1 ? k * Math.PI * 2 : 0; }
+  if (Math.random() < 0.15) chispa(cima(P, 1.5).add(new THREE.Vector3(azar(2), 0, azar(2))), COLOR_RUNA[id], { vel: new THREE.Vector3(0, 2, 0), vida: 0.8 });
+  return t > 3.2;
 };
 
 const ESCENAS = [];
@@ -1089,23 +1549,33 @@ function objetivosDe(P) {
   // los Portales más cercanos, para que se vean bien en el móvil
   const cerca = puestos.filter(Q => Q !== P).sort((a, b) => a.g.position.distanceTo(P.g.position) - b.g.position.distanceTo(P.g.position));
   if (P.id === 'estratega') return [cerca[0], cerca[1]];
+  if (P.id === 'aprendiz' || P.id === 'maestro') {
+    // sin tocar manos que ya están moviendo otras escenas
+    const ocupados = new Set(ESCENAS.filter(E => ['aprendiz', 'maestro'].includes(E.P.id)).flatMap(E => [E.P, ...E.objetivos]));
+    const libres = cerca.filter(Q => !ocupados.has(Q) && Q.id !== 'clarividente');
+    return P.id === 'aprendiz' ? libres.slice(0, 2) : libres.slice(0, 1);
+  }
   if (['ocultista', 'cronista', 'cronomante'].includes(P.id)) return [cerca[0]];
   return [];
 }
 function empezarHabilidad(P) {
   if (!HABILIDADES[P.id]) return;
+  if (['aprendiz', 'maestro'].includes(P.id) && ESCENAS.some(E => E.objetivos.includes(P) && ['aprendiz', 'maestro'].includes(E.P.id))) return;
   const viejo = ESCENAS.find(E => E.P === P); if (viejo) terminarEscena(viejo);
   const E = { P, t: 0, hechos: new Set(), objetivos: objetivosDe(P) };
+  if ((P.id === 'aprendiz' && E.objetivos.length < 2) || (P.id === 'maestro' && !E.objetivos.length)) return;
   ESCENAS.push(E);
   E.objetivos.forEach(Q => Q.g.visible = true);
   if (elegido >= 0) { // de cerca: encuadra el efecto y los Portales afectados
     const ps = [P, ...E.objetivos].map(Q => Q.g.position), c = ps.reduce((a, b) => a.clone().add(b)).multiplyScalar(1 / ps.length);
     const ancho = Math.max(...ps.map(p => p.distanceTo(c)));
-    destino = { pos: c.setY(3.8), dist: (vertical() ? 36 : 21) + ancho * (vertical() ? 3.6 : 1.8) };
+    c.z += 2.6; destino = { pos: c.setY(3.2), dist: (vertical() ? 34 : 21) + ancho * (vertical() ? 3.0 : 1.6) };
   }
 }
 function terminarEscena(E) {
-  (E.temporales || []).forEach(o => escena.remove(o));
+  E.alTerminar?.();
+  (E.temporales || []).forEach(o => o.parent?.remove(o));
+  E.P.fig.visible = true;
   E.objetivos.forEach(Q => { Q.fig.visible = true; Q.fig.scale.setScalar(1); Q.fig.rotation.set(0, 0, 0); Q.g.rotation.y = 0; Q.g.position.y = 0; Q.g.visible = elegido < 0 || puestos.indexOf(Q) === elegido || ESCENAS.some(X => X !== E && X.objetivos.includes(Q)); });
   ESCENAS.splice(ESCENAS.indexOf(E), 1);
 }
@@ -1121,7 +1591,7 @@ function pasoHabilidades(dt) {
 }
 
 // ---------- cámara (cenital 3/4) y gestos ----------
-const distGeneral = () => vertical() ? 78 : 40;
+const distGeneral = () => vertical() ? 64 + filas * 9 : 26 + filas * 8;
 let ang = Number(params.get('ang') || 0), alt = Number(params.get('alt') || 0.6), dist = Number(params.get('dist') || distGeneral());
 const objetivo = new THREE.Vector3(0, Number(params.get('y') || 1.6), 0);
 let destino = null; // { pos, dist }
@@ -1147,7 +1617,7 @@ lienzoEl.addEventListener('pointermove', e => {
     ang -= dx * 0.007; alt = Math.min(1.45, Math.max(0.08, alt + dy * 0.005));
   } else if (punteros.size === 2) {
     const [a, b] = [...punteros.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-    if (pellizco) { dist = Math.min(70, Math.max(5, dist * pellizco / d)); destino = null; }
+    if (pellizco) { dist = Math.min(160, Math.max(5, dist * pellizco / d)); destino = null; }
     pellizco = d; movido += 99;
   }
 });
@@ -1157,7 +1627,7 @@ function soltar(e) {
 }
 lienzoEl.addEventListener('pointerup', soltar);
 lienzoEl.addEventListener('pointercancel', e => { punteros.delete(e.pointerId); pellizco = null; });
-lienzoEl.addEventListener('wheel', e => { e.preventDefault(); destino = null; dist = Math.min(70, Math.max(5, dist * (1 + e.deltaY * 0.001))); }, { passive: false });
+lienzoEl.addEventListener('wheel', e => { e.preventDefault(); destino = null; dist = Math.min(160, Math.max(5, dist * (1 + e.deltaY * 0.001))); }, { passive: false });
 addEventListener('resize', () => { camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 const rayo = new THREE.Raycaster();
@@ -1179,7 +1649,10 @@ boton(filaP, '›', () => elegir(elegido >= puestos.length - 1 ? 0 : elegido + 1
 const botonesA = {};
 Object.entries(ANIMACIONES).forEach(([k, v]) => botonesA[k] = boton(filaA, v, () => ponerAnim(k)));
 filaA.appendChild(Object.assign(document.createElement('span'), { className: 'sep' }));
-boton(filaA, '✦ Invocar', () => empezarInvocacion(), 'invocar');
+const filaI = document.getElementById('filaInvocaciones');
+boton(filaA, '✦ Invocar', () => { filaI.hidden = !filaI.hidden; }, 'invocar');
+Object.entries(CRIATURAS).forEach(([k, C]) => boton(filaI, C.nombre, () => { filaI.hidden = true; empezarInvocacion(k); }, 'criatura'));
+filaI.querySelectorAll('button').forEach((b, i) => { const C = Object.values(CRIATURAS)[i]; b.style.borderColor = C.c; b.title = `${C.set}: ${lista(C.need)}`; });
 
 function elegir(i) {
   elegido = i;
@@ -1187,10 +1660,10 @@ function elegir(i) {
   botonesP.forEach((b, k) => b.classList.toggle('activo', k === i + 1));
   puestos.forEach((P, k) => P.g.visible = i < 0 || k === i); // de cerca, solo el elegido
   botonesP[i + 1].scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
-  if (i < 0) { destino = { pos: new THREE.Vector3(0, 2, 0), dist: distGeneral() }; titulo.firstChild.textContent = 'Todos'; }
+  if (i < 0) { destino = { pos: new THREE.Vector3(0, 2, 2.5), dist: distGeneral() }; titulo.firstChild.textContent = 'Todos'; }
   else {
     const P = puestos[i];
-    destino = { pos: new THREE.Vector3(P.g.position.x, 2.6, P.g.position.z + 1.0), dist: vertical() ? 30 : 18 };
+    destino = { pos: new THREE.Vector3(P.g.position.x, 2.6, P.g.position.z + 2.4), dist: vertical() ? 34 : 20 };
     titulo.firstChild.textContent = NOMBRES[P.id];
   }
   marcarAnim();
@@ -1225,7 +1698,7 @@ const inicial = orden.indexOf(params.get('ver'));
 window.ESCENAS = ESCENAS;
 elegir(inicial);
 if (params.get('anim')) setTimeout(() => ponerAnim(params.get('anim')), 200);
-if (params.has('invocar')) setTimeout(empezarInvocacion, 300);
+if (params.has('invocar')) setTimeout(() => empezarInvocacion(params.get('invocar') || 'baelorith'), 300);
 if (inicial >= 0 || params.has('dist')) { if (destino) { objetivo.copy(destino.pos); if (!params.has('dist')) dist = destino.dist; destino = null; } }
 bucle();
 window.listo = true;
