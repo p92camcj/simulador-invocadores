@@ -1,6 +1,6 @@
 # Manual de modelado 3D de personajes (Invocadores)
 
-Última actualización: 2026-11-15 18:25 (Europe/Madrid)
+Última actualización: 2026-11-15 18:45 (Europe/Madrid)
 
 Manual práctico, escrito mientras aprendemos, para pasar un personaje de
 Invocadores de **una ilustración** a **un modelo 3D animado** que se pueda
@@ -128,6 +128,9 @@ Probado con Blender 5.3 (menús en español). Atajos básicos del visor 3D:
 botón central del ratón = girar la vista, `Mayús` + botón central =
 desplazar, rueda = acercar.
 
+**Letra más grande:** `Editar ▸ Preferencias ▸ Interfaz ▸ Visualización ▸
+Escala de resolución` (1,25 o 1,50). Agranda texto, menús e iconos a la vez.
+
 ### Orden de trabajo (importa)
 
 1. **Carpeta propia por personaje** dentro del repo:
@@ -185,6 +188,23 @@ mancha; a mano quedaría más ordenado. Buen ejemplo para clase.
 
 ### Mixamo (web gratuita de Adobe)
 
+#### Camino recomendado: exportar en FBX desde Blender (probado 2026-11-15)
+
+Un único archivo, sin ZIP ni Bloc de notas:
+
+1. Pestaña *Material* (bola roja del panel derecho) ▸ *Superficie*: comprobar
+   **Metálico 0**, **Rugosidad 1**, **Alfa 1** y, en el apartado
+   *Especularidad*, poner **IR a 0** (venía a 0,5). Sin este cambio, en
+   Mixamo el personaje sale "neblinoso", con un velo blanco: es el brillo
+   especular sumado a todo el modelo.
+2. Guardar el `.blend`.
+3. `Archivo ▸ Exportar ▸ FBX (.fbx)`, *Modo de ruta → Copiar* y activar el
+   botón de al lado (icono de caja, **Incrustar texturas**).
+4. Subir el `.fbx` directamente a Mixamo.
+
+#### Camino alternativo: OBJ + MTL + PNG en un ZIP
+
+
 - **Problema 1:** Mixamo rechazó el GLB con el error *"unable to map your
   existing skeleton"*. Mixamo no acepta bien los GLB de estas IA.
 - **Solución:** convertir el modelo a **OBJ + MTL + PNG** (malla, material y
@@ -206,8 +226,6 @@ mancha; a mano quedaría más ordenado. Buen ejemplo para clase.
   illum 1
   map_Kd Image_0.png
   ```
-  *(Por probar: exportar en FBX con "Incrustar texturas" en vez de OBJ, que
-  evitaría el ZIP y el Bloc de notas.)*
 
 ### Qué hay dentro de un `.obj` y un `.mtl`
 
@@ -322,3 +340,6 @@ convence, se aplica al resto.
   coherentes: no hacen falta (frontal sola, o frontal + trasera). Julio
   hace la conversión a OBJ él mismo en Blender; tropiezos y soluciones
   (guardar `.blend` primero, rosa, `Kd` ausente → negro) en secciones 2-3.
+- **2026-11-15 (tarde, 3)** — El FBX con texturas incrustadas funciona en
+  Mixamo y pasa a ser el camino principal. Velo blanco resuelto poniendo a 0
+  la IR de *Especularidad*. Siguiente: marcadores del auto-rig.
