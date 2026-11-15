@@ -23,5 +23,7 @@ Páginas de prueba que **no forman parte del juego** (no las carga
   y animaciones (reposo, andar, saludar, habilidad). Parámetros: `?quien=a,b`, `ver`, `anim`, `dist`, `alt`,
   `ang`, `quieto`, `invocar`. Botón «✦ Invocar»: invocación de Baelorith
   (Estratega + Cronomante + Cronista), reparto de Gemas y nuevo Portal central
-  montándose pieza a pieza. No toca el juego.
+  montándose pieza a pieza. «Habilidad» lanza una escena propia por personaje
+  (Centinela, Ocultista, Cronista, Cronomante, Estratega, Clarividente,
+  Entusiasta). No toca el juego.
   Publicada en https://p92camcj.github.io/simulador-invocadores/prototipos/figuras-bloques.html
