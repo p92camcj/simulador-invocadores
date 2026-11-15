@@ -1,6 +1,6 @@
 # Manual de modelado 3D de personajes (Invocadores)
 
-Última actualización: 2026-11-15 17:28 (Europe/Madrid)
+Última actualización: 2026-11-15 18:25 (Europe/Madrid)
 
 Manual práctico, escrito mientras aprendemos, para pasar un personaje de
 Invocadores de **una ilustración** a **un modelo 3D animado** que se pueda
@@ -122,18 +122,62 @@ riggeará después.
 
 ---
 
-## 2. Preparar la malla en Blender *(pendiente)*
+## 2. Preparar la malla en Blender
 
-Pasos que haremos cada vez:
+Probado con Blender 5.3 (menús en español). Atajos básicos del visor 3D:
+botón central del ratón = girar la vista, `Mayús` + botón central =
+desplazar, rueda = acercar.
 
-1. `Archivo ▸ Importar ▸ glTF 2.0` y abrir el GLB.
-2. Comprobar escala (el personaje debe medir ~1,7 unidades = 1,7 m) y que
-   mire hacia **-Y** (el "frente" de Blender). Aplicar con `Ctrl+A ▸ Todo`.
-3. Poner los pies en el suelo (origen del objeto entre los pies).
-4. Limpiar: `Malla ▸ Limpiar ▸ Fusionar por distancia` para quitar
-   vértices duplicados.
-5. Si hay demasiados triángulos, modificador **Decimate**. Para el juego en
-   móvil, apuntar a **5.000-15.000 triángulos** por personaje.
+### Orden de trabajo (importa)
+
+1. **Carpeta propia por personaje** dentro del repo:
+   `assets/modelos3d/<personaje>/` (ilustraciones 2D de partida, GLB de
+   Trellis, `.blend` y exportaciones juntos). Nada en Descargas: es fácil
+   confundirse de archivo.
+2. Abrir Blender y borrar el cubo inicial (`Supr`). Si veníamos de un intento
+   anterior, **cerrar Blender del todo** y volver a abrirlo: Blender
+   recuerda imágenes cargadas antes aunque se borre el modelo.
+3. **Guardar antes de nada**: `Archivo ▸ Guardar como` →
+   `assets/modelos3d/<personaje>/<personaje>.blend`.
+4. `Archivo ▸ Importar ▸ glTF 2.0 (.glb/.gltf)` y elegir el GLB.
+5. Ver los colores: arriba a la derecha del visor hay cuatro círculos (modos
+   de vista). El tercero es *Vista previa de material* (atajo: `Z`).
+   | Modo | Qué muestra |
+   |---|---|
+   | Alámbrico | Solo las líneas de la malla |
+   | Sólido | Todo gris, para trabajar la forma (modo inicial) |
+   | Vista previa de material | Con texturas |
+   | Renderizado | Con luces reales, más lento |
+6. Sacar la textura del GLB: `Archivo ▸ Datos externos ▸ Desempaquetar
+   recursos ▸ Usar archivos en el directorio actual`. Crea el PNG
+   (`Image_0.png`) junto al `.blend`.
+7. Opcional: escala. Trellis deja el modelo de 1 m de alto. `S`, `1.8`,
+   `Intro` y luego `Ctrl+A ▸ Escala` para fijarla. A Mixamo le da igual.
+
+### La textura y el mapa UV
+
+Al abrir el PNG se ve un "collage" de trozos (capa, botas, manos, varias
+caras...). **Es normal**: es el *mapa UV*, la piel del personaje recortada y
+extendida en plano como el patrón de un sastre. Cada triángulo sabe qué
+trocito le corresponde (sus coordenadas UV), y al "coserlo" sobre la malla
+aparece el personaje. Las IA lo recortan de forma desordenada y con alguna
+mancha; a mano quedaría más ordenado. Buen ejemplo para clase.
+
+### Colores que avisan de problemas
+
+| Color en pantalla | Significado |
+|---|---|
+| Gris | Estás en modo *Sólido*; cambia a *Vista previa de material* |
+| **Rosa** | Blender **no encuentra la textura** (ruta rota, intento anterior, archivo movido) |
+| **Negro** (en Mixamo) | El material no tiene color base (`Kd`) o es 100 % metálico; ver sección 3 |
+
+### Pendiente para más adelante
+
+- Comprobar que mire hacia el frente y tenga los pies en el suelo.
+- `Malla ▸ Limpiar ▸ Fusionar por distancia` para quitar vértices duplicados.
+- Si hay demasiados triángulos, modificador **Decimate**. Para el juego en
+  móvil, apuntar a **5.000-15.000 triángulos** por personaje (el Cronomante
+  de Trellis tiene ~20.700).
 
 ---
 
@@ -147,8 +191,46 @@ Pasos que haremos cada vez:
   textura) y subirlos **juntos en un ZIP**. Con eso Mixamo sí hizo el
   auto-rig. (Copia del ZIP usado: carpeta del proyecto
   `personajes3d/mixamo/personaje-mixamo.zip`.)
-  En Blender: `Archivo ▸ Exportar ▸ Wavefront (.obj)`, marcar *Materiales*,
-  y meter en un ZIP el `.obj`, el `.mtl` y la textura `.png`.
+  En Blender: `Archivo ▸ Exportar ▸ Wavefront (.obj)`, en *Materiales*
+  poner *Modo de ruta → Copiar*, y meter en un ZIP el `.obj`, el `.mtl` y
+  la textura `.png`. Si la textura ya está al lado del `.obj` (por haberla
+  desempaquetado ahí), Blender no la vuelve a copiar: es normal.
+- **Problema 2: en Mixamo el personaje sale negro.** El `.mtl` que escribe
+  Blender **no lleva la línea `Kd`** (color base) cuando el color viene de
+  una textura, y Mixamo multiplica textura × color base ausente = negro.
+  Arreglo: abrir el `.mtl` con el Bloc de notas y dejarlo así (el nombre de
+  `newmtl` debe ser el que ya tenía):
+  ```
+  newmtl Material_0
+  Kd 1.000000 1.000000 1.000000
+  illum 1
+  map_Kd Image_0.png
+  ```
+  *(Por probar: exportar en FBX con "Incrustar texturas" en vez de OBJ, que
+  evitaría el ZIP y el Bloc de notas.)*
+
+### Qué hay dentro de un `.obj` y un `.mtl`
+
+Son archivos de texto. El `.obj` lista vértices (`v`), coordenadas UV
+(`vt`) y caras (`f`), y **apunta al material**: `mtllib cronomante.mtl`
+(qué archivo de materiales usar) y `usemtl Material_0` (qué material). El
+`.mtl` no menciona al `.obj`; solo define materiales por nombre.
+
+| Línea | Qué significa |
+|---|---|
+| `newmtl` | Nombre del material (debe coincidir con `usemtl` del `.obj`) |
+| `Kd` | Color **difuso** (*diffuse*): el color base; se multiplica por la textura |
+| `map_Kd` | Imagen que hace de color difuso: la textura |
+| `Ka` | Color **ambiente** (*ambient*): cómo se ve en la sombra |
+| `Ks` | Color del **brillo especular** (*specular*): el reflejo de la luz |
+| `Ns` | Tamaño de ese brillo (0 = muy difuso, 1000 = punto pequeño) |
+| `Ke` | Color **emisivo** (*emissive*): luz propia |
+| `Ni` | Índice de refracción, para transparentes (vidrio ≈ 1,5) |
+| `d` | Opacidad (*dissolve*): 1 = opaco, 0 = invisible |
+| `Pm` | Metálico (0-1). Un metal puro sin entorno que reflejar se ve negro |
+| `illum` | Modelo de luz: 0 = solo color, 1 = con luz, 2 = con brillo, 3 = con reflejos tipo espejo |
+
+Para Mixamo basta con color + textura.
 - En Mixamo se colocan los marcadores (barbilla, muñecas, codos, rodillas,
   ingle). Con túnica larga, la ingle y las rodillas se ponen "donde
   estarían" bajo la tela.
@@ -234,3 +316,9 @@ convence, se aplica al resto.
   cambia al Space gratuito `microsoft/TRELLIS` de Hugging Face. Julio
   prepara con Gemini vistas en T-pose (frontal, trasera y laterales) con
   los brazos separados de la capa.
+- **2026-11-15 (tarde, 2)** — Cronomante generado en el Space de TRELLIS a
+  partir de la T-pose frontal de Gemini (~15.000 vértices, ~20.700
+  triángulos, 1,7 MB, T-pose limpia). Gemini no supo hacer laterales
+  coherentes: no hacen falta (frontal sola, o frontal + trasera). Julio
+  hace la conversión a OBJ él mismo en Blender; tropiezos y soluciones
+  (guardar `.blend` primero, rosa, `Kd` ausente → negro) en secciones 2-3.
