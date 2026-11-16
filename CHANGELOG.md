@@ -4,6 +4,28 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.41.1.221] - 2026-11-16
+
+### Corregido: la Clarividente tapada dejaba ver la mano
+- Al taparse una Clarividente, mientras su dueña elegía qué carta seguir
+  viendo, las demás veían por un momento su otra carta (la visibilidad aún
+  era la de antes). `construirVistaMesa()` (`js/vista-mesa.js`) y
+  `sanearPartidaParaAsiento()` (`js/red/sanear.js`) tratan `_clariEligiendo`
+  igual que `hasClariActivo`.
+- En el Escenario/Por bloques la capa de una figura de la mano se quedaba
+  transparente si la orden de volver a opacarla llegaba a mitad de la
+  animación de aclararla: `cambiarMano()` (`tablero.js`) espera a que acabe
+  la transición anterior.
+
+### Mejorado: invocación «Por bloques»
+- La funda puede aportar `magiaInvocacion()`, `cortarMagia()` y
+  `montarPortal()` (ver `Documentacion_Simulador_Invocadores.md`).
+  `bloques.js` trae la magia de la maqueta: columnas de luz y aros en los
+  Portales de los requeridos, rayos de sus manos al cielo, vórtice, onda y
+  destello al estallar y aura con anillos de runas, halo y chispas en órbita
+  alrededor de la criatura. El Portal central nuevo se monta pieza a pieza
+  en vez de subir del suelo. El Escenario 3D no cambia.
+
 ## [1.41.0.220] - 2026-11-16
 
 ### Nuevo: modo de visualización «Por bloques» (por defecto)

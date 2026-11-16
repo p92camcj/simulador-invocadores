@@ -512,6 +512,15 @@ tiempo ni decorados. En `tablero.js`, `cambiarFunda(nombre)` rehace los
 modelos y Portales con la funda nueva y `opcionesFunda()` da las opciones
 de ambiente de la funda (o null).
 
+Desde 1.41.1 una funda también puede aportar efectos de invocación:
+`magiaInvocacion({ escena, F, R, req, tono, tono2 })` devuelve
+`{ boom(), criatura(cr), parte(), apagar() }`, que `invocar()` llama en
+cada momento del guion común (`req` = `[{ base, mano(), color }]` de los
+personajes requeridos); `cortarMagia()` la quita si se corta la partida; y
+`montarPortal(g, { runaGuia })` (promesa) sustituye a la subida del Portal
+nuevo en `alzarPortal()`. Bloques usa las tres: columnas, rayos, vórtice y
+aura de la maqueta, y el Portal montado pieza a pieza.
+
 Motor 3D (Three.js vendorizado en `vendor/three`). Lo usan el Escenario de
 la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`
 (`main.js` + `escenas.js`).

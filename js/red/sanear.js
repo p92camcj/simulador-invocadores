@@ -19,8 +19,11 @@ function tapar(carta) {
 
 /** ¿Ve el asiento `asiento` esta carta de la mano de `players[idx]`? */
 function cartaDeManoVisible(jugadora, idx, carta, asiento) {
-  if (idx === asiento) return !!(carta.vis?.owner || jugadora.hasClariActivo);
-  return !jugadora.hasClariActivo && carta.vis?.others === true;
+  // La Clarividente manda mientras está visible y hasta que su dueña elige
+  // qué carta sigue viendo (igual que en js/vista-mesa.js).
+  const clari = !!(jugadora.hasClariActivo || jugadora._clariEligiendo);
+  if (idx === asiento) return !!(carta.vis?.owner || clari);
+  return !clari && carta.vis?.others === true;
 }
 
 /** Gemas de otra jugadora: se ve cuántas hay y de qué invocación, no su valor. */
