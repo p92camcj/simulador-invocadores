@@ -97,8 +97,14 @@
       <label class="check-espectaculo"><input id="chkEspectaculo" type="checkbox" checked />
         Modo espectáculo: ver a cada personaje aparecer en su Portal y una escena por habilidad</label>
 
-      <label class="check-espectaculo"><input id="chk3D" type="checkbox" />
-        <span>Jugar en el <b>Escenario 3D</b> (en pruebas): la mesa y los personajes en 3D, sin cartas. Se puede cambiar a la Mesa de cartas desde el menú ☰ en plena partida. Descarga algo más de datos la primera vez</span></label>
+      <label>Cómo ver la partida:
+        <select id="selVista">
+          <option value="bloques" selected>🧱 Por bloques (figuritas de juguete)</option>
+          <option value="escenario">🧙 Escenario 3D</option>
+          <option value="mesa">🎴 Mesa de cartas</option>
+        </select>
+      </label>
+      <p class="nota-vista">Por bloques y Escenario son la partida entera en 3D, sin cartas; se puede cambiar de vista desde el menú ☰ en plena partida.</p>
 
       <button id="btnStart" type="button" class="btn primary">Iniciar partida</button>
 

@@ -74,7 +74,7 @@ export function quitarOrbe(o) { fuera(o); }
 export function crearEscudos() {
   const grupo = new THREE.Group();
   const rojo = new THREE.MeshLambertMaterial({ color: 0xc23a2e, flatShading: true }), oro = new THREE.MeshLambertMaterial({ color: 0xe0aa48, emissive: 0x4a3008, flatShading: true });
-  for (let n = 0; n < 4; n++) { const e = new THREE.Group(), an = n / 4 * Math.PI * 2; e.position.set(Math.sin(an) * 1.35, 1.0, Math.cos(an) * 1.35); e.rotation.y = an; e.scale.setScalar(0.8);
+  for (let n = 0; n < 4; n++) { const e = new THREE.Group(), an = n / 4 * Math.PI * 2; e.position.set(Math.sin(an) * 1.6, 1.6, Math.cos(an) * 1.6); e.rotation.y = an; e.scale.setScalar(1.25); e.userData.fase = n * 1.6;
     const cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 6), rojo); cuerpo.rotation.x = Math.PI / 2; cuerpo.scale.set(1, 1, 1.3);
     const borde = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.035, 5, 6), oro); borde.scale.y = 1.3; borde.rotation.z = Math.PI / 6;
     const tachon = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), oro); tachon.position.z = 0.05; e.add(cuerpo, borde, tachon); grupo.add(e); }

@@ -471,13 +471,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ## js/escenas3d.js
 
-Los dos modos de ver la partida (1.36.0): **Mesa** (cartas en perspectiva
-con escenas 2D) y **Escenario** (todo en 3D, `js/personajes3d/tablero.js`).
-Solo presentación; no toca reglas.
+Las formas de ver la partida. Desde 1.41.0 son tres (`VISTAS`): **Por
+bloques** (la de serie: el Escenario 3D con la funda de juguetes de
+bloques), **Escenario 3D** (el mismo motor con la funda clásica) y **Mesa
+de cartas** (cartas en perspectiva con escenas 2D). Solo presentación; no
+toca reglas.
 
-- `escenarioActivo()` / `fijarEscenario(valor)`: modo elegido, guardado en
-  `localStorage['invocadores.personajes3d']` ('1' = Escenario; la Mesa es lo
-  normal). Se cambia en `#chk3D` (inicio) o en el menú ☰ en plena partida.
+- `VISTAS`, `vistaActual()`, `nombreVista(v)`, `fijarVista(v)`: vista
+  elegida, guardada en `localStorage['invocadores.vista']` ('bloques' |
+  'escenario' | 'mesa'). Se cambia en `#selVista` (inicio) o en el menú ☰ en
+  plena partida. Bloques y Escenario comparten el mismo tablero 3D: solo
+  cambian de funda (`cambiarFunda()` de `tablero.js`).
+- `escenarioActivo()` / `fijarEscenario(valor)`: compatibilidad (true si la
+  vista es 3D, bloques o escenario).
 - `cargarTablero()` / `tablero()`: carga perezosa del Escenario (Three.js y
   `js/personajes3d/` solo se descargan al elegirlo) y el módulo ya cargado.
 - `escenarioEnUso()`: elegido, cargado y en pantalla.
@@ -488,9 +494,23 @@ Solo presentación; no toca reglas.
 - `reiniciarEscenario()`: partida nueva o salida al menú.
 - `sonido3dActivo()` / `fijarSonido3D(valor)`: sonido sintetizado
   (`localStorage['inv3d.sonido']`, apagado por defecto).
-- `initEscenas3D()`: enlaza `#chk3D` de la pantalla de inicio.
+- `initEscenas3D()`: enlaza `#selVista` de la pantalla de inicio.
 
 ## js/personajes3d/
+
+**Fundas** (1.41.0): `funda.js` guarda la estética activa del Escenario.
+`registrarFunda(nombre, funda)`, `fijarFunda(nombre)` (true si cambia),
+`nombreFunda()`, `fundaActual()` (null = la clásica de `modelos.js` y
+`portales.js`). Una funda puede aportar `construirModelo(nombre)` (mismo
+esqueleto `art` que `modelos.js`), `crearPortal(v, semilla)` (misma
+interfaz que `portales.js`), `crearSuelo()` o `montarAmbiente({ raiz,
+mundo, cfg })` y `opcionesAmbiente`. `bloques.js` registra la funda
+`'bloques'`: figuras, criaturas y Portales de juguete de bloques (sacados
+de `prototipos/figuras-bloques.html`) y una placa con tetones hexagonales
+de un color a elegir (`opcionesAmbiente.placa`), con luz de día fija y sin
+tiempo ni decorados. En `tablero.js`, `cambiarFunda(nombre)` rehace los
+modelos y Portales con la funda nueva y `opcionesFunda()` da las opciones
+de ambiente de la funda (o null).
 
 Motor 3D (Three.js vendorizado en `vendor/three`). Lo usan el Escenario de
 la partida (`tablero.js`) y la maqueta `prototipos/personajes-3d.html`

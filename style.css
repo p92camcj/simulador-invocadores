@@ -368,3 +368,4 @@ body.mesa-en-partida .narrador { bottom: calc(env(safe-area-inset-bottom, 0px) +
 .panel-online .nota-red { font-size: 0.8rem; opacity: 0.7; }
 /* La invitada solo ve el panel de la sala: la partida la configura la mesa. */
 #setup.setup-invitada > :not(#panelOnline) { display: none !important; }
+.nota-vista { margin: 4px 0 12px; font-size: 0.82rem; opacity: 0.75; }

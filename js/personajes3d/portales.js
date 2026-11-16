@@ -5,6 +5,7 @@
 // cambia qué está roto, la estrella y el tono, pero son la misma familia.
 import { THREE, mundo, siempreReal as siempre } from './mundo.js';
 import { texturaBrillo } from './efectos.js';
+import { fundaActual } from './funda.js';
 
 export const ALTURA_TARIMA = 0.32;
 
@@ -129,6 +130,8 @@ export function nombrarPortal(portal, nombre) {
 }
 
 export function crearPortal(v, semilla = 1) {
+  const propio = fundaActual()?.crearPortal?.(v, semilla);
+  if (propio) return propio;
   texturasComunes();
   let s = semilla * 7919; const rnd = () => (s = (s * 16807 + 13) % 2147483647) / 2147483647;
   const g = new THREE.Group();

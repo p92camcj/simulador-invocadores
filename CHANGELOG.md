@@ -4,6 +4,41 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.41.0.220] - 2026-11-16
+
+### Nuevo: modo de visualización «Por bloques» (por defecto)
+- Tres vistas: Por bloques, Escenario 3D y Mesa de cartas (`VISTAS`,
+  `vistaActual()`, `fijarVista()` en `js/escenas3d.js`;
+  `localStorage['invocadores.vista']`). `#chk3D` pasa a ser el desplegable
+  `#selVista`; el menú ☰ ofrece «Cambiar a …» para las otras dos.
+- «Fundas» del Escenario: `js/personajes3d/funda.js` (`registrarFunda`,
+  `fijarFunda`, `fundaActual`). `construirModelo()` (`modelos.js`),
+  `crearPortal()` (`portales.js`) y el ambiente (`ambiente.js`) preguntan
+  antes a la funda activa. Bloques y Escenario son el mismo motor con otra
+  funda; `cambiarFunda()` y `opcionesFunda()` en `tablero.js`.
+- `js/personajes3d/bloques.js`: funda de juguetes de bloques (figuras,
+  criaturas y Portales del boceto `prototipos/figuras-bloques.html`, con
+  el mismo esqueleto que `modelos.js`; `sinCodo` en `personajes.js`). Su
+  ambiente es solo una placa con tetones hexagonales de 10 colores, con luz
+  de día fija (☰ → «Color de la placa»).
+- Escudos de la Centinela (`crearEscudos()` en `magia.js`, `seguirEscudos()`
+  en `tablero.js`) más altos y grandes; cada uno levita y gira siempre.
+
+### Boceto de bloques
+- Clarividente al derecho (ella ve sus dos personajes; los demás, dos
+  encapuchados). Centinela: escudos en lo alto, más grandes y girando.
+  Ocultista: volutas de humo de su orbe (ocultar) y de vuelta (desocultar).
+  Entusiasta: coge una Gema de su Portal y la lanza (sin orbe en la mano).
+  Estratega: sus propios orbes vuelan, crecen como globos y alzan los
+  Portales. Aprendiz: sus hojas forman torbellinos que llevan las manos.
+  Pícaro: sin orbe; birla la Gema de puntillas, silbando, y se esconde bajo
+  una capucha. Metamorfo: consume una Gema antes de transformarse y
+  conserva el pelo rosa. Sora, mucho más pequeño. Invocaciones con columnas
+  de luz en los Portales, rayos, vórtice, onda expansiva y aura de runas y
+  chispas alrededor de la criatura (`magiaInvocacion()`).
+
+---
+
 ## [1.40.1.208] - 2026-11-14
 
 ### Corregido: los invitados no entraban en una sala nueva

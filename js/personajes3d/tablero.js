@@ -25,6 +25,10 @@ import { crearAmbiente, sonidoAmbiente, fijarAmbiente as fijarAmb, ambienteActua
 import { velocidadAnimaciones, alCambiarVelocidad } from '../velocidad.js';
 export { OPCIONES_AMBIENTE, ambienteActual };
 import { firmaPortal, cambioPortal } from '../vista-mesa.js';
+import { fijarFunda, fundaActual } from './funda.js';
+/** Opciones de ambiente propias de la funda activa (o null: las del Escenario). */
+export const opcionesFunda = () => fundaActual()?.opcionesAmbiente ?? null;
+import './bloques.js';   // registra la funda «Por bloques»
 
 const SEP = 3.5;                 // distancia entre Portales vecinos
 const CRIATURA_POR_NIVEL = { C: 'Cirelia', B: 'Baelorith', A: 'Aelgorth', '*': 'Madain' };
@@ -98,6 +102,18 @@ export function reiniciar() {
   for (const e of gemasAsiento.values()) { e.g.visible = false; e.firma = null; }
   quitarEscudos();
   if (visible) { visible = false; lienzo.classList.add('oculto'); pausar(); sonidoAmbiente(false); }
+}
+
+/**
+ * Cambia la «funda» (la estética: figuras, Portales, criaturas y suelo; ver
+ * funda.js). Se desmonta todo y el próximo repintado lo vuelve a montar.
+ */
+export function cambiarFunda(nombre) {
+  if (!fijarFunda(nombre) || !lienzo) return;
+  reiniciar();
+  for (const p of portales.values()) { p.g.parent?.remove(p.g); p.g.traverse(o => pickables.delete(o)); }
+  portales.clear(); nPortales = 0;
+  fijarAmb({});
 }
 
 function cortar() {
@@ -1227,7 +1243,10 @@ function seguirEscudos(dt, t) {
     e.k = THREE.MathUtils.clamp(e.k + dt * (e.fuera ? -2.5 : 1.8), 0, 1);
     if (e.fuera && e.k <= 0) { quitar(e.g); escudosPortal.delete(clave); continue; }
     if (p) e.g.position.copy(p.g.position).add(V(0, ALTURA_TARIMA + Math.sin(t * 1.6 + p.g.position.x) * 0.06, 0));
-    e.g.rotation.y += dt * 0.7; e.g.scale.setScalar(Math.max(0.01, rebote(e.k)));
+    e.g.rotation.y += dt * 0.7;
+    // Cada escudo levita a su ritmo y gira sobre sí mismo, siempre.
+    for (const s of e.g.children) { const f = s.userData.fase ?? 0; s.position.y = 1.6 + Math.sin(t * 2 + f) * 0.12; s.rotation.z = t * 1.4 + f; }
+    e.g.scale.setScalar(Math.max(0.01, rebote(e.k)));
     e.golpe = Math.max(0, (e.golpe ?? 0) - dt * 2.5);
     if (e.golpe > 0) e.g.scale.multiplyScalar(1 + e.golpe * 0.18);
   }
@@ -1252,7 +1271,7 @@ export function rebotar(clave, origen = null) {
     try {
       if (quien?.userData.modelo && !quien.userData.ocupado) { mirar(quien, p.g.position); S.cargar(110, 0.8); desde = await conjurar(quien, { pose: 'juntas', dur: 0.8 }); }
       const dir = desde.clone().sub(centro).setY(0); if (dir.lengthSq() < 0.01) dir.set(0, 0, 1); dir.normalize();
-      const choque = centro.clone().addScaledVector(dir, 1.5).add(V(0, 1.0, 0));
+      const choque = centro.clone().addScaledVector(dir, 1.6).add(V(0, 1.6, 0));
       // La Centinela de ese asiento se pone en guardia.
       const guardianas = [...portales.values()].map(q => q.actor).filter(a => a?.userData.modelo && a.userData.cv?.visible && a.userData.cv.nombre === 'Centinela' && !a.userData.ocupado);
       guardianas.forEach(a => posar(a, 'bloqueo', 14));

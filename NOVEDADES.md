@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.41.0.220 - 2026-11-16
+
+- **Nueva forma de ver la partida: «Por bloques»**, y es la que sale de
+  serie. Personajes, criaturas y Portales de juguete de bloques sobre una
+  gran placa con tetones. Puedes elegir el color de la placa en el menú ☰.
+- En el inicio y en el menú ☰ eliges entre **Por bloques**, **Escenario 3D**
+  y **Mesa de cartas**, también en mitad de la partida.
+- Los escudos de la Centinela flotan más altos, son más grandes y giran sin
+  parar.
+
 ## 1.40.1.208 - 2026-11-14
 
 - **Arreglado: los invitados no podían entrar en una sala nueva** si
