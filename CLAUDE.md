@@ -489,6 +489,17 @@ in `nextTurn()`.
   its own model: shared body in `criatura()` plus `ADORNOS_CRIATURA`.
   The prototype page `prototipos/personajes-3d.html` runs the
   predefined scenes of `escenas.js` with the same models.
+  **Since 1.41.0 there are three views** (`VISTAS` in `escenas3d.js`,
+  `localStorage['invocadores.vista']`, `#selVista` in setup, ☰ menu
+  mid-game): **Por bloques** (the default), **Escenario 3D** and **Mesa**.
+  Bloques and Escenario are the SAME 3D board with a different "funda"
+  (skin, owner's request: a new view must only change the look):
+  `js/personajes3d/funda.js` keeps the active one, and `modelos.js`
+  (`construirModelo`), `portales.js` (`crearPortal`) and `ambiente.js`
+  (`montarAmbiente`) ask it first. `bloques.js` is the block-toy skin (no
+  LEGO brand, hexagonal studs), built from `prototipos/figuras-bloques.html`;
+  its ambience is only a coloured plate (no time of day, weather or
+  scenery, by owner's choice). A new view = a new `registrarFunda()`.
 - **`js/mesa3d.js`** + **`mesa3d.css`** + **`js/vista-mesa.js`** — "Mesa
   3D" view (added 1.27.0, 2026-11-06), built for touch/mobile, pure CSS 3D
   (the owner chose it over Three.js). **It is the only view, on desktop

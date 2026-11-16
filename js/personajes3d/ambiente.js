@@ -12,6 +12,7 @@
 //   imágenes de terceros.
 //
 // Lo elegido se guarda en el dispositivo (localStorage 'inv3d.ambiente').
+import { fundaActual } from './funda.js';
 import { THREE, mundo, siempreReal } from './mundo.js';
 import { ambienteSonoro, trueno } from './sonido.js';
 
@@ -102,6 +103,13 @@ function vaciar() {
 
 function montar() {
   vaciar();
+  const funda = fundaActual();
+  if (funda?.montarAmbiente) {   // la funda trae su propio ambiente (p. ej. por bloques: luz de día y una placa de color)
+    mundo.decorado.visible = false;
+    funda.montarAmbiente({ raiz, mundo, cfg });
+    if (sonidoEncendido) ponerCapas([]);
+    return;
+  }
   const sinDecorado = cfg.suelo === 'ninguno';
   mundo.decorado.visible = false;
   if (sinDecorado) montarSinDecorado();
@@ -118,6 +126,7 @@ function montar() {
 }
 
 function capasSonido() {
+  if (fundaActual()?.montarAmbiente) return [];
   if (cfg.suelo === 'ninguno') return [];
   const c = CIELOS[cfg.cielo], l = [];
   if (cfg.cielo === 'tormenta') l.push('tormenta'); else if (c.lluvia) l.push('lluvia');
@@ -458,6 +467,8 @@ function texturaArena() {
 }
 
 function montarSuelo(tipo) {
+  const propio = fundaActual()?.crearSuelo?.({ mojado: !!CIELOS[cfg.cielo].lluvia });
+  if (propio) { raiz.add(propio); return; }
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 });
   const mojado = !!CIELOS[cfg.cielo].lluvia;
   if (tipo === 'madera') {
@@ -618,7 +629,7 @@ function bucle() {
       mundo.luces.hemi.intensity = p.hemiInt * (1 - CIELOS[cfg.cielo].oscuro * 0.35) + destello * 1.6;
     } else if (cielo && cielo.material.uniforms.destello.value) { cielo.material.uniforms.destello.value = 0; aplicarLuz(); }
     // Hora real: se recalcula la luz cada medio minuto.
-    if (cfg.hora === 'real' && cfg.suelo !== 'ninguno' && (relojReal += dt) > 30) {
+    if (cfg.hora === 'real' && cfg.suelo !== 'ninguno' && !fundaActual()?.montarAmbiente && (relojReal += dt) > 30) {
       relojReal = 0; p = mezclaHora(); aplicarLuz();
       if (sonidoEncendido && capasSonido().join() !== capasPuestas) ponerCapas(capasSonido());
     }

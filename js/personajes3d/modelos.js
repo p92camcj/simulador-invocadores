@@ -4,6 +4,7 @@
 // ilustraciones originales (assets/personajes). Cada modelo devuelve sus
 // articulaciones (`art`) para que personajes.js las anime. Mira hacia +Z;
 // su izquierda (I) es +X y su derecha (D) es -X. Origen en los pies.
+import { fundaActual } from './funda.js';
 import { THREE } from './mundo.js';
 
 const grad = new THREE.DataTexture(new Uint8Array([96, 96, 96, 255, 150, 150, 150, 255, 208, 208, 208, 255, 255, 255, 255, 255]), 4, 1, THREE.RGBAFormat);
@@ -694,7 +695,8 @@ function lamina(nombre) {
 
 /** Construye el modelo 3D de un personaje o criatura por su nombre. */
 export function construirModelo(nombre) {
-  let m;
+  let m = fundaActual()?.construirModelo?.(nombre);
+  if (m) return m;
   if (nombre.startsWith('lamina:')) { m = lamina(nombre.slice(7)); m.nombre = nombre.slice(7); return m; }
   if (HUMANOS[nombre]) { m = humano(HUMANOS[nombre]); EXTRAS[nombre]?.(m); }
   else if (CUADRUPEDOS[nombre]) m = cuadrupedo(CUADRUPEDOS[nombre]);

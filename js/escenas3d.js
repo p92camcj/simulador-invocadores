@@ -1,19 +1,27 @@
-// Modos de ver la partida (1.36.0): «Mesa» (cartas en perspectiva con
-// escenas 2D, la de siempre) y «Escenario» (todo en 3D con los personajes,
-// js/personajes3d/tablero.js). Capa de presentación pura: no decide nada del
-// juego. Three.js y los modelos (js/personajes3d/, vendor/three) solo se
-// descargan si la jugadora elige el Escenario; con la Mesa (lo normal) la
-// partida no carga ni un byte de todo eso.
+// Modos de ver la partida: «Por bloques» (1.41.0, el de por defecto),
+// «Escenario» (1.36.0) y «Mesa» (cartas en perspectiva con escenas 2D).
+// Por bloques y Escenario son el mismo motor 3D (js/personajes3d/tablero.js)
+// con distinta «funda» (js/personajes3d/funda.js): solo cambia la estética.
+// Capa de presentación pura: no decide nada del juego. Three.js y los modelos
+// (js/personajes3d/, vendor/three) solo se descargan si se usa una vista 3D.
 
-const CLAVE = 'invocadores.personajes3d';   // '1' = Escenario (nombre antiguo de la preferencia)
+const CLAVE = 'invocadores.vista';           // 'bloques' | 'escenario' | 'mesa'
 const CLAVE_SONIDO = 'inv3d.sonido';
+export const VISTAS = [['bloques', '🧱', 'Por bloques'], ['escenario', '🧙', 'Escenario 3D'], ['mesa', '🎴', 'Mesa de cartas']];
+const FUNDA_DE = { bloques: 'bloques', escenario: 'clasica' };
 
-let activo = false;
+let vista = 'bloques';
 let sonido = false;
 try {
-  activo = localStorage.getItem(CLAVE) === '1';
+  const v = localStorage.getItem(CLAVE);
+  if (VISTAS.some(([k]) => k === v)) vista = v;
   sonido = localStorage.getItem(CLAVE_SONIDO) === '1';
-} catch { /* sin almacenamiento: Mesa */ }
+} catch { /* sin almacenamiento: por bloques */ }
+let activo = vista !== 'mesa';
+
+/** La vista elegida: 'bloques' | 'escenario' | 'mesa'. */
+export const vistaActual = () => vista;
+export const nombreVista = (v = vista) => VISTAS.find(([k]) => k === v)?.[2] ?? v;
 
 let cargando = null;
 let modulo = null;
@@ -40,18 +48,24 @@ export function sonido3dActivo() {
 /** Carga Three.js y el Escenario (una sola vez). */
 export function cargarTablero() {
   cargando ??= import('./personajes3d/tablero.js')
-    .then(m => { m.iniciar(); m.fijarSonido(sonido); modulo = m; return m; })
+    .then(m => { m.cambiarFunda(FUNDA_DE[vista] ?? 'bloques'); m.iniciar(); m.fijarSonido(sonido); modulo = m; return m; })
     .catch(e => { cargando = null; throw e; });
   return cargando;
 }
 
-/** Elige el modo: true = Escenario, false = Mesa. */
-export function fijarEscenario(valor) {
-  activo = !!valor;
-  try { localStorage.setItem(CLAVE, activo ? '1' : '0'); } catch { /* nada */ }
+/** Elige la vista: 'bloques' | 'escenario' | 'mesa'. */
+export function fijarVista(v) {
+  if (!VISTAS.some(([k]) => k === v)) return;
+  vista = v; activo = v !== 'mesa';
+  try { localStorage.setItem(CLAVE, v); } catch { /* nada */ }
   if (!activo) modulo?.ocultar();
-  const chk = document.querySelector('#chk3D');
-  if (chk) chk.checked = activo;
+  else modulo?.cambiarFunda(FUNDA_DE[v]);
+  const sel = document.querySelector('#selVista');
+  if (sel) sel.value = v;
+}
+/** Compatibilidad: true = una vista 3D (la última 3D elegida, o por bloques), false = Mesa. */
+export function fijarEscenario(valor) {
+  fijarVista(valor ? (vista === 'mesa' ? 'bloques' : vista) : 'mesa');
 }
 
 /** Sonido del Escenario (sintetizado, sin archivos). Hay que llamarlo desde un clic. */
@@ -81,11 +95,11 @@ export function reiniciarEscenario() {
 }
 
 export function initEscenas3D() {
-  const chk = document.querySelector('#chk3D');
-  if (!chk) return;
-  chk.checked = activo;
-  chk.addEventListener('change', e => {
-    fijarEscenario(e.target.checked);
-    if (e.target.checked) cargarTablero().catch(() => {});   // se adelanta la descarga
+  const sel = document.querySelector('#selVista');
+  if (!sel) return;
+  sel.value = vista;
+  sel.addEventListener('change', e => {
+    fijarVista(e.target.value);
+    if (activo) cargarTablero().catch(() => {});   // se adelanta la descarga
   });
 }

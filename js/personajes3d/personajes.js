@@ -204,8 +204,9 @@ function animar(a, dt, t) {
   } else if (m.tipo === 'humano' || m.tipo === 'criatura') {
     const bal = sw * 0.34 * w * (1 - P.firme), lento = Math.sin(t * 0.9 + u.f0 * 2);
     // Hombro, codo y muñeca: el codo acompaña el braceo y la muñeca nunca queda rígida.
-    A.brazoI.rotation.set(P.bIx - bal, 0, P.bIz + resp * 0.025); A.codoI.rotation.x = P.cI - (0.22 + Math.max(0, -sw) * 0.5) * w * (1 - P.firme) + resp * 0.03;
-    A.brazoD.rotation.set(P.bDx + bal, 0, P.bDz - resp * 0.025); A.codoD.rotation.x = P.cD - (0.22 + Math.max(0, sw) * 0.5) * w * (1 - P.firme) - resp * 0.03;
+    const sc = m.sinCodo ? 0.6 : 0;   // figuras sin codo (funda de bloques): el hombro hace también de codo
+    A.brazoI.rotation.set(P.bIx - bal + P.cI * sc, 0, P.bIz + resp * 0.025); A.codoI.rotation.x = P.cI - (0.22 + Math.max(0, -sw) * 0.5) * w * (1 - P.firme) + resp * 0.03;
+    A.brazoD.rotation.set(P.bDx + bal + P.cD * sc, 0, P.bDz - resp * 0.025); A.codoD.rotation.x = P.cD - (0.22 + Math.max(0, sw) * 0.5) * w * (1 - P.firme) - resp * 0.03;
     if (A.munecaI) { A.munecaI.rotation.set(-0.12 + lento * 0.09 + P.cI * 0.12, 0, 0.1 + resp * 0.05); A.munecaD.rotation.set(-0.12 - lento * 0.09 + P.cD * 0.12, 0, -0.1 - resp * 0.05);
       A.dedosI.rotation.x = -0.35 + Math.sin(t * 1.3 + u.f0) * 0.14; A.dedosD.rotation.x = -0.35 + Math.sin(t * 1.1 + u.f0 + 2) * 0.14; }
     A.cabeza.rotation.set(P.cabx + resp * 0.014, P.caby + lento * 0.035 * (1 - w), lento * 0.012);
