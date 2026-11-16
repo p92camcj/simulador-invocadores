@@ -4,7 +4,8 @@
 // estas piezas imitan el esqueleto de modelos.js (brazoI/D, manoI/D, cabeza,
 // torso, piernas…) para que personajes.js las mueva igual.
 // Las piezas vienen de la maqueta prototipos/figuras-bloques.html.
-import { THREE, siempreReal } from './mundo.js';
+import { THREE, siempreReal, tw } from './mundo.js';
+import { chispas } from './efectos.js';
 import { registrarFunda } from './funda.js';
 
 const luzFalsa = () => new THREE.Object3D();   // sin luces por figura: en móvil saldrían caras
@@ -920,7 +921,7 @@ function crearPortalBloques(v, semilla = 1) {
   interior.position.y = ALTURA_TARIMA - ALTO * ESCALA_PORTAL;   // la tarima queda a la altura de la del Escenario
   const g = new THREE.Group(); g.add(interior);
   const runas = interior.userData.runas;
-  g.userData = { brillo: 0.6, brilloAhora: 0.6, tono: v.tono, variante: v };
+  g.userData = { brillo: 0.6, brilloAhora: 0.6, tono: v.tono, variante: v, semillaBloques: semilla % 3 };
   let visto = false;
   const parar = siempreReal((dt, t) => {
     if (!g.parent) { if (visto) parar(); return; }
@@ -930,6 +931,150 @@ function crearPortalBloques(v, semilla = 1) {
     for (const r of runas) r.material.opacity = k;
   });
   return g;
+}
+
+// ------------------------------------------------- invocación «de bloques»
+// La magia de la maqueta (prototipos/figuras-bloques.html, magiaInvocacion)
+// encima del guion común de tablero.js: columnas de luz y aros en los
+// Portales de quienes invocan, rayos de sus manos al cielo, un vórtice donde
+// se abre el umbral, onda y destello al estallar, y un aura con anillos de
+// runas, halo y chispas en órbita alrededor de la criatura. Solo efectos: el
+// tablero marca los momentos (boom, criatura, parte, apagar).
+const aditivo = (color, opacity = 0) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+const MAGIAS = new Set();
+const suaveK = k => k * k * (3 - 2 * k), limitaK = k => Math.max(0, Math.min(1, k)), azarK = a => (Math.random() - 0.5) * a;
+const E = 0.42;   // unidades de la maqueta → Escenario
+
+function magiaInvocacionBloques({ escena, F, R, req = [], tono, tono2 }) {
+  const raiz = new THREE.Group(); escena.add(raiz);
+  const c = new THREE.Color(tono), c2 = new THREE.Color(tono2 ?? tono);
+  const nivel = { portales: 0, rayos: 0, vortice: 0, aura: 0 }, meta = { portales: 1, rayos: 1, vortice: 1, aura: 0 };
+  // A) Columnas y aros en los Portales de los requeridos; rayos de sus manos al cielo.
+  const columnas = req.map(r => {
+    const g = new THREE.Group(); g.position.copy(r.base); raiz.add(g);
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(1.5 * E, 2.2 * E, 16 * E, 6, 1, true), aditivo(r.color)); col.position.y = 8 * E; g.add(col);
+    const nucleo = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * E, 0.9 * E, 16 * E, 6, 1, true), aditivo('#ffffff')); nucleo.position.y = 8 * E; g.add(nucleo);
+    const aros = [0, 1, 2].map(() => { const a = new THREE.Mesh(new THREE.TorusGeometry(2.4 * E, 0.08 * E, 6, 6), aditivo(r.color)); a.rotation.x = Math.PI / 2; g.add(a); return a; });
+    return { r, col, nucleo, aros };
+  });
+  const rayos = req.map(r => {
+    const a = r.mano(), m = a.clone().lerp(F, 0.5).add(new THREE.Vector3(0, 1.7, 0));
+    const tubo = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(a, m, F.clone()), 40, 0.06, 6), aditivo(r.color)); raiz.add(tubo); return tubo;
+  });
+  // B) Vórtice donde convergen los rayos.
+  const vortice = new THREE.Group(); vortice.position.copy(F); raiz.add(vortice);
+  const espiras = [0, 1, 2, 3].map(k => { const a = new THREE.Mesh(new THREE.TorusGeometry((1 + k * 0.9) * 0.5, 0.05, 6, 24, Math.PI * 1.3), aditivo(k % 2 ? c2 : c)); a.rotation.x = Math.PI / 2; vortice.add(a); return a; });
+  // C) Estallido: onda en el suelo y destello vertical (se crean al estallar).
+  let boom = null;
+  // D) Aura de la criatura.
+  let cr = null, alto = 4, aura = null;
+  const montarAura = () => {
+    aura = new THREE.Group(); raiz.add(aura);
+    const s = alto / 9;
+    aura.userData.anillos = [[2.2, 0], [1.6, 1], [2.8, 2]].map(([r, k]) => { const a = new THREE.Mesh(new THREE.TorusGeometry(6.5 * r / 2.2 * s, 0.12 * s, 6, 6), aditivo(k === 1 ? c2 : c)); a.userData.k = k; aura.add(a); return a; });
+    aura.userData.halo = new THREE.Mesh(new THREE.SphereGeometry(5.5 * s, 16, 12), aditivo(c)); aura.add(aura.userData.halo);
+    aura.userData.orbitan = Array.from({ length: 36 }, (_, i) => { const o = new THREE.Mesh(new THREE.OctahedronGeometry((0.16 + Math.random() * 0.12) * s * 1.6), aditivo(i % 3 ? c : (i % 2 ? c2 : '#ffffff'))); o.userData = { r: (5 + Math.random() * 3) * s, v: (0.6 + Math.random()) * (i % 2 ? 1 : -1), a: Math.random() * 6.28, y: azarK(9) * s, fy: 0.5 + Math.random() }; aura.add(o); return o; });
+  };
+  let tBoom = -1, viva = true;
+  const parar = siempreReal((dt, T) => {
+    if (!viva) return;
+    for (const k in nivel) nivel[k] += (meta[k] - nivel[k]) * Math.min(1, dt * 2.2);
+    const pOn = nivel.portales;
+    columnas.forEach(({ r, col, nucleo, aros }, i) => {
+      const pulso = 0.75 + Math.sin(T * 5 + i) * 0.25;
+      col.material.opacity = 0.12 * pOn * pulso; nucleo.material.opacity = 0.16 * pOn * pulso;
+      col.rotation.y = T * 0.8; nucleo.rotation.y = -T * 1.3;
+      aros.forEach((a, k) => { const f = (T * 0.5 + k / 3) % 1; a.position.y = f * 12 * E; a.scale.setScalar(1 - f * 0.5); a.material.opacity = pOn * (1 - f) * 0.6; a.rotation.z = T * 2; });
+      if (pOn > 0.3 && Math.random() < 0.6) {
+        const an = Math.random() * Math.PI * 2;
+        chispas(r.base.clone().add(new THREE.Vector3(Math.cos(an) * 0.9, 0, Math.sin(an) * 0.9)), { n: 1, color: r.color, color2: 0xffffff, vel: 0.1, dir: new THREE.Vector3(-Math.cos(an) * 0.25, 2 + Math.random() * 1.2, -Math.sin(an) * 0.25), vida: 1.4, tam: 0.14 });
+      }
+    });
+    rayos.forEach((t, i) => { t.material.opacity = nivel.rayos * (0.55 + Math.sin(T * 14 + i * 2) * 0.3); });
+    espiras.forEach((a, k) => { a.rotation.z = T * (2 + k) * (k % 2 ? -1 : 1); a.material.opacity = nivel.vortice * 0.8; a.scale.setScalar(0.6 + nivel.vortice * 0.6 + Math.sin(T * 6 + k) * 0.05); });
+    if (boom) {
+      tBoom += dt;
+      const k = limitaK(tBoom / 1.6), k2 = limitaK((tBoom - 0.3) / 1.8), kd = limitaK(tBoom / 1.0);
+      boom.onda.scale.setScalar(1 + k * 9); boom.onda.material.opacity = 0.9 * (1 - k);
+      boom.onda2.scale.setScalar(1 + k2 * 7.5); boom.onda2.material.opacity = 0.9 * (1 - k2);
+      boom.destello.material.opacity = 0.8 * (1 - kd); boom.destello.scale.set(1 - kd * 0.7, 1, 1 - kd * 0.7);
+    }
+    if (aura) {
+      const on = nivel.aura;
+      if (cr) aura.position.copy(cr.position).add(new THREE.Vector3(0, alto / 2, 0));
+      aura.userData.anillos.forEach(a => { const k = a.userData.k; a.rotation.set(T * (0.6 + k * 0.3) + k, T * (0.9 - k * 0.2), T * 0.4 * (k - 1)); a.material.opacity = on * 0.45; });
+      const h = aura.userData.halo; h.material.opacity = on * (0.05 + Math.sin(T * 3) * 0.025); h.scale.setScalar(1 + Math.sin(T * 3) * 0.06);
+      aura.userData.orbitan.forEach(o => { const u = o.userData; u.a += dt * u.v; o.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(T * u.fy + u.a) * 0.35, Math.sin(u.a) * u.r); o.rotation.y += dt * 4; o.material.opacity = on * (0.6 + Math.sin(T * 8 + u.a * 5) * 0.4); });
+      // polvo mágico que cae de ella
+      if (on > 0.5 && cr && Math.random() < 0.5) chispas(cr.position.clone().add(new THREE.Vector3(azarK(3), alto * (0.2 + Math.random() * 0.8), azarK(1.6))), { n: 1, color: Math.random() < 0.5 ? c2 : 0xffffff, vel: 0.1, dir: new THREE.Vector3(0, -0.8, 0), vida: 1.4, tam: 0.13 });
+    }
+  });
+  const m = {
+    /** Se abre el umbral: los rayos y el vórtice se funden en la onda y el destello. */
+    boom() {
+      meta.rayos = 0; meta.vortice = 0; tBoom = 0;
+      const onda = new THREE.Mesh(new THREE.TorusGeometry(1, 0.11, 6, 6), aditivo(c, 0.9)); onda.rotation.x = Math.PI / 2; onda.position.copy(R).setY(0.15);
+      const onda2 = new THREE.Mesh(new THREE.TorusGeometry(1, 0.07, 6, 6), aditivo(c2, 0.9)); onda2.rotation.x = Math.PI / 2; onda2.position.copy(R).setY(0.2);
+      const destello = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 13, 6, 1, true), aditivo('#ffffff', 0.8)); destello.position.copy(R).setY(6.5);
+      raiz.add(onda, onda2, destello); boom = { onda, onda2, destello };
+    },
+    /** La criatura ya está en escena: el aura la sigue. */
+    criatura(obj) { cr = obj; alto = Math.max(1, new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3()).y || 4); if (!aura) montarAura(); meta.aura = 1; },
+    /** La criatura se marcha: se apagan el aura y las columnas. */
+    parte() { meta.aura = 0; meta.portales = 0; },
+    apagar() {
+      if (!viva) return; viva = false; parar(); MAGIAS.delete(m);
+      raiz.parent?.remove(raiz);
+      raiz.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    },
+  };
+  MAGIAS.add(m);
+  return m;
+}
+/** Partida cortada a medias: fuera toda magia de invocación pendiente. */
+function cortarMagiaBloques() { for (const m of [...MAGIAS]) m.apagar(); }
+
+// El Portal nuevo se monta pieza a pieza (escena 7 de la maqueta): las piezas
+// caen del cielo girando y encajan de abajo arriba; la runa de la invocación
+// sube con la tarima. Al acabar se vuelve a mostrar el Portal fundido.
+async function montarPortalBloques(g, { runaGuia = null } = {}) {
+  const interior = g.children[0];
+  const color = '#' + new THREE.Color(g.userData.tono).getHexString();
+  const temp = portal(color, g.userData.semillaBloques ?? 0);
+  temp.scale.setScalar(ESCALA_PORTAL); temp.position.y = interior.position.y;
+  temp.userData.runas[0].visible = false;   // el disco es la propia runa de la invocación
+  interior.visible = false; g.add(temp);
+  const piezas = [...temp.children];
+  for (const o of piezas) {
+    if (o.userData.flota) { o.visible = false; continue; }
+    const y = new THREE.Box3().setFromObject(o).min.y - g.position.y;
+    o.userData.fin = { p: o.position.clone(), r: o.rotation.clone() };
+    o.userData.ini = { p: o.position.clone().add(new THREE.Vector3(azarK(10), 9 + Math.random() * 6, azarK(10))), r: new THREE.Euler(azarK(6), azarK(6), azarK(6)) };
+    o.userData.retraso = Math.min(2.6, (y / ESCALA_PORTAL) * 0.32) + Math.random() * 0.35;
+    o.visible = false;
+  }
+  const yRuna0 = runaGuia?.position.y ?? 0, yRuna1 = ALTURA_TARIMA + 0.02, DUR = 3.7;
+  let pila = 0;
+  try {
+    await tw(DUR, k => {
+      const tp = k * DUR;
+      for (const o of piezas) {
+        if (o.userData.flota) continue;
+        const kk = limitaK((tp - o.userData.retraso) / 0.65), { ini, fin } = o.userData, e = 1 - Math.pow(1 - kk, 3);
+        o.visible = kk > 0;
+        o.position.lerpVectors(ini.p, fin.p, e);
+        o.rotation.set(ini.r.x + (fin.r.x - ini.r.x) * e, ini.r.y + (fin.r.y - ini.r.y) * e, ini.r.z + (fin.r.z - ini.r.z) * e);
+        if (kk >= 1 && !o.userData.encajado) {
+          o.userData.encajado = true;
+          if (++pila % 3 === 0) chispas(o.getWorldPosition(new THREE.Vector3()), { n: 2, color: PIEDRA_CLARA, color2: PIEDRA, vel: 0.6, dir: new THREE.Vector3(0, 0.8, 0), vida: 0.6, grav: 3, tam: 0.12 });
+        }
+      }
+      if (runaGuia) runaGuia.position.y = yRuna0 + suaveK(limitaK((tp - 0.4) / 1.4)) * (yRuna1 - yRuna0);
+    }, k => k);
+  } finally {
+    g.remove(temp); interior.visible = true;
+    if (runaGuia) runaGuia.position.y = yRuna1;
+  }
 }
 
 // Colores básicos de la placa (sin horas del día, cielo ni clima: Julio, 2026-11-16).
@@ -956,4 +1101,7 @@ function montarAmbiente({ raiz, mundo, cfg }) {
   raiz.add(crearSuelo(color));
 }
 
-registrarFunda('bloques', { construirModelo: construirModeloBloques, crearPortal: crearPortalBloques, montarAmbiente, opcionesAmbiente: { placa: PLACAS } });
+registrarFunda('bloques', {
+  construirModelo: construirModeloBloques, crearPortal: crearPortalBloques, montarAmbiente, opcionesAmbiente: { placa: PLACAS },
+  magiaInvocacion: magiaInvocacionBloques, cortarMagia: cortarMagiaBloques, montarPortal: montarPortalBloques,
+});

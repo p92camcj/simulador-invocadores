@@ -81,14 +81,23 @@ function veComoDuena(players, idx, turno) {
   return idx === turno || contarHumanas(players) === 1;
 }
 
+/**
+ * ¿Sigue mandando la Clarividente en la mano de esta jugadora? Mientras está
+ * visible y, cuando deja de estarlo, hasta que su dueña elige qué carta sigue
+ * viendo (`_clariEligiendo`): en ese hueco las cartas aún llevan la
+ * visibilidad de antes y, sin esto, el resto vería por un momento la que
+ * no le toca.
+ */
+const manoBajoClarividente = p => !!(p.hasClariActivo || p._clariEligiendo);
+
 /** Mano vista por su dueña (igual que render.js para la activa humana). */
 function manoDeDuena(p) {
-  return p.hand.map(c => cartaVista(c, !!(c.vis?.owner || p.hasClariActivo)));
+  return p.hand.map(c => cartaVista(c, !!(c.vis?.owner || manoBajoClarividente(p))));
 }
 
 /** Mano vista por el resto (Clarividente visible: la oculta entera). */
 function manoAjena(p) {
-  return p.hand.map(c => cartaVista(c, !p.hasClariActivo && c.vis?.others === true));
+  return p.hand.map(c => cartaVista(c, !manoBajoClarividente(p) && c.vis?.others === true));
 }
 
 /** Recuento de la invocación activa, por apariencia (como actions/render). */

@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.41.1.221 - 2026-11-16
+
+- **Clarividente arreglada**: al taparla, ya no se queda a la vista la otra
+  figura de la mano de su dueña.
+- **Invocaciones «Por bloques» con mucha más magia**: columnas de luz en los
+  Portales de quienes invocan, rayos hacia el cielo, un remolino donde se
+  abre el umbral y anillos de runas girando alrededor de la criatura.
+- **El Portal nuevo se construye pieza a pieza**: los bloques caen del
+  cielo y encajan de abajo arriba.
+
 ## 1.41.0.220 - 2026-11-16
 
 - **Nueva forma de ver la partida: «Por bloques»**, y es la que sale de

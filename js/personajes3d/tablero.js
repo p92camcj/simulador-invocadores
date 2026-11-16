@@ -117,7 +117,7 @@ export function cambiarFunda(nombre) {
 }
 
 function cortar() {
-  pendiente = null; anuncios = []; clearTimeout(temporizador); temporizador = null; cancelarTodo(); limpiarMagia(); trabajando = false;
+  pendiente = null; anuncios = []; clearTimeout(temporizador); temporizador = null; cancelarTodo(); limpiarMagia(); fundaActual()?.cortarMagia?.(); trabajando = false;
   foco = null; ecos = null;
   for (const p of portales.values()) { p.levita = false; p.crono = null; if (!p.arrastrando) p.g.position.y = 0; }
 }
@@ -780,10 +780,18 @@ async function levitar(hab, p1, p2, v) {
 
 /** Una figura de la mano cambia lo que deja ver (Clarividente, Aprendiz, cambio de quien mira…). */
 async function cambiarMano(h, cv) {
+  // Si la túnica aún se está aclarando u oscureciendo, se espera a que acabe:
+  // si no, el cambio siguiente la encontraba a medias y no se aplicaba (la
+  // figura seguía a la vista aunque ya no tocara verla).
+  h.firma = firmaMano(cv);
+  const previo = h.actor?.userData.cambiando;
+  if (previo) await previo.catch(() => {});
   const a = h.actor, antes = h.cv;
-  h.cv = cv; h.firma = firmaMano(cv);
-  if (antes && !antes.visible && cv?.visible && INFO[cv.nombre] && a.userData.capa && !a.userData.capa.userData.translucida) { a.userData.cv = cv; return aclararCapa(a, cv.nombre); }
-  if (antes?.visible && cv && !cv.visible && a.userData.capa?.userData.translucida) { a.userData.cv = cv; return opacarCapa(a); }
+  h.cv = cv;
+  if (!a) return;
+  const marcar = pr => { const q = pr.finally(() => { if (a.userData.cambiando === q) a.userData.cambiando = null; }); a.userData.cambiando = q; return q; };
+  if (antes && !antes.visible && cv?.visible && INFO[cv.nombre] && a.userData.capa && !a.userData.capa.userData.translucida) { a.userData.cv = cv; return marcar(aclararCapa(a, cv.nombre)); }
+  if (antes?.visible && cv && !cv.visible && a.userData.capa?.userData.translucida) { a.userData.cv = cv; return marcar(opacarCapa(a)); }
   const ancla = a.userData.ancla, pos = a.position.clone();
   disolver(a).catch(() => {});
   const nueva = figura(cv, pos, a.rotation.y, true); nueva.userData.ancla = ancla; proxyMano(nueva); h.actor = nueva;
@@ -1016,6 +1024,9 @@ async function invocar(an, v, nuevos = []) {
   const gran = runa(R, tono, 5.4, 0.5, puntas), gran2 = runa(R.clone().add(V(0, 0.01, 0)), tono2, 3.3, -0.9, 6);
   const req = ps.map(p => p.actor).filter(a => a?.userData.modelo && a.userData.cv?.visible && an.need?.includes(a.userData.cv.ficha || a.userData.cv.nombre));
   req.forEach(a => { mirar(a, F); posar(a, 'alzar', 4); a.userData.elevaObj = 0.25; });
+  // Magia propia de la funda (la de bloques: columnas, rayos, vórtice y aura), encima del guion común.
+  const magia = fundaActual()?.magiaInvocacion?.({ escena: mundo.escena, F, R, tono, tono2,
+    req: req.map(a => ({ base: [...portales.values()].find(p => p.actor === a)?.g.position.clone().setY(ALTURA_TARIMA) ?? a.position.clone(), mano: () => mano(a), color: INFO[a.userData.nombre]?.color ?? tono })) }) ?? null;
   const bases = ps.map(p => ({ pos: p.g.position.clone().add(V(0, ALTURA_TARIMA + 0.3, 0)), tono: p.g.userData.tono }));
   let pulso = 0;
   await tw(CARGA, (k, kl) => {
@@ -1033,7 +1044,7 @@ async function invocar(an, v, nuevos = []) {
     mundo.cam.temblor = Math.max(mundo.cam.temblor, kl * kl * 0.06);
   }, lineal);
   // ¡Estallido! Se abre el umbral: columna de luz, fogonazo y rayos hacia cada Portal.
-  S.invBoom(); temblar(0.6); fogonazo(0.8);
+  S.invBoom(); temblar(0.6); fogonazo(0.8); magia?.boom();
   destello(F, 0xffffff, 12, 1.4).catch(() => {}); onda(R, tono, 3, 60, 4); onda(R, tono2, 2, 40, 2.5);
   espera(0.35).then(() => onda(R, 0xffffff, 2.5, 50, 3), () => {}); espera(0.7).then(() => onda(R, tono, 2, 44, 3), () => {});
   chispas(F, { n: 130, color: tono, color2: tono2, vel: 3.2, vida: 1.8, grav: 0.8, tam: 0.22 });
@@ -1043,7 +1054,7 @@ async function invocar(an, v, nuevos = []) {
   // La criatura sube desde el suelo hasta quedar flotando en lo alto.
   const cr = crearActor(nombre, sitioCr.clone().setY(-4), { fijo: true }); actores.add(cr);
   cr.userData.ocupado = true; cr.userData.sombra.visible = false;
-  const ms = materialesDe(cr); opacidad(cr, 0, ms);
+  const ms = materialesDe(cr); opacidad(cr, 0, ms); magia?.criatura(cr);
   const alred = (ancho, y0, y1) => sitioCr.clone().add(V((Math.random() - 0.5) * ancho, y0 + Math.random() * (y1 - y0), (Math.random() - 0.5) * 1.2));
   S.invCoro(9);
   await tw(3.6, (k, kl) => { cr.position.y = mezcla(-4, ALTO_CR, k); opacidad(cr, Math.min(1, kl * 2), ms);
@@ -1119,11 +1130,11 @@ async function invocar(an, v, nuevos = []) {
     await Promise.all(resto.map((g, i) => espera(i * 0.15).then(() => { const de = g.position.clone(), a = C.clone().add(V(0, -0.8, 0)); return tw(0.8, k => g.position.copy(arco(de, a, k, 0.3))); }).then(() => { chispas(g.position, { n: 8, color: tono, vel: 0.4 }); quitar(g); })));
   } finally { orbita(); gs.forEach(g => quitar(g)); }
   // La criatura parte; el círculo de la invocación se encoge y queda como la runa del Portal nuevo.
-  posar(cr, 'alzar', 3); S.seMarcha(); flota = false; gran2.userData.apagar(1.5);
+  posar(cr, 'alzar', 3); S.seMarcha(); flota = false; gran2.userData.apagar(1.5); magia?.parte();
   const y0 = cr.position.y;
   await tw(2.8, (k, kl) => { opacidad(cr, 1 - k, ms); cr.position.y = y0 + k * 3; chispas(alred(1.6, y0 + 1, y0 + 6), { n: 2, color: tono, color2: tono2, vel: 0.4, dir: V(0, 2, 0), vida: 1.2 });
     for (let j = 0; j < 2; j++) { const ang = kl * 26 + j * Math.PI, rr = 1.6 * (1 - kl) + 0.1; chispas(V(sitioCr.x + Math.cos(ang) * rr, cr.position.y + 1 + kl * 3, sitioCr.z + Math.sin(ang) * rr), { n: 1, color: 0xffffff, color2: tono, vel: 0.05, vida: 0.8, tam: 0.14 }); } }, entra);
-  parar(); retirar(cr);
+  parar(); retirar(cr); magia?.apagar();
   const adios = sitioCr.clone().setY(y0 + 5);
   destello(adios, 0xffffff, 6, 0.9).catch(() => {}); chispas(adios, { n: 70, color: tono, color2: tono2, vel: 2.2, vida: 1.6, grav: 1.2, tam: 0.18 }); onda(R, tono, 2, 44, 3); fogonazo(0.25);
   // Como en la escena 7a de la maqueta: el gran círculo deja su marca y,
@@ -1198,11 +1209,18 @@ async function alzarPortal(p, runaGuia = null) {
   const x = p.g.position.x, z = p.g.position.z;
   if (p.actor) p.actor.visible = true;
   encender(p.g, 0.05); S.piedra?.();
+  const montar = fundaActual()?.montarPortal;
+  if (montar) {
+    // La funda lo construye a su manera (bloques: pieza a pieza, como en la maqueta).
+    p.g.position.set(x, 0, z);
+    try { await montar(p.g, { runaGuia }); } finally { p.levita = false; }
+  } else {
   // Temblor de tierra continuo mientras sube la piedra, con polvo alrededor.
   const temblor = cadaFrame(() => { mundo.cam.temblor = Math.max(mundo.cam.temblor, 0.05); if (Math.random() < 0.6) humo(V(x, 0, z), { n: 1, color: 0x9a94a8, radio: 1.3 }); if (Math.random() < 0.15) chispas(V(x + (Math.random() - 0.5) * 2.4, 0.1, z + (Math.random() - 0.5) * 2.4), { n: 2, color: 0x8a7a66, vel: 0.6, dir: V(0, 1.5, 0), vida: 0.7, grav: 3, tam: 0.12 }); });
   try {
     await tw(2.6, k => { p.g.position.set(x, mezcla(-3.2, 0, k), z); if (runaGuia) runaGuia.position.y = Math.max(0.04, p.g.position.y + ALTURA_TARIMA + 0.02); }, sale);
   } finally { temblor(); p.g.position.y = 0; p.levita = false; }
+  }
   S.golpeSuelo(); temblar(0.3); encender(p.g, 1.6); S.runa(9); onda(V(x, 0, z), p.g.userData.tono, 1.2, 40, 2.4);
   runaGuia?.userData.apagar(1.2);
   espera(1.3).then(() => encender(p.g, 0.6), () => {});
