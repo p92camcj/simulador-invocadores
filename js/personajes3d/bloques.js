@@ -1081,12 +1081,45 @@ async function montarPortalBloques(g, { runaGuia = null } = {}) {
 const PLACAS = [['verde', '#4f8a4b', 'Verde'], ['azul', '#3a6fc0', 'Azul'], ['rojo', '#b8403a', 'Rojo'], ['amarillo', '#e0b830', 'Amarillo'],
   ['naranja', '#e07a2a', 'Naranja'], ['morado', '#7a4ab0', 'Morado'], ['gris', '#8a8a96', 'Gris'], ['blanco', '#e8e6e0', 'Blanco'], ['negro', '#2e2e36', 'Negro'], ['marron', '#7a5534', 'Marrón']];
 
-/** La mesa: una gran placa de color con tetones hexagonales. */
+// Textura de un tetón visto desde arriba (para la placa lejana: los tetones
+// de verdad solo se modelan cerca, donde se ven; más allá basta el dibujo).
+let texTeton = null;
+function texturaTetones() {
+  if (texTeton) return texTeton;
+  const n = 64, c = document.createElement('canvas'); c.width = c.height = n;
+  const x = c.getContext('2d');
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, n, n);
+  const hex = (cx, cy, r) => { x.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; x[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } x.closePath(); };
+  const r = n * 0.31;
+  hex(n / 2 + 3, n / 2 + 3, r); x.fillStyle = 'rgba(0,0,0,0.22)'; x.fill();
+  hex(n / 2, n / 2, r);
+  const gr = x.createLinearGradient(n / 2 - r, n / 2 - r, n / 2 + r, n / 2 + r);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#d6d6d6');
+  x.fillStyle = gr; x.fill(); x.lineWidth = 2; x.strokeStyle = 'rgba(0,0,0,0.12)'; x.stroke();
+  texTeton = new THREE.CanvasTexture(c);
+  texTeton.wrapS = texTeton.wrapT = THREE.RepeatWrapping;
+  texTeton.colorSpace = THREE.SRGBColorSpace;
+  texTeton.anisotropy = 4;
+  return texTeton;
+}
+
+/**
+ * La mesa: una placa de color con tetones hexagonales tan grande que su
+ * borde se pierde en la bruma del fondo (Julio, 2026-11-20). Cerca, tetones
+ * de verdad; lejos, la misma placa dibujada en una textura (barata en móvil).
+ */
 function crearSuelo(color) {
   const g = new THREE.Group();
-  const lado = 100, p = placa(lado, lado, color);
+  const lado = 120, p = placa(lado, lado, color);
   p.scale.setScalar(ESCALA); p.position.y = -0.03; g.add(p);
   p.traverse(o => { if (o.isMesh) o.castShadow = false; });
+  const paso = 0.8 * ESCALA, tam = 1600;
+  const tex = texturaTetones().clone(); tex.needsUpdate = true; tex.repeat.set(tam / paso, tam / paso);
+  // Desfase para que el dibujo case con la rejilla de tetones de cerca.
+  tex.offset.set(0.5 - ((lado - 1) / 2 % 1), 0.5 - ((lado - 1) / 2 % 1));
+  const lejos = new THREE.Mesh(new THREE.PlaneGeometry(tam, tam), plastico(color, { map: tex }));
+  lejos.rotation.x = -Math.PI / 2; lejos.position.y = -0.035; lejos.receiveShadow = true;
+  g.add(lejos);
   return g;
 }
 

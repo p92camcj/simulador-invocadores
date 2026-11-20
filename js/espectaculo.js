@@ -21,6 +21,10 @@
 // - anunciarInvocacion({...})                         → actions.js, fin de turno
 // - cuandoTermineEspectaculo() / hayEspectaculoEnCurso() → espera a que acabe la cola
 // - espectaculoActivo() / fijarEspectaculo(bool)      → interruptor (setup.js / index.html)
+// - fijarDifusorEscenas(fn) / reproducirEscenasRemotas(escenas, antes)
+//                                                     → js/red/sala.js: en una partida online, la
+//   mesa reenvía cada escena (carta, habilidad, invocación) a las invitadas
+//   para que también la vean en su pantalla (1.41.2).
 
 import { velocidadAnimaciones } from './velocidad.js';
 import { escenarioEnUso, anunciarEscenario, escenarioOcupado, cuandoLibreEscenario } from './escenas3d.js';
@@ -334,7 +338,44 @@ function ranura({ clave, nombre, publica = true, x = 50, clase = '', etiqueta, e
 
 // ---------- Fase A: bajar una carta a un Portal ----------
 
+// ---------- Partidas online: las escenas viajan a las invitadas ----------
+
+let difusorEscenas = null;
+/** sala.js registra aquí cómo mandar una escena a las invitadas (solo actúa en la mesa). */
+export function fijarDifusorEscenas(fn) { difusorEscenas = fn; }
+function difundirEscena(ev) {
+  try { difusorEscenas?.(ev); } catch (e) { console.warn('Escena sin difundir:', e); }
+}
+
+/** Foto pública de la mesa antes de aplicar un estado que llega de la mesa (para las escenas de habilidad). */
+export function fotoMesaPublica() {
+  try { return fotoMesa(); } catch { return null; }
+}
+
+/**
+ * En una invitada: escenifica lo que ha pasado en la mesa. Se llama con el
+ * estado nuevo ya puesto y justo antes de repintar, para que el Escenario
+ * reciba la escena y la vista nueva en el mismo lote. Las escenas solo
+ * llevan datos públicos (quién, qué personaje activa, qué invocación).
+ */
+export function reproducirEscenasRemotas(escenas, antes = null) {
+  if (!Array.isArray(escenas)) return;
+  for (const ev of escenas) {
+    try {
+      if (ev?.tipo === 'carta') anunciarCartaJugada(+ev.actor, String(ev.destino));
+      else if (ev?.tipo === 'habilidad') {
+        const clave = ev.claveOrigen ? String(ev.claveOrigen) : null;
+        if (escenarioEnUso()) anunciarEscenario({ tipo: 'habilidad', nombre: String(ev.nombre), actor: +ev.actor, origen: clave?.startsWith('a:') ? clave.slice(2) : clave });
+        else if (espectaculoActivo() && antes) anunciarHabilidad(String(ev.nombre), +ev.actor, clave, antes, fotoMesa());
+      } else if (ev?.tipo === 'invocacion') anunciarInvocacion(ev);
+    } catch (e) {
+      console.warn('Escena remota no disponible:', e);
+    }
+  }
+}
+
 export function anunciarCartaJugada(jugadoraIdx, destKey) {
+  difundirEscena({ tipo: 'carta', actor: jugadoraIdx, destino: destKey });
   if (escenarioEnUso()) { anunciarEscenario({ tipo: 'carta', actor: jugadoraIdx }); return; }
   if (!espectaculoActivo()) return;
   const clave = normalizarClave(destKey, jugadoraIdx);
@@ -378,6 +419,7 @@ export function envolverHabilidad(name, ownerIdx, stack, onComplete) {
   const claveOrigen = stack ? claveDePila(stack) : null;
   return (...args) => {
     const r = onComplete(...args);
+    difundirEscena({ tipo: 'habilidad', nombre: name, actor: ownerIdx, claveOrigen });
     try {
       if (escenarioEnUso()) {
         // 'a:i:j' → 'i:j' (clave de Portal del Escenario); los centrales ya son 'n:k'.
@@ -616,6 +658,7 @@ function escenaGenerica({ name, jugadora, claveOrigen }) {
 // ---------- Invocación completada ----------
 
 export function anunciarInvocacion({ nivel, nombre, need, recompensas, gemasAutomata = 0, entusiastas = [] }) {
+  difundirEscena({ tipo: 'invocacion', nivel, nombre, need, recompensas, gemasAutomata, entusiastas });
   if (escenarioEnUso()) { anunciarEscenario({ tipo: 'invocacion', nivel, nombre, need, recompensas }); return true; }
   if (!espectaculoActivo()) return false;
   const posiciones = need.length > 3 ? [[50, 14], [14, 52], [86, 52], [50, 80]] : [[50, 18], [16, 64], [84, 64]];

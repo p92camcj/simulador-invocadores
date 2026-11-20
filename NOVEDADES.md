@@ -6,6 +6,20 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.41.2.222 - 2026-11-20
+
+- **Partidas online: todos ven las escenas.** Las invocaciones (con su
+  criatura y su magia), las cartas que se juegan y las habilidades ya se
+  ven en la pantalla de cada jugadora, no solo en la de quien creó la sala.
+- **Arreglado un Portal que enseñaba el personaje de antes**: al bajar una
+  Clarividente al Portal de otra jugadora a veces seguía viéndose encima el
+  personaje anterior. Ahora cada Portal enseña siempre su carta de arriba.
+- **Placa de bloques gigante**: la placa con tetones llega hasta el
+  horizonte; casi no se ve dónde acaba.
+- **Los Portales nuevos ya no se pisan**: el Portal central que aparece tras
+  una invocación busca un hueco libre, con al menos un Portal de distancia
+  de cualquier otro, y los que ya estaban no se mueven.
+
 ## 1.41.1.221 - 2026-11-16
 
 - **Clarividente arreglada**: al taparla, ya no se queda a la vista la otra
