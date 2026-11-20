@@ -31,6 +31,9 @@ export const opcionesFunda = () => fundaActual()?.opcionesAmbiente ?? null;
 import './bloques.js';   // registra la funda «Por bloques»
 
 const SEP = 3.5;                 // distancia entre Portales vecinos
+// Un Portal central nuevo nace con al menos un Portal de hueco libre entre él
+// y cualquier otro (centro a centro: dos anchos de Portal y un poco de margen).
+const DIST_PORTAL_NUEVO = 6.2;
 const CRIATURA_POR_NIVEL = { C: 'Cirelia', B: 'Baelorith', A: 'Aelgorth', '*': 'Madain' };
 const COLOR_ESTADO = { destino: 0xffd36a, objetivo: 0x5fe8ff, activable: 0xc58bff };
 const CLAVE_POSICIONES = 'inv3d.tablero';
@@ -45,6 +48,10 @@ let selPrevia = null;            // última carta elegida de la mano propia (par
 let alTocar = () => {};
 let mazo = null;
 let desplaz = {};
+// Sitio fijo de cada Portal central ya colocado en esta partida (clave
+// 'orientación|n.º de asientos|n:k' → posición base): los que ya están no se
+// mueven cuando aparece otro, y el nuevo busca un hueco libre.
+const sitiosCentrales = new Map();
 try { desplaz = JSON.parse(localStorage.getItem(CLAVE_POSICIONES) ?? '{}') || {}; } catch { desplaz = {}; }
 
 // ---------------------------------------------------------------- arranque
@@ -98,6 +105,7 @@ export function reiniciar() {
   cortar(); construido = false; firmaPartida = '';
   for (const a of [...actores]) retirar(a);
   manos.clear();
+  sitiosCentrales.clear();
   for (const p of portales.values()) { p.g.visible = false; p.actor = null; }
   for (const e of gemasAsiento.values()) { e.g.visible = false; e.firma = null; }
   quitarEscudos();
@@ -209,8 +217,16 @@ function disponer(v) {
     d.asientos.set(a.idx, { pos: V(cx, 0, cz), rot, t, u, abre, np, nombre: a.nombre, activa: a.activa, frente: V(Math.sin(rot), 0, Math.cos(rot)) });
   });
   const nc = v.centrales.length;
-  v.centrales.forEach((pv, c) => d.portales.set(`n:${c}`, { pos: V((c - (nc - 1) / 2) * SEP, 0, n === 3 ? -0.4 : 0), rot: 0, nombre: null, rel: `${n}|n:${c}` }));
   d.mazo = nc ? V(0, 0, n === 3 ? -2.9 : -2.7) : V(0, 0, 0);
+  d.orientacion = vertical ? 'v' : 'h';
+  // Los centrales que ya había al montar la mesa van en fila, como siempre;
+  // los que aparecen después (invocaciones) se quedan donde nacieron.
+  const primeraVez = ![...sitiosCentrales.keys()].some(k => k.startsWith(`${d.orientacion}|${n}|`));
+  v.centrales.forEach((pv, c) => {
+    const id = `${d.orientacion}|${n}|n:${c}`;
+    if (!sitiosCentrales.has(id)) sitiosCentrales.set(id, primeraVez ? V((c - (nc - 1) / 2) * SEP, 0, n === 3 ? -0.4 : 0) : sitioLibre(d));
+    d.portales.set(`n:${c}`, { pos: sitiosCentrales.get(id).clone(), rot: 0, nombre: null, rel: `${n}|n:${c}` });
+  });
   d.centro = V(0, 0, nc ? 0 : 0);
   // Encuadre: todo lo que hay en la mesa.
   const xs = [], zs = [];
@@ -222,6 +238,29 @@ function disponer(v) {
   const prof = vertical ? 0.8 : 0.62;
   d.camara = { objetivo: V((x0 + x1) / 2, 0.9, (z0 + z1) / 2 + 0.5), ancho: x1 - x0 + 3.6, alto: (z1 - z0) * prof + 5.4 };
   return d;
+}
+
+/**
+ * Hueco para un Portal central nuevo: mira dónde están AHORA todos los
+ * Portales (centrales y de cada asiento, incluidos los que se han arrastrado)
+ * y busca, en espiral desde el centro de los centrales, el primer punto a más
+ * de un Portal de distancia de todos ellos (y algo apartado del mazo).
+ */
+function sitioLibre(d) {
+  const ocupados = [...d.portales.values()].map(p => { const o = desplaz[p.rel]; return o ? p.pos.clone().add(V(o[0], 0, o[1])) : p.pos.clone(); });
+  const centrales = [...d.portales.entries()].filter(([k]) => k.startsWith('n:')).map(([, p]) => p.pos);
+  const centro = centrales.length ? centrales.reduce((s_, p) => s_.add(p), V()).multiplyScalar(1 / centrales.length).setY(0) : V(0, 0, 0);
+  const libre = (x, z) => ocupados.every(p => Math.hypot(p.x - x, p.z - z) >= DIST_PORTAL_NUEVO) && (!d.mazo || Math.hypot(d.mazo.x - x, d.mazo.z - z) >= SEP);
+  for (let r = 0; r <= 60; r += 0.35) {
+    const pasos = Math.max(1, Math.ceil(2 * Math.PI * r / 0.6));
+    for (let i = 0; i < pasos; i++) {
+      // Primero a los lados (la fila de centrales), luego hacia delante y atrás.
+      const an = (i % 2 ? -1 : 1) * Math.ceil(i / 2) * 2 * Math.PI / pasos;
+      const x = centro.x + Math.cos(an) * r, z = centro.z + Math.sin(an) * r;
+      if (libre(x, z)) return V(x, 0, z);
+    }
+  }
+  return V(centro.x + SEP * centrales.length, 0, centro.z);
 }
 
 // Mientras una invocación prepara el sitio del Portal central nuevo (que el
@@ -662,7 +701,9 @@ async function entrar(p, viajero, pv, mover = null) {
   await rev;
   a.userData.cv = cv;
   // Sin modelo posible (o se volteó por el camino): se cambia por la figura correcta.
-  const bien = cv?.visible ? !!a.userData.modelo || !INFO[nombre] : !a.userData.modelo;
+  // Ojo: la figura que viaja puede traer ya un modelo (la mano se ve a través
+  // de la túnica); si no es el personaje que ha llegado, también se cambia.
+  const bien = muestraLoQueToca(a, cv);
   if (!bien || (cv?.visible && !INFO[nombre])) { retirar(a); p.actor = null; await surgir(p, cv); }
   else {
     if (cv?.ficha) marcaMetamorfo(a, true);
@@ -674,6 +715,43 @@ async function entrar(p, viajero, pv, mover = null) {
       }
     } finally { a.userData.ocupado = false; a.userData.alegre = false; }
   }
+}
+
+/** ¿Enseña esta figura de Portal justo la carta `cv` (personaje correcto, o encapuchada sin nada dentro)? */
+function muestraLoQueToca(a, cv) {
+  if (!a || !cv) return false;
+  const nombre = cv.visible ? (cv.ficha || cv.nombre) : null;
+  if (nombre && INFO[nombre]) return !!a.userData.modelo && a.userData.nombre === nombre;
+  return !a.userData.modelo;
+}
+
+/**
+ * Red de seguridad al final de cada repintado: cada Portal enseña exactamente
+ * lo que dice la vista. Si una animación eligió mal la figura o se quedó a
+ * medias (p. ej. una Clarividente que llegaba a un Portal ajeno y seguía
+ * viéndose el personaje de antes), se corrige aquí; y las figuras que ya no
+ * son de ningún Portal se desvanecen.
+ */
+async function cuadrarPortales(v) {
+  for (const a of [...actores]) {
+    const an = a.userData.ancla;
+    if (an?.tipo === 'portal' && portales.get(an.clave)?.actor !== a) { a.userData.ancla = null; disolver(a).catch(() => {}); }
+  }
+  const tareas = [];
+  for (const [clave, p] of portales) {
+    if (!p.g.visible || p.nuevo || p.provisional || p.levita || p.crono || p.arrastrando) continue;
+    const pv = verPortal(v, clave); if (!pv) continue;
+    const a = p.actor;
+    if (!pv.top) {
+      if (a) { p.actor = null; a.userData.ancla = null; disolver(a).catch(() => {}); }
+      continue;
+    }
+    if (muestraLoQueToca(a, pv.top)) continue;
+    if (a) { a.userData.ancla = null; disolver(a).catch(() => {}); }
+    p.actor = null;
+    tareas.push(surgir(p, pv.top));
+  }
+  await Promise.all(tareas);
 }
 
 /** El de arriba se va (Cronista): baja por la escalinata y se pone el manto; debajo reaparece el anterior. */
@@ -1189,11 +1267,11 @@ function prepararPortalNuevo() {
   if (!disp) return null;
   const nc = [...disp.portales.keys()].filter(k => k.startsWith('n:')).length, clave = `n:${nc}`;
   if (portales.get(clave)?.g.visible) return null;
-  prevision = new Map();
-  for (let c = 0; c <= nc; c++) {
-    const o = desplaz[`${disp.n}|n:${c}`];
-    prevision.set(`n:${c}`, V((c - nc / 2) * SEP + (o?.[0] ?? 0), 0, (disp.n === 3 ? -0.4 : 0) + (o?.[1] ?? 0)));
-  }
+  // Los centrales que ya están no se mueven; el nuevo, en un hueco libre.
+  const id = `${disp.orientacion}|${disp.n}|${clave}`;
+  if (!sitiosCentrales.has(id)) sitiosCentrales.set(id, sitioLibre(disp));
+  const o = desplaz[`${disp.n}|${clave}`];
+  prevision = new Map([[clave, sitiosCentrales.get(id).clone().add(V(o?.[0] ?? 0, 0, o?.[1] ?? 0))]]);
   const p = asegurarPortal(clave);
   p.g.visible = false; p.g.position.copy(prevision.get(clave)); p.g.rotation.y = 0; p.g.scale.set(1, 0.01, 1);
   p.nuevo = true; p.provisional = true; ponerNombre(p, null);
@@ -1475,6 +1553,7 @@ async function aplicar(v, an) {
   }
   if (llegan.length) { S.aparece(); await espera(Math.min(2.2, 0.8 + llegan.length * 0.2)); }
   cron?.fin();
+  await cuadrarPortales(v);
   actualizarGemas(v);
 }
 

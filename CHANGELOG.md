@@ -4,6 +4,44 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.41.2.222] - 2026-11-20
+
+### Corregido: en las partidas online las invitadas no veían las escenas
+- Solo la mesa (la anfitriona) escenificaba las invocaciones, cartas y
+  habilidades: las invitadas recibían el estado nuevo sin el evento y su
+  Escenario/Por bloques solo veía el cambio de la mesa (sin criatura, sin
+  magia de invocación ni conjuro de la habilidad). Pasaba igual en Por
+  bloques y en Escenario 3D, y en la Mesa de cartas.
+- `espectaculo.js`: `fijarDifusorEscenas()`; `anunciarCartaJugada`,
+  `envolverHabilidad` y `anunciarInvocacion` pasan siempre su escena (solo
+  datos públicos) al difusor, aunque la mesa use otra vista o tenga las
+  escenas apagadas. `sala.js` las acumula y las manda dentro del siguiente
+  mensaje `estado` (`escenas`), aunque la copia saneada no cambie. La
+  invitada las reproduce con `reproducirEscenasRemotas()` con el estado ya
+  puesto y antes de `render()`, para que el tablero 3D reciba escena y
+  vista en el mismo lote. Probado con `?red=local` y dos pestañas.
+
+### Corregido: un Portal enseñaba el personaje de antes (Clarividente)
+- Con una Clarividente bajada al Portal de otra jugadora se seguía viendo
+  encima el personaje anterior (un Estratega), aunque la mano tapada y el
+  ojo sí salían. Cuando llegan juntos varios cambios (habitual en una
+  invitada), `aplicar()` podía mandar al Portal la figura de otra mano y
+  `entrar()` la daba por buena solo con que tuviera modelo. Ahora
+  `muestraLoQueToca()` comprueba que el modelo sea el del personaje que
+  toca, y `cuadrarPortales()` (al final de cada repintado) corrige
+  cualquier Portal que no enseñe su carta de arriba y retira figuras
+  sueltas ancladas a un Portal que ya no es suyo.
+
+### Mejorado: placa de «Por bloques» y Portales centrales nuevos
+- La placa base es enorme: 120×120 tetones de verdad cerca y, debajo, un
+  plano de 1600 unidades con los tetones dibujados en textura
+  (`texturaTetones()` en `bloques.js`), cuyo borde se pierde en la bruma.
+- Los Portales centrales ya colocados no se mueven al aparecer otro, y el
+  nuevo busca un hueco libre (`sitioLibre()` en `tablero.js`): el punto más
+  cercano al centro de los centrales a más de un Portal de distancia de
+  cualquier Portal (centrales y de cada jugadora, incluidos los movidos a
+  mano) y apartado del mazo. Vale para Por bloques y Escenario 3D.
+
 ## [1.41.1.221] - 2026-11-16
 
 ### Corregido: la Clarividente tapada dejaba ver la mano

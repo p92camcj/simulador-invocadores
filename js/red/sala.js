@@ -26,6 +26,7 @@ import { ejecutarJugada, activarHabilidad, ejecutarFinDeTurno } from '../actions
 import { render, picker, pickerPortal } from '../render.js';
 import { mostrarTablero, resetJuego } from '../game.js';
 import { preguntarMesa, mostrarAviso, mostrarFinMesa, anunciarTurnoMesa } from '../mesa3d.js';
+import { fijarDifusorEscenas, reproducirEscenasRemotas, fotoMesaPublica } from '../espectaculo.js';
 
 const CLAVE_CODIGO = 'invocadores.salaAnfitriona';
 const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -76,6 +77,17 @@ let decisorForzado = null;
 let respuestaAuto = null;
 const ultimoEnviado = new Map();
 let difusionProgramada = false;
+// Escenas (carta, habilidad, invocación) que la mesa ha escenificado y aún
+// no ha mandado: viajan con el próximo estado para que cada invitada las vea
+// a la vez que el cambio de la mesa (antes solo las veía la anfitriona).
+let escenasPorEnviar = [];
+fijarDifusorEscenas(ev => {
+  if (rol !== 'anfitriona' || !partidaEnLinea()) return;
+  let copia;
+  try { copia = JSON.parse(JSON.stringify(ev)); } catch { return; }
+  escenasPorEnviar.push(copia);
+  trasRepintar();
+});
 
 // Invitada
 let conexion = null;
@@ -471,15 +483,17 @@ export function trasRepintar() {
 function difundir() {
   if (rol !== 'anfitriona') return;
   const partida = estado.partida;
+  const escenas = escenasPorEnviar;
+  escenasPorEnviar = [];
   if (!partida.players.length) return;
   partida.players.forEach((p, idx) => {
     if (!p.idRed) return;
     const inv = invitadas.get(p.idRed);
     if (!inv?.conexion) return;
     const json = JSON.stringify(sanearPartidaParaAsiento(partida, idx));
-    if (ultimoEnviado.get(p.idRed) === json) return;
+    if (ultimoEnviado.get(p.idRed) === json && !escenas.length) return;
     ultimoEnviado.set(p.idRed, json);
-    inv.conexion.enviar({ tipo: 'estado', asiento: idx, partida: json });
+    inv.conexion.enviar(escenas.length ? { tipo: 'estado', asiento: idx, partida: json, escenas } : { tipo: 'estado', asiento: idx, partida: json });
   });
 }
 
@@ -645,6 +659,8 @@ function aplicarEstado(msg) {
   try { partida = JSON.parse(msg.partida); } catch { return; }
   const turnoAntes = enTablero ? estado.partida.turn : null;
   const jugadaAntes = enTablero ? estado.partida.played : null;
+  const hayEscenas = enTablero && Array.isArray(msg.escenas) && msg.escenas.length > 0;
+  const fotoAntes = hayEscenas ? fotoMesaPublica() : null;
   miAsiento = msg.asiento;
   estado.partida = partida;
   // Empieza otra partida mientras esta invitada miraba el marcador final.
@@ -654,6 +670,9 @@ function aplicarEstado(msg) {
     enTablero = true;
     mostrarTablero();
   }
+  // Lo que la mesa acaba de escenificar, aquí también (antes del repintado:
+  // el Escenario recibe la escena y la vista nueva en el mismo lote).
+  if (hayEscenas) reproducirEscenasRemotas(msg.escenas, fotoAntes);
   render(partida.players, partida.neutrals, partida.levelIdx);
   if (turnoAntes !== partida.turn && !partida.juegoTerminado) {
     const actual = partida.players[partida.turn];
