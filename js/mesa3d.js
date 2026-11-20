@@ -32,6 +32,7 @@ import {
   cancelarSeleccion, ejecutarFinDeTurno,
 } from './actions.js';
 import { salirAlMenu } from './game.js';
+import { nuevoIdPartida, registrarPartidaTerminada, leerPerfil, normalizarNombre } from './perfiles.js';
 import { asientoLocal, partidaEnLinea, difundirFin, esInvitada, difundirAmbiente } from './red/sala.js';
 import { botonesVozHtml, alternarMicro, alternarAltavoz, escucharVoz } from './red/voz.js';
 import {
@@ -1026,8 +1027,12 @@ export function preguntarMesa(titulo, opciones, responder) {
  * botones "Jugar otra vez" y "Ver la mesa".
  */
 export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
+  // Una partida retomada de antes de 1.42 no tiene id: se le pone aquí, en la
+  // mesa, antes de mandar el estado final a las invitadas.
+  if (!esInvitada() && !estado.partida.idPartida) estado.partida.idPartida = nuevoIdPartida();
   // Partida online: el marcador también sale en el dispositivo de cada invitada.
   difundirFin({ motivo, resultado });
+  guardarEnHistorial(resultado);
   cerrarHoja();
   document.querySelector('.m-fin')?.remove();
   const { stats, ganadores, motivoDesempate, intercambios = [] } = resultado;
@@ -1078,6 +1083,27 @@ export function mostrarFinMesa({ motivo, resultado }, alJugarOtra) {
   });
   document.body.appendChild(fin);
   if (!sinObjetivo) navigator.vibrate?.([40, 80, 40, 80, 120]);
+}
+
+/**
+ * Guarda la partida terminada en el historial de ESTE dispositivo (mesa e
+ * invitadas por igual; js/perfiles.js no la repite si ya la tiene). "Yo" es
+ * el asiento de este dispositivo online o, en una pantalla compartida, la
+ * persona cuyo nombre coincide con el perfil.
+ */
+function guardarEnHistorial(resultado) {
+  try {
+    const p = estado.partida;
+    const jugadoras = (p.players || []).map(j => ({ nombre: j.name, tipo: j.tipo === 'auto' ? 'auto' : 'humano' }));
+    const online = partidaEnLinea();
+    const perfil = normalizarNombre(leerPerfil());
+    const mio = online ? p.players?.[asientoLocal()]
+      : (perfil ? p.players?.find(j => j.tipo !== 'auto' && normalizarNombre(j.name) === perfil) : null);
+    registrarPartidaTerminada({
+      id: p.idPartida, resultado, jugadoras, online, yo: mio?.name ?? null,
+      modo: modoDe(p), invocaciones: (p.invocacionesCompletadas || []).length,
+    });
+  } catch (e) { console.warn('Partida sin guardar en el historial:', e); }
 }
 
 function abrirMenu() {

@@ -6,6 +6,17 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.42.0.223 - 2026-11-20
+
+- **Historial y ranking.** Cada partida que termina se guarda sola en tu
+  móvil u ordenador, también las online (cada jugadora la guarda en el
+  suyo). En la pantalla de inicio, el nuevo apartado «Historial y ranking»
+  enseña las últimas partidas y una clasificación por nombre: partidas
+  jugadas, victorias, porcentaje y Gemas de media.
+- **Tu perfil.** Escribe tu nombre una vez (es el mismo que usas para jugar
+  online) y tus partidas y tu fila del ranking quedan marcadas.
+- Puedes descargar el historial o borrarlo. No sale de tu dispositivo.
+
 ## 1.41.2.222 - 2026-11-20
 
 - **Partidas online: todos ven las escenas.** Las invocaciones (con su

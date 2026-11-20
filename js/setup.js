@@ -4,6 +4,7 @@ import { initGame, mostrarTablero, retomarPartida } from './game.js';
 import { nombresDisponiblesParaBots } from './bot.js';
 import { leerPartidaGuardada, borrarPartidaGuardada, describirPartidaGuardada } from './partida-guardada.js';
 import { initPanelOnline } from './red/panel-online.js';
+import { pintarPanelHistorial } from './panel-historial.js';
 import { asignarAsientos } from './red/sala.js';
 
 /** Aviso "Tienes una partida a medias" del menú de inicio. */
@@ -229,6 +230,7 @@ export function crearJugadoras(asientosPartida) {
 export function initSetup() {
   pintarPanelRetomar();
   initPanelOnline();
+  pintarPanelHistorial();
   const guardado = leerMenuGuardado();
   if (!asientos) {
     asientos = normalizarAsientos(guardado?.asientos);
