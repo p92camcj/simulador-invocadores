@@ -13,6 +13,7 @@ import { initSetup } from './setup.js';
 import { $ } from './utils.js';
 import { estado, reiniciarCamposDeTurno, reiniciarPartida, cargarPartida } from './motor/estado.js';
 import { comprobarFinPorManoVacia } from './motor/acciones.js';
+import { nuevoIdPartida } from './perfiles.js';
 import { anunciarTurnoMesa, retardoAutomata, salirDeMesa, mostrarFinMesa, preguntarMesa } from './mesa3d.js';
 import { detenerEspectaculo, cuandoTermineEspectaculo } from './espectaculo.js';
 import { guardarPartidaEnCurso, leerPartidaGuardada, borrarPartidaGuardada } from './partida-guardada.js';
@@ -54,6 +55,8 @@ export function initGame() {
   // de la partida"): la partida puede terminar antes de completar todas,
   // así que no se puede asumir que siempre fue C→B→A completo.
   window.invocacionesCompletadas = [];
+  // Para el historial de partidas de cada dispositivo (js/perfiles.js).
+  estado.partida.idPartida = nuevoIdPartida();
 
   // Configurar controladores de acciones
 

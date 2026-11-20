@@ -268,6 +268,39 @@ select {
 .panel-retomar .nota-retomar { margin: 10px 0 0; font-size: 0.85rem; opacity: 0.8; }
 .panel-aprendizaje .btn { margin: 2px 4px 2px 0; font-size: 0.85rem; }
 
+/* ---------- Historial y ranking (js/panel-historial.js) ---------- */
+.panel-historial {
+  margin: 12px 0;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  overflow: hidden;
+}
+.ph-cabecera {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  width: 100%; padding: 10px 12px; border: 0; background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ph-cabecera span { opacity: 0.75; font-size: 0.85rem; }
+.ph-cabecera .ph-flecha { margin-left: auto; opacity: 1; }
+.ph-cuerpo { padding: 0 12px 12px; }
+.ph-perfil { display: block; margin: 4px 0; }
+.ph-perfil input { display: block; width: 100%; max-width: 280px; margin-top: 4px; box-sizing: border-box; }
+.ph-nota { margin: 4px 0 10px; font-size: 0.8rem; opacity: 0.75; }
+.ph-filtro { margin: 4px 0 6px; padding: 4px 10px; border: 1px solid rgba(127, 127, 127, 0.4); border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 0.8rem; cursor: pointer; }
+.ph-ranking { width: 100%; border-collapse: collapse; margin: 4px 0 12px; font-variant-numeric: tabular-nums; }
+.ph-ranking th, .ph-ranking td { padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(127, 127, 127, 0.2); }
+.ph-ranking th:nth-child(2), .ph-ranking td:nth-child(2) { text-align: left; width: 100%; overflow-wrap: anywhere; }
+.ph-ranking th { font-size: 0.75rem; opacity: 0.75; font-weight: 600; }
+.ph-ranking tr.yo td { background: rgba(108, 78, 182, 0.14); font-weight: 600; }
+.panel-historial h3 { margin: 6px 0; font-size: 0.95rem; }
+.ph-partidas { list-style: none; margin: 0 0 10px; padding: 0; }
+.ph-partidas li { padding: 6px 0; border-bottom: 1px solid rgba(127, 127, 127, 0.2); }
+.ph-partida-cab { display: flex; justify-content: space-between; gap: 8px; }
+.ph-partida-cab span { opacity: 0.7; font-size: 0.8rem; white-space: nowrap; }
+.ph-partida-det { font-size: 0.8rem; opacity: 0.8; overflow-wrap: anywhere; }
+.panel-historial .btn { margin: 2px 4px 2px 0; font-size: 0.85rem; }
+
 /* ---------- Narración, resaltado, estelas e historial (js/narrador.js) ---------- */
 .narrador {
   position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); transform: translateX(-50%);

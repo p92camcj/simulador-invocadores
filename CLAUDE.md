@@ -569,6 +569,14 @@ in `nextTurn()`.
   mesh, 🎤/🔊 buttons beside the required-characters row). Since 1.40.0 the host's Escenario ambience is sent to guests (`difundirAmbiente()`), who can't change it. Since 1.41.2 every scene the host stages (card, ability, invocation) also travels to guests inside the next `estado` message (`fijarDifusorEscenas()`/`reproducirEscenasRemotas()` in `espectaculo.js`), so every screen sees invocations; keep scene payloads public-only. Test in one browser with `?red=local`
   (BroadcastChannel) and two tabs, or against a local PeerJS server with
   `?servidorRed=127.0.0.1:9000`.
+- **`js/perfiles.js`** + **`js/panel-historial.js`** — (1.42.0) profile,
+  game history and ranking, per device only (`localStorage`, no server).
+  `mostrarFinMesa()` (runs on the host and on every online guest) saves the
+  finished game once per `estado.partida.idPartida` (set in `initGame()`);
+  the profile is the same name used online (`invocadores.nombreOnline`).
+  The setup screen's `#panelHistorial` shows the ranking by name (games,
+  wins, %, average Gems) and the last games. `perfiles.js`'s pure part is
+  tested in `tests/perfiles.mjs`.
 - **`js/pwa-install.js`** / **`service-worker.js`** / **`manifest.json`** —
   PWA install prompt and offline caching. Not game logic.
 - **`js/version-check.js`** — reads `version.json`, shows the current
@@ -667,6 +675,7 @@ node tests/historial.mjs
 node tests/modos.mjs
 node tests/red.mjs
 node tests/bot-cooperacion.mjs
+node tests/perfiles.mjs
 ```
 
 ```bash

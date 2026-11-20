@@ -22,6 +22,7 @@ export const CLAVES_PARTIDA = [
   'habilidadUsadaEsteTurno', 'invocationSet', 'juegoTerminado',
   'cronomantePortalInvestigado', 'invocacionesCompletadas', 'memoriaBots',
   'historial', 'modo', 'entusiasta', 'madain', 'automataCentral',
+  'idPartida',
 ];
 
 /** Claves del estado de interfaz (no serializable, no es parte de la partida). */
@@ -55,6 +56,9 @@ export function crearEstadoPartida(invocationSet = 'normal') {
     madain: false,
     // Modo Experto: { gems } de la autómata central; null en los demás.
     automataCentral: null,
+    // Identificador de la partida (js/perfiles.js): el historial local no
+    // guarda dos veces la misma partida. null hasta initGame().
+    idPartida: null,
   };
 }
 

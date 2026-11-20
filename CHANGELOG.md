@@ -4,6 +4,30 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.42.0.223] - 2026-11-20
+
+### Nuevo: perfil, historial de partidas y ranking (en cada dispositivo)
+- `js/perfiles.js` (nuevo; parte pura probada en `tests/perfiles.mjs`):
+  registro de cada partida terminada (por jugadora: nombre, persona/autómata/
+  autómata central, Gemas, puesto y si gana; modo, invocaciones, online),
+  historial en `localStorage['invocadores.historialPartidas']` (300 como
+  máximo) sin duplicados, y ranking por nombre (partidas, victorias, % y
+  Gemas medias; junta mayúsculas y tildes; la autómata central no entra).
+- `estado.partida.idPartida` (nueva clave de `CLAVES_PARTIDA`, la pone
+  `initGame()`; las partidas guardadas antes de esta versión reciben una al
+  terminar). `mostrarFinMesa()` guarda la partida al enseñar el marcador,
+  en la mesa y en cada invitada online (que recibe el id en su copia
+  saneada). "Yo" es el asiento del dispositivo online o, en pantalla
+  compartida, la persona cuyo nombre coincide con el perfil.
+- El perfil es el mismo nombre que se usa para jugar online
+  (`invocadores.nombreOnline`).
+- Pantalla de inicio: panel plegable "Historial y ranking"
+  (`js/panel-historial.js`, `#panelHistorial`) con el perfil, el ranking
+  (con o sin autómatas, tu fila resaltada), las 8 últimas partidas,
+  descargar el historial en JSON y borrarlo (dos toques).
+- Probado con `?red=local` y dos pestañas: la mesa y la invitada reciben el
+  mismo id y guardan la partida al ver el marcador final.
+
 ## [1.41.2.222] - 2026-11-20
 
 ### Corregido: en las partidas online las invitadas no veían las escenas

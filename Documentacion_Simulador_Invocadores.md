@@ -659,7 +659,7 @@ Interacción: tocar una carta de la mano la levanta y los Portales brillan; toca
 | `retardoAutomata()` | `función` | Pausa antes de que juegue una autómata (1,3 s, para poder seguir su jugada). |
 | `mostrarAviso(texto)` | `función` | Aviso flotante. |
 | `preguntarMesa(titulo, opciones, responder)` | `función` | Pregunta de varias opciones en hoja inferior (sustituye a `confirm()`; la usa `actions.js` para elegir entre revelar la Gema de asterisco o pagar una Gema de 1). |
-| `mostrarFinMesa({ motivo, resultado }, alJugarOtra)` | `función` | Marcador final con confeti (clasificación de `calcularResultadoFinal`; con `objetivoCumplido: false`, "Nadie gana" sin confeti), botón para jugar otra vez y opción de ver cómo ha quedado la mesa. Lo llama `finalizarPartida()` después de repintar la mesa (así se ven las Gemas repartidas en la última invocación). |
+| `mostrarFinMesa({ motivo, resultado }, alJugarOtra)` | `función` | Marcador final con confeti (clasificación de `calcularResultadoFinal`; con `objetivoCumplido: false`, "Nadie gana" sin confeti), botón para jugar otra vez y opción de ver cómo ha quedado la mesa. Lo llama `finalizarPartida()` después de repintar la mesa (así se ven las Gemas repartidas en la última invocación). Desde 1.42.0 también guarda la partida en el historial de este dispositivo (`registrarPartidaTerminada()` de `js/perfiles.js`); en la mesa y en cada invitada online, sin duplicados por `idPartida`. |
 | `salirDeMesa()` | `función` | Limpia la mesa al volver al menú (`resetJuego()`). |
 
 ---
@@ -672,7 +672,7 @@ Interacción: tocar una carta de la mano la levanta y los Portales brillan; toca
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
 | `estado` | `objeto` | Contenedor único: `estado.partida` (reglas, serializable) y `estado.ui` (interfaz, puede contener funciones). Accesible también como `window.estado`. |
-| `CLAVES_PARTIDA` | `constante` | Claves de `estado.partida`: `players`, `neutrals`, `deck`, `levelIdx`, `turn`, `played`, `habilidadUsadaEsteTurno`, `invocationSet`, `juegoTerminado`, `cronomantePortalInvestigado`, `invocacionesCompletadas`, `memoriaBots`. |
+| `CLAVES_PARTIDA` | `constante` | Claves de `estado.partida`: `players`, `neutrals`, `deck`, `levelIdx`, `turn`, `played`, `habilidadUsadaEsteTurno`, `invocationSet`, `juegoTerminado`, `cronomantePortalInvestigado`, `invocacionesCompletadas`, `memoriaBots`, `historial`, `modo`, `entusiasta`, `madain`, `automataCentral`, `idPartida` (1.42.0: identificador de la partida para el historial local, lo pone `initGame()`). |
 | `CLAVES_UI` | `constante` | Claves de `estado.ui`: `selectedCardIdx`, `cronomanteOnComplete`, `pickerObjetivoPortal`, `avanceTurnoPendiente`. Nunca se serializan. |
 | `crearEstadoPartida(invocationSet)` | `función` | Devuelve un estado de partida vacío. |
 | `crearEstadoUi()` | `función` | Devuelve un estado de interfaz vacío. |
@@ -788,6 +788,22 @@ cambia a `BroadcastChannel` (pestañas del mismo navegador, para probar);
 | `configurarVoz(peer)` / `fijarParticipantes(ids)` / `detenerVoz()` | `función` | Chat de voz por llamadas de PeerJS, en malla (cada uno llama a los demás con su micro; quien recibe contesta sin audio y lo reproduce en un `<audio data-voz>`). La mesa reparte la lista de ids de PeerJS (mensaje `voz`, desde `enviarLobby()`); tras reconectar llega un Peer nuevo y se vuelve a llamar. |
 | `alternarMicro()` / `alternarAltavoz()` | `función` | Botones 🎤 (micro propio: la primera vez pide permiso; después solo apaga/enciende la pista) y 🔊 (silenciar a las demás). Micro cerrado y voces abiertas al empezar. |
 | `botonesVozHtml()` / `vozDisponible()` / `escucharVoz(f)` | `función` | `{ micro, altavoz }` para la fila de requeridos de la Mesa y del Escenario (`filaRequeridos()` en `mesa3d.js`), solo en partidas online y con PeerJS (no con `?red=local`). |
+
+## js/perfiles.js
+**Propósito:** (1.42.0) perfil, historial de partidas y ranking, solo en este dispositivo (`localStorage['invocadores.historialPartidas']`, tope `MAX_PARTIDAS` = 300; el perfil es `localStorage['invocadores.nombreOnline']`, el mismo nombre que se usa online). La parte pura se prueba en `tests/perfiles.mjs`.
+
+| Nombre | Tipo | Descripción |
+|--------|------|-------------|
+| `nuevoIdPartida()` | `función` | Identificador aleatorio para `estado.partida.idPartida`. |
+| `normalizarNombre(n)` | `función` | Nombre comparable (sin mayúsculas, tildes ni espacios de más). |
+| `crearRegistroPartida({ id, fecha, resultado, jugadoras, modo, invocaciones, online, yo })` | `función` | Registro de una partida terminada a partir del resultado final: por jugadora nombre, tipo (`humano`, `auto` o `central`), Gemas, puesto y si gana. |
+| `anadirAlHistorial(historial, registro, max)` | `función` | Lo añade al principio, sin repetir id y con tope. |
+| `calcularRanking(historial, { conAutomatas })` | `función` | Por nombre: partidas, victorias, % y Gemas medias; la autómata central no entra. |
+| `registrarPartidaTerminada(datos)` / `leerHistorial()` / `guardarHistorial(h)` / `borrarHistorial()` | `función` | Lectura y escritura en `localStorage` (nunca lanzan). |
+| `leerPerfil()` / `guardarPerfil(nombre)` | `función` | Perfil de este dispositivo. |
+
+## js/panel-historial.js
+**Propósito:** (1.42.0) panel plegable `#panelHistorial` "Historial y ranking" de la pantalla de inicio: perfil, ranking (con o sin autómatas, la fila del perfil resaltada), últimas 8 partidas, descargar el historial en JSON y borrarlo (con doble toque). Exporta `pintarPanelHistorial()`, llamada desde `initSetup()`.
 
 ### js/red/panel-online.js
 
