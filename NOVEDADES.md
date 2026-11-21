@@ -6,6 +6,13 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.42.2.230 - 2026-11-21
+
+- **Partidas online: el Pícaro roba su Gema en todas las pantallas.** Al
+  completar una invocación, quien se une a la sala ve ya toda la escena
+  igual que la mesa, también al Pícaro yendo a robarle la Gema a la
+  criatura antes de esconderse.
+
 ## 1.42.1.224 - 2026-11-21
 
 - **Entrar en una sala online es más fiable.** Si el móvil de la mesa
