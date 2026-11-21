@@ -20,7 +20,7 @@ import { estado } from '../motor/estado.js';
 import { sanearPartidaParaAsiento } from './sanear.js';
 import { abrirSala, unirseASala } from './transporte.js';
 import { configurarVoz, fijarParticipantes, detenerVoz } from './voz.js';
-import { tablero } from '../escenas3d.js';
+import { tablero, escenarioEnUso, cuandoLibreEscenario } from '../escenas3d.js';
 import { jugarCarta } from '../motor/acciones.js';
 import { ejecutarJugada, activarHabilidad, ejecutarFinDeTurno } from '../actions.js';
 import { render, picker, pickerPortal } from '../render.js';
@@ -673,7 +673,18 @@ function aplicarEstado(msg) {
   // Lo que la mesa acaba de escenificar, aquí también (antes del repintado:
   // el Escenario recibe la escena y la vista nueva en el mismo lote).
   if (hayEscenas) reproducirEscenasRemotas(msg.escenas, fotoAntes);
-  render(partida.players, partida.neutrals, partida.levelIdx);
+  // Invocación en el Escenario: como en la mesa, la escena se juega sobre la
+  // mesa de antes y el estado nuevo se pinta al acabar. Si no, el tablero
+  // recibía a la vez la escena y la mesa ya resuelta (el Pícaro ya tapado
+  // tras cobrar) y la invitada no veía al Pícaro ir a robar su Gema.
+  const conInvocacion = hayEscenas && escenarioEnUso() && msg.escenas.some(e => e?.tipo === 'invocacion');
+  if (conInvocacion) {
+    cuandoLibreEscenario().then(() => {
+      if (estado.partida === partida) render(partida.players, partida.neutrals, partida.levelIdx);
+    });
+  } else {
+    render(partida.players, partida.neutrals, partida.levelIdx);
+  }
   if (turnoAntes !== partida.turn && !partida.juegoTerminado) {
     const actual = partida.players[partida.turn];
     if (actual) anunciarTurnoMesa(actual, actual.tipo === 'auto');

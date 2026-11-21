@@ -4,6 +4,19 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.42.2.230] - 2026-11-21
+
+### Corregido: la invitada no veía al Pícaro robar su Gema en la invocación
+- En la mesa, la escena de la invocación del Escenario arranca sobre la
+  mesa de antes (el estado resuelto se pinta al acabar las escenas). La
+  invitada recibía la escena y la mesa ya resuelta en el mismo lote: el
+  tablero tapaba primero al Pícaro (ya cobrado y vuelto bocabajo) y luego
+  `invocar()` no encontraba a ningún Pícaro visible para el robo.
+- `aplicarEstado()` (`js/red/sala.js`): si llega una invocación y se usa el
+  Escenario (Por bloques o 3D), reproduce la escena y pinta el estado nuevo
+  cuando el tablero termina (`cuandoLibreEscenario()`), igual que la mesa.
+  Si mientras tanto llega otro estado, manda el más nuevo.
+
 ## [1.42.1.224] - 2026-11-21
 
 ### Corregido: «No se ha podido entrar en la sala» al unirse desde otro dispositivo
