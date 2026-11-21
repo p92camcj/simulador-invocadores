@@ -6,6 +6,16 @@ detalle técnico completo, mira `CHANGELOG.md`.
 
 ---
 
+## 1.42.1.224 - 2026-11-21
+
+- **Entrar en una sala online es más fiable.** Si el móvil de la mesa
+  estaba un momento en otra app (por ejemplo, mandando el código), quien
+  se une ya no se rinde enseguida: sigue llamando unos segundos y entra en
+  cuanto la mesa vuelve a la app.
+- Si aun así no se puede entrar, el aviso dice qué pasa: que la mesa no
+  contesta, que no hay sala con ese código o que vuestras redes no dejan
+  conectaros.
+
 ## 1.42.0.223 - 2026-11-20
 
 - **Historial y ranking.** Cada partida que termina se guarda sola en tu

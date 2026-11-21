@@ -112,8 +112,15 @@ export async function abrirSala(codigo, { alConectar, alAviso }) {
     // El móvil en segundo plano pierde el contacto con el servidor de
     // salas: se recupera solo (las partidas en curso no se cortan).
     peer.on('disconnected', () => {
-      if (!peer.destroyed) setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1500);
+      if (!peer.destroyed) setTimeout(() => { if (!peer.destroyed && peer.disconnected) peer.reconnect(); }, 1500);
     });
+    // Al volver a la app (tras mandar el código por otra app, por ejemplo),
+    // se recupera el contacto con el servidor de salas en el acto.
+    const alVolver = () => {
+      if (peer.destroyed) { document.removeEventListener('visibilitychange', alVolver); return; }
+      if (document.visibilityState === 'visible' && peer.disconnected) peer.reconnect();
+    };
+    document.addEventListener('visibilitychange', alVolver);
     peer.on('error', err => {
       if (!abierta) {
         const e = new Error(textoErrorPeer(err, codigo));
@@ -129,6 +136,31 @@ export async function abrirSala(codigo, { alConectar, alAviso }) {
 
 // ---------- Invitada ----------
 
+// Cuánto se insiste antes de rendirse, y cada cuánto se repite la llamada a
+// la mesa si no contesta (su móvil puede estar en segundo plano, p. ej.
+// mientras manda el código por WhatsApp: al volver a la app contesta).
+const ESPERA_UNIRSE_MS = 45000;
+const REINTENTO_UNIRSE_MS = 12000;
+
+/** ¿Ha contestado la mesa a esta llamada? (ya hay respuesta suya en la conexión) */
+const contesto = conn => !!conn?.peerConnection?.remoteDescription;
+
+/**
+ * Por qué no se ha podido entrar, mirando cómo ha quedado la última llamada:
+ * si la mesa ni contestó, o si contestó pero la conexión directa no cuajó.
+ */
+function diagnosticoUnirse(codigo, conn) {
+  const pc = conn?.peerConnection;
+  const ice = pc?.iceConnectionState;
+  if (!contesto(conn)) {
+    return `La mesa ${codigo} no contesta. En el móvil que hace de mesa, abre la app y déjala en primer plano (sin bloquear la pantalla) y vuelve a pulsar «Entrar».`;
+  }
+  if (ice === 'failed' || ice === 'checking' || ice === 'disconnected') {
+    return 'La mesa contesta, pero vuestras redes no dejan conectar los dos dispositivos. Probad a estar los dos en la misma wifi (o quitad la VPN) y volved a pulsar «Entrar».';
+  }
+  return `No se ha podido entrar en la sala ${codigo}. Comprueba el código y que la mesa tenga la app abierta en primer plano.`;
+}
+
 /** Se conecta a la sala `codigo`. Devuelve la conexión con la anfitriona. */
 export async function unirseASala(codigo) {
   if (transporteLocal()) return unirseASalaLocal(codigo);
@@ -136,29 +168,50 @@ export async function unirseASala(codigo) {
   return new Promise((ok, mal) => {
     const peer = new Peer(opcionesPeer());
     let resuelta = false;
+    let conn = null;
+    let reintento = null;
+    let sinSala = false;
     const fallar = msg => {
       if (resuelta) return;
       resuelta = true;
+      clearTimeout(espera); clearInterval(reintento);
       peer.destroy();
       mal(new Error(msg));
     };
-    const espera = setTimeout(() => fallar(`No se ha podido entrar en la sala ${codigo}. Comprueba el código y que la mesa tenga la app abierta.`), 20000);
-    peer.on('open', () => {
-      const conn = peer.connect(PREFIJO + codigo, { reliable: true, serialization: 'raw' });
-      conn.on('open', () => {
-        if (resuelta) return;
+    const espera = setTimeout(() => fallar(sinSala && !contesto(conn)
+      ? `No hay ninguna sala abierta con el código ${codigo}. Comprueba el código y que el móvil de la mesa tenga la app abierta en primer plano.`
+      : diagnosticoUnirse(codigo, conn)), ESPERA_UNIRSE_MS);
+    const llamar = () => {
+      if (resuelta || peer.destroyed) return;
+      const anterior = conn;
+      // Si la mesa ya contestó, se le deja terminar la conexión: no se corta.
+      if (contesto(anterior)) return;
+      if (anterior) { try { anterior.close(); } catch { /* nada */ } }
+      const c = peer.connect(PREFIJO + codigo, { reliable: true, serialization: 'raw' });
+      conn = c;
+      c.on('open', () => {
+        if (resuelta || c !== conn) return;
         resuelta = true;
-        clearTimeout(espera);
-        const c = envolverPeer(conn);
-        c.peerLocal = peer;   // el chat de voz llama y recibe llamadas con él
-        c.alCerrar(() => setTimeout(() => peer.destroy(), 0));
-        ok(c);
+        clearTimeout(espera); clearInterval(reintento);
+        const con = envolverPeer(c);
+        con.peerLocal = peer;   // el chat de voz llama y recibe llamadas con él
+        con.alCerrar(() => setTimeout(() => peer.destroy(), 0));
+        ok(con);
       });
+    };
+    peer.on('open', () => {
+      llamar();
+      reintento = setInterval(llamar, REINTENTO_UNIRSE_MS);
     });
-    peer.on('error', err => { clearTimeout(espera); fallar(textoErrorPeer(err, codigo)); });
+    peer.on('error', err => {
+      // La sala no está (o la mesa perdió el contacto con el servidor de
+      // salas al irse a segundo plano): se sigue llamando hasta el límite.
+      if (err?.type === 'peer-unavailable') { sinSala = true; if (!contesto(conn)) conn = null; return; }
+      fallar(textoErrorPeer(err, codigo));
+    });
     // Sin contacto con el servidor de salas no llegarían las llamadas de voz.
     peer.on('disconnected', () => {
-      if (resuelta && !peer.destroyed) setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1500);
+      if (!peer.destroyed) setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1500);
     });
   });
 }
