@@ -757,8 +757,8 @@ viajan al dispositivo de quien debe elegir.
 
 | Nombre | Tipo | Descripción |
 |--------|------|-------------|
-| `abrirSala(codigo, { alConectar, alAviso })` | `función async` | Abre la sala (PeerJS, id `invocadores-sim-<código>`); `alConectar(conexion)` por cada invitada. Falla con `codigoOcupado` si el código está en uso. |
-| `unirseASala(codigo)` | `función async` | Conexión con la mesa. Cada conexión tiene `enviar(obj)`, `alRecibir(f)`, `alCerrar(f)`, `cerrar()`. |
+| `abrirSala(codigo, { alConectar, alAviso })` | `función async` | Abre la sala (PeerJS, id `invocadores-sim-<código>`); `alConectar(conexion)` por cada invitada. Falla con `codigoOcupado` si el código está en uso. Al volver la app a primer plano recupera en el acto el contacto con el servidor de salas (1.42.1). |
+| `unirseASala(codigo)` | `función async` | Conexión con la mesa. Desde 1.42.1 insiste 45 s (vuelve a llamar cada 12 s si la mesa no contesta o aún no ha abierto la sala) y, si no entra, explica por qué: la mesa no contesta (app en segundo plano), no hay sala, o las redes no dejan conectar. Cada conexión tiene `enviar(obj)`, `alRecibir(f)`, `alCerrar(f)`, `cerrar()`. |
 
 PeerJS (`vendor/peerjs/peerjs.min.js`, 1.5.4, MIT) se carga solo al abrir o
 unirse a una sala; usa el servidor de salas gratuito de PeerJS y sus

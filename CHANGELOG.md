@@ -4,6 +4,25 @@ Todas las versiones importantes del simulador de Invocadores.
 
 ---
 
+## [1.42.1.224] - 2026-11-21
+
+### Corregido: «No se ha podido entrar en la sala» al unirse desde otro dispositivo
+- La invitada esperaba 20 s una sola llamada a la mesa. Si el móvil de la
+  mesa estaba en segundo plano (por ejemplo, mandando el código por
+  WhatsApp), no contestaba y la invitada se rendía; si la mesa aún no había
+  abierto la sala, fallaba al momento con «No hay ninguna sala».
+- `unirseASala()` (`js/red/transporte.js`) insiste ahora 45 s y vuelve a
+  llamar cada 12 s mientras la mesa no conteste (también tras
+  `peer-unavailable`); si la mesa ya contestó, deja terminar la conexión.
+  Si no entra, dice por qué: la mesa no contesta (app en segundo plano), no
+  hay sala con ese código, o la mesa contesta pero las redes no dejan
+  conectar (probar la misma wifi o quitar la VPN).
+- `abrirSala()`: al volver la app de la mesa a primer plano recupera en el
+  acto el contacto con el servidor de salas (`visibilitychange`).
+- Probado con un servidor PeerJS local y dos navegadores separados: entrada
+  normal en ~1 s, y entrada pulsando «Entrar» 20 s antes de que la mesa
+  abriera la sala (antes fallaba al momento).
+
 ## [1.42.0.223] - 2026-11-20
 
 ### Nuevo: perfil, historial de partidas y ranking (en cada dispositivo)
