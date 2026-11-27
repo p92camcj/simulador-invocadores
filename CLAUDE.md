@@ -447,3 +447,9 @@ during hidden-card moments. Keep this in mind when making architectural
 decisions (e.g. don't couple game logic too tightly to direct DOM
 manipulation if it can reasonably be avoided), but don't build networking
 speculatively until it's actually scoped.
+
+## Qué hay nuevo en el repositorio
+Este repositorio lo trabajan Dukas (el orquestador de Julio), sus sesiones de Claude Code y varios hilos de Claude a la vez. Antes de empezar:
+- Lee las últimas entradas de docs/DIARIO.md.
+- Mira los últimos commits de main. Dukas fusiona sin PR: sus cambios son los commits «orquestador: …» con su entrada en el diario.
+- Mira si hay ramas orq/* en GitHub: son tareas de Dukas sin fusionar. No repitas ese trabajo; si te afecta, tenlo en cuenta.
